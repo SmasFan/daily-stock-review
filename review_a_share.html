@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股盘后复盘</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei','Segoe UI',sans-serif; background:#f0f2f5; color:#333; line-height:1.6; }
+.container { max-width:1200px; margin:0 auto; padding:20px; }
+header { text-align:center; padding:32px 20px; background:linear-gradient(135deg,#1a237e,#283593); color:#fff; border-radius:14px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+header h1 { font-size:28px; margin-bottom:6px; }
+header p { opacity:0.85; font-size:13px; margin-top:8px; }
+.nav { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.nav-link { color:#fff; text-decoration:none; padding:6px 14px; border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; transition:all 0.2s; }
+.nav-link:hover { background:rgba(255,255,255,0.15); }
+.section { background:#fff; border-radius:14px; padding:24px; margin-bottom:20px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+.section h2 { font-size:19px; margin-bottom:16px; padding-bottom:10px; border-bottom:2px solid #e0e0e0; color:#1a237e; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; margin-bottom:10px; }
+.summary-card { background:linear-gradient(135deg,#42a5f5,#1976d2); color:#fff; border-radius:12px; padding:16px; text-align:center; }
+.summary-card .val { font-size:22px; font-weight:700; }
+.summary-card .label { font-size:12px; opacity:0.9; margin-top:4px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin-top:20px; }
+.card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+.card-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#f8f9ff; border-bottom:1px solid #e0e0e0; }
+.card-title { font-size:16px; font-weight:700; color:#1a237e; }
+.card-change { font-size:16px; font-weight:700; }
+.card-body { padding:14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
+.metric { display:flex; justify-content:space-between; font-size:13px; }
+.metric span { color:#666; }
+.metric strong { color:#333; }
+.data-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+.data-table th { background:#37474f; color:#fff; padding:10px 8px; text-align:center; font-weight:500; position:sticky; top:0; }
+.data-table td { padding:10px 8px; text-align:center; border-bottom:1px solid #e0e0e0; }
+.data-table tr:hover { background:#f5f5f5; }
+.asset-name { font-weight:600; text-align:left !important; color:#1a237e; }
+.up { color:#e53935; }
+.down { color:#43a047; }
+.neutral { color:#666; }
+.note { background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; border-radius:6px; font-size:13px; color:#e65100; margin-top:16px; }
+footer { text-align:center; padding:24px; color:#999; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>A股盘后复盘</h1>
+    <p>生成时间：2026-07-29 18:29:19</p>
+    <div class="nav">
+        <a href="review_a_share.html" class="nav-link">A股盘后</a>
+        <a href="review_us_pre.html" class="nav-link">美股盘前</a>
+        <a href="review_us_post.html" class="nav-link">美股盘后</a>
+        <a href="report.html" class="nav-link">完整回测报告</a>
+        </div>
+</header>
+<div class="section">
+    
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="val up">+0.78%</div>
+            <div class="label">平均涨跌</div>
+        </div>
+        <div class="summary-card">
+            <div class="val up">6</div>
+            <div class="label">上涨标的</div>
+        </div>
+        <div class="summary-card">
+            <div class="val down">1</div>
+            <div class="label">下跌标的</div>
+        </div>
+        <div class="summary-card">
+            <div class="val up">中证红利</div>
+            <div class="label">最强：+1.86%</div>
+        </div>
+        <div class="summary-card">
+            <div class="val down">长江电力</div>
+            <div class="label">最弱：-0.52%</div>
+        </div>
+    </div>
+    
+    <h2>标的信号一览</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>标的</th><th>数据日期</th><th>日涨跌</th><th>RSI(14)</th><th>形态</th><th>信号</th><th>建议策略</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td class="asset-name">陕西煤业</td>
+            <td>2026-07-23</td>
+            <td class="up">+1.45%</td>
+            <td>70.2</td>
+            <td class="up">右侧上升</td>
+            <td class="down">超买/逢高减仓</td>
+            <td>20日线穿越 / 5日新高突破</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">中证红利</td>
+            <td>2026-07-23</td>
+            <td class="up">+1.86%</td>
+            <td>29.3</td>
+            <td class="down">左侧下跌</td>
+            <td class="down">趋势偏空</td>
+            <td>买入持有 / 空仓观望</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">长江电力</td>
+            <td>2026-07-23</td>
+            <td class="down">-0.52%</td>
+            <td>72.6</td>
+            <td class="up">右侧上升</td>
+            <td class="down">超买/逢高减仓</td>
+            <td>20日线穿越 / 5日新高突破</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">中证A500</td>
+            <td>2026-07-23</td>
+            <td class="up">+0.32%</td>
+            <td>23.1</td>
+            <td class="down">左侧下跌</td>
+            <td class="down">趋势偏空</td>
+            <td>买入持有 / 空仓观望</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">中远海控</td>
+            <td>2026-07-23</td>
+            <td class="up">+0.86%</td>
+            <td>83.0</td>
+            <td class="up">右侧上升</td>
+            <td class="down">超买/逢高减仓</td>
+            <td>20日线穿越 / 5日新高突破</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">招商银行</td>
+            <td>2026-07-23</td>
+            <td class="up">+0.52%</td>
+            <td>65.5</td>
+            <td class="up">右侧上升</td>
+            <td class="up">趋势偏多</td>
+            <td>20日线穿越 / 5日新高突破</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">宁波银行</td>
+            <td>2026-07-23</td>
+            <td class="up">+0.95%</td>
+            <td>61.2</td>
+            <td class="up">右侧上升</td>
+            <td class="up">趋势偏多</td>
+            <td>20日线穿越 / 5日新高突破</td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="cards">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">陕西煤业</span>
+                <span class="card-change up">+1.45%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>25.25</strong></div>
+                <div class="metric"><span>MA20</span><strong>23.09</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="up">+9.37%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>70.2</strong></div>
+                <div class="metric"><span>布林位置</span><strong>上轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>25.25 / 20.35</strong></div>
+                <div class="metric"><span>形态</span><strong class="up">右侧上升</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">超买/逢高减仓</strong></div>
+                <div class="metric"><span>建议策略</span><strong>20日线穿越 / 5日新高突破</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">中证红利</span>
+                <span class="card-change up">+1.86%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>10.97</strong></div>
+                <div class="metric"><span>MA20</span><strong>12.17</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="down">-9.85%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>29.3</strong></div>
+                <div class="metric"><span>布林位置</span><strong>中轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>14.03 / 10.35</strong></div>
+                <div class="metric"><span>形态</span><strong class="down">左侧下跌</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">趋势偏空</strong></div>
+                <div class="metric"><span>建议策略</span><strong>买入持有 / 空仓观望</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">长江电力</span>
+                <span class="card-change down">-0.52%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>28.94</strong></div>
+                <div class="metric"><span>MA20</span><strong>27.82</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="up">+4.02%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>72.6</strong></div>
+                <div class="metric"><span>布林位置</span><strong>上轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>29.09 / 26.47</strong></div>
+                <div class="metric"><span>形态</span><strong class="up">右侧上升</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">超买/逢高减仓</strong></div>
+                <div class="metric"><span>建议策略</span><strong>20日线穿越 / 5日新高突破</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">中证A500</span>
+                <span class="card-change up">+0.32%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>15.51</strong></div>
+                <div class="metric"><span>MA20</span><strong>19.54</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="down">-20.61%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>23.1</strong></div>
+                <div class="metric"><span>布林位置</span><strong>中轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>26.30 / 14.09</strong></div>
+                <div class="metric"><span>形态</span><strong class="down">左侧下跌</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">趋势偏空</strong></div>
+                <div class="metric"><span>建议策略</span><strong>买入持有 / 空仓观望</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">中远海控</span>
+                <span class="card-change up">+0.86%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>15.27</strong></div>
+                <div class="metric"><span>MA20</span><strong>14.12</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="up">+8.18%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>83.0</strong></div>
+                <div class="metric"><span>布林位置</span><strong>上轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>15.27 / 13.16</strong></div>
+                <div class="metric"><span>形态</span><strong class="up">右侧上升</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">超买/逢高减仓</strong></div>
+                <div class="metric"><span>建议策略</span><strong>20日线穿越 / 5日新高突破</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">招商银行</span>
+                <span class="card-change up">+0.52%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>38.91</strong></div>
+                <div class="metric"><span>MA20</span><strong>37.37</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="up">+4.13%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>65.5</strong></div>
+                <div class="metric"><span>布林位置</span><strong>上轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>38.91 / 35.50</strong></div>
+                <div class="metric"><span>形态</span><strong class="up">右侧上升</strong></div>
+                <div class="metric"><span>信号</span><strong class="up">趋势偏多</strong></div>
+                <div class="metric"><span>建议策略</span><strong>20日线穿越 / 5日新高突破</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">宁波银行</span>
+                <span class="card-change up">+0.95%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>31.85</strong></div>
+                <div class="metric"><span>MA20</span><strong>31.16</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="up">+2.23%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>61.2</strong></div>
+                <div class="metric"><span>布林位置</span><strong>中轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>32.48 / 29.69</strong></div>
+                <div class="metric"><span>形态</span><strong class="up">右侧上升</strong></div>
+                <div class="metric"><span>信号</span><strong class="up">趋势偏多</strong></div>
+                <div class="metric"><span>建议策略</span><strong>20日线穿越 / 5日新高突破</strong></div>
+            </div>
+        </div>
+        </div>
+    <div class="note">
+        <strong>说明：</strong>本复盘基于 report_data.json 中的日线数据，自动计算 MA20、布林带、RSI 等指标。信号仅供参考，不构成投资建议。美股盘前复盘因缺少实时盘前数据，主要基于上一交易日收盘数据给出开盘观察要点。
+    </div>
+</div>
+<footer>数据来源：BaoStock | 复盘脚本：post_market_review.py</footer>
+</div>
+</body>
+</html>

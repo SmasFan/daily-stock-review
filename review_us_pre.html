@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美股盘前复盘</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Microsoft YaHei','Segoe UI',sans-serif; background:#f0f2f5; color:#333; line-height:1.6; }
+.container { max-width:1200px; margin:0 auto; padding:20px; }
+header { text-align:center; padding:32px 20px; background:linear-gradient(135deg,#1a237e,#283593); color:#fff; border-radius:14px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+header h1 { font-size:28px; margin-bottom:6px; }
+header p { opacity:0.85; font-size:13px; margin-top:8px; }
+.nav { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.nav-link { color:#fff; text-decoration:none; padding:6px 14px; border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; transition:all 0.2s; }
+.nav-link:hover { background:rgba(255,255,255,0.15); }
+.section { background:#fff; border-radius:14px; padding:24px; margin-bottom:20px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+.section h2 { font-size:19px; margin-bottom:16px; padding-bottom:10px; border-bottom:2px solid #e0e0e0; color:#1a237e; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; margin-bottom:10px; }
+.summary-card { background:linear-gradient(135deg,#42a5f5,#1976d2); color:#fff; border-radius:12px; padding:16px; text-align:center; }
+.summary-card .val { font-size:22px; font-weight:700; }
+.summary-card .label { font-size:12px; opacity:0.9; margin-top:4px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin-top:20px; }
+.card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+.card-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#f8f9ff; border-bottom:1px solid #e0e0e0; }
+.card-title { font-size:16px; font-weight:700; color:#1a237e; }
+.card-change { font-size:16px; font-weight:700; }
+.card-body { padding:14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
+.metric { display:flex; justify-content:space-between; font-size:13px; }
+.metric span { color:#666; }
+.metric strong { color:#333; }
+.data-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+.data-table th { background:#37474f; color:#fff; padding:10px 8px; text-align:center; font-weight:500; position:sticky; top:0; }
+.data-table td { padding:10px 8px; text-align:center; border-bottom:1px solid #e0e0e0; }
+.data-table tr:hover { background:#f5f5f5; }
+.asset-name { font-weight:600; text-align:left !important; color:#1a237e; }
+.up { color:#e53935; }
+.down { color:#43a047; }
+.neutral { color:#666; }
+.note { background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; border-radius:6px; font-size:13px; color:#e65100; margin-top:16px; }
+footer { text-align:center; padding:24px; color:#999; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+    <h1>美股盘前复盘</h1>
+    <p>生成时间：2026-07-29 21:00:23</p>
+    <div class="nav">
+        <a href="review_a_share.html" class="nav-link">A股盘后</a>
+        <a href="review_us_pre.html" class="nav-link">美股盘前</a>
+        <a href="review_us_post.html" class="nav-link">美股盘后</a>
+        <a href="report.html" class="nav-link">完整回测报告</a>
+        </div>
+</header>
+<div class="section">
+    
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="val up">+0.08%</div>
+            <div class="label">平均涨跌</div>
+        </div>
+        <div class="summary-card">
+            <div class="val up">2</div>
+            <div class="label">上涨标的</div>
+        </div>
+        <div class="summary-card">
+            <div class="val down">1</div>
+            <div class="label">下跌标的</div>
+        </div>
+        <div class="summary-card">
+            <div class="val up">可口可乐</div>
+            <div class="label">最强：+1.33%</div>
+        </div>
+        <div class="summary-card">
+            <div class="val down">纳指</div>
+            <div class="label">最弱：-1.15%</div>
+        </div>
+    </div>
+    
+    <h2>标的信号一览</h2>
+    <table class="data-table">
+        <thead>
+            <tr><th>标的</th><th>数据日期</th><th>日涨跌</th><th>RSI(14)</th><th>形态</th><th>信号</th><th>建议策略</th></tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td class="asset-name">纳指</td>
+            <td>2026-07-24</td>
+            <td class="down">-1.15%</td>
+            <td>33.1</td>
+            <td class="down">左侧下跌</td>
+            <td class="down">趋势偏空</td>
+            <td>买入持有 / 空仓观望</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">标普500</td>
+            <td>2026-07-24</td>
+            <td class="up">+0.05%</td>
+            <td>38.9</td>
+            <td class="neutral">震荡区间</td>
+            <td class="neutral">震荡观望</td>
+            <td>布林带 / 常见网格</td>
+        </tr>
+        
+        <tr>
+            <td class="asset-name">可口可乐</td>
+            <td>2026-07-24</td>
+            <td class="up">+1.33%</td>
+            <td>47.6</td>
+            <td class="neutral">震荡区间</td>
+            <td class="neutral">震荡观望</td>
+            <td>布林带 / 常见网格</td>
+        </tr>
+        </tbody>
+    </table>
+    <div class="cards">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">纳指</span>
+                <span class="card-change down">-1.15%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>28,128.34</strong></div>
+                <div class="metric"><span>MA20</span><strong>29,264.77</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="down">-3.88%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>33.1</strong></div>
+                <div class="metric"><span>布林位置</span><strong>下轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>30,276.35 / 28,128.34</strong></div>
+                <div class="metric"><span>形态</span><strong class="down">左侧下跌</strong></div>
+                <div class="metric"><span>信号</span><strong class="down">趋势偏空</strong></div>
+                <div class="metric"><span>建议策略</span><strong>买入持有 / 空仓观望</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">标普500</span>
+                <span class="card-change up">+0.05%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>7,411.98</strong></div>
+                <div class="metric"><span>MA20</span><strong>7,489.89</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="down">-1.04%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>38.9</strong></div>
+                <div class="metric"><span>布林位置</span><strong>下轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>7,575.39 / 7,354.02</strong></div>
+                <div class="metric"><span>形态</span><strong class="neutral">震荡区间</strong></div>
+                <div class="metric"><span>信号</span><strong class="neutral">震荡观望</strong></div>
+                <div class="metric"><span>建议策略</span><strong>布林带 / 常见网格</strong></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">可口可乐</span>
+                <span class="card-change up">+1.33%</span>
+            </div>
+            <div class="card-body">
+                <div class="metric"><span>最新价</span><strong>82.25</strong></div>
+                <div class="metric"><span>MA20</span><strong>82.72</strong></div>
+                <div class="metric"><span>MA20 偏离</span><strong class="down">-0.57%</strong></div>
+                <div class="metric"><span>RSI(14)</span><strong>47.6</strong></div>
+                <div class="metric"><span>布林位置</span><strong>中轨附近</strong></div>
+                <div class="metric"><span>20日高/低</span><strong>84.92 / 81.17</strong></div>
+                <div class="metric"><span>形态</span><strong class="neutral">震荡区间</strong></div>
+                <div class="metric"><span>信号</span><strong class="neutral">震荡观望</strong></div>
+                <div class="metric"><span>建议策略</span><strong>布林带 / 常见网格</strong></div>
+            </div>
+        </div>
+        </div>
+    <div class="note">
+        <strong>说明：</strong>本复盘基于 report_data.json 中的日线数据，自动计算 MA20、布林带、RSI 等指标。信号仅供参考，不构成投资建议。美股盘前复盘因缺少实时盘前数据，主要基于上一交易日收盘数据给出开盘观察要点。
+    </div>
+</div>
+<footer>数据来源：BaoStock | 复盘脚本：post_market_review.py</footer>
+</div>
+</body>
+</html>
