@@ -5,47 +5,280 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>美股盘后复盘</title>
 <style>
+:root {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --text: #1e293b;
+    --text-2: #64748b;
+    --border: #e2e8f0;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --up: #ef4444;
+    --down: #22c55e;
+    --neutral: #64748b;
+    --radius: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.05);
+    --shadow-hover: 0 8px 24px rgba(0,0,0,0.08);
+}
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Microsoft YaHei','Segoe UI',sans-serif; background:#f0f2f5; color:#333; line-height:1.6; }
-.container { max-width:1200px; margin:0 auto; padding:20px; }
-header { text-align:center; padding:32px 20px; background:linear-gradient(135deg,#1a237e,#283593); color:#fff; border-radius:14px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-header h1 { font-size:28px; margin-bottom:6px; }
-header p { opacity:0.85; font-size:13px; margin-top:8px; }
-.nav { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
-.nav-link { color:#fff; text-decoration:none; padding:6px 14px; border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; transition:all 0.2s; }
-.nav-link:hover { background:rgba(255,255,255,0.15); }
-.section { background:#fff; border-radius:14px; padding:24px; margin-bottom:20px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
-.section h2 { font-size:19px; margin-bottom:16px; padding-bottom:10px; border-bottom:2px solid #e0e0e0; color:#1a237e; }
-.summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; margin-bottom:10px; }
-.summary-card { background:linear-gradient(135deg,#42a5f5,#1976d2); color:#fff; border-radius:12px; padding:16px; text-align:center; }
-.summary-card .val { font-size:22px; font-weight:700; }
-.summary-card .label { font-size:12px; opacity:0.9; margin-top:4px; }
-.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin-top:20px; }
-.card { background:#fff; border:1px solid #e0e0e0; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
-.card-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#f8f9ff; border-bottom:1px solid #e0e0e0; }
-.card-title { font-size:16px; font-weight:700; color:#1a237e; }
-.card-change { font-size:16px; font-weight:700; }
-.card-body { padding:14px 18px; display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; }
-.metric { display:flex; justify-content:space-between; font-size:13px; }
-.metric span { color:#666; }
-.metric strong { color:#333; }
-.data-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
-.data-table th { background:#37474f; color:#fff; padding:10px 8px; text-align:center; font-weight:500; position:sticky; top:0; }
-.data-table td { padding:10px 8px; text-align:center; border-bottom:1px solid #e0e0e0; }
-.data-table tr:hover { background:#f5f5f5; }
-.asset-name { font-weight:600; text-align:left !important; color:#1a237e; }
-.up { color:#e53935; }
-.down { color:#43a047; }
-.neutral { color:#666; }
-.note { background:#fff3e0; border-left:4px solid #ff9800; padding:12px 16px; border-radius:6px; font-size:13px; color:#e65100; margin-top:16px; }
-footer { text-align:center; padding:24px; color:#999; font-size:12px; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing: antialiased;
+}
+.container { max-width:1280px; margin:0 auto; padding:24px; }
+
+/* Header */
+header {
+    position:relative;
+    text-align:center;
+    padding:48px 24px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+    color:#fff;
+    border-radius: var(--radius);
+    margin-bottom:28px;
+    box-shadow: var(--shadow-hover);
+    overflow:hidden;
+}
+header::before {
+    content:'';
+    position:absolute;
+    top:-50%; left:-50%;
+    width:200%; height:200%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12) 0%, transparent 50%);
+    pointer-events:none;
+}
+header h1 { font-size:34px; font-weight:800; margin-bottom:8px; letter-spacing:-0.5px; position:relative; }
+header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
+.nav {
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:20px;
+    position:relative;
+}
+.nav-link {
+    color:#fff;
+    text-decoration:none;
+    padding:8px 16px;
+    border:1px solid rgba(255,255,255,0.25);
+    border-radius:24px;
+    font-size:13px;
+    font-weight:500;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter: blur(8px);
+    transition:all 0.2s;
+}
+.nav-link:hover { background:rgba(255,255,255,0.2); transform:translateY(-1px); }
+
+/* Section */
+.section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding:28px;
+    margin-bottom:24px;
+    box-shadow: var(--shadow);
+    border:1px solid var(--border);
+}
+.section-title {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:20px;
+}
+.title-icon { font-size:22px; }
+.section h2 { font-size:20px; font-weight:700; color: var(--text); }
+
+/* Summary cards */
+.summary-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(170px, 1fr));
+    gap:16px;
+    margin-bottom:10px;
+}
+.summary-card {
+    background: var(--surface-2);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    padding:20px 16px;
+    text-align:center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.summary-icon { font-size:28px; margin-bottom:8px; }
+.summary-card .val { font-size:26px; font-weight:800; color: var(--text); line-height:1.2; }
+.summary-card .val .unit { font-size:14px; font-weight:600; color: var(--text-2); margin-left:2px; }
+.summary-card .label { font-size:12px; color: var(--text-2); margin-top:6px; font-weight:500; }
+.summary-card.up-card { border-top:4px solid var(--up); }
+.summary-card.down-card { border-top:4px solid var(--down); }
+
+/* Table */
+.table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
+.data-table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+    background: var(--surface);
+}
+.data-table thead { background: #f1f5f9; }
+.data-table th {
+    color: var(--text-2);
+    padding:14px 12px;
+    text-align:center;
+    font-weight:600;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.3px;
+    border-bottom:1px solid var(--border);
+}
+.data-table td { padding:14px 12px; text-align:center; border-bottom:1px solid var(--border); }
+.data-table tbody tr { transition: background 0.15s; }
+.data-table tbody tr:hover { background: #f8fafc; }
+.data-table tbody tr:last-child td { border-bottom:none; }
+.asset-name { font-weight:700; text-align:left !important; color: var(--text); display:flex; align-items:center; gap:10px; }
+.row-num { color: var(--text-2); font-size:12px; font-weight:600; min-width:22px; }
+.date-tag { background:#f1f5f9; color: var(--text-2); padding:4px 8px; border-radius:6px; font-size:12px; font-weight:500; }
+.pct-badge {
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:13px;
+    background:rgba(0,0,0,0.04);
+}
+.pattern-tag, .signal-badge {
+    display:inline-block;
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:600;
+}
+.signal-badge.up { background:#fee2e2; color:#991b1b; }
+.signal-badge.down { background:#dcfce7; color:#166534; }
+.signal-badge.neutral { background:#f1f5f9; color:#475569; }
+.pattern-tag.up { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+.pattern-tag.down { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+.pattern-tag.neutral { background:#f8fafc; color:#475569; border:1px solid var(--border); }
+.strategy-cell { color: var(--text-2); font-weight:500; max-width:160px; }
+
+/* Progress bar */
+.progress {
+    width:100%;
+    height:6px;
+    background:#e2e8f0;
+    border-radius:3px;
+    overflow:hidden;
+    margin-top:6px;
+}
+.progress-fill { height:100%; border-radius:3px; transition: width 0.5s ease; }
+.metric-with-bar { min-width:100px; }
+.metric-with-bar span { font-weight:700; font-size:13px; }
+.rsi-low { color: var(--down) !important; }
+.rsi-high { color: var(--up) !important; }
+
+/* Cards */
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:20px; }
+.card {
+    background: var(--surface);
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    overflow:hidden;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+.card.up { border-top:5px solid var(--up); }
+.card.down { border-top:5px solid var(--down); }
+.card.neutral { border-top:5px solid var(--neutral); }
+.card-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding:18px 20px;
+    background: linear-gradient(to right, #f8fafc, #ffffff);
+    border-bottom:1px solid var(--border);
+}
+.card-title-wrap { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.card-title { font-size:18px; font-weight:800; color: var(--text); }
+.card-header-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+.card-change { font-size:20px; font-weight:800; }
+
+.card-body { padding:20px; }
+.price-row {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+    padding-bottom:18px;
+    border-bottom:1px dashed var(--border);
+}
+.price-main { display:flex; flex-direction:column; }
+.price-label { font-size:12px; color: var(--text-2); font-weight:500; margin-bottom:4px; }
+.price-value { font-size:32px; font-weight:800; color: var(--text); letter-spacing:-0.5px; }
+.price-side { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+.side-metric { display:flex; gap:8px; font-size:13px; }
+.side-metric span { color: var(--text-2); }
+.side-metric strong { font-weight:700; color: var(--text); }
+
+.bar-metrics { display:flex; flex-direction:column; gap:14px; margin-bottom:20px; }
+.bar-metric { }
+.bar-label { display:flex; justify-content:space-between; font-size:12px; color: var(--text-2); margin-bottom:6px; }
+.bar-value { font-weight:700; color: var(--text); }
+
+.metric-grid {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+}
+.metric-item {
+    background: var(--surface-2);
+    border-radius:10px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+.metric-label { font-size:12px; color: var(--text-2); font-weight:500; }
+.metric-item strong { font-size:15px; font-weight:700; color: var(--text); }
+.strategy-text { color: var(--primary-dark); }
+
+/* Colors */
+.up { color: var(--up) !important; }
+.down { color: var(--down) !important; }
+.neutral { color: var(--neutral) !important; }
+
+/* Note & Footer */
+.note {
+    background:#fffbeb;
+    border:1px solid #fde68a;
+    border-left:4px solid #f59e0b;
+    padding:16px 20px;
+    border-radius:12px;
+    font-size:13px;
+    color:#92400e;
+    margin-top:24px;
+    line-height:1.7;
+}
+footer { text-align:center; padding:28px; color: var(--text-2); font-size:12px; }
+
+@media (max-width: 640px) {
+    .container { padding:16px; }
+    header h1 { font-size:26px; }
+    .cards { grid-template-columns:1fr; }
+    .summary-grid { grid-template-columns:repeat(2, 1fr); }
+    .price-value { font-size:26px; }
+}
 </style>
 </head>
 <body>
 <div class="container">
 <header>
     <h1>美股盘后复盘</h1>
-    <p>生成时间：2026-07-29 18:29:19</p>
+    <p>生成时间：2026-07-30 01:34:06</p>
     <div class="nav">
         <a href="review_a_share.html" class="nav-link">A股盘后</a>
         <a href="review_us_pre.html" class="nav-link">美股盘前</a>
@@ -57,119 +290,277 @@ footer { text-align:center; padding:24px; color:#999; font-size:12px; }
     
     <div class="summary-grid">
         <div class="summary-card">
+            <div class="summary-icon">📊</div>
             <div class="val up">+0.08%</div>
             <div class="label">平均涨跌</div>
         </div>
-        <div class="summary-card">
-            <div class="val up">2</div>
+        <div class="summary-card up-card">
+            <div class="summary-icon">📈</div>
+            <div class="val">2</div>
             <div class="label">上涨标的</div>
         </div>
-        <div class="summary-card">
-            <div class="val down">1</div>
+        <div class="summary-card down-card">
+            <div class="summary-icon">📉</div>
+            <div class="val">1</div>
             <div class="label">下跌标的</div>
         </div>
         <div class="summary-card">
-            <div class="val up">可口可乐</div>
-            <div class="label">最强：+1.33%</div>
+            <div class="summary-icon">🎯</div>
+            <div class="val">0<span class="unit">/3</span></div>
+            <div class="label">看多信号</div>
         </div>
         <div class="summary-card">
+            <div class="summary-icon">🔥</div>
+            <div class="val up">可口可乐</div>
+            <div class="label">最强 +1.33%</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon">❄️</div>
             <div class="val down">纳指</div>
-            <div class="label">最弱：-1.15%</div>
+            <div class="label">最弱 -1.15%</div>
         </div>
     </div>
     
-    <h2>标的信号一览</h2>
-    <table class="data-table">
-        <thead>
-            <tr><th>标的</th><th>数据日期</th><th>日涨跌</th><th>RSI(14)</th><th>形态</th><th>信号</th><th>建议策略</th></tr>
-        </thead>
-        <tbody>
+    <div class="table-section">
+        <div class="section-title">
+            <span class="title-icon">📋</span>
+            <h2>标的信号一览</h2>
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>标的</th><th>数据日期</th><th>日涨跌</th><th>RSI(14)</th>
+                        <th>形态</th><th>信号</th><th>建议策略</th>
+                    </tr>
+                </thead>
+                <tbody>
         <tr>
-            <td class="asset-name">纳指</td>
-            <td>2026-07-24</td>
-            <td class="down">-1.15%</td>
-            <td>33.1</td>
-            <td class="down">左侧下跌</td>
-            <td class="down">趋势偏空</td>
-            <td>买入持有 / 空仓观望</td>
+            <td class="asset-name"><span class="row-num">01</span>纳指</td>
+            <td><span class="date-tag">2026-07-24</span></td>
+            <td><span class="pct-badge down">-1.15%</span></td>
+            <td>
+                <div class="metric-with-bar">
+                    <span class="">33.1</span>
+                    <div class="progress"><div class="progress-fill" style="width:33.1%;background:#5c6bc0"></div></div>
+                </div>
+            </td>
+            <td><span class="pattern-tag down">左侧下跌</span></td>
+            <td><span class="signal-badge down">趋势偏空</span></td>
+            <td class="strategy-cell">买入持有 / 空仓观望</td>
         </tr>
         
         <tr>
-            <td class="asset-name">标普500</td>
-            <td>2026-07-24</td>
-            <td class="up">+0.05%</td>
-            <td>38.9</td>
-            <td class="neutral">震荡区间</td>
-            <td class="neutral">震荡观望</td>
-            <td>布林带 / 常见网格</td>
+            <td class="asset-name"><span class="row-num">02</span>标普500</td>
+            <td><span class="date-tag">2026-07-24</span></td>
+            <td><span class="pct-badge up">+0.05%</span></td>
+            <td>
+                <div class="metric-with-bar">
+                    <span class="">38.9</span>
+                    <div class="progress"><div class="progress-fill" style="width:38.9%;background:#5c6bc0"></div></div>
+                </div>
+            </td>
+            <td><span class="pattern-tag neutral">震荡区间</span></td>
+            <td><span class="signal-badge neutral">震荡观望</span></td>
+            <td class="strategy-cell">布林带 / 常见网格</td>
         </tr>
         
         <tr>
-            <td class="asset-name">可口可乐</td>
-            <td>2026-07-24</td>
-            <td class="up">+1.33%</td>
-            <td>47.6</td>
-            <td class="neutral">震荡区间</td>
-            <td class="neutral">震荡观望</td>
-            <td>布林带 / 常见网格</td>
+            <td class="asset-name"><span class="row-num">03</span>可口可乐</td>
+            <td><span class="date-tag">2026-07-24</span></td>
+            <td><span class="pct-badge up">+1.33%</span></td>
+            <td>
+                <div class="metric-with-bar">
+                    <span class="">47.6</span>
+                    <div class="progress"><div class="progress-fill" style="width:47.6%;background:#5c6bc0"></div></div>
+                </div>
+            </td>
+            <td><span class="pattern-tag neutral">震荡区间</span></td>
+            <td><span class="signal-badge neutral">震荡观望</span></td>
+            <td class="strategy-cell">布林带 / 常见网格</td>
         </tr>
         </tbody>
-    </table>
-    <div class="cards">
-        <div class="card">
+            </table>
+        </div>
+    </div>
+    <div class="cards-section"><div class="section-title"><span class="title-icon">🃏</span><h2>标的详情卡片</h2></div><div class="cards">
+        <div class="card card-down">
             <div class="card-header">
-                <span class="card-title">纳指</span>
-                <span class="card-change down">-1.15%</span>
+                <div class="card-title-wrap">
+                    <span class="card-title">纳指</span>
+                    <span class="date-tag">2026-07-24</span>
+                </div>
+                <div class="card-header-right">
+                    <span class="signal-badge down">趋势偏空</span>
+                    <span class="card-change down">-1.15%</span>
+                </div>
             </div>
             <div class="card-body">
-                <div class="metric"><span>最新价</span><strong>28,128.34</strong></div>
-                <div class="metric"><span>MA20</span><strong>29,264.77</strong></div>
-                <div class="metric"><span>MA20 偏离</span><strong class="down">-3.88%</strong></div>
-                <div class="metric"><span>RSI(14)</span><strong>33.1</strong></div>
-                <div class="metric"><span>布林位置</span><strong>下轨附近</strong></div>
-                <div class="metric"><span>20日高/低</span><strong>30,276.35 / 28,128.34</strong></div>
-                <div class="metric"><span>形态</span><strong class="down">左侧下跌</strong></div>
-                <div class="metric"><span>信号</span><strong class="down">趋势偏空</strong></div>
-                <div class="metric"><span>建议策略</span><strong>买入持有 / 空仓观望</strong></div>
+                <div class="price-row">
+                    <div class="price-main">
+                        <span class="price-label">最新价</span>
+                        <span class="price-value">28,128.34</span>
+                    </div>
+                    <div class="price-side">
+                        <div class="side-metric">
+                            <span>MA20</span>
+                            <strong>29,264.77</strong>
+                        </div>
+                        <div class="side-metric">
+                            <span>偏离</span>
+                            <strong class="down">-3.88%</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="bar-metrics">
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>RSI(14)</span><span class="bar-value ">33.1</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:33.1%;background:#5c6bc0"></div></div>
+                    </div>
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>布林位置</span><span class="bar-value">下轨附近</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:0.0%;background:#22c55e"></div></div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item">
+                        <span class="metric-label">20日最高</span>
+                        <strong class="up">30,276.35</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">20日最低</span>
+                        <strong class="down">28,128.34</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">形态</span>
+                        <span class="pattern-tag down">左侧下跌</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">建议策略</span>
+                        <strong class="strategy-text">买入持有 / 空仓观望</strong>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="card">
+        <div class="card card-neutral">
             <div class="card-header">
-                <span class="card-title">标普500</span>
-                <span class="card-change up">+0.05%</span>
+                <div class="card-title-wrap">
+                    <span class="card-title">标普500</span>
+                    <span class="date-tag">2026-07-24</span>
+                </div>
+                <div class="card-header-right">
+                    <span class="signal-badge neutral">震荡观望</span>
+                    <span class="card-change up">+0.05%</span>
+                </div>
             </div>
             <div class="card-body">
-                <div class="metric"><span>最新价</span><strong>7,411.98</strong></div>
-                <div class="metric"><span>MA20</span><strong>7,489.89</strong></div>
-                <div class="metric"><span>MA20 偏离</span><strong class="down">-1.04%</strong></div>
-                <div class="metric"><span>RSI(14)</span><strong>38.9</strong></div>
-                <div class="metric"><span>布林位置</span><strong>下轨附近</strong></div>
-                <div class="metric"><span>20日高/低</span><strong>7,575.39 / 7,354.02</strong></div>
-                <div class="metric"><span>形态</span><strong class="neutral">震荡区间</strong></div>
-                <div class="metric"><span>信号</span><strong class="neutral">震荡观望</strong></div>
-                <div class="metric"><span>建议策略</span><strong>布林带 / 常见网格</strong></div>
+                <div class="price-row">
+                    <div class="price-main">
+                        <span class="price-label">最新价</span>
+                        <span class="price-value">7,411.98</span>
+                    </div>
+                    <div class="price-side">
+                        <div class="side-metric">
+                            <span>MA20</span>
+                            <strong>7,489.89</strong>
+                        </div>
+                        <div class="side-metric">
+                            <span>偏离</span>
+                            <strong class="down">-1.04%</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="bar-metrics">
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>RSI(14)</span><span class="bar-value ">38.9</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:38.9%;background:#5c6bc0"></div></div>
+                    </div>
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>布林位置</span><span class="bar-value">下轨附近</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:15.1%;background:#22c55e"></div></div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item">
+                        <span class="metric-label">20日最高</span>
+                        <strong class="up">7,575.39</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">20日最低</span>
+                        <strong class="down">7,354.02</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">形态</span>
+                        <span class="pattern-tag neutral">震荡区间</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">建议策略</span>
+                        <strong class="strategy-text">布林带 / 常见网格</strong>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="card">
+        <div class="card card-neutral">
             <div class="card-header">
-                <span class="card-title">可口可乐</span>
-                <span class="card-change up">+1.33%</span>
+                <div class="card-title-wrap">
+                    <span class="card-title">可口可乐</span>
+                    <span class="date-tag">2026-07-24</span>
+                </div>
+                <div class="card-header-right">
+                    <span class="signal-badge neutral">震荡观望</span>
+                    <span class="card-change up">+1.33%</span>
+                </div>
             </div>
             <div class="card-body">
-                <div class="metric"><span>最新价</span><strong>82.25</strong></div>
-                <div class="metric"><span>MA20</span><strong>82.72</strong></div>
-                <div class="metric"><span>MA20 偏离</span><strong class="down">-0.57%</strong></div>
-                <div class="metric"><span>RSI(14)</span><strong>47.6</strong></div>
-                <div class="metric"><span>布林位置</span><strong>中轨附近</strong></div>
-                <div class="metric"><span>20日高/低</span><strong>84.92 / 81.17</strong></div>
-                <div class="metric"><span>形态</span><strong class="neutral">震荡区间</strong></div>
-                <div class="metric"><span>信号</span><strong class="neutral">震荡观望</strong></div>
-                <div class="metric"><span>建议策略</span><strong>布林带 / 常见网格</strong></div>
+                <div class="price-row">
+                    <div class="price-main">
+                        <span class="price-label">最新价</span>
+                        <span class="price-value">82.25</span>
+                    </div>
+                    <div class="price-side">
+                        <div class="side-metric">
+                            <span>MA20</span>
+                            <strong>82.72</strong>
+                        </div>
+                        <div class="side-metric">
+                            <span>偏离</span>
+                            <strong class="down">-0.57%</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="bar-metrics">
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>RSI(14)</span><span class="bar-value ">47.6</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:47.6%;background:#5c6bc0"></div></div>
+                    </div>
+                    <div class="bar-metric">
+                        <div class="bar-label"><span>布林位置</span><span class="bar-value">中轨附近</span></div>
+                        <div class="progress"><div class="progress-fill" style="width:38.6%;background:#5c6bc0"></div></div>
+                    </div>
+                </div>
+                <div class="metric-grid">
+                    <div class="metric-item">
+                        <span class="metric-label">20日最高</span>
+                        <strong class="up">84.92</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">20日最低</span>
+                        <strong class="down">81.17</strong>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">形态</span>
+                        <span class="pattern-tag neutral">震荡区间</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">建议策略</span>
+                        <strong class="strategy-text">布林带 / 常见网格</strong>
+                    </div>
+                </div>
             </div>
         </div>
-        </div>
+        </div></div>
     <div class="note">
         <strong>说明：</strong>本复盘基于 report_data.json 中的日线数据，自动计算 MA20、布林带、RSI 等指标。信号仅供参考，不构成投资建议。美股盘前复盘因缺少实时盘前数据，主要基于上一交易日收盘数据给出开盘观察要点。
     </div>
