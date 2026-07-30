@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市场复盘 Dashboard</title>
+<style>
+:root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --text: #111827;
+    --text-2: #6b7280;
+    --border: #e5e7eb;
+    --sidebar-bg: #111827;
+    --sidebar-text: #f3f4f6;
+    --sidebar-muted: #9ca3af;
+    --sidebar-active: #6366f1;
+    --sidebar-hover: #1f2937;
+    --accent: #6366f1;
+    --radius: 12px;
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+}
+.app {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-right: 1px solid #1f2937;
+}
+.sidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid #1f2937;
+}
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+.sidebar-logo .icon {
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+.sidebar-subtitle {
+    font-size: 12px;
+    color: var(--sidebar-muted);
+    margin-top: 6px;
+    padding-left: 44px;
+}
+.sidebar-nav {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--sidebar-muted);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.15s;
+    text-decoration: none;
+}
+.nav-item:hover {
+    background: var(--sidebar-hover);
+    color: var(--sidebar-text);
+}
+.nav-item.active {
+    background: var(--sidebar-active);
+    color: #fff;
+}
+.nav-item .nav-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+.sidebar-footer {
+    padding: 16px 12px;
+    border-top: 1px solid #1f2937;
+}
+.sidebar-footer .nav-item {
+    font-size: 13px;
+}
+
+/* Main content */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg);
+}
+.topbar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    flex-shrink: 0;
+}
+.topbar-title {
+    font-size: 16px;
+    font-weight: 800;
+}
+.menu-toggle {
+    background: none;
+    border: none;
+    color: var(--sidebar-text);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px;
+}
+.content {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+.content iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: var(--bg);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .app { flex-direction: column; }
+    .sidebar {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        z-index: 100;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .topbar { display: flex; }
+    .content { flex: 1; }
+    .sidebar-header { padding-top: 16px; }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 99;
+    }
+    .sidebar-overlay.open { display: block; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="icon">📈</span>
+                <span>市场复盘</span>
+            </div>
+            <div class="sidebar-subtitle">Daily Market Review</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" data-page="review_a_share.html">
+                <span class="nav-icon">🇨🇳</span>
+                <span>A股盘后</span>
+            </a>
+            <a class="nav-item" data-page="review_us_pre.html">
+                <span class="nav-icon">🌅</span>
+                <span>美股盘前</span>
+            </a>
+            <a class="nav-item" data-page="review_us_post.html">
+                <span class="nav-icon">🌙</span>
+                <span>美股盘后</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <a class="nav-item" href="report.html" target="_blank">
+                <span class="nav-icon">📊</span>
+                <span>完整回测报告</span>
+            </a>
+        </div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <main class="main">
+        <div class="topbar">
+            <button class="menu-toggle" id="menuToggle">☰</button>
+            <span class="topbar-title">市场复盘 Dashboard</span>
+            <span style="width:28px;"></span>
+        </div>
+        <div class="content">
+            <iframe id="pageFrame" src="review_a_share.html"></iframe>
+        </div>
+    </main>
+</div>
+
+<script>
+const frame = document.getElementById('pageFrame');
+const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const menuToggle = document.getElementById('menuToggle');
+
+function switchPage(page) {
+    frame.src = page;
+    navItems.forEach(item => {
+        item.classList.toggle('active', item.dataset.page === page);
+    });
+    closeMobileMenu();
+}
+
+function closeMobileMenu() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+}
+
+navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        switchPage(item.dataset.page);
+    });
+});
+
+menuToggle.addEventListener('click', () => {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+});
+
+overlay.addEventListener('click', closeMobileMenu);
+
+// 从 URL hash 恢复页面
+const hash = window.location.hash.slice(1);
+if (hash && ['review_a_share.html', 'review_us_pre.html', 'review_us_post.html'].includes(hash)) {
+    switchPage(hash);
+}
+
+// iframe 内点击导航时同步侧边栏高亮
+frame.addEventListener('load', () => {
+    try {
+        const src = frame.contentWindow.location.pathname.split('/').pop();
+        navItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.page === src);
+        });
+        window.location.hash = src;
+    } catch (e) {
+        // 跨域时忽略
+    }
+});
+</script>
+</body>
+</html>
