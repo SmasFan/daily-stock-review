@@ -6,20 +6,20 @@
 <title>美股盘后复盘</title>
 <style>
 :root {
-    --bg: #f4f6f9;
+    --bg: #f5f5f7;
     --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --text: #1e293b;
-    --text-2: #64748b;
-    --border: #e2e8f0;
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
-    --up: #ef4444;
-    --down: #22c55e;
-    --neutral: #64748b;
-    --radius: 16px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.05);
-    --shadow-hover: 0 8px 24px rgba(0,0,0,0.08);
+    --surface-2: #f9fafb;
+    --text: #111827;
+    --text-2: #6b7280;
+    --border: #e5e7eb;
+    --primary: #111827;
+    --accent: #6366f1;
+    --up: #dc2626;
+    --down: #16a34a;
+    --neutral: #6b7280;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-hover: 0 4px 12px rgba(0,0,0,0.06);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -33,47 +33,35 @@ body {
 
 /* Header */
 header {
-    position:relative;
     text-align:center;
-    padding:48px 24px;
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
-    color:#fff;
+    padding:40px 24px;
+    background: var(--surface);
+    color: var(--text);
     border-radius: var(--radius);
-    margin-bottom:28px;
-    box-shadow: var(--shadow-hover);
-    overflow:hidden;
+    margin-bottom:24px;
+    border:1px solid var(--border);
 }
-header::before {
-    content:'';
-    position:absolute;
-    top:-50%; left:-50%;
-    width:200%; height:200%;
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12) 0%, transparent 50%);
-    pointer-events:none;
-}
-header h1 { font-size:34px; font-weight:800; margin-bottom:8px; letter-spacing:-0.5px; position:relative; }
-header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
+header h1 { font-size:30px; font-weight:800; margin-bottom:8px; letter-spacing:-0.5px; }
+header p { color: var(--text-2); font-size:14px; margin-top:10px; }
 .nav {
     display:flex;
     justify-content:center;
-    gap:10px;
+    gap:8px;
     flex-wrap:wrap;
-    margin-top:20px;
-    position:relative;
+    margin-top:18px;
 }
 .nav-link {
-    color:#fff;
+    color: var(--text-2);
     text-decoration:none;
     padding:8px 16px;
-    border:1px solid rgba(255,255,255,0.25);
-    border-radius:24px;
+    border-radius:20px;
     font-size:13px;
     font-weight:500;
-    background:rgba(255,255,255,0.08);
-    backdrop-filter: blur(8px);
-    transition:all 0.2s;
+    background: var(--surface-2);
+    border:1px solid var(--border);
+    transition:all 0.15s;
 }
-.nav-link:hover { background:rgba(255,255,255,0.2); transform:translateY(-1px); }
+.nav-link:hover { color: var(--text); background:#f3f4f6; border-color:#d1d5db; }
 
 /* Section */
 .section {
@@ -81,7 +69,6 @@ header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
     border-radius: var(--radius);
     padding:28px;
     margin-bottom:24px;
-    box-shadow: var(--shadow);
     border:1px solid var(--border);
 }
 .section-title {
@@ -101,21 +88,21 @@ header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
     margin-bottom:10px;
 }
 .summary-card {
-    background: var(--surface-2);
+    background: var(--surface);
     border:1px solid var(--border);
     border-radius: var(--radius);
     padding:20px 16px;
     text-align:center;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: border-color 0.15s;
 }
-.summary-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-.summary-icon { font-size:28px; margin-bottom:8px; }
+.summary-card:hover { border-color:#d1d5db; }
+.summary-icon { font-size:24px; margin-bottom:8px; }
 .summary-text { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.summary-card .val { font-size:26px; font-weight:800; color: var(--text); line-height:1.2; }
-.summary-card .val .unit { font-size:14px; font-weight:600; color: var(--text-2); margin-left:2px; }
+.summary-card .val { font-size:24px; font-weight:700; color: var(--text); line-height:1.2; }
+.summary-card .val .unit { font-size:13px; font-weight:600; color: var(--text-2); margin-left:2px; }
 .summary-card .label { font-size:12px; color: var(--text-2); margin-top:6px; font-weight:500; }
-.summary-card.up-card { border-top:4px solid var(--up); }
-.summary-card.down-card { border-top:4px solid var(--down); }
+.summary-card.up-card { border-left:4px solid var(--up); }
+.summary-card.down-card { border-left:4px solid var(--down); }
 
 /* Table */
 .table-wrap { overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
@@ -188,19 +175,18 @@ header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
     border:1px solid var(--border);
     border-radius: var(--radius);
     overflow:hidden;
-    box-shadow: var(--shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: border-color 0.15s;
 }
-.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
-.card.up { border-top:5px solid var(--up); }
-.card.down { border-top:5px solid var(--down); }
-.card.neutral { border-top:5px solid var(--neutral); }
+.card:hover { border-color:#d1d5db; }
+.card.up { border-left:4px solid var(--up); }
+.card.down { border-left:4px solid var(--down); }
+.card.neutral { border-left:4px solid var(--neutral); }
 .card-header {
     display:flex;
     justify-content:space-between;
     align-items:flex-start;
     padding:18px 20px;
-    background: linear-gradient(to right, #f8fafc, #ffffff);
+    background: var(--surface-2);
     border-bottom:1px solid var(--border);
 }
 .card-title-wrap { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
@@ -254,16 +240,17 @@ header p { opacity:0.75; font-size:14px; margin-top:10px; position:relative; }
 
 /* Note & Footer */
 .note {
-    background:#fffbeb;
-    border:1px solid #fde68a;
-    border-left:4px solid #f59e0b;
+    background: var(--surface-2);
+    border:1px solid var(--border);
+    border-left:4px solid var(--accent);
     padding:16px 20px;
-    border-radius:12px;
+    border-radius: var(--radius);
     font-size:13px;
-    color:#92400e;
+    color: var(--text-2);
     margin-top:24px;
     line-height:1.7;
 }
+.note strong { color: var(--text); }
 footer { text-align:center; padding:28px; color: var(--text-2); font-size:12px; }
 
 @media (max-width: 768px) {
@@ -321,7 +308,7 @@ footer { text-align:center; padding:28px; color: var(--text-2); font-size:12px; 
 <div class="container">
 <header>
     <h1>美股盘后复盘</h1>
-    <p>生成时间：2026-07-30 15:40:49</p>
+    <p>生成时间：2026-07-30 16:51:24</p>
     <div class="nav">
         <a href="review_a_share.html" class="nav-link">A股盘后</a>
         <a href="review_us_pre.html" class="nav-link">美股盘前</a>
