@@ -14,9 +14,9 @@
     --sidebar-bg: #111827;
     --sidebar-text: #f3f4f6;
     --sidebar-muted: #9ca3af;
-    --sidebar-active: #6366f1;
+    --sidebar-active: #c78d5a;
     --sidebar-hover: #1f2937;
-    --accent: #6366f1;
+    --accent: #c78d5a;
     --radius: 12px;
     --shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
@@ -205,6 +205,10 @@ body {
                 <span class="nav-icon">🌙</span>
                 <span>美股盘后</span>
             </a>
+            <a class="nav-item" data-page="watchlist.html">
+                <span class="nav-icon">📋</span>
+                <span>我的自选股</span>
+            </a>
             <div style="height:1px;background:#1f2937;margin:12px 0;"></div>
             <a class="nav-item" data-page="backtest/159131_5min_optimal.html">
                 <span class="nav-icon">📉</span>
@@ -280,7 +284,7 @@ menuToggle.addEventListener('click', () => {
 overlay.addEventListener('click', closeMobileMenu);
 
 // 从 URL hash 恢复页面
-const validPages = ['review_a_share.html', 'review_us_pre.html', 'review_us_post.html', 'backtest/159131_5min_optimal.html', 'strategy/report.html'];
+const validPages = ['review_a_share.html', 'review_us_pre.html', 'review_us_post.html', 'watchlist.html', 'backtest/159131_5min_optimal.html', 'strategy/report.html'];
 const hash = window.location.hash.slice(1);
 if (hash && validPages.includes(hash)) {
     switchPage(hash);

@@ -379,7 +379,7 @@ def _base_html(title, body, gen_time, market=None, review_type=None):
     --text-2: #6b7280;
     --border: #e5e7eb;
     --primary: #111827;
-    --accent: #6366f1;
+    --accent: #c78d5a;
     --up: #dc2626;
     --down: #16a34a;
     --neutral: #6b7280;

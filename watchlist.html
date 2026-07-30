@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的自选股复盘</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+:root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #faf8f3;
+    --text: #2c2420;
+    --text-2: #6b6258;
+    --border: #e8e2d8;
+    --accent: #c78d5a;
+    --accent-2: #a86a3d;
+    --up: #c0392b;
+    --up-light: #fdf2f0;
+    --down: #27ae60;
+    --down-light: #f0f9f4;
+    --neutral: #8c8279;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --shadow: 0 2px 8px rgba(44,36,32,0.06);
+    --shadow-hover: 0 6px 20px rgba(44,36,32,0.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing: antialiased;
+}
+.container { max-width:1280px; margin:0 auto; padding:28px; }
+
+/* Header */
+.header {
+    margin-bottom: 28px;
+}
+.header-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+}
+.header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.header p {
+    color: var(--text-2);
+    font-size: 15px;
+}
+
+/* Summary cards */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.summary-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 22px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+.summary-card .label {
+    font-size: 13px;
+    color: var(--text-2);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.summary-card .value {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+.summary-card .sub {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 6px;
+}
+
+/* Section */
+.section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 26px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+.section-title h2 {
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.section-title .badge {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-weight: 700;
+}
+
+/* Sector cards */
+.sector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+.sector-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.sector-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+.sector-header {
+    padding: 18px 20px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sector-name {
+    font-size: 17px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sector-avg {
+    font-size: 18px;
+    font-weight: 800;
+}
+.sector-body {
+    padding: 16px 20px;
+}
+.stock-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+.stock-row:last-child { border-bottom: none; }
+.stock-info { display: flex; flex-direction: column; gap: 3px; }
+.stock-name { font-size: 15px; font-weight: 700; }
+.stock-code { font-size: 12px; color: var(--text-2); }
+.stock-price { text-align: right; }
+.stock-price .price { font-size: 15px; font-weight: 700; color: var(--text); }
+.stock-price .change {
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 2px;
+}
+.up { color: var(--up); }
+.down { color: var(--down); }
+.neutral { color: var(--neutral); }
+
+/* Temperature bar */
+.temp-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 12px 0;
+    background: linear-gradient(90deg, var(--down) 0%, #f5d76e 50%, var(--up) 100%);
+}
+.temp-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 2px solid var(--surface);
+    margin-top: -10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Analysis box */
+.analysis-box {
+    background: var(--surface-2);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+    margin-top: 18px;
+}
+.analysis-box h4 {
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: var(--accent-2);
+}
+.analysis-box p, .analysis-box li {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.7;
+}
+.analysis-box ul { padding-left: 18px; margin-top: 8px; }
+.analysis-box li { margin-bottom: 4px; }
+
+/* Unified nav */
+.unified-menu-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.unified-menu-btn:hover { background: var(--surface-2); }
+.unified-slidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    background: var(--surface);
+    color: var(--text);
+    z-index: 1002;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    box-shadow: var(--shadow-hover);
+}
+.unified-slidebar.open { transform: translateX(0); }
+.unified-slidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.unified-slidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 800;
+}
+.unified-slidebar-logo .icon {
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+.unified-slidebar-subtitle {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 6px;
+    padding-left: 44px;
+}
+.unified-slidebar-nav {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+}
+.unified-slidebar a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+.unified-slidebar a:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+.unified-slidebar a.active {
+    background: var(--accent);
+    color: #fff;
+}
+.unified-slidebar a .nav-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+.unified-slidebar-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 0;
+}
+.unified-slidebar-footer {
+    padding: 16px 12px;
+    border-top: 1px solid var(--border);
+}
+.unified-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44,36,32,0.25);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s;
+}
+.unified-overlay.open { opacity: 1; visibility: visible; }
+body.in-iframe .unified-menu-btn,
+body.in-iframe .unified-slidebar,
+body.in-iframe .unified-overlay {
+    display: none !important;
+}
+@media (max-width: 768px) {
+    .container { padding: 18px; }
+    .header h1 { font-size: 28px; }
+    .sector-grid { grid-template-columns: 1fr; }
+    .unified-menu-btn { top: 12px; left: 12px; width: 36px; height: 36px; font-size: 16px; }
+    .unified-slidebar { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<button class="unified-menu-btn" id="unifiedMenuBtn" title="菜单">☰</button>
+<nav class="unified-slidebar" id="unifiedSlidebar">
+    <div class="unified-slidebar-header">
+        <div class="unified-slidebar-logo">
+            <span class="icon">📈</span>
+            <span>市场复盘</span>
+        </div>
+        <div class="unified-slidebar-subtitle">Daily Market Review</div>
+    </div>
+    <div class="unified-slidebar-nav">
+        <a href="review_a_share.html"><span class="nav-icon">🇨🇳</span><span>A股盘后</span></a>
+        <a href="review_us_pre.html"><span class="nav-icon">🌅</span><span>美股盘前</span></a>
+        <a href="review_us_post.html"><span class="nav-icon">🌙</span><span>美股盘后</span></a>
+        <a href="watchlist.html"><span class="nav-icon">📋</span><span>我的自选股</span></a>
+        <div class="unified-slidebar-sep"></div>
+        <a href="backtest/159131_5min_optimal.html"><span class="nav-icon">📉</span><span>159131 5分钟回测</span></a>
+        <a href="strategy/report.html"><span class="nav-icon">📈</span><span>A股策略回测</span></a>
+    </div>
+    <div class="unified-slidebar-footer">
+        <a class="nav-item" href="https://smasfan.github.io/"><span class="nav-icon">🏠</span><span>主页</span></a>
+        <a class="nav-item" href="report.html"><span class="nav-icon">📊</span><span>完整回测报告</span></a>
+        <a class="nav-item" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener"><span class="nav-icon"><i class="fab fa-github"></i></span><span>查看项目</span></a>
+    </div>
+</nav>
+<div class="unified-overlay" id="unifiedOverlay"></div>
+
+<div class="container">
+    <div class="header">
+        <div class="header-meta">
+            <span class="tag">📅 数据日 2026-07-30</span>
+            <span class="tag">🎯 自选股 20 只</span>
+        </div>
+        <h1>我的自选股复盘</h1>
+        <p>基于同花顺自选股分组，按大板块分类监控；涨幅数据为当日实时行情。</p>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">上涨标的</div>
+            <div class="value up" id="upCount">--</div>
+            <div class="sub">市场情绪偏暖</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">下跌标的</div>
+            <div class="value down" id="downCount">--</div>
+            <div class="sub">需关注支撑</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均涨幅</div>
+            <div class="value" id="avgChange">--</div>
+            <div class="sub">等权平均</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">最强板块</div>
+            <div class="value" id="topSector" style="font-size:22px;">--</div>
+            <div class="sub">板块平均涨幅最高</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>🌡️</span> 板块涨跌温度计</h2>
+            <span class="badge">按板块等权平均</span>
+        </div>
+        <div id="sectorChart" style="width:100%;height:360px;"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>📊</span> 分板块明细</h2>
+            <span class="badge">实时行情</span>
+        </div>
+        <div class="sector-grid" id="sectorGrid"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>🎯</span> 整体研判与明日策略</h2>
+            <span class="badge" id="marketBias">--</span>
+        </div>
+        <div id="strategyBox"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>📝</span> 板块复盘与预测</h2>
+            <span class="badge">定性研判</span>
+        </div>
+        <div id="analysisBox"></div>
+    </div>
+</div>
+
+<script>
+const watchlist = [
+    { name: '黄金ETF易方达', code: '159934', price: 8.738, change: -0.03, sector: '周期资源' },
+    { name: '红利低波ETF富国', code: '159525', price: 1.123, change: 1.72, sector: '红利金融' },
+    { name: '顺丰控股', code: '002352', price: 35.12, change: 1.09, sector: '大消费' },
+    { name: 'TCL科技', code: '000100', price: 4.72, change: -4.26, sector: '科技TMT' },
+    { name: '正帆转债', code: '118053', price: 136.044, change: -6.22, sector: '可转债' },
+    { name: '电池ETF富国', code: '561160', price: 0.714, change: -0.97, sector: '新能源' },
+    { name: '长高电气', code: '002452', price: 10.64, change: -2.21, sector: '新能源' },
+    { name: '牧原股份', code: '002714', price: 39.92, change: 2.67, sector: '大消费' },
+    { name: '标普油气ETF嘉实', code: '159518', price: 1.176, change: 3.16, sector: '周期资源' },
+    { name: 'A500ETF华夏', code: '512050', price: 1.181, change: -1.67, sector: '宽基指数' },
+    { name: '有色ETF大成', code: '159980', price: 2.101, change: -0.24, sector: '周期资源' },
+    { name: '港股通信息技术ETF华宝', code: '159131', price: 0.892, change: -3.88, sector: '科技TMT' },
+    { name: '中国铝业', code: '601600', price: 9.55, change: 0.32, sector: '周期资源' },
+    { name: '宁波银行', code: '002142', price: 32.9, change: 3.07, sector: '红利金融' },
+    { name: '中证A500ETF景顺', code: '159353', price: 1.204, change: -1.71, sector: '宽基指数' },
+    { name: '上证指数ETF汇添富', code: '510980', price: 1.349, change: -0.59, sector: '宽基指数' },
+    { name: '港股互联网ETF华宝', code: '513770', price: 0.379, change: 0, sector: '科技TMT' },
+    { name: '中远海控', code: '601919', price: 15.7, change: 0.96, sector: '交通运输' },
+    { name: '云计算ETF汇添富', code: '159273', price: 1.33, change: -3.69, sector: '科技TMT' },
+    { name: '中百集团', code: '000759', price: 6.66, change: -6.72, sector: '大消费' }
+];
+
+const sectorIcons = {
+    '红利金融': '🏦',
+    '周期资源': '🏅',
+    '科技TMT': '💻',
+    '新能源': '🔋',
+    '大消费': '🛒',
+    '交通运输': '🚢',
+    '宽基指数': '📊',
+    '可转债': '📜'
+};
+
+const sectorAnalysis = {
+    '红利金融': {
+        review: '红利低波ETF与宁波银行共振上行，高股息+低波防御属性在市场震荡中受资金青睐。',
+        outlook: '利率维持低位叠加避险需求，红利金融仍具配置价值；关注量能能否持续以及银行板块能否继续吸金。'
+    },
+    '周期资源': {
+        review: '油气ETF领涨，铝业微涨，黄金与有色ETF小幅震荡；资源品受国际定价与地缘因素驱动，内部分化明显。',
+        outlook: '贵金属短期或高位震荡，油气波动可能加大；建议波段操作，关注美元走势与大宗商品库存数据。'
+    },
+    '科技TMT': {
+        review: 'TCL科技、云计算ETF与港股信息技术ETF集体回调，互联网ETF平盘，科技股风险偏好下降。',
+        outlook: '科技板块对宏观流动性敏感，短期或继续磨底；关注业绩兑现能力强、估值合理的龙头。'
+    },
+    '新能源': {
+        review: '电池ETF与长高电气双双收跌，新能源赛道情绪偏弱，产业链价格压力仍存。',
+        outlook: '需等待排产回升与政策催化，当前不宜盲目抄底；可观察龙头企稳信号。'
+    },
+    '大消费': {
+        review: '牧原股份独立走强，顺丰控股温和上涨，但中百集团大跌，消费内部分化剧烈。',
+        outlook: '养殖周期拐点预期支撑牧原；零售板块受客流与竞争影响，后续需精选个股，关注中秋国庆消费数据。'
+    },
+    '交通运输': {
+        review: '中远海控微涨，航运板块波动收敛，运价预期趋于平稳。',
+        outlook: '运价与出口数据是核心变量，短期或维持区间震荡；关注集运联盟动态。'
+    },
+    '宽基指数': {
+        review: 'A500与上证指数ETF小幅下跌，整体市场仍处于震荡格局，缺乏明确主线。',
+        outlook: '宽基ETF适合定投摊薄成本；若后续政策面或资金面转暖，有望率先企稳。'
+    },
+    '可转债': {
+        review: '正帆转债大跌，高价转债与正股联动下行，债底保护有限。',
+        outlook: '高价转债波动接近正股，需关注正股趋势与转股溢价率变化，控制仓位。'
+    }
+};
+
+function formatPct(v) {
+    if (v === null || v === undefined || v === 0) return '0.00%';
+    return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+}
+
+function changeClass(v) {
+    if (v === null || v === undefined || v === 0) return 'neutral';
+    return v > 0 ? 'up' : 'down';
+}
+
+const sectors = {};
+watchlist.forEach(s => {
+    if (!sectors[s.sector]) sectors[s.sector] = [];
+    sectors[s.sector].push(s);
+});
+
+const sectorAvgs = Object.entries(sectors).map(([name, stocks]) => {
+    const avg = stocks.reduce((sum, s) => sum + s.change, 0) / stocks.length;
+    return { name, avg, stocks };
+}).sort((a, b) => b.avg - a.avg);
+
+let upCount = 0, downCount = 0, totalChange = 0;
+watchlist.forEach(s => {
+    totalChange += s.change;
+    if (s.change > 0) upCount++;
+    else if (s.change < 0) downCount++;
+});
+
+document.getElementById('upCount').textContent = upCount;
+document.getElementById('downCount').textContent = downCount;
+document.getElementById('avgChange').textContent = formatPct(totalChange / watchlist.length);
+document.getElementById('avgChange').className = 'value ' + changeClass(totalChange / watchlist.length);
+document.getElementById('topSector').textContent = sectorAvgs[0].name;
+document.getElementById('topSector').className = 'value ' + changeClass(sectorAvgs[0].avg);
+
+const sectorGrid = document.getElementById('sectorGrid');
+sectorAvgs.forEach(({ name, avg, stocks }) => {
+    const card = document.createElement('div');
+    card.className = 'sector-card';
+    const rows = stocks.map(s => `
+        <div class="stock-row">
+            <div class="stock-info">
+                <span class="stock-name">${s.name}</span>
+                <span class="stock-code">${s.code}</span>
+            </div>
+            <div class="stock-price">
+                <div class="price">${s.price.toFixed(3)}</div>
+                <div class="change ${changeClass(s.change)}">${formatPct(s.change)}</div>
+            </div>
+        </div>
+    `).join('');
+    card.innerHTML = `
+        <div class="sector-header">
+            <div class="sector-name"><span>${sectorIcons[name] || '📁'}</span> ${name}</div>
+            <div class="sector-avg ${changeClass(avg)}">${formatPct(avg)}</div>
+        </div>
+        <div class="sector-body">${rows}</div>
+    `;
+    sectorGrid.appendChild(card);
+});
+
+const analysisBox = document.getElementById('analysisBox');
+sectorAvgs.forEach(({ name, avg }) => {
+    const a = sectorAnalysis[name] || { review: '板块今日表现平稳。', outlook: '建议持续跟踪。' };
+    const box = document.createElement('div');
+    box.className = 'analysis-box';
+    box.innerHTML = `
+        <h4>${sectorIcons[name] || '📁'} ${name} <span class="${changeClass(avg)}">${formatPct(avg)}</span></h4>
+        <p><strong>复盘：</strong>${a.review}</p>
+        <p><strong>预测：</strong>${a.outlook}</p>
+    `;
+    analysisBox.appendChild(box);
+});
+
+const strategyBox = document.getElementById('strategyBox');
+const marketAvg = totalChange / watchlist.length;
+const strongest = sectorAvgs[0];
+const weakest = sectorAvgs[sectorAvgs.length - 1];
+let biasText, biasClass;
+if (marketAvg >= 0.5) { biasText = '偏进攻'; biasClass = 'up'; }
+else if (marketAvg <= -0.5) { biasText = '偏防守'; biasClass = 'down'; }
+else { biasText = '震荡观望'; biasClass = 'neutral'; }
+const biasBadge = document.getElementById('marketBias');
+biasBadge.textContent = biasText;
+biasBadge.className = 'badge ' + biasClass;
+strategyBox.innerHTML = `
+    <div class="analysis-box">
+        <h4>整体判断</h4>
+        <p>自选股等权平均 <strong class="${changeClass(marketAvg)}">${formatPct(marketAvg)}</strong>，上涨 <strong class="up">${upCount}</strong> 只 / 下跌 <strong class="down">${downCount}</strong> 只。最强板块为 <strong class="${changeClass(strongest.avg)}">${strongest.name}</strong>（${formatPct(strongest.avg)}），最弱板块为 <strong class="${changeClass(weakest.avg)}">${weakest.name}</strong>（${formatPct(weakest.avg)}）。</p>
+    </div>
+    <div class="analysis-box" style="margin-top:14px;">
+        <h4>明日策略</h4>
+        <ul>
+            <li><strong>进攻方向：</strong>若市场放量突破，优先关注今日领涨的 <strong>${strongest.name}</strong> 方向，顺势而为。</li>
+            <li><strong>防守方向：</strong>回避今日最弱的 <strong>${weakest.name}</strong>，等待企稳信号再做布局。</li>
+            <li><strong>仓位建议：</strong>${marketAvg > 0 ? '维持或适度提升仓位，但避免追高；' : '控制仓位，以定投宽基或高股息板块为主；'} 可转债与高价波动品种注意止损。</li>
+        </ul>
+    </div>
+`;
+
+const chartDom = document.getElementById('sectorChart');
+const myChart = echarts.init(chartDom);
+const option = {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+    xAxis: {
+        type: 'category',
+        data: sectorAvgs.map(s => s.name),
+        axisLabel: { color: '#6b6258', interval: 0, rotate: 20 }
+    },
+    yAxis: {
+        type: 'value',
+        axisLabel: { formatter: '{value}%', color: '#6b6258' },
+        splitLine: { lineStyle: { color: '#e8e2d8' } }
+    },
+    series: [{
+        data: sectorAvgs.map(s => ({
+            value: s.avg.toFixed(2),
+            itemStyle: { color: s.avg >= 0 ? '#c0392b' : '#27ae60' }
+        })),
+        type: 'bar',
+        barWidth: '50%',
+        label: { show: true, position: 'top', formatter: '{c}%', color: '#2c2420' }
+    }]
+};
+myChart.setOption(option);
+window.addEventListener('resize', () => myChart.resize());
+
+// Unified nav logic
+(function(){
+    if (window.self !== window.top) {
+        document.body.classList.add('in-iframe');
+        return;
+    }
+    const btn = document.getElementById('unifiedMenuBtn');
+    const bar = document.getElementById('unifiedSlidebar');
+    const overlay = document.getElementById('unifiedOverlay');
+    function open(){ bar.classList.add('open'); overlay.classList.add('open'); }
+    function close(){ bar.classList.remove('open'); overlay.classList.remove('open'); }
+    btn.addEventListener('click', () => bar.classList.contains('open') ? close() : open());
+    overlay.addEventListener('click', close);
+    const links = bar.querySelectorAll('a');
+    const current = location.pathname.split('/').pop();
+    links.forEach(a => {
+        const href = a.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            const target = href.split('/').pop();
+            if (target === current) a.classList.add('active');
+        }
+    });
+})();
+</script>
+</body>
+</html>
