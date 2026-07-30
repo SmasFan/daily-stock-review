@@ -943,9 +943,11 @@ recalculate();
 window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); klineChart.resize(); });
 </script>
 
-<!-- global nav -->
+
+
+<!-- unified nav -->
 <style>
-.global-menu-btn {
+.unified-menu-btn {
     position: fixed;
     top: 16px;
     left: 16px;
@@ -954,7 +956,7 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     height: 40px;
     border-radius: 10px;
     background: #111827;
-    color: #fff;
+    color: #f3f4f6;
     border: none;
     font-size: 18px;
     cursor: pointer;
@@ -962,8 +964,10 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: opacity 0.2s;
 }
-.global-slidebar {
+.unified-menu-btn:hover { background: #1f2937; }
+.unified-slidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -976,17 +980,46 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     transition: transform 0.25s ease;
     display: flex;
     flex-direction: column;
-    padding: 20px 12px;
+    border-right: 1px solid #1f2937;
 }
-.global-slidebar.open { transform: translateX(0); }
-.global-slidebar-header {
+.unified-slidebar.open { transform: translateX(0); }
+.unified-slidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid #1f2937;
+}
+.unified-slidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: 18px;
     font-weight: 800;
-    padding: 10px 12px 20px;
-    border-bottom: 1px solid #1f2937;
-    margin-bottom: 12px;
+    letter-spacing: -0.3px;
 }
-.global-slidebar a {
+.unified-slidebar-logo .icon {
+    width: 34px;
+    height: 34px;
+    background: #6366f1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+.unified-slidebar-subtitle {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 6px;
+    padding-left: 44px;
+}
+.unified-slidebar-nav {
+    flex: 1;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+.unified-slidebar a {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -998,20 +1031,29 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     font-weight: 600;
     transition: all 0.15s;
 }
-.global-slidebar a:hover {
+.unified-slidebar a:hover {
     background: #1f2937;
     color: #f3f4f6;
 }
-.global-slidebar a.active {
+.unified-slidebar a.active {
     background: #6366f1;
     color: #fff;
 }
-.global-slidebar .sep {
+.unified-slidebar a .nav-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+}
+.unified-slidebar-sep {
     height: 1px;
     background: #1f2937;
     margin: 12px 0;
 }
-.global-overlay {
+.unified-slidebar-footer {
+    padding: 16px 12px;
+    border-top: 1px solid #1f2937;
+}
+.unified-overlay {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.4);
@@ -1020,28 +1062,59 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     visibility: hidden;
     transition: all 0.25s;
 }
-.global-overlay.open { opacity: 1; visibility: visible; }
+.unified-overlay.open { opacity: 1; visibility: visible; }
+body.in-iframe .unified-menu-btn,
+body.in-iframe .unified-slidebar,
+body.in-iframe .unified-overlay {
+    display: none !important;
+}
 @media (max-width: 768px) {
-    .global-menu-btn { top: 12px; left: 12px; width: 36px; height: 36px; font-size: 16px; }
+    .unified-menu-btn { top: 12px; left: 12px; width: 36px; height: 36px; font-size: 16px; }
+    .unified-slidebar { width: 100%; }
 }
 </style>
-<button class="global-menu-btn" id="globalMenuBtn" title="菜单">☰</button>
-<nav class="global-slidebar" id="globalSlidebar">
-    <div class="global-slidebar-header">市场复盘</div>
-    <a href="https://smasfan.github.io/">🏠 主页</a>
-    <a href="review_a_share.html">🇨🇳 A股盘后</a>
-    <a href="review_us_pre.html">🌅 美股盘前</a>
-    <a href="review_us_post.html">🌙 美股盘后</a>
-    <div class="sep"></div>
-    <a href="report.html">📊 完整回测报告</a>
-    <a href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener"><i class="fab fa-github"></i> 查看项目</a>
+<button class="unified-menu-btn" id="unifiedMenuBtn" title="菜单">☰</button>
+<nav class="unified-slidebar" id="unifiedSlidebar">
+    <div class="unified-slidebar-header">
+        <div class="unified-slidebar-logo">
+            <span class="icon">📈</span>
+            <span>市场复盘</span>
+        </div>
+        <div class="unified-slidebar-subtitle">Daily Market Review</div>
+    </div>
+    <div class="unified-slidebar-nav">
+<a href="review_a_share.html"><span class="nav-icon">🇨🇳</span><span>A股盘后</span></a>
+<a href="review_us_pre.html"><span class="nav-icon">🌅</span><span>美股盘前</span></a>
+<a href="review_us_post.html"><span class="nav-icon">🌙</span><span>美股盘后</span></a>
+<div class="unified-slidebar-sep"></div>
+<a href="backtest/159131_5min_optimal.html"><span class="nav-icon">📉</span><span>159131 5分钟回测</span></a>
+<a href="strategy/report.html"><span class="nav-icon">📈</span><span>A股策略回测</span></a>
+    </div>
+    <div class="unified-slidebar-footer">
+        <a class="nav-item" href="https://smasfan.github.io/">
+            <span class="nav-icon">🏠</span>
+            <span>主页</span>
+        </a>
+        <a class="nav-item" href="report.html">
+            <span class="nav-icon">📊</span>
+            <span>完整回测报告</span>
+        </a>
+        <a class="nav-item" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">
+            <span class="nav-icon"><i class="fab fa-github"></i></span>
+            <span>查看项目</span>
+        </a>
+    </div>
 </nav>
-<div class="global-overlay" id="globalOverlay"></div>
+<div class="unified-overlay" id="unifiedOverlay"></div>
 <script>
 (function(){
-    const btn = document.getElementById('globalMenuBtn');
-    const bar = document.getElementById('globalSlidebar');
-    const overlay = document.getElementById('globalOverlay');
+    if (window.self !== window.top) {
+        document.body.classList.add('in-iframe');
+        return;
+    }
+    const btn = document.getElementById('unifiedMenuBtn');
+    const bar = document.getElementById('unifiedSlidebar');
+    const overlay = document.getElementById('unifiedOverlay');
     function open(){ bar.classList.add('open'); overlay.classList.add('open'); }
     function close(){ bar.classList.remove('open'); overlay.classList.remove('open'); }
     btn.addEventListener('click', () => bar.classList.contains('open') ? close() : open());
@@ -1050,12 +1123,13 @@ window.addEventListener('resize', () => { barChart.resize(); navChart.resize(); 
     const current = location.pathname.split('/').pop();
     links.forEach(a => {
         const href = a.getAttribute('href');
-        if (href && !href.startsWith('http') && href.split('/').pop() === current) {
-            a.classList.add('active');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            const target = href.split('/').pop();
+            if (target === current) a.classList.add('active');
         }
     });
 })();
 </script>
-<!-- /global nav -->
+<!-- /unified nav -->
 </body>
 </html>

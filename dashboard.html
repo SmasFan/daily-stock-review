@@ -205,6 +205,15 @@ body {
                 <span class="nav-icon">🌙</span>
                 <span>美股盘后</span>
             </a>
+            <div style="height:1px;background:#1f2937;margin:12px 0;"></div>
+            <a class="nav-item" data-page="backtest/159131_5min_optimal.html">
+                <span class="nav-icon">📉</span>
+                <span>159131 5分钟回测</span>
+            </a>
+            <a class="nav-item" data-page="strategy/report.html">
+                <span class="nav-icon">📈</span>
+                <span>A股策略回测</span>
+            </a>
         </nav>
         <div class="sidebar-footer">
             <a class="nav-item" href="https://smasfan.github.io/" target="_blank">
@@ -271,8 +280,9 @@ menuToggle.addEventListener('click', () => {
 overlay.addEventListener('click', closeMobileMenu);
 
 // 从 URL hash 恢复页面
+const validPages = ['review_a_share.html', 'review_us_pre.html', 'review_us_post.html', 'backtest/159131_5min_optimal.html', 'strategy/report.html'];
 const hash = window.location.hash.slice(1);
-if (hash && ['review_a_share.html', 'review_us_pre.html', 'review_us_post.html'].includes(hash)) {
+if (hash && validPages.includes(hash)) {
     switchPage(hash);
 }
 
