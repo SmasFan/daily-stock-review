@@ -199,33 +199,45 @@ def gen_review_html(market, review_type, results, gen_time):
     <div class="summary-grid">
         <div class="summary-card">
             <div class="summary-icon">📊</div>
-            <div class="val {('up' if avg_change > 0 else 'down')}">{fmt_pct(avg_change)}</div>
-            <div class="label">平均涨跌</div>
+            <div class="summary-text">
+                <div class="val {('up' if avg_change > 0 else 'down')}">{fmt_pct(avg_change)}</div>
+                <div class="label">平均涨跌</div>
+            </div>
         </div>
         <div class="summary-card up-card">
             <div class="summary-icon">📈</div>
-            <div class="val">{up_count}</div>
-            <div class="label">上涨标的</div>
+            <div class="summary-text">
+                <div class="val">{up_count}</div>
+                <div class="label">上涨标的</div>
+            </div>
         </div>
         <div class="summary-card down-card">
             <div class="summary-icon">📉</div>
-            <div class="val">{down_count}</div>
-            <div class="label">下跌标的</div>
+            <div class="summary-text">
+                <div class="val">{down_count}</div>
+                <div class="label">下跌标的</div>
+            </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">🎯</div>
-            <div class="val">{bullish}<span class="unit">/{len(results)}</span></div>
-            <div class="label">看多信号</div>
+            <div class="summary-text">
+                <div class="val">{bullish}<span class="unit">/{len(results)}</span></div>
+                <div class="label">看多信号</div>
+            </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">🔥</div>
-            <div class="val up">{strongest['name']}</div>
-            <div class="label">最强 {fmt_pct(strongest['change_pct'])}</div>
+            <div class="summary-text">
+                <div class="val up">{strongest['name']}</div>
+                <div class="label">最强 {fmt_pct(strongest['change_pct'])}</div>
+            </div>
         </div>
         <div class="summary-card">
             <div class="summary-icon">❄️</div>
-            <div class="val down">{weakest['name']}</div>
-            <div class="label">最弱 {fmt_pct(weakest['change_pct'])}</div>
+            <div class="summary-text">
+                <div class="val down">{weakest['name']}</div>
+                <div class="label">最弱 {fmt_pct(weakest['change_pct'])}</div>
+            </div>
         </div>
     </div>
     '''
@@ -464,6 +476,7 @@ header p {{ opacity:0.75; font-size:14px; margin-top:10px; position:relative; }}
 }}
 .summary-card:hover {{ transform: translateY(-2px); box-shadow: var(--shadow-hover); }}
 .summary-icon {{ font-size:28px; margin-bottom:8px; }}
+.summary-text {{ display:flex; flex-direction:column; align-items:center; gap:2px; }}
 .summary-card .val {{ font-size:26px; font-weight:800; color: var(--text); line-height:1.2; }}
 .summary-card .val .unit {{ font-size:14px; font-weight:600; color: var(--text-2); margin-left:2px; }}
 .summary-card .label {{ font-size:12px; color: var(--text-2); margin-top:6px; font-weight:500; }}
@@ -535,7 +548,7 @@ header p {{ opacity:0.75; font-size:14px; margin-top:10px; position:relative; }}
 .rsi-high {{ color: var(--up) !important; }}
 
 /* Cards */
-.cards {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:20px; }}
+.cards {{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap:20px; }}
 .card {{
     background: var(--surface);
     border:1px solid var(--border);
@@ -619,12 +632,54 @@ header p {{ opacity:0.75; font-size:14px; margin-top:10px; position:relative; }}
 }}
 footer {{ text-align:center; padding:28px; color: var(--text-2); font-size:12px; }}
 
-@media (max-width: 640px) {{
+@media (max-width: 768px) {{
     .container {{ padding:16px; }}
+    header {{ padding:32px 16px; border-radius:14px; }}
     header h1 {{ font-size:26px; }}
-    .cards {{ grid-template-columns:1fr; }}
-    .summary-grid {{ grid-template-columns:repeat(2, 1fr); }}
-    .price-value {{ font-size:26px; }}
+    .nav {{ gap:8px; }}
+    .nav-link {{ padding:7px 12px; font-size:12px; }}
+    .section {{ padding:20px; border-radius:14px; }}
+    .section-title {{ margin-bottom:16px; }}
+    .section h2 {{ font-size:18px; }}
+    .summary-grid {{ grid-template-columns:1fr; gap:12px; }}
+    .summary-card {{ padding:16px; display:flex; align-items:center; justify-content:space-between; text-align:left; }}
+    .summary-icon {{ font-size:24px; margin-bottom:0; margin-right:12px; }}
+    .summary-text {{ align-items:flex-start; }}
+    .summary-card .val {{ font-size:22px; }}
+    .summary-card .label {{ margin-top:2px; }}
+    .table-wrap {{ border-radius:10px; }}
+    .data-table {{ font-size:13px; }}
+    .data-table th, .data-table td {{ padding:10px 8px; }}
+    .asset-name {{ gap:6px; }}
+    .row-num {{ min-width:18px; }}
+    .strategy-cell {{ max-width:120px; }}
+    .cards {{ grid-template-columns:1fr; gap:16px; }}
+    .card {{ border-radius:14px; }}
+    .card-header {{ flex-direction:column; gap:12px; align-items:flex-start; }}
+    .card-header-right {{ flex-direction:row; align-items:center; justify-content:space-between; width:100%; }}
+    .card-title {{ font-size:16px; }}
+    .card-change {{ font-size:18px; }}
+    .card-body {{ padding:16px; }}
+    .price-row {{ flex-direction:column; align-items:flex-start; gap:14px; }}
+    .price-value {{ font-size:28px; }}
+    .price-side {{ width:100%; flex-direction:row; justify-content:space-between; align-items:center; }}
+    .bar-metrics {{ gap:12px; }}
+    .metric-grid {{ grid-template-columns:1fr; gap:10px; }}
+    .metric-item {{ padding:10px; }}
+    .note {{ padding:14px; }}
+}}
+
+@media (max-width: 480px) {{
+    header h1 {{ font-size:22px; }}
+    header p {{ font-size:13px; }}
+    .summary-card {{ padding:14px; }}
+    .summary-icon {{ font-size:20px; }}
+    .summary-card .val {{ font-size:20px; }}
+    .data-table {{ font-size:12px; }}
+    .data-table th {{ font-size:11px; }}
+    .data-table th, .data-table td {{ padding:8px 6px; }}
+    .pct-badge, .pattern-tag, .signal-badge {{ padding:4px 7px; font-size:11px; }}
+    .price-value {{ font-size:24px; }}
 }}
 </style>
 </head>
