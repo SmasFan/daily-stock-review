@@ -13,7 +13,10 @@
   transition:transform .15s, box-shadow .15s; display:block;
 }
 .entry-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
-.entry-card .e-icon { font-size:34px; margin-bottom:12px; }
+.entry-card .e-icon {
+  font-size:22px; width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface-2); border-radius:12px; color:var(--accent); margin-bottom:14px;
+}
 .entry-card h3 { font-size:19px; font-weight:700; margin-bottom:8px; }
 .entry-card p { font-size:13px; color:var(--text-2); }
 .entry-card .e-stat { margin-top:14px; font-size:13px; font-weight:700; color:var(--accent); }
@@ -25,7 +28,7 @@
 <body>
 <div class="container">
   <div class="hero">
-    <h1>📈 每日复盘工作台</h1>
+    <h1><i class="fa-solid fa-chart-line" style="color:var(--accent)"></i> 每日复盘工作台</h1>
     <p>技术分析 · 多因子选股 · 网格回测 —— 一站式复盘</p>
     <p id="gen" style="font-size:12px"></p>
   </div>
@@ -46,21 +49,21 @@
   const cards = [];
   cards.push(`
     <a class="entry-card" href="review.html">
-      <div class="e-icon">📋</div><h3>每日复盘</h3>
-      <p>标的信号一览、趋势评分、买卖点位、大盘温度计</p>
-      ${review ? `<div class="e-stat">🌡️ 温度 ${review.temperature.score}（${review.temperature.label}） · 📈${review.stats.up} 📉${review.stats.down}</div>` : ''}
+      <div class="e-icon">${RV.ui.icon('clipboard-list')}</div><h3>每日复盘</h3>
+      <p>按板块分组的信号一览、趋势评分、买卖点位、大盘温度计</p>
+      ${review ? `<div class="e-stat">${RV.ui.icon('temperature-high', 'fa-xs')} 温度 ${review.temperature.score}（${review.temperature.label}） · ${RV.ui.icon('arrow-trend-up', 'fa-xs')}${review.stats.up} ${RV.ui.icon('arrow-trend-down', 'fa-xs')}${review.stats.down}</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="recommend.html">
-      <div class="e-icon">🎯</div><h3>每日推荐</h3>
-      <p>多因子横截面打分 + 技术信号，输出 Top 推荐与买卖点位</p>
-      ${rec && rec.picks && rec.picks[0] ? `<div class="e-stat">🏆 首推 ${rec.picks[0].name}（${rec.picks[0].rating} · ${rec.picks[0].total_score}分）</div>` : ''}
+      <div class="e-icon">${RV.ui.icon('bullseye')}</div><h3>每日推荐</h3>
+      <p>多因子横截面打分 + 板块轮动，输出 Top 推荐与买卖点位</p>
+      ${rec && rec.picks && rec.picks[0] ? `<div class="e-stat">${RV.ui.icon('crown', 'fa-xs')} 首推 ${rec.picks[0].name}（${rec.picks[0].rating} · ${rec.picks[0].total_score}分）</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="backtest.html">
-      <div class="e-icon">🧪</div><h3>网格回测</h3>
+      <div class="e-icon">${RV.ui.icon('flask')}</div><h3>网格回测</h3>
       <p>均衡偏低均值线 + 不对称网格，近 N 年收益/回撤/夏普验证</p>
-      ${bt && bt.overall ? `<div class="e-stat">✓ ${bt.overall.stocks ?? 0} 只标的 · 平均年化 ${bt.overall.avg_annual_return ? (bt.overall.avg_annual_return * 100).toFixed(1) + '%' : '--'}</div>` : ''}
+      ${bt && bt.overall ? `<div class="e-stat">${RV.ui.icon('circle-check', 'fa-xs')} ${bt.overall.stocks ?? 0} 只标的 · 平均年化 ${bt.overall.avg_annual_return ? (bt.overall.avg_annual_return * 100).toFixed(1) + '%' : '--'}</div>` : ''}
     </a>`);
   box.innerHTML = cards.join('');
 })();

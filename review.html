@@ -16,28 +16,28 @@
     const d = await RV.API.review();
     const t = d.temperature, s = d.stats;
 
-    // ===== 大盘指数模块 =====
-    const idxRows = (d.indices || []).map(i => `
-      <div class="summary-card">
-        <div class="icon">📊</div>
-        <div class="summary-text" style="flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <span class="label">${i.name}</span>
-            <span class="val ${RV.fmt.cls(i.change_pct)}" style="font-size:16px">${RV.fmt.pct(i.change_pct)}</span>
-          </div>
-          <div class="label" style="margin-top:2px">${RV.fmt.num(i.close)}</div>
+    // ===== 大盘指数模块（竖排：上证指数置顶，右侧两行涨跌幅+点数） =====
+    const idxRows = (d.indices || []).map((i, idx) => `
+      <div class="idx-row ${idx === 0 ? 'idx-primary' : ''}">
+        <div class="idx-name">
+          <span class="idx-icon">${RV.ui.icon(idx === 0 ? 'city' : 'landmark')}</span>
+          <span>${i.name}</span>
+        </div>
+        <div class="idx-right">
+          <span class="idx-pct ${RV.fmt.cls(i.change_pct)}">${RV.fmt.pct(i.change_pct)}</span>
+          <span class="idx-close">${RV.fmt.num(i.close)}</span>
         </div>
       </div>`).join('');
     const indicesHtml = `<div class="section">
-      <div class="section-title"><span class="title-icon">🌐</span><h2>大盘指数</h2></div>
-      <div class="summary-grid">${idxRows}</div></div>`;
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
+      <div class="idx-list">${idxRows}</div></div>`;
 
     // ===== 汇总卡片 =====
     const tempoCls = t.score >= 55 ? 'up' : (t.score < 40 ? 'down' : '');
     const summary = `
       <div class="summary-grid">
         <div class="summary-card" style="grid-column:span 2">
-          <div class="icon">🌡️</div>
+          <div class="icon">${RV.ui.icon('temperature-high')}</div>
           <div class="tempo" style="flex:1">
             <div style="flex:1">
               <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -48,21 +48,27 @@
             </div>
           </div>
         </div>
-        ${RV.ui.summaryCard('📊', RV.fmt.pct(t.avg_change), '平均涨跌', RV.fmt.cls(t.avg_change))}
-        ${RV.ui.summaryCard('📈', s.up, '上涨标的', 'up')}
-        ${RV.ui.summaryCard('📉', s.down, '下跌标的', 'down')}
-        ${RV.ui.summaryCard('🎯', t.bull + '<span class="unit">/' + t.total + '</span>', '买入信号')}
+        ${RV.ui.summaryCard('scale-balanced', RV.fmt.pct(t.avg_change), '平均涨跌', RV.fmt.cls(t.avg_change))}
+        ${RV.ui.summaryCard('arrow-trend-up', s.up, '上涨标的', 'up')}
+        ${RV.ui.summaryCard('arrow-trend-down', s.down, '下跌标的', 'down')}
+        ${RV.ui.summaryCard('bullseye', t.bull + '<span class="unit">/' + t.total + '</span>', '买入信号')}
       </div>`;
 
     // ===== 板块分组渲染（先按板块，点开展开股票） =====
+    // 买入推荐强度排序：strong_buy > buy > watch > reduce > sell
+    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
+    function buyStrength(r) {
+      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
+    }
     function groupBySector(items) {
       const groups = {};
       (items || []).forEach(r => {
         const sec = r.sector || '其他';
         (groups[sec] = groups[sec] || []).push(r);
       });
-      // 板块内按评分排序
-      Object.keys(groups).forEach(k => groups[k].sort((a, b) => b.score - a.score));
+      // 板块内按买入推荐强度排序（买强在前），同级按评分降序
+      Object.keys(groups).forEach(k => groups[k].sort((a, b) =>
+        buyStrength(a) - buyStrength(b) || b.score - a.score));
       return groups;
     }
 
@@ -98,20 +104,20 @@
         return `
         <div class="sector-group" data-sec="${sec}">
           <div class="sector-header">
-            <span class="chev">▶</span>
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${sec}</span>
             <span class="sec-chip">${list.length}只</span>
             ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}
             <span class="sector-stat">
-              <span>🟢${up} <span class="down">🔻${list.length - up}</span></span>
-              <span>🎯 买${buys}</span>
+              <span>${RV.ui.icon('arrow-trend-up', 'fa-xs')} ${up} <span class="down">${RV.ui.icon('arrow-trend-down', 'fa-xs')} ${list.length - up}</span></span>
+              <span>${RV.ui.icon('bullseye', 'fa-xs')} 买${buys}</span>
               <span>最高分 <b>${top ? top.score : '--'}</b></span>
             </span>
           </div>
           <div class="sector-body">${table(list)}</div>
         </div>`;
       }).join('');
-      return `<div class="section"><div class="section-title"><span class="title-icon">🗂️</span><h2>${key} · 按板块</h2></div>${secHtml}</div>`;
+      return `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>${key} · 按板块</h2></div>${secHtml}</div>`;
     }
 
     // ===== 详情卡片（整池，供展开时查看） =====
@@ -147,16 +153,16 @@
     // ===== 自选 / 大盘 Tab =====
     let tab = 'watch';
     const cardSec = () => `
-      <div class="section"><div class="section-title"><span class="title-icon">🃏</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
+      <div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
         <div class="cards">${cards(tab === 'watch' ? d.items : d.market_items)}</div></div>`;
 
     function render() {
       const tabs = `
         <div class="section">
-          <div class="section-title"><span class="title-icon">🗂️</span><h2>模块</h2></div>
+          <div class="section-title"><span class="title-icon">${RV.ui.icon('table-columns')}</span><h2>模块</h2></div>
           <div class="nav" style="justify-content:flex-start;margin-top:0">
-            <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">🟢 自选（${d.items.length}只）</a>
-            <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">🌐 大盘（${(d.market_items||[]).length}只）</a>
+            <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">${RV.ui.icon('list-check')} 自选（${d.items.length}只）</a>
+            <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘（${(d.market_items||[]).length}只）</a>
           </div>
         </div>`;
       const items = tab === 'watch' ? d.items : (d.market_items || []);

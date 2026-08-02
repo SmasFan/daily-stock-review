@@ -75,11 +75,11 @@
         .concat(names.map(n => `<a href="#" class="nav-link ${selected === n ? 'active' : ''}" data-k="${n}">${n}</a>`)).join('');
 
       app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
-        + `<div class="section"><div class="section-title"><span class="title-icon">📑</span><h2>选择标的</h2></div>
+        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-pie')}</span><h2>选择标的</h2></div>
              <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
-        + `<div class="section"><div class="section-title"><span class="title-icon">📊</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
-        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">📈</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:6px"><span style="color:#c78d5a;font-weight:700">— 网格策略</span> · <span style="color:#9ca3af">— 买入持有基准</span> · 虚线=初始净值1.0</div></div>` : '')
-        + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">🧾</span><h2>近期调仓记录（最近 ${Math.min(stock.trades.length, 30)} 条）</h2></div>${tradesTable(stock.trades)}</div>` : '')
+        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
+        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:6px"><span style="color:#c78d5a;font-weight:700">— 网格策略</span> · <span style="color:#9ca3af">— 买入持有基准</span> · 虚线=初始净值1.0</div></div>` : '')
+        + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>近期调仓记录（最近 ${Math.min(stock.trades.length, 30)} 条）</h2></div>${tradesTable(stock.trades)}</div>` : '')
         + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
 
       app.querySelectorAll('.nav-link[data-k]').forEach(a => a.addEventListener('click', ev => {
@@ -93,7 +93,7 @@
       const rows = trades.slice(-30).reverse().map(t => `
         <tr>
           <td><span class="date-tag">${t.date}</span></td>
-          <td><span class="signal-badge ${t.side === 'buy' ? 's-buy' : 's-sell'}">${t.side === 'buy' ? '买入' : '卖出'}</span></td>
+          <td><span class="signal-badge ${t.side === 'buy' ? 's-buy' : 's-sell'}">${t.side === 'buy' ? RV.ui.icon('cart-plus') + ' 买入' : RV.ui.icon('cart-shopping') + ' 卖出'}</span></td>
           <td style="font-weight:700">${RV.fmt.pct(t.amount * 100)}</td>
           <td>${RV.fmt.num(t.pos_before * 100, 1)}% → ${RV.fmt.num(t.pos_after * 100, 1)}%</td>
           <td>偏离 ${RV.fmt.pct(t.dev * 100, 2)}</td>

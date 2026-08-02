@@ -17,30 +17,30 @@
     const picks = d.picks || [], mpicks = d.market_picks || [], sectors = d.sectors || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
-    // 大盘指数
-    const idxRows = (d.indices || []).map(i => `
-      <div class="summary-card">
-        <div class="icon">📊</div>
-        <div class="summary-text" style="flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <span class="label">${i.name}</span>
-            <span class="val ${RV.fmt.cls(i.change_pct)}" style="font-size:16px">${RV.fmt.pct(i.change_pct)}</span>
-          </div>
-          <div class="label" style="margin-top:2px">${RV.fmt.num(i.close)}</div>
+    // 大盘指数（竖排：上证指数置顶，右侧两行显示涨跌幅 + 指数点）
+    const idxRows = (d.indices || []).map((i, idx) => `
+      <div class="idx-row ${idx === 0 ? 'idx-primary' : ''}">
+        <div class="idx-name">
+          <span class="idx-icon">${RV.ui.icon(idx === 0 ? 'city' : 'landmark')}</span>
+          <span>${i.name}</span>
+        </div>
+        <div class="idx-right">
+          <span class="idx-pct ${RV.fmt.cls(i.change_pct)}">${RV.fmt.pct(i.change_pct)}</span>
+          <span class="idx-close">${RV.fmt.num(i.close)}</span>
         </div>
       </div>`).join('');
     const indicesHtml = `<div class="section">
-      <div class="section-title"><span class="title-icon">🌐</span><h2>大盘指数</h2></div>
-      <div class="summary-grid">${idxRows}</div></div>`;
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
+      <div class="idx-list">${idxRows}</div></div>`;
 
     function topCards(list, title) {
       const a = list.filter(p => p.rating === 'A').length;
       const b = list.filter(p => p.rating === 'B').length;
       return `<div class="summary-grid">
-        ${RV.ui.summaryCard('🎯', list.length, '推荐标的')}
-        ${RV.ui.summaryCard('🅰️', a, 'A 级')}
-        ${RV.ui.summaryCard('🅱️', b, 'B 级')}
-        ${RV.ui.summaryCard('🏆', list[0].name, title || '首推', 'up')}
+        ${RV.ui.summaryCard('bullseye', list.length, '推荐标的')}
+        ${RV.ui.summaryCard('medal', a, 'A 级')}
+        ${RV.ui.summaryCard('award', b, 'B 级')}
+        ${RV.ui.summaryCard('crown', list[0].name, title || '首推', 'up')}
       </div>`;
     }
 
@@ -85,7 +85,7 @@
           <div class="point"><span class="p-label">止损</span><span class="p-val">${RV.fmt.num(p.stop_loss)}</span></div>
           <div class="point"><span class="p-label">止盈</span><span class="p-val">${RV.fmt.num(p.take_profit)}</span></div>
         </div>
-        <div class="reason">💡 当日购买原因：${p.reasons}</div>
+        <div class="reason">${RV.ui.icon('lightbulb')} 当日购买原因：${p.reasons}</div>
       </div>`).join('');
     }
 
@@ -107,7 +107,7 @@
           </div>
         </div>`).join('');
       return `<div class="section">
-        <div class="section-title"><span class="title-icon">📚</span><h2>板块推荐（估值 + 动量）</h2></div>
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>板块推荐（估值 + 动量）</h2></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">${cards}</div>
       </div>`;
     }
@@ -117,17 +117,17 @@
       const list = tab === 'watch' ? picks : mpicks;
       const tabs = `
         <div class="section">
-          <div class="section-title"><span class="title-icon">🗂️</span><h2>模块</h2></div>
+          <div class="section-title"><span class="title-icon">${RV.ui.icon('table-columns')}</span><h2>模块</h2></div>
           <div class="nav" style="justify-content:flex-start;margin-top:0">
-            <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">🟢 自选推荐（${picks.length}）</a>
-            <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">🌐 大盘推荐（${mpicks.length}）</a>
+            <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">${RV.ui.icon('list-check')} 自选推荐（${picks.length}）</a>
+            <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘推荐（${mpicks.length}）</a>
           </div>
         </div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
         + indicesHtml + sectorSection() + tabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
-        + `<div class="section"><div class="section-title"><span class="title-icon">📋</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
-        + `<div class="section"><div class="section-title"><span class="title-icon">🃏</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`
+        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
+        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 不构成投资建议</footer>';
       app.querySelectorAll('.nav-link[data-tab]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();

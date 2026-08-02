@@ -40,15 +40,19 @@
 
   /* ---------- 通用组件 ---------- */
   const ui = {
+    /* Font Awesome 图标：icon('chart-line') -> <i class="fa-solid fa-chart-line"></i> */
+    icon(name, cls = '') {
+      return `<i class="fa-solid fa-${name} ${cls}" aria-hidden="true"></i>`;
+    },
     /* 页头（含导航），active 为高亮页 key */
     header(title, subtitle, active, genTime) {
       const navs = [
-        ['review', '复盘', 'review.html'],
-        ['recommend', '推荐', 'recommend.html'],
-        ['backtest', '回测', 'backtest.html'],
+        ['review', '复盘', 'clipboard-list', 'review.html'],
+        ['recommend', '推荐', 'bullseye', 'recommend.html'],
+        ['backtest', '回测', 'flask', 'backtest.html'],
       ];
-      const navHtml = navs.map(([k, label, href]) =>
-        `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${label}</a>`
+      const navHtml = navs.map(([k, label, icon, href]) =>
+        `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${ui.icon(icon)} ${label}</a>`
       ).join('');
       return `
       <header class="top">
@@ -74,20 +78,24 @@
       else if (pct > 70) color = '#dc2626';
       return `<div class="progress"><div class="progress-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>`;
     },
-    metric(val, label, cls = '') {
-      return `<div class="metric-card"><div class="m-val ${cls}">${val}</div><div class="m-label">${label}</div></div>`;
+    metric(val, label, cls = '', icon = '') {
+      return `<div class="metric-card"><div class="m-val ${cls}">${icon ? ui.icon(icon) + ' ' : ''}${val}</div><div class="m-label">${label}</div></div>`;
     },
     summaryCard(icon, val, label, cls = '') {
-      return `<div class="summary-card"><div class="icon">${icon}</div>
+      return `<div class="summary-card"><div class="icon">${ui.icon(icon)}</div>
         <div class="summary-text"><div class="val ${cls}">${val}</div><div class="label">${label}</div></div></div>`;
     },
     outcomeLabel(o) {
-      const map = { win: '✓ 兑现', loss: '✗ 未兑现', neutral: '— 中性' };
+      const map = {
+        win: `${ui.icon('check', 'fa-xs')} 兑现`,
+        loss: `${ui.icon('xmark', 'fa-xs')} 未兑现`,
+        neutral: `${ui.icon('minus', 'fa-xs')} 中性`
+      };
       return `<span class="outcome-${o}">${map[o] || o}</span>`;
     },
     loading(msg = '数据加载中…') { return `<div class="loading">${msg}</div>`; },
     empty(msg = '暂无数据') { return `<div class="empty">${msg}</div>`; },
-    error(e) { return `<div class="empty">⚠️ ${e.message || e}<br><small>请先运行 <code>python run_review.py</code> 生成数据</small></div>`; },
+    error(e) { return `<div class="empty">${ui.icon('triangle-exclamation')} ${e.message || e}<br><small>请先运行 <code>python run_review.py</code> 生成数据</small></div>`; },
   };
 
   global.RV = { API, fmt, ui };
