@@ -80,8 +80,8 @@ index.html / review.html / recommend.html / backtest.html   # 数据驱动页面
 
 ## 旧版页面
 
-旧版静态页保留兼容：
-[A股盘后复盘](review_a_share.html) · [美股盘前复盘](review_us_pre.html) · [美股盘后复盘](review_us_post.html) · [完整回测报告](report.html) · [自选股](watchlist.html)
+保留的旧版静态页：
+[完整回测报告](report.html) · [自选股](watchlist.html) · [工作台](dashboard.html)
 
 ## 免责声明
 
