@@ -48,24 +48,89 @@
       </div>`;
     }
 
-    // 净值曲线（SVG 迷你图）
+    // 净值曲线（交互式：时间轴 + 悬浮查看数据）
     function eqChart(stock, id) {
       const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
       if (eq.length < 2) return '';
-      const W = 760, H = 140, pad = 6;
-      const maxV = Math.max.apply(null, eq.concat(bench).map(v => Math.max(v, 1))) * 1.05;
-      const minV = Math.min.apply(null, eq.concat(bench).map(v => Math.min(v, 1))) * 0.95;
-      const x = i => pad + (W - 2 * pad) * i / (eq.length - 1);
-      const y = v => H - pad - (H - 2 * pad) * (v - minV) / (maxV - minV);
-      function path(arr) {
-        return arr.map((v, i) => (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+      // 抽稀：最多 1000 个点保证流畅
+      const step = Math.ceil(eq.length / 1000);
+      const n = eq.length;
+      const W = 860, H = 260;
+      const padL = 52, padR = 14, padT = 14, padB = 30;
+      const innerW = W - padL - padR, innerH = H - padT - padB;
+      let maxV = -Infinity, minV = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (eq[i] > maxV) maxV = eq[i];
+        if (eq[i] < minV) minV = eq[i];
+        if (bench[i] > maxV) maxV = bench[i];
+        if (bench[i] < minV) minV = bench[i];
       }
-      return `<svg class="eq-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-        <rect width="${W}" height="${H}" fill="#f9fafb"/>
-        <path d="${path(bench)}" fill="none" stroke="#9ca3af" stroke-width="1.5" opacity="0.7"/>
-        <path d="${path(eq)}" fill="none" stroke="#c78d5a" stroke-width="2"/>
-        <line x1="${pad}" y1="${y(1)}" x2="${W - pad}" y2="${y(1)}" stroke="#d1d5db" stroke-width="0.8" stroke-dasharray="4,3"/>
-      </svg>`;
+      maxV *= 1.03; minV *= 0.97;
+      const range = maxV - minV || 1;
+      const x = i => padL + innerW * i / (n - 1);
+      const y = v => padT + innerH * (maxV - v) / range;
+      // 抽稀后路径
+      function path(arr) {
+        let p = '';
+        for (let i = 0; i < n; i += step) {
+          p += (p ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(arr[i]).toFixed(1);
+        }
+        // 最后一个点
+        if ((n - 1) % step !== 0) p += 'L' + x(n - 1).toFixed(1) + ',' + y(arr[n - 1]).toFixed(1);
+        return p;
+      }
+      // y 轴刻度（4-5 档）
+      const yTicks = [];
+      const yN = 5;
+      for (let i = 0; i <= yN; i++) yTicks.push(minV + range * i / yN);
+      // x 轴时间刻度（按年）
+      const xTicks = [];
+      const years = dates.map(d => Number(d.slice(0, 4)));
+      const y0 = years[0], y1 = years[years.length - 1];
+      for (let yr = y0; yr <= y1; yr++) {
+        const idx = years.indexOf(yr);
+        if (idx >= 0) xTicks.push({ x: x(idx), label: yr });
+      }
+      // 格式化净值
+      const fv = v => v.toFixed(3);
+      // 基准线 y=1
+      const baseY = y(1);
+
+      return `<div class="chart-wrap" style="position:relative"
+            data-eq="${JSON.stringify(eq.map(v => +v.toFixed(4)))}"
+            data-bm="${JSON.stringify(bench.map(v => +v.toFixed(4)))}"
+            data-dt="${JSON.stringify(dates)}">
+        <svg id="eq-svg-${id}" class="eq-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
+          <rect width="${W}" height="${H}" fill="#f9fafb"/>
+          <!-- y 轴网格 + 刻度 -->
+          ${yTicks.map(v => `
+            <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="#eef0f3" stroke-width="1"/>
+            <text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" fill="#6b7280" font-size="11" text-anchor="end" font-variant-numeric="tabular-nums">${fv(v)}</text>`).join('')}
+          <!-- x 轴时间刻度 -->
+          ${xTicks.map(t => `
+            <line x1="${t.x.toFixed(1)}" y1="${padT}" x2="${t.x.toFixed(1)}" y2="${padT + innerH}" stroke="#eef0f3" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="${t.x.toFixed(1)}" y="${H - 10}" fill="#6b7280" font-size="11" text-anchor="middle">${t.label}</text>`).join('')}
+          <!-- 基准线 1.0 -->
+          <line x1="${padL}" y1="${baseY.toFixed(1)}" x2="${W - padR}" y2="${baseY.toFixed(1)}" stroke="#d1d5db" stroke-width="1" stroke-dasharray="5,4"/>
+          <!-- 曲线 -->
+          <path d="${path(bench)}" fill="none" stroke="#9ca3af" stroke-width="1.6" opacity="0.75"/>
+          <path d="${path(eq)}" fill="none" stroke="#c78d5a" stroke-width="2.2"/>
+          <line class="hover-line" x1="0" y1="${padT}" x2="0" y2="${padT + innerH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" style="opacity:0"/>
+          <circle class="hover-dot-eq" r="4" fill="#c78d5a" style="opacity:0"/>
+          <circle class="hover-dot-bm" r="4" fill="#9ca3af" style="opacity:0"/>
+        </svg>
+        <div class="chart-tip" style="position:absolute;pointer-events:none;opacity:0;background:#111827;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.7;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.25);white-space:nowrap">
+          <div class="tip-date" style="margin-bottom:2px"></div>
+          <div style="color:#c78d5a"><i class="fa-solid fa-chart-line"></i> 网格策略：<b class="tip-eq"></b></div>
+          <div style="color:#9ca3af"><i class="fa-solid fa-chart-line"></i> 买入持有：<b class="tip-bm"></b></div>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:6px">
+          <span style="color:#c78d5a;font-weight:700"><i class="fa-solid fa-chart-line"></i> 网格策略</span> ·
+          <span style="color:#9ca3af"><i class="fa-solid fa-chart-line"></i> 买入持有基准</span> ·
+          <span style="color:#d1d5db">-- 初始净值1.0</span> ·
+          <span style="color:var(--text-2)">鼠标悬浮查看数值</span>
+        </div>
+      </div>`;
     }
 
     function render() {
@@ -78,7 +143,7 @@
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-pie')}</span><h2>选择标的</h2></div>
              <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
-        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:6px"><span style="color:#c78d5a;font-weight:700">— 网格策略</span> · <span style="color:#9ca3af">— 买入持有基准</span> · 虚线=初始净值1.0</div></div>` : '')
+        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}</div>` : '')
         + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>近期调仓记录（最近 ${Math.min(stock.trades.length, 30)} 条）</h2></div>${tradesTable(stock.trades)}</div>` : '')
         + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
 
@@ -86,6 +151,7 @@
         ev.preventDefault();
         selected = a.getAttribute('data-k') || null;
         render();
+        window._initEqCharts && window._initEqCharts();
       }));
     }
 
@@ -105,9 +171,70 @@
     }
 
     render();
+    window._initEqCharts && window._initEqCharts();
   } catch (e) {
     app.innerHTML = RV.ui.header('网格回测', '', 'backtest') + RV.ui.error(e);
   }
+})();
+</script>
+<script>
+/* 净值曲线悬浮交互：初始化所有 .chart-wrap 的 mousemove 事件 */
+(function () {
+  window._initEqCharts = function () {
+    document.querySelectorAll('.chart-wrap').forEach(function (wrap) {
+      if (wrap.dataset.inited) return;
+      wrap.dataset.inited = '1';
+      var svg = wrap.querySelector('svg.eq-chart');
+      if (!svg) return;
+      var ptsEq, ptsBm, dt;
+      try { ptsEq = JSON.parse(wrap.dataset.eq); ptsBm = JSON.parse(wrap.dataset.bm); dt = JSON.parse(wrap.dataset.dt); }
+      catch (e) { return; }
+      var n = ptsEq.length;
+      if (n < 2) return;
+      var sViewW = svg.viewBox.baseVal.width;
+      var sViewH = svg.viewBox.baseVal.height;
+      var sPadL = 52, sPadR = 14, sPadT = 14;
+      var sIW = sViewW - sPadL - sPadR;
+      var maxV = -Infinity, minV = Infinity;
+      for (var i = 0; i < n; i++) {
+        maxV = Math.max(maxV, ptsEq[i], ptsBm[i]);
+        minV = Math.min(minV, ptsEq[i], ptsBm[i]);
+      }
+      maxV *= 1.03; minV *= 0.97;
+      var range = maxV - minV || 1;
+      var sx = function (i) { return sPadL + sIW * i / (n - 1); };
+      var sy = function (v) { return sPadT + (sViewH - 30 - sPadT) * (maxV - v) / range; };
+      var hl = svg.querySelector('.hover-line');
+      var de = svg.querySelector('.hover-dot-eq');
+      var db = svg.querySelector('.hover-dot-bm');
+      var tip = wrap.querySelector('.chart-tip');
+      var tipDate = tip.querySelector('.tip-date');
+      var tipEq = tip.querySelector('.tip-eq');
+      var tipBm = tip.querySelector('.tip-bm');
+      function update(clientX) {
+        var rect = svg.getBoundingClientRect();
+        var vx = (clientX - rect.left) / rect.width * sViewW;
+        var px = Math.max(0, Math.min(1, (vx - sPadL) / sIW));
+        var idx = Math.round(px * (n - 1));
+        var X = sx(idx), Y1 = sy(ptsEq[idx]), Y2 = sy(ptsBm[idx]);
+        hl.setAttribute('x1', X); hl.setAttribute('x2', X); hl.style.opacity = 1;
+        de.setAttribute('cx', X); de.setAttribute('cy', Y1); de.style.opacity = 1;
+        db.setAttribute('cx', X); db.setAttribute('cy', Y2); db.style.opacity = 1;
+        tipDate.textContent = '\uD83D\uDCC5 ' + dt[idx];
+        tipEq.textContent = ptsEq[idx].toFixed(3);
+        tipBm.textContent = ptsBm[idx].toFixed(3);
+        tip.style.opacity = 1;
+        var tw = tip.offsetWidth || 160;
+        var left = (vx + tw + 16 > sViewW) ? (vx - tw - 12) : (vx + 14);
+        tip.style.left = (left / sViewW * rect.width) + 'px';
+        tip.style.top = '8px';
+      }
+      svg.addEventListener('mousemove', function (e) { update(e.clientX); });
+      svg.addEventListener('mouseleave', function () {
+        hl.style.opacity = 0; de.style.opacity = 0; db.style.opacity = 0; tip.style.opacity = 0;
+      });
+    });
+  };
 })();
 </script>
 </body>
