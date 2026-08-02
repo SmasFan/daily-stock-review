@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网格回测 · 复盘</title>
+<link rel="stylesheet" href="assets/css/common.css">
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.backtest();
+    const o = d.overall || {};
+    const stocks = d.stocks || {};
+    const names = Object.keys(stocks);
+    let selected = names[0] || null;
+
+    function pct(v, digits = 2) { return RV.fmt.pct(v * 100, digits); }
+
+    function overallMetrics(s) {
+      return `<div class="metric-grid">
+        ${RV.ui.metric(s.stocks ?? 0, '回测标的')}
+        ${RV.ui.metric(pct(s.avg_annual_return, 1), '平均年化', RV.fmt.cls(s.avg_annual_return))}
+        ${RV.ui.metric(RV.fmt.num(s.avg_sharpe, 2), '平均夏普')}
+        ${RV.ui.metric(pct(s.avg_max_drawdown, 1), '平均最大回撤', 'down')}
+        ${RV.ui.metric(pct(s.avg_excess_return, 1), '平均超额收益', RV.fmt.cls(s.avg_excess_return))}
+      </div>`;
+    }
+
+    function stockMetrics(s) {
+      return `<div class="metric-grid">
+        ${RV.ui.metric(pct(s.annual_return, 1), '年化收益', RV.fmt.cls(s.annual_return))}
+        ${RV.ui.metric(pct(s.total_return, 1), '总收益', RV.fmt.cls(s.total_return))}
+        ${RV.ui.metric(RV.fmt.num(s.sharpe, 2), '夏普')}
+        ${RV.ui.metric(pct(s.max_drawdown, 1), '最大回撤', 'down')}
+        ${RV.ui.metric(RV.fmt.num(s.calmar, 2), '卡玛')}
+        ${RV.ui.metric(RV.fmt.num(s.annual_vol * 100, 1) + '%', '年化波动')}
+        ${RV.ui.metric(pct(s.benchmark_annual, 1), '基准年化', RV.fmt.cls(s.benchmark_annual))}
+        ${RV.ui.metric(pct(s.excess_return, 1), '超额收益', RV.fmt.cls(s.excess_return))}
+        ${RV.ui.metric(s.trade_count, '交易次数')}
+        ${RV.ui.metric(RV.fmt.num(s.avg_position * 100, 0) + '%', '平均仓位')}
+        ${RV.ui.metric(s.years + '年', '回测区间')}
+        ${RV.ui.metric(s.price_only ? '价格锚' : '估值锚', '均值线')}
+      </div>`;
+    }
+
+    // 净值曲线（SVG 迷你图）
+    function eqChart(stock, id) {
+      const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
+      if (eq.length < 2) return '';
+      const W = 760, H = 140, pad = 6;
+      const maxV = Math.max.apply(null, eq.concat(bench).map(v => Math.max(v, 1))) * 1.05;
+      const minV = Math.min.apply(null, eq.concat(bench).map(v => Math.min(v, 1))) * 0.95;
+      const x = i => pad + (W - 2 * pad) * i / (eq.length - 1);
+      const y = v => H - pad - (H - 2 * pad) * (v - minV) / (maxV - minV);
+      function path(arr) {
+        return arr.map((v, i) => (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+      }
+      return `<svg class="eq-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <rect width="${W}" height="${H}" fill="#f9fafb"/>
+        <path d="${path(bench)}" fill="none" stroke="#9ca3af" stroke-width="1.5" opacity="0.7"/>
+        <path d="${path(eq)}" fill="none" stroke="#c78d5a" stroke-width="2"/>
+        <line x1="${pad}" y1="${y(1)}" x2="${W - pad}" y2="${y(1)}" stroke="#d1d5db" stroke-width="0.8" stroke-dasharray="4,3"/>
+      </svg>`;
+    }
+
+    function render() {
+      const s = selected ? stocks[selected].summary : o;
+      const stock = selected ? stocks[selected] : null;
+      const tabs = [`<a href="#" class="nav-link ${!selected ? 'active' : ''}" data-k="">整体</a>`]
+        .concat(names.map(n => `<a href="#" class="nav-link ${selected === n ? 'active' : ''}" data-k="${n}">${n}</a>`)).join('');
+
+      app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
+        + `<div class="section"><div class="section-title"><span class="title-icon">📑</span><h2>选择标的</h2></div>
+             <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
+        + `<div class="section"><div class="section-title"><span class="title-icon">📊</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
+        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">📈</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:6px"><span style="color:#c78d5a;font-weight:700">— 网格策略</span> · <span style="color:#9ca3af">— 买入持有基准</span> · 虚线=初始净值1.0</div></div>` : '')
+        + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">🧾</span><h2>近期调仓记录（最近 ${Math.min(stock.trades.length, 30)} 条）</h2></div>${tradesTable(stock.trades)}</div>` : '')
+        + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
+
+      app.querySelectorAll('.nav-link[data-k]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        selected = a.getAttribute('data-k') || null;
+        render();
+      }));
+    }
+
+    function tradesTable(trades) {
+      const rows = trades.slice(-30).reverse().map(t => `
+        <tr>
+          <td><span class="date-tag">${t.date}</span></td>
+          <td><span class="signal-badge ${t.side === 'buy' ? 's-buy' : 's-sell'}">${t.side === 'buy' ? '买入' : '卖出'}</span></td>
+          <td style="font-weight:700">${RV.fmt.pct(t.amount * 100)}</td>
+          <td>${RV.fmt.num(t.pos_before * 100, 1)}% → ${RV.fmt.num(t.pos_after * 100, 1)}%</td>
+          <td>偏离 ${RV.fmt.pct(t.dev * 100, 2)}</td>
+          <td>档位 ${t.grid_idx}</td>
+        </tr>`).join('');
+      return `<div class="table-wrap"><table class="data-table">
+        <thead><tr><th>日期</th><th>方向</th><th>调仓比例</th><th>仓位变化</th><th>偏离度</th><th>网格档</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+
+    render();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('网格回测', '', 'backtest') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

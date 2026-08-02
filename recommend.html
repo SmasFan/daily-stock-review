@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日推荐 · 选股</title>
+<link rel="stylesheet" href="assets/css/common.css">
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.recommend();
+    const picks = d.picks || [], mpicks = d.market_picks || [], sectors = d.sectors || [];
+    if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
+
+    // 大盘指数
+    const idxRows = (d.indices || []).map(i => `
+      <div class="summary-card">
+        <div class="icon">📊</div>
+        <div class="summary-text" style="flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span class="label">${i.name}</span>
+            <span class="val ${RV.fmt.cls(i.change_pct)}" style="font-size:16px">${RV.fmt.pct(i.change_pct)}</span>
+          </div>
+          <div class="label" style="margin-top:2px">${RV.fmt.num(i.close)}</div>
+        </div>
+      </div>`).join('');
+    const indicesHtml = `<div class="section">
+      <div class="section-title"><span class="title-icon">🌐</span><h2>大盘指数</h2></div>
+      <div class="summary-grid">${idxRows}</div></div>`;
+
+    function topCards(list, title) {
+      const a = list.filter(p => p.rating === 'A').length;
+      const b = list.filter(p => p.rating === 'B').length;
+      return `<div class="summary-grid">
+        ${RV.ui.summaryCard('🎯', list.length, '推荐标的')}
+        ${RV.ui.summaryCard('🅰️', a, 'A 级')}
+        ${RV.ui.summaryCard('🅱️', b, 'B 级')}
+        ${RV.ui.summaryCard('🏆', list[0].name, title || '首推', 'up')}
+      </div>`;
+    }
+
+    function listTable(list) {
+      const rows = list.map((p, i) => `
+      <tr>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</td>
+        <td><span class="sec-chip">${p.sector || '--'}</span></td>
+        <td>${RV.ui.ratingBadge(p.rating)}</td>
+        <td style="font-weight:800">${RV.fmt.num(p.total_score, 1)}</td>
+        <td>${RV.ui.signalBadge(p.signal_key, p.signal)}</td>
+        <td>${RV.ui.pctBadge(p.change_pct)}</td>
+        <td>${RV.fmt.amount(p.amount)}</td>
+        <td style="max-width:260px;font-size:12px;color:var(--text-2)">${p.reasons || '--'}</td>
+      </tr>`).join('');
+      return `<div class="table-wrap"><table class="data-table">
+        <thead><tr><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>涨跌</th><th>成交额</th><th>当日购买原因</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+
+    function listCards(list) {
+      return list.map(p => `
+      <div class="card">
+        <div class="card-header">
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span></div>
+          ${RV.ui.ratingBadge(p.rating)}
+        </div>
+        <div class="score-ring">
+          <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
+          <div style="flex:1">${RV.ui.progress(p.total_score)}</div>
+          ${RV.ui.signalBadge(p.signal_key, p.signal)}
+        </div>
+        <div class="card-kv">
+          <span class="k">现价</span><span class="v">${RV.fmt.money(p.price)}</span>
+          <span class="k">趋势</span><span class="v">${p.trend_status || '--'}</span>
+          <span class="k">技术 / 截面</span><span class="v">${RV.fmt.num(p.tech_score, 0)} / ${RV.fmt.num(p.cross_score, 0)}</span>
+          <span class="k">PE / PB</span><span class="v">${RV.fmt.num(p.pe, 1)} / ${RV.fmt.num(p.pb, 2)}</span>
+        </div>
+        <div class="points">
+          <div class="point"><span class="p-label">理想买点</span><span class="p-val">${RV.fmt.num(p.ideal_buy)}</span></div>
+          <div class="point"><span class="p-label">次优买点</span><span class="p-val">${RV.fmt.num(p.secondary_buy)}</span></div>
+          <div class="point"><span class="p-label">止损</span><span class="p-val">${RV.fmt.num(p.stop_loss)}</span></div>
+          <div class="point"><span class="p-label">止盈</span><span class="p-val">${RV.fmt.num(p.take_profit)}</span></div>
+        </div>
+        <div class="reason">💡 当日购买原因：${p.reasons}</div>
+      </div>`).join('');
+    }
+
+    // 板块推荐
+    function sectorSection() {
+      if (!sectors.length) return '';
+      const cards = sectors.map((s, i) => `
+        <div class="sector-card">
+          <span class="rank">${i + 1}</span>
+          <div>
+            <div class="s-name">${s.name}</div>
+            <div class="s-cat">${s.category}</div>
+          </div>
+          <div class="s-meta">
+            <div class="m-item">PE <b>${RV.fmt.num(s.pe, 1)}</b></div>
+            <div class="m-item">PB <b>${RV.fmt.num(s.pb, 2)}</b></div>
+            <div class="m-item">估值 <b>${s.level || '--'}</b></div>
+            <div class="m-item">涨跌 <b class="${RV.fmt.cls(s.change)}">${RV.fmt.pct(s.change)}</b></div>
+          </div>
+        </div>`).join('');
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">📚</span><h2>板块推荐（估值 + 动量）</h2></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">${cards}</div>
+      </div>`;
+    }
+
+    let tab = 'watch';
+    function render() {
+      const list = tab === 'watch' ? picks : mpicks;
+      const tabs = `
+        <div class="section">
+          <div class="section-title"><span class="title-icon">🗂️</span><h2>模块</h2></div>
+          <div class="nav" style="justify-content:flex-start;margin-top:0">
+            <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">🟢 自选推荐（${picks.length}）</a>
+            <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">🌐 大盘推荐（${mpicks.length}）</a>
+          </div>
+        </div>`;
+      app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
+        + indicesHtml + sectorSection() + tabs
+        + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
+        + `<div class="section"><div class="section-title"><span class="title-icon">📋</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
+        + `<div class="section"><div class="section-title"><span class="title-icon">🃏</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`
+        + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 不构成投资建议</footer>';
+      app.querySelectorAll('.nav-link[data-tab]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        tab = a.getAttribute('data-tab');
+        render();
+      }));
+    }
+    render();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('每日推荐', '', 'recommend') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

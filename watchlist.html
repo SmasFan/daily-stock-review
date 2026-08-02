@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的自选股复盘</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+:root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface-2: #faf8f3;
+    --text: #2c2420;
+    --text-2: #6b6258;
+    --border: #e8e2d8;
+    --accent: #c78d5a;
+    --accent-2: #a86a3d;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --shadow: 0 2px 8px rgba(44,36,32,0.06);
+    --shadow-hover: 0 6px 20px rgba(44,36,32,0.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height:1.5;
+    -webkit-font-smoothing: antialiased;
+}
+.container { max-width:1280px; margin:0 auto; padding:28px; }
+
+/* Header */
+.header { margin-bottom: 28px; }
+.header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.header h1 {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    color: var(--text);
+}
+.header p {
+    color: var(--text-2);
+    font-size: 15px;
+    max-width: 680px;
+}
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    white-space: nowrap;
+}
+
+/* Summary cards */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+.summary-card .label {
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+.summary-card .value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+}
+.summary-card .sub {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 8px;
+}
+
+/* Section */
+.section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 26px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+.section-title h2 {
+    font-size: 20px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.section-title .badge {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-weight: 700;
+}
+.badge.up { background: #fee2e2; color: #991b1b; }
+.badge.down { background: #dcfce7; color: #166534; }
+.badge.neutral { background: #f1f5f9; color: #475569; }
+
+/* Legend */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-2);
+    font-weight: 600;
+}
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+/* Sector cards */
+.sector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 14px;
+}
+.sector-card {
+    border-radius: var(--radius);
+    padding: 14px;
+    color: #fff;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.sector-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+.sector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.sector-name {
+	font-size: 15px;
+	font-weight: 800;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.temp-tag {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.25);
+    font-weight: 700;
+}
+.sector-meta { text-align: right; }
+.sector-avg {
+	font-size: 20px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+.sector-count {
+    font-size: 12px;
+    opacity: 0.85;
+    margin-top: 4px;
+}
+.expand-hint {
+    font-size: 11px;
+    opacity: 0.75;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+.sector-detail {
+    margin-top: 12px;
+    display: none;
+    background: rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+.sector-card.expanded .sector-detail { display: block; }
+.sector-card.expanded .expand-icon { transform: rotate(180deg); }
+
+.detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+.detail-table th {
+    text-align: left;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.14);
+    font-weight: 800;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.detail-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    vertical-align: middle;
+    font-size: 12px;
+}
+.detail-table tr:last-child td { border-bottom: none; }
+.stock-info { display: flex; flex-direction: column; gap: 2px; }
+.stock-name { font-size: 14px; font-weight: 700; }
+.stock-code { font-size: 11px; opacity: 0.85; }
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 13px;
+    background: rgba(255,255,255,0.25);
+}
+.score-bar {
+    height: 5px;
+    background: rgba(255,255,255,0.22);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 5px;
+    width: 56px;
+}
+.score-bar-fill { height: 100%; background: #fff; }
+.flow-up { color: #ffefef; }
+.flow-down { color: #e6fff4; }
+
+/* Valuation cards */
+.valuation-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.valuation-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+.valuation-card.highlight {
+    border: 2px solid var(--accent);
+    background: linear-gradient(135deg, #fffbf7 0%, #ffffff 100%);
+}
+.valuation-card .val-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+.valuation-card .val-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.valuation-card .val-category {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-weight: 600;
+}
+.valuation-card .val-pe {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+}
+.valuation-card .val-pe span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-left: 4px;
+}
+.valuation-card .val-level {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+.valuation-card .val-level.low { background: #dcfce7; color: #166534; }
+.valuation-card .val-level.fair { background: #fef9c3; color: #854d0e; }
+.valuation-card .val-level.high { background: #fee2e2; color: #991b1b; }
+.valuation-card .val-level.extreme { background: #f3e8ff; color: #6b21a8; }
+.valuation-card .val-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 2px;
+}
+.valuation-card .val-change {
+    font-weight: 700;
+}
+.valuation-card .expand-hint {
+    font-size: 11px;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    opacity: 0.75;
+}
+.valuation-card .expand-icon { transition: transform 0.2s; }
+.valuation-card.expanded .expand-icon { transform: rotate(180deg); }
+.valuation-detail {
+    display: none;
+    margin-top: 12px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    border: 1px solid var(--border);
+}
+.valuation-card.expanded .valuation-detail { display: block; }
+.valuation-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.valuation-detail-table th {
+    text-align: left;
+    padding: 8px 10px;
+    background: var(--surface);
+    font-weight: 800;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+}
+.valuation-detail-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+.valuation-detail-table tr:last-child td { border-bottom: none; }
+.valuation-detail-table .empty-tip {
+    padding: 14px;
+    color: var(--text-2);
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Analysis box */
+.analysis-box {
+    background: var(--surface-2);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 18px 20px;
+}
+.analysis-box + .analysis-box { margin-top: 14px; }
+.analysis-box h4 {
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: var(--accent-2);
+}
+.analysis-box p, .analysis-box li {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.7;
+}
+.analysis-box ul { padding-left: 18px; margin-top: 8px; }
+.analysis-box li { margin-bottom: 4px; }
+.analysis-box strong { color: var(--text); }
+
+/* Unified nav */
+.unified-menu-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1001;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+.unified-menu-btn:hover { background: var(--surface-2); }
+.unified-slidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 210px;
+    background: var(--surface);
+    color: var(--text);
+    z-index: 1002;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    box-shadow: var(--shadow-hover);
+}
+.unified-slidebar.open { transform: translateX(0); }
+.unified-slidebar-header {
+    padding: 22px 18px;
+    border-bottom: 1px solid var(--border);
+}
+.unified-slidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 17px;
+    font-weight: 800;
+}
+.unified-slidebar-logo .icon {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+.unified-slidebar-subtitle {
+    font-size: 11px;
+    color: var(--text-2);
+    margin-top: 6px;
+    padding-left: 42px;
+}
+.unified-slidebar-nav {
+    flex: 1;
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    overflow-y: auto;
+}
+.unified-slidebar a {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 13px;
+    border-radius: 10px;
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+.unified-slidebar a:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+.unified-slidebar a.active {
+    background: var(--accent);
+    color: #fff;
+}
+.unified-slidebar a .nav-icon {
+    font-size: 17px;
+    width: 22px;
+    text-align: center;
+}
+.unified-slidebar-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 10px 0;
+}
+.unified-slidebar-footer {
+    padding: 14px 10px;
+    border-top: 1px solid var(--border);
+}
+.unified-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(44,36,32,0.25);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s;
+}
+.unified-overlay.open { opacity: 1; visibility: visible; }
+body.in-iframe .unified-menu-btn,
+body.in-iframe .unified-slidebar,
+body.in-iframe .unified-overlay {
+    display: none !important;
+}
+@media (max-width: 768px) {
+    .container { padding: 18px; }
+    .header h1 { font-size: 28px; }
+    .header-top { flex-direction: column; align-items: flex-start; }
+    .sector-grid { grid-template-columns: 1fr; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .unified-menu-btn { top: 12px; left: 12px; width: 36px; height: 36px; font-size: 16px; }
+    .unified-slidebar { width: 100%; }
+    .detail-table { font-size: 12px; }
+    .detail-table th, .detail-table td { padding: 9px 8px; }
+}
+@media (max-width: 480px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .sector-name { font-size: 16px; }
+    .sector-avg { font-size: 22px; }
+    .detail-table th:nth-child(3),
+    .detail-table td:nth-child(3) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<button class="unified-menu-btn" id="unifiedMenuBtn" title="菜单">☰</button>
+<nav class="unified-slidebar" id="unifiedSlidebar">
+    <div class="unified-slidebar-header">
+        <div class="unified-slidebar-logo">
+            <span class="icon">📈</span>
+            <span>市场复盘</span>
+        </div>
+        <div class="unified-slidebar-subtitle">Daily Market Review</div>
+    </div>
+    <div class="unified-slidebar-nav">
+        <a href="review_a_share.html"><span class="nav-icon">🇨🇳</span><span>A股盘后</span></a>
+        <a href="review_us_pre.html"><span class="nav-icon">🌅</span><span>美股盘前</span></a>
+        <a href="review_us_post.html"><span class="nav-icon">🌙</span><span>美股盘后</span></a>
+        <a href="watchlist.html"><span class="nav-icon">📋</span><span>我的自选股</span></a>
+        <div class="unified-slidebar-sep"></div>
+        <a href="backtest/159131_5min_optimal.html"><span class="nav-icon">📉</span><span>159131 5分钟回测</span></a>
+        <a href="strategy/report.html"><span class="nav-icon">📈</span><span>A股策略回测</span></a>
+    </div>
+    <div class="unified-slidebar-footer">
+        <a class="nav-item" href="https://smasfan.github.io/"><span class="nav-icon">🏠</span><span>主页</span></a>
+        <a class="nav-item" href="report.html"><span class="nav-icon">📊</span><span>完整回测报告</span></a>
+        <a class="nav-item" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener"><span class="nav-icon"><i class="fab fa-github"></i></span><span>查看项目</span></a>
+    </div>
+</nav>
+<div class="unified-overlay" id="unifiedOverlay"></div>
+
+<div class="container">
+    <div class="header">
+        <div class="header-top">
+            <div>
+                <h1>我的自选股板块复盘</h1>
+                <p>点击板块卡片查看个股详情：实时价格、涨幅、估值（PE/PB）、资金流向估算与多因子综合评分。</p>
+            </div>
+            <div>
+                <span class="tag" id="dataTag">📅 数据加载中...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">上涨标的</div>
+            <div class="value" id="upCount" style="color:#c0392b;">--</div>
+            <div class="sub">市场情绪偏暖</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">下跌标的</div>
+            <div class="value" id="downCount" style="color:#27ae60;">--</div>
+            <div class="sub">需关注支撑</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">平均涨幅</div>
+            <div class="value" id="avgChange">--</div>
+            <div class="sub">等权平均</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">最强板块</div>
+            <div class="value" id="topSector" style="font-size:22px;">--</div>
+            <div class="sub">板块平均涨幅最高</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">最弱板块</div>
+            <div class="value" id="bottomSector" style="font-size:22px;">--</div>
+            <div class="sub">板块平均涨幅最低</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">综合评分最高</div>
+            <div class="value" id="topScore" style="font-size:22px;">--</div>
+            <div class="sub">多因子加权得分</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>💰</span> A股板块估值瞭望</h2>
+            <span class="badge">宽基指数 + 行业板块 PE/PB</span>
+        </div>
+        <p id="valuationDesc" style="color:var(--text-2);font-size:13px;margin-bottom:16px;">实时拉取申万/中证风格指数估值，PE 低于 15 倍标记为低估，25–40 倍为偏高，高于 40 倍为高估。非银金融等重点板块已高亮；点击卡片可展开该板块下评分优秀的个股与 ETF。</p>
+        <div id="valuationGrid" class="sector-grid"></div>
+        <p id="valuationSource" style="color:var(--text-2);font-size:11px;margin-top:14px;opacity:0.8;"></p>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>🌡️</span> 板块涨跌温度计</h2>
+            <span class="badge">按板块等权平均</span>
+        </div>
+        <div class="legend" id="tempLegend"></div>
+        <div id="sectorChart" style="width:100%;height:360px;"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>📊</span> 分板块明细（点击展开个股）</h2>
+            <span class="badge">实时行情 + 多因子评分</span>
+        </div>
+        <div class="sector-grid" id="sectorGrid"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>📝</span> 评分模型说明</h2>
+            <span class="badge">权威多因子</span>
+        </div>
+        <div class="analysis-box">
+            <p><strong>评分维度（权威五因子模型）：</strong></p>
+            <ul>
+                <li><strong>技术面 25%</strong>：当日涨跌幅在自选池中的分位得分，衡量短期价格动量。</li>
+                <li><strong>估值面 20%</strong>：PE/PB 越低得分越高；ETF、指数等无 PE/PB 的品种给中性分，避免跨资产类别偏见。</li>
+                <li><strong>资金面 25%</strong>：委比（买卖盘委托强度）60% + 换手率 40%，综合反映资金主动进攻或撤离意愿。</li>
+                <li><strong>活跃度 15%</strong>：成交额在自选池中的分位得分，流动性越好得分越高。</li>
+                <li><strong>风险面 15%</strong>：日内波动率（(high-low)/prevClose）越低得分越高，鼓励低风险、稳健品种。</li>
+            </ul>
+            <p style="margin-top:10px;"><strong>评级：</strong>A（≥80 分）优秀，B（60–79）良好，C（40–59）中性，D（20–39）偏弱，E（<20）谨慎。资金流向 = 成交额 × 委比 / 100，为方向与强度估算，非交易所真实净流入。</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>🎯</span> 整体研判与明日策略</h2>
+            <span class="badge" id="marketBias">--</span>
+        </div>
+        <div id="strategyBox"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">
+            <h2><span>📋</span> 板块复盘与预测</h2>
+            <span class="badge">定性研判</span>
+        </div>
+        <div id="analysisBox"></div>
+    </div>
+</div>
+
+<script>
+const fallbackWatchlist = [
+    { name: '黄金ETF易方达', code: '159934', price: 8.738, change: -0.03, sector: '周期资源' },
+    { name: '红利低波ETF富国', code: '159525', price: 1.123, change: 1.72, sector: '红利金融' },
+    { name: '顺丰控股', code: '002352', price: 35.12, change: 1.09, sector: '大消费' },
+    { name: 'TCL科技', code: '000100', price: 4.72, change: -4.26, sector: '科技TMT' },
+    { name: '电池ETF富国', code: '561160', price: 0.714, change: -0.97, sector: '新能源' },
+    { name: '长高电气', code: '002452', price: 10.64, change: -2.21, sector: '新能源' },
+    { name: '牧原股份', code: '002714', price: 39.92, change: 2.67, sector: '大消费' },
+    { name: '标普油气ETF嘉实', code: '159518', price: 1.176, change: 3.16, sector: '周期资源' },
+    { name: 'A500ETF华夏', code: '512050', price: 1.181, change: -1.67, sector: '宽基指数' },
+    { name: '有色ETF大成', code: '159980', price: 2.101, change: -0.24, sector: '周期资源' },
+    { name: '港股通信息技术ETF华宝', code: '159131', price: 0.892, change: -3.88, sector: '科技TMT' },
+    { name: '中国铝业', code: '601600', price: 9.55, change: 0.32, sector: '周期资源' },
+    { name: '宁波银行', code: '002142', price: 32.9, change: 3.07, sector: '红利金融' },
+    { name: '中证A500ETF景顺', code: '159353', price: 1.204, change: -1.71, sector: '宽基指数' },
+    { name: '上证指数ETF汇添富', code: '510980', price: 1.349, change: -0.59, sector: '宽基指数' },
+    { name: '港股互联网ETF华宝', code: '513770', price: 0.379, change: 0, sector: '科技TMT' },
+    { name: '中远海控', code: '601919', price: 15.7, change: 0.96, sector: '交通运输' },
+    { name: '云计算ETF汇添富', code: '159273', price: 1.33, change: -3.69, sector: '科技TMT' },
+    { name: '中百集团', code: '000759', price: 6.66, change: -6.72, sector: '大消费' }
+];
+
+const sectorIcons = {
+    '红利金融': '🏦',
+    '周期资源': '🏅',
+    '科技TMT': '💻',
+    '科技-半导体芯片': '🧩',
+    '科技-AI算力机器人': '🤖',
+    '科技-通信电子': '📡',
+    '科技-互联网传媒': '🌐',
+    '科技-计算机软件': '💿',
+    '新能源电力': '🔋',
+    '新能源': '🔋',
+    '大消费': '🛒',
+    '医药医疗': '💊',
+    '交通运输': '🚢',
+    '基建交通': '🚧',
+    '宽基跨境': '📊',
+    '宽基指数': '📊',
+    '军工': '🛡️',
+    '汽车零部件': '🚗',
+    '房地产': '🏠',
+    '其他ETF': '📁',
+    '其他': '📁'
+};
+
+const tempLevels = [
+    { label: '极热', color: '#b91c1c' },
+    { label: '热', color: '#ef4444' },
+    { label: '偏热', color: '#f87171' },
+    { label: '中性', color: '#9ca3af' },
+    { label: '偏冷', color: '#34d399' },
+    { label: '冷', color: '#10b981' },
+    { label: '极冷', color: '#047857' }
+];
+
+const sectorAnalysis = {
+    '红利金融': {
+        review: '红利低波ETF与宁波银行共振上行，高股息+低波防御属性在市场震荡中受资金青睐。',
+        outlook: '利率维持低位叠加避险需求，红利金融仍具配置价值；关注量能能否持续以及银行板块能否继续吸金。'
+    },
+    '周期资源': {
+        review: '油气ETF领涨，铝业微涨，黄金与有色ETF小幅震荡；资源品受国际定价与地缘因素驱动，内部分化明显。',
+        outlook: '贵金属短期或高位震荡，油气波动可能加大；建议波段操作，关注美元走势与大宗商品库存数据。'
+    },
+    '科技TMT': {
+        review: 'TCL科技、云计算ETF与港股信息技术ETF集体回调，互联网ETF平盘，科技股风险偏好下降。',
+        outlook: '科技板块对宏观流动性敏感，短期或继续磨底；关注业绩兑现能力强、估值合理的龙头。'
+    },
+    '科技-半导体芯片': {
+        review: '半导体设备、封测、PCB 与材料环节联动，受周期复苏与国产替代预期驱动，内部波动较大。',
+        outlook: '关注先进制程扩产、存储价格回暖及龙头业绩兑现；逢低布局设备与材料龙头，注意外部政策扰动。'
+    },
+    '科技-AI算力机器人': {
+        review: 'AI 算力、机器人、云计算相关标的活跃度较高，但分化明显，资金更偏好业绩可见度高的龙头。',
+        outlook: '算力基建与端侧应用仍是主线；关注机器人产业催化及算力租赁、液冷等细分方向。'
+    },
+    '科技-通信电子': {
+        review: '通信设备与电子制造龙头跟随科技板块波动，5G、光模块、消费电子链条表现分化。',
+        outlook: '关注 AI 算力对光模块、高速铜缆的需求拉动，以及消费电子旺季备货节奏。'
+    },
+    '科技-互联网传媒': {
+        review: '港股互联网与中概互联受全球流动性及平台监管预期影响，整体波动较大。',
+        outlook: '关注港股流动性改善、回购力度及业绩拐点；中长期看估值修复空间，但需警惕地缘扰动。'
+    },
+    '科技-计算机软件': {
+        review: '计算机软件板块表现分化，信创、数据要素等主题时有脉冲，但持续性取决于订单落地。',
+        outlook: '优选有订单支撑、现金流稳健的信创与政企数字化龙头；主题炒作品种注意节奏。'
+    },
+    '新能源电力': {
+        review: '电池ETF与长高电气双双收跌，新能源赛道情绪偏弱，产业链价格压力仍存。',
+        outlook: '需等待排产回升与政策催化，当前不宜盲目抄底；可观察龙头企稳信号。'
+    },
+    '新能源': {
+        review: '电池ETF与长高电气双双收跌，新能源赛道情绪偏弱，产业链价格压力仍存。',
+        outlook: '需等待排产回升与政策催化，当前不宜盲目抄底；可观察龙头企稳信号。'
+    },
+    '大消费': {
+        review: '牧原股份独立走强，顺丰控股温和上涨，但中百集团大跌，消费内部分化剧烈。',
+        outlook: '养殖周期拐点预期支撑牧原；零售板块受客流与竞争影响，后续需精选个股，关注中秋国庆消费数据。'
+    },
+    '医药医疗': {
+        review: '医药医疗板块表现相对稳健，创新药与医疗器械受政策与业绩预期驱动。',
+        outlook: '关注集采政策落地节奏与业绩确定性，优选估值合理的创新药与器械龙头。'
+    },
+    '交通运输': {
+        review: '中远海控微涨，航运板块波动收敛，运价预期趋于平稳。',
+        outlook: '运价与出口数据是核心变量，短期或维持区间震荡；关注集运联盟动态。'
+    },
+    '基建交通': {
+        review: '基建交通板块受政策与项目开工节奏影响，整体表现平稳。',
+        outlook: '关注专项债发行进度与基建投资增速，择优布局低估值基建龙头。'
+    },
+    '宽基跨境': {
+        review: 'A500与上证指数ETF小幅下跌，整体市场仍处于震荡格局，缺乏明确主线。',
+        outlook: '宽基ETF适合定投摊薄成本；若后续政策面或资金面转暖，有望率先企稳。'
+    },
+    '宽基指数': {
+        review: 'A500与上证指数ETF小幅下跌，整体市场仍处于震荡格局，缺乏明确主线。',
+        outlook: '宽基ETF适合定投摊薄成本；若后续政策面或资金面转暖，有望率先企稳。'
+    },
+    '军工': {
+        review: '军工板块受事件驱动与订单预期影响，波动相对较大。',
+        outlook: '关注军工订单落地与业绩兑现情况，优选核心配套龙头。'
+    },
+    '汽车零部件': {
+        review: '汽车零部件板块受整车销量与原材料价格影响，表现分化。',
+        outlook: '关注新能源车渗透率与出口数据，优选具备国产替代能力的零部件企业。'
+    },
+    '房地产': {
+        review: '房地产板块受政策与销售数据影响，情绪仍偏谨慎。',
+        outlook: '关注核心城市销售回暖与融资政策变化，短期以观察为主。'
+    }
+};
+
+function formatPct(v) {
+    if (v === null || v === undefined || v === 0) return '0.00%';
+    return (v > 0 ? '+' : '') + Number(v).toFixed(2) + '%';
+}
+function changeClass(v) {
+    if (v === null || v === undefined || v === 0) return 'neutral';
+    return v > 0 ? 'up' : 'down';
+}
+function formatAmount(v) {
+    if (!v && v !== 0) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1e8) return (v / 1e8).toFixed(2) + '亿';
+    if (abs >= 1e4) return (v / 1e4).toFixed(2) + '万';
+    return v.toFixed(0);
+}
+function getTempLevel(rank, total) {
+    return tempLevels[Math.min(rank, tempLevels.length - 1)];
+}
+
+// 判断是否为 A 股开盘时间（工作日 9:30-11:30、13:00-15:00，北京时间）
+function isMarketOpen() {
+    const now = new Date();
+    // 使用北京时间
+    const beijing = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const day = beijing.getDay();
+    if (day === 0 || day === 6) return false;
+    const hour = beijing.getHours();
+    const minute = beijing.getMinutes();
+    const time = hour * 60 + minute;
+    return (time >= 570 && time <= 690) || (time >= 780 && time <= 900); // 9:30-11:30, 13:00-15:00
+}
+
+function getMarketStatusText() {
+    if (isMarketOpen()) return '交易中 · 5分钟自动刷新';
+    return '已收盘 · 开市后自动刷新';
+}
+
+// 动态加载 JS 数据文件（带缓存刷新）
+let currentData = null;
+let sectorValuationData = null;
+function loadScript(url, callback) {
+    const script = document.createElement('script');
+    script.src = url;
+    script.onload = function() { callback && callback(true); };
+    script.onerror = function() { console.error('加载失败: ' + url); callback && callback(false); };
+    document.head.appendChild(script);
+}
+function loadAllData(callback) {
+    let loaded = 0;
+    function check() {
+        if (++loaded >= 2) callback && callback();
+    }
+    loadScript('watchlist_data.js?t=' + Date.now(), function(ok) {
+        currentData = (ok && window.watchlistData && window.watchlistData.stocks && window.watchlistData.stocks.length)
+            ? window.watchlistData
+            : null;
+        check();
+    });
+    loadScript('sector_valuation_data.js?t=' + Date.now(), function(ok) {
+        sectorValuationData = (ok && window.sectorValuationData && window.sectorValuationData.sectors)
+            ? window.sectorValuationData
+            : null;
+        check();
+    });
+}
+
+function getWatchlist() {
+    if (currentData && currentData.stocks && currentData.stocks.length) {
+        return currentData.stocks;
+    }
+    return fallbackWatchlist.map(s => ({ ...s, totalScore: 50, rating: 'C', pe: null, pb: null, weiBi: 0, estNetFlow: 0, volatility: 0, momentumScore: 50, valuationScore: 50, fundScore: 50, activeScore: 50, riskScore: 50 }));
+}
+
+function getGeneratedAt() {
+    return currentData ? currentData.generatedAt : '2026-07-30';
+}
+
+// 估值板块 -> 自选股板块的映射
+const VALUATION_SECTOR_MAP = {
+    '上证指数': ['宽基跨境'],
+    '深证成指': ['宽基跨境'],
+    '创业板指': ['宽基跨境'],
+    '科创50': ['科技-半导体芯片'],
+    '上证50': ['宽基跨境', '红利金融'],
+    '沪深300': ['宽基跨境'],
+    '中证500': ['宽基跨境'],
+    '中证1000': ['宽基跨境'],
+    '非银金融': ['红利金融'],
+    '证券公司': ['红利金融'],
+    '中证银行': ['红利金融'],
+    '中证医药': ['医药医疗'],
+    '中证医疗': ['医药医疗'],
+    '中证白酒': ['大消费'],
+    '中证新能': ['新能源电力'],
+    '中证军工': ['军工'],
+    'CSSW电子': ['科技-半导体芯片', '科技-通信电子'],
+    '内地地产': ['房地产'],
+    '300基建': ['基建交通'],
+    '养老产业': ['医药医疗', '大消费'],
+    '一带一路': ['基建交通']
+};
+
+function getTopPicksForValuation(sectorName, limit) {
+    limit = limit || 6;
+    const watchlist = getWatchlist();
+    const mapped = VALUATION_SECTOR_MAP[sectorName] || [];
+    let picks = watchlist.filter(s => mapped.includes(s.sector));
+    if (!picks.length) return [];
+    picks = picks.slice().sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+    return picks.slice(0, limit);
+}
+
+function renderValuation() {
+    const grid = document.getElementById('valuationGrid');
+    const sourceEl = document.getElementById('valuationSource');
+    if (!grid) return;
+    if (!sectorValuationData || !sectorValuationData.sectors || !sectorValuationData.sectors.length) {
+        grid.innerHTML = '<p style="color:var(--text-2);font-size:13px;">板块估值数据加载中或暂不可用。</p>';
+        if (sourceEl) sourceEl.textContent = '';
+        return;
+    }
+    const levelClass = { '低估': 'low', '合理': 'fair', '偏高': 'high', '高估': 'extreme', '—': 'fair' };
+    const items = sectorValuationData.sectors.slice().sort((a, b) => {
+        if (a.highlight && !b.highlight) return -1;
+        if (!a.highlight && b.highlight) return 1;
+        return (a.pe || 999) - (b.pe || 999);
+    });
+    grid.innerHTML = '';
+    items.forEach(s => {
+        const cls = levelClass[s.level] || 'fair';
+        const changeColor = (s.change || 0) > 0 ? '#c0392b' : (s.change || 0) < 0 ? '#27ae60' : '#8c8279';
+        const peText = s.pe != null ? Number(s.pe).toFixed(2) : '—';
+        const pbText = s.pb != null ? Number(s.pb).toFixed(2) : '—';
+        const picks = getTopPicksForValuation(s.name, 6);
+        const rows = picks.length ? picks.map(st => {
+            const cColor = (st.change || 0) > 0 ? '#c0392b' : (st.change || 0) < 0 ? '#27ae60' : '#8c8279';
+            const isEtf = /ETF|LOF|指数/.test(st.name);
+            return `
+                <tr>
+                    <td><div class="stock-info"><span class="stock-name">${st.name}</span><span class="stock-code">${st.code}</span></div></td>
+                    <td>${isEtf ? '<span style="font-size:10px;padding:2px 6px;border-radius:10px;background:var(--border);color:var(--text-2);">ETF</span>' : '个股'}</td>
+                    <td style="color:${cColor}">${formatPct(st.change)}</td>
+                    <td><span class="score-badge" style="background:${st.totalScore >= 70 ? '#dcfce7' : st.totalScore >= 50 ? '#fef9c3' : '#fee2e2'};color:${st.totalScore >= 70 ? '#166534' : st.totalScore >= 50 ? '#854d0e' : '#991b1b'}">${st.rating || 'C'} · ${(st.totalScore || 0).toFixed(1)}</span></td>
+                </tr>
+            `;
+        }).join('') : `<tr><td colspan="4" class="empty-tip">暂无该板块映射的自选股</td></tr>`;
+
+        const card = document.createElement('div');
+        card.className = `valuation-card ${s.highlight ? 'highlight' : ''}`;
+        card.style.cursor = 'pointer';
+        card.innerHTML = `
+            <div class="val-header">
+                <div class="val-name"><span>${s.highlight ? '🔥' : '📊'}</span> ${s.name}</div>
+                <span class="val-category">${s.category}</span>
+            </div>
+            <div class="val-pe">${peText}<span>PE-TTM</span></div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="val-level ${cls}">${s.level}</span>
+                <span style="font-size:12px;color:var(--text-2);">PB: ${pbText}</span>
+            </div>
+            <div class="val-footer">
+                <span>代码 ${s.code}</span>
+                <span class="val-change" style="color:${changeColor}">${formatPct(s.change)}</span>
+            </div>
+            <div class="expand-hint"><span class="expand-icon">▼</span> 点击展开优秀标的</div>
+            <div class="valuation-detail">
+                <table class="valuation-detail-table">
+                    <thead><tr><th>名称</th><th>类型</th><th>涨幅</th><th>评分</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+        const toggle = (e) => {
+            const target = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+            if (target && target.closest('.valuation-detail')) return;
+            card.classList.toggle('expanded');
+        };
+        card.addEventListener('click', toggle);
+        grid.appendChild(card);
+    });
+    if (sourceEl) {
+        const src = sectorValuationData.dataSource || '实时行情接口';
+        const ts = sectorValuationData.generatedAt || '';
+        sourceEl.textContent = `数据来源：${src}${ts ? ' · 生成于 ' + ts : ''}`;
+    }
+}
+
+let chartInstance = null;
+
+function render(data) {
+    currentData = data;
+    renderValuation();
+    const watchlist = getWatchlist();
+    const generatedAt = getGeneratedAt();
+    document.getElementById('dataTag').textContent = '📅 行情时间 ' + generatedAt + ' · ' + getMarketStatusText();
+
+    const sectors = {};
+    watchlist.forEach(s => {
+        if (!sectors[s.sector]) sectors[s.sector] = [];
+        sectors[s.sector].push(s);
+    });
+
+    const sectorAvgs = Object.entries(sectors).map(([name, stocks]) => {
+        const avg = stocks.reduce((sum, s) => sum + (s.change || 0), 0) / stocks.length;
+        const avgScore = stocks.reduce((sum, s) => sum + (s.totalScore || 0), 0) / stocks.length;
+        return { name, avg, avgScore, stocks };
+    }).sort((a, b) => b.avg - a.avg);
+
+    sectorAvgs.forEach((s, i) => { s.level = getTempLevel(i, sectorAvgs.length); });
+
+    let upCount = 0, downCount = 0, totalChange = 0;
+    watchlist.forEach(s => {
+        totalChange += (s.change || 0);
+        if ((s.change || 0) > 0) upCount++;
+        else if ((s.change || 0) < 0) downCount++;
+    });
+    const marketAvg = totalChange / watchlist.length;
+
+    document.getElementById('upCount').textContent = upCount;
+    document.getElementById('downCount').textContent = downCount;
+    document.getElementById('avgChange').textContent = formatPct(marketAvg);
+    document.getElementById('avgChange').style.color = marketAvg > 0 ? '#c0392b' : marketAvg < 0 ? '#27ae60' : '#8c8279';
+    document.getElementById('topSector').textContent = sectorAvgs[0].name;
+    document.getElementById('topSector').style.color = sectorAvgs[0].level.color;
+    document.getElementById('bottomSector').textContent = sectorAvgs[sectorAvgs.length - 1].name;
+    document.getElementById('bottomSector').style.color = sectorAvgs[sectorAvgs.length - 1].level.color;
+
+    const topScoreStock = watchlist.slice().sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0))[0];
+    document.getElementById('topScore').textContent = topScoreStock ? (topScoreStock.name + ' ' + topScoreStock.rating) : '—';
+
+    // Legend
+    const legendEl = document.getElementById('tempLegend');
+    legendEl.innerHTML = tempLevels.map(l => `
+        <div class="legend-item"><div class="legend-color" style="background:${l.color}"></div><span>${l.label}</span></div>
+    `).join('');
+
+    // Sector cards
+    const sectorGrid = document.getElementById('sectorGrid');
+    sectorGrid.innerHTML = '';
+    sectorAvgs.forEach(({ name, avg, avgScore, stocks, level }) => {
+        const card = document.createElement('div');
+        card.className = 'sector-card';
+        card.style.background = level.color;
+
+        const rows = stocks.map(s => {
+            const flow = s.estNetFlow || 0;
+            const flowClass = flow > 0 ? 'flow-up' : flow < 0 ? 'flow-down' : '';
+            const flowText = flow > 0 ? '流入 ' + formatAmount(flow) : flow < 0 ? '流出 ' + formatAmount(flow) : '平衡';
+            const valText = s.pe && s.pb
+                ? `PE ${Number(s.pe).toFixed(1)}<br>PB ${Number(s.pb).toFixed(2)}`
+                : '—';
+            const open = s.open != null ? Number(s.open).toFixed(2) : '—';
+            const high = s.high != null ? Number(s.high).toFixed(2) : '—';
+            const low = s.low != null ? Number(s.low).toFixed(2) : '—';
+            const turnover = s.turnover != null ? Number(s.turnover).toFixed(2) + '%' : '—';
+            return `
+                <tr>
+                    <td><div class="stock-info"><span class="stock-name">${s.name}</span><span class="stock-code">${s.code}</span></div></td>
+                    <td>${Number(s.price).toFixed(2)}</td>
+                    <td><span class="${changeClass(s.change)}">${formatPct(s.change)}</span></td>
+                    <td>${open}</td>
+                    <td>${high}</td>
+                    <td>${low}</td>
+                    <td>${turnover}</td>
+                    <td>${formatAmount(s.amount || 0)}</td>
+                    <td>${valText}</td>
+                    <td><div class="${flowClass}">${flowText}</div><div style="font-size:10px;opacity:0.8;">委比 ${(s.weiBi || 0).toFixed(2)}%</div></td>
+                    <td>
+                        <span class="score-badge" title="五因子：技术 ${(s.momentumScore||0).toFixed(1)} · 估值 ${(s.valuationScore||0).toFixed(1)} · 资金 ${(s.fundScore||0).toFixed(1)} · 活跃 ${(s.activeScore||0).toFixed(1)} · 风险 ${(s.riskScore||0).toFixed(1)}">${s.rating || 'C'} · ${(s.totalScore || 0).toFixed(1)}</span>
+                        <div class="score-bar"><div class="score-bar-fill" style="width:${Math.min(s.totalScore || 0, 100)}%"></div></div>
+                        <div style="font-size:9px;opacity:0.85;margin-top:3px;white-space:nowrap;">动${(s.momentumScore||0).toFixed(0)} 估${(s.valuationScore||0).toFixed(0)} 资${(s.fundScore||0).toFixed(0)} 活${(s.activeScore||0).toFixed(0)} 险${(s.riskScore||0).toFixed(0)}</div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        card.innerHTML = `
+            <div class="sector-header">
+                <div class="sector-name"><span>${sectorIcons[name] || '📁'}</span> ${name}<span class="temp-tag">${level.label}</span></div>
+                <div class="sector-meta">
+                    <div class="sector-avg">${formatPct(avg)}</div>
+                    <div class="sector-count">均分 ${avgScore.toFixed(1)} · ${stocks.length} 只</div>
+                </div>
+            </div>
+            <div class="expand-hint"><span class="expand-icon">▼</span> 点击展开个股详情</div>
+            <div class="sector-detail">
+                <table class="detail-table">
+                    <thead><tr><th>名称</th><th>价格</th><th>涨幅</th><th>开盘</th><th>最高</th><th>最低</th><th>换手</th><th>成交额</th><th>估值</th><th>资金流向</th><th>评分</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        `;
+        const toggle = (e) => {
+            const target = e.target.nodeType === 3 ? e.target.parentElement : e.target;
+            if (target && target.closest('.sector-detail')) return;
+            card.classList.toggle('expanded');
+        };
+        card.addEventListener('click', toggle);
+        sectorGrid.appendChild(card);
+    });
+
+    // Strategy box
+    const strategyBox = document.getElementById('strategyBox');
+    const strongest = sectorAvgs[0];
+    const weakest = sectorAvgs[sectorAvgs.length - 1];
+    let biasText, biasClass;
+    if (marketAvg >= 0.5) { biasText = '偏进攻'; biasClass = 'up'; }
+    else if (marketAvg <= -0.5) { biasText = '偏防守'; biasClass = 'down'; }
+    else { biasText = '震荡观望'; biasClass = 'neutral'; }
+    const biasBadge = document.getElementById('marketBias');
+    biasBadge.textContent = biasText;
+    biasBadge.className = 'badge ' + biasClass;
+    strategyBox.innerHTML = `
+        <div class="analysis-box">
+            <h4>整体判断</h4>
+            <p>自选股等权平均 <strong style="color:${marketAvg > 0 ? '#c0392b' : marketAvg < 0 ? '#27ae60' : '#8c8279'}">${formatPct(marketAvg)}</strong>，上涨 <strong style="color:#c0392b">${upCount}</strong> 只 / 下跌 <strong style="color:#27ae60">${downCount}</strong> 只。最强板块为 <strong style="color:${strongest.level.color}">${strongest.name}</strong>（${formatPct(strongest.avg)}），最弱板块为 <strong style="color:${weakest.level.color}">${weakest.name}</strong>（${formatPct(weakest.avg)}）。</p>
+        </div>
+        <div class="analysis-box" style="margin-top:14px;">
+            <h4>明日策略</h4>
+            <ul>
+                <li><strong>进攻方向：</strong>若市场放量突破，优先关注今日领涨的 <strong style="color:${strongest.level.color}">${strongest.name}</strong> 方向，顺势而为。</li>
+                <li><strong>防守方向：</strong>回避今日最弱的 <strong style="color:${weakest.level.color}">${weakest.name}</strong>，等待企稳信号再做布局。</li>
+                <li><strong>仓位建议：</strong>${marketAvg > 0 ? '维持或适度提升仓位，但避免追高；' : '控制仓位，以定投宽基或高股息板块为主；'} 高价波动品种注意止损。</li>
+            </ul>
+        </div>
+    `;
+
+    // Analysis box
+    const analysisBox = document.getElementById('analysisBox');
+    analysisBox.innerHTML = '';
+    sectorAvgs.forEach(({ name, avg, level }) => {
+        const a = sectorAnalysis[name] || { review: '板块今日表现平稳。', outlook: '建议持续跟踪。' };
+        const box = document.createElement('div');
+        box.className = 'analysis-box';
+        box.style.borderLeftColor = level.color;
+        box.innerHTML = `
+            <h4 style="color:${level.color}">${sectorIcons[name] || '📁'} ${name} <span style="color:${level.color}">${formatPct(avg)}</span></h4>
+            <p><strong>复盘：</strong>${a.review}</p>
+            <p><strong>预测：</strong>${a.outlook}</p>
+        `;
+        analysisBox.appendChild(box);
+    });
+
+    // ECharts
+    const chartDom = document.getElementById('sectorChart');
+    if (chartInstance) {
+        chartInstance.dispose();
+    }
+    chartInstance = echarts.init(chartDom);
+    chartInstance.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+        xAxis: {
+            type: 'category',
+            data: sectorAvgs.map(s => s.name),
+            axisLabel: { color: '#6b6258', interval: 0, rotate: 20 }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: { formatter: '{value}%', color: '#6b6258' },
+            splitLine: { lineStyle: { color: '#e8e2d8' } }
+        },
+        series: [{
+            data: sectorAvgs.map(s => ({ value: Number(s.avg).toFixed(2), itemStyle: { color: s.level.color } })),
+            type: 'bar',
+            barWidth: '50%',
+            label: { show: true, position: 'top', formatter: '{c}%', color: '#2c2420' }
+        }]
+    });
+}
+
+// 开盘时间内每 5 分钟自动刷新数据
+function scheduleRefresh() {
+    function tick() {
+        if (isMarketOpen()) {
+            loadAllData(function() { render(currentData); });
+        }
+        // 无论是否开盘都继续调度，确保开盘后能立即进入循环
+        const now = new Date();
+        const next = new Date(now.getTime() + 5 * 60 * 1000);
+        const delay = next.getTime() - now.getTime();
+        setTimeout(tick, delay);
+    }
+    tick();
+}
+
+// Initial load
+loadAllData(function() {
+    render(currentData);
+    scheduleRefresh();
+});
+
+window.addEventListener('resize', () => chartInstance && chartInstance.resize());
+
+// Unified nav logic
+(function(){
+    if (window.self !== window.top) {
+        document.body.classList.add('in-iframe');
+        return;
+    }
+    const btn = document.getElementById('unifiedMenuBtn');
+    const bar = document.getElementById('unifiedSlidebar');
+    const overlay = document.getElementById('unifiedOverlay');
+    function open(){ bar.classList.add('open'); overlay.classList.add('open'); }
+    function close(){ bar.classList.remove('open'); overlay.classList.remove('open'); }
+    btn.addEventListener('click', () => bar.classList.contains('open') ? close() : open());
+    overlay.addEventListener('click', close);
+    const links = bar.querySelectorAll('a');
+    const current = location.pathname.split('/').pop();
+    links.forEach(a => {
+        const href = a.getAttribute('href');
+        if (href && !href.startsWith('http') && !href.startsWith('#')) {
+            const target = href.split('/').pop();
+            if (target === current) a.classList.add('active');
+        }
+    });
+})();
+</script>
+</body>
+</html>
