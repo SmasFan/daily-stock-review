@@ -18,21 +18,28 @@
     const sectorPicks = d.sector_picks || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
-    // 大盘指数（竖排：上证指数置顶，右侧两行显示涨跌幅 + 指数点）
-    const idxRows = (d.indices || []).map((i, idx) => `
-      <div class="idx-row ${idx === 0 ? 'idx-primary' : ''}">
-        <div class="idx-name">
-          <span class="idx-icon">${RV.ui.icon(idx === 0 ? 'city' : 'landmark')}</span>
-          <span>${i.name}</span>
-        </div>
-        <div class="idx-right">
-          <span class="idx-pct ${RV.fmt.cls(i.change_pct)}">${RV.fmt.pct(i.change_pct)}</span>
-          <span class="idx-close">${RV.fmt.num(i.close)}</span>
-        </div>
-      </div>`).join('');
+    // 大盘指数（方块卡片，英文简写，背景按涨跌着色）
+    const IDX_SHORT = {
+      '上证指数': 'SH',
+      '深证成指': 'SZ',
+      '创业板指': 'CYB',
+      '沪深300': 'HS300',
+      '恒生指数': 'HSI',
+      '纳斯达克': 'NDX',
+      '标普500': 'S&P',
+    };
+    const idxCards = (d.indices || []).map(i => {
+      const cls = RV.fmt.cls(i.change_pct);
+      return `
+      <div class="idx-card ${cls}">
+        <span class="idx-short">${IDX_SHORT[i.name] || i.name}</span>
+        <span class="idx-card-pct">${RV.fmt.pct(i.change_pct)}</span>
+        <span class="idx-card-close">${RV.fmt.num(i.close)}</span>
+      </div>`;
+    }).join('');
     const indicesHtml = `<div class="section">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
-      <div class="idx-list">${idxRows}</div></div>`;
+      <div class="idx-cards">${idxCards}</div></div>`;
 
     function topCards(list, title) {
       const a = list.filter(p => p.rating === 'A').length;
