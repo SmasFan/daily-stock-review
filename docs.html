@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>策略说明 · 复盘/推荐/回测</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+.docs-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:18px; align-items:start; }
+.doc-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.doc-card h3 { display:flex; align-items:center; gap:8px; font-size:17px; font-weight:700; margin-bottom:10px; }
+.doc-card h3 .ic { color:var(--accent); font-size:15px; }
+.doc-card h4 { font-size:13px; color:var(--accent); margin:14px 0 6px; }
+.doc-card p, .doc-card li { font-size:13px; color:var(--text); line-height:1.7; }
+.doc-card ul { padding-left:18px; margin:4px 0; }
+.doc-card li { margin-bottom:4px; }
+.doc-card code { background:var(--surface-2); border:1px solid var(--border); border-radius:4px; padding:0 5px; font-size:12px; }
+.doc-card .muted { color:var(--text-2); font-size:12px; }
+.legend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--text-2); margin-top:8px; }
+.legend .lg { display:flex; align-items:center; gap:5px; }
+.badge-mini { display:inline-block; padding:1px 7px; border-radius:5px; font-size:11px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const [review, rec, bt] = await Promise.all([
+      RV.API.review(), RV.API.recommend(), RV.API.backtest()
+    ]);
+    const gen = (review && review.generatedAt) || '';
+    const btStat = bt && bt.overall ? `${bt.overall.stocks ?? 0} 只标的 · 平均年化 ${bt.overall.avg_annual_return ? (bt.overall.avg_annual_return * 100).toFixed(1) + '%' : '--'} · 平均夏普 ${bt.overall.avg_sharpe ?? '--'}` : '--';
+    const btYears = bt && bt.overall && bt.overall.avg_max_drawdown != null ? ' · 平均最大回撤 ' + (bt.overall.avg_max_drawdown * 100).toFixed(1) + '%' : '';
+
+    const html = `
+      <header class="top">
+        <h1>策略说明</h1>
+        <div class="gen-time">复盘 / 推荐 / 回测 三大模块逻辑文档${gen ? ' · 数据更新于 ' + gen : ''}</div>
+        <nav class="nav">
+          <a class="nav-link" href="review.html">${RV.ui.icon('clipboard-list')} 复盘</a>
+          <a class="nav-link" href="recommend.html">${RV.ui.icon('bullseye')} 推荐</a>
+          <a class="nav-link" href="backtest.html">${RV.ui.icon('flask')} 回测</a>
+          <a class="nav-link active" href="docs.html">${RV.ui.icon('book-open')} 说明</a>
+        </nav>
+      </header>
+
+      <div class="docs-grid">
+
+        <div class="doc-card">
+          <h3><span class="ic">${RV.ui.icon('clipboard-list')}</span>每日复盘 · 个股技术分析</h3>
+          <p class="muted">src/analyzer.py · 覆盖自选 + 大盘池，逐股给出百分制评分与买卖点位</p>
+
+          <h4>趋势七档判定（权重 30）</h4>
+          <ul>
+            <li>MA5/MA10/MA20 排列 → 强势多头 / 多头排列 / 弱势多头 / 盘整 / 弱势空头 / 空头排列 / 强势空头</li>
+            <li>发散扩大（当周均线间距扩大）且乖离超过 ±5% 判定为强势档</li>
+          </ul>
+
+          <h4>六维百分制评分</h4>
+          <ul>
+            <li>趋势 30 + 乖离率 20 + 量能 15 + 均线支撑 10 + MACD 15 + RSI 10</li>
+            <li><b>乖离率</b>：偏离 MA5 越近 0 越健康；正乖离 &gt;5% 直接降为 4 分（严禁追高），强势多头放宽 1.5 倍</li>
+            <li><b>量能</b>：量比 &gt;1.5 放量、&lt;0.7 缩量；缩量回调 15 分最优，放量下跌 0 分</li>
+            <li><b>支撑</b>：现价贴 MA5/MA10（±2% 内）各 +5 分</li>
+            <li><b>MACD</b>：零上金叉 15 分 → 死叉/下穿零轴 0 分</li>
+            <li><b>RSI12</b>：超卖 10 分、超买 0 分</li>
+          </ul>
+
+          <h4>信号映射（含趋势过滤）</h4>
+          <ul>
+            <li>强买(≥80) / 买(≥60) / 观望(≥40) / 减仓(≥20) / 卖(&lt;20)</li>
+            <li>买/强买信号若趋势仅「盘整/弱势空头」则降级为观望；空头排列直接给出卖出</li>
+          </ul>
+
+          <h4>买卖点位</h4>
+          <ul>
+            <li>理想买点 = MA5，次优买点 = MA10，止损 = MA20，止盈 = 20 日高点</li>
+          </ul>
+
+          <h4>大盘温度计</h4>
+          <p>上涨广度 45% + 平均涨跌指数分 35% + 买入信号占比 20%，≥70 强势 / ≥55 偏暖 / ≥40 震荡 / 偏弱</p>
+        </div>
+
+        <div class="doc-card">
+          <h3><span class="ic">${RV.ui.icon('bullseye')}</span>每日推荐 · 多因子横截面选股</h3>
+          <p class="muted">src/screener.py · 技术分 + 横截面因子打分，输出 TopN</p>
+
+          <h4>硬过滤（L1）</h4>
+          <ul>
+            <li>剔除 ST / 退市、价格 ≤ 0 的标的</li>
+          </ul>
+
+          <h4>横截面因子（池内百分位 0-100）</h4>
+          <ul>
+            <li><b>动量</b>：当日涨跌 + 60 日趋势；涨超 5% 追高惩罚、跌超 2% 破位惩罚</li>
+            <li><b>价值</b>：PE / PB 横截面分位（越低越好）</li>
+            <li><b>流动性</b>：成交额分位</li>
+            <li><b>活跃度</b>：量比理想 2.0、换手理想 4%，偏离扣分</li>
+            <li><b>稳定性</b>：基准 78，按大波动 / 高换手 / 极端量比扣分</li>
+          </ul>
+
+          <h4>综合打分</h4>
+          <ul>
+            <li>综合分 = 技术分 × 50% + 横截面分 × 50%</li>
+            <li>横截面分 = 价值×25% + 流动性×12.5% + 稳定性×12.5% + 动量×27.5% + 活跃度×22.5%</li>
+            <li>评级：A ≥80 / B ≥60 / C ≥40 / D ≥20 / E</li>
+          </ul>
+
+          <h4>板块推荐（估值 + 动量）</h4>
+          <ul>
+            <li>板块分 = PE 估值分×50% + 估值档位×30% + 当日动量×20%（低估/合理加分，高估扣分）</li>
+            <li>再按板块映射到自选分类，取综合分 Top5 作为对应个股</li>
+          </ul>
+
+          <h4>当日购买原因</h4>
+          <p>规则化组合：均线多头 + 技术信号 + 60 日涨幅区间 + 估值低位 + 距理想买点距离 + 止损位</p>
+        </div>
+
+        <div class="doc-card">
+          <h3><span class="ic">${RV.ui.icon('flask')}</span>网格均值回归回测</h3>
+          <p class="muted">src/grid_backtest.py · 均衡偏低均值线 + 不对称网格</p>
+          <div class="muted" style="margin-bottom:8px">${btStat}${btYears}</div>
+
+          <h4>均值线（公允价格锚）</h4>
+          <ul>
+            <li>近 3 年（750 交易日）滚动分位：PE-TTM 40% 分位、PB 60% 分位、ROE，加权几何平均</li>
+            <li>无估值数据时退化为 750 日价格均线（price-only）</li>
+          </ul>
+
+          <h4>仓位规则（不对称网格）</h4>
+          <ul>
+            <li>均衡仓位 70%，每偏离 0.5% 一档：上涨抛 1%、下跌买 1.04%</li>
+            <li>仓位范围 10% ~ 100%，越跌越买（斜率不对称偏防守）</li>
+          </ul>
+
+          <h4>半永久锁仓</h4>
+          <ul>
+            <li>偏离 ≤ -5%（dev_lock）后的加仓锁定，跌越多锁越多</li>
+            <li>偏离 ≥ +5%（dev_clear）一次性清仓</li>
+          </ul>
+
+          <h4>交易与成本</h4>
+          <ul>
+            <li>dev 每跨越网格边界才调仓（避免频繁交易）</li>
+            <li>单边成本 0.05%，现金无息；基准 = 满仓买入持有</li>
+          </ul>
+
+          <h4>绩效指标</h4>
+          <ul>
+            <li>年化收益、年化波动、夏普、最大回撤、Calmar、超额收益、交易次数、平均仓位</li>
+          </ul>
+        </div>
+      </div>
+
+      <footer>策略逻辑仅供参考，不构成投资建议 · 数据口径 MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24)</footer>`;
+    app.innerHTML = html;
+  } catch (e) {
+    app.innerHTML = RV.ui.header('策略说明', '', 'docs') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

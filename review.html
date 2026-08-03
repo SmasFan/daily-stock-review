@@ -79,12 +79,30 @@
       return groups;
     }
 
+    // ===== 个股详细评分原因（'?' 弹层） =====
+    function stockDetail(r) {
+      const rows = [
+        ['趋势', r.trend_status, 'MA5/MA10/MA20 排列，强势多头/多头排列加分，空头排列/强势空头大幅减分'],
+        ['乖离MA5', RV.fmt.pct(r.bias_ma5), '偏离MA5 越近 0 越健康；正乖离 >5% 严禁追高，负乖离过大可分批低吸'],
+        ['量能', r.volume_status + ' · 量比 ' + RV.fmt.num(r.volume_ratio, 2), '量比 >1.5 放量、<0.7 缩量；缩量回调最优，放量下跌最差'],
+        ['支撑', (r.support_ma5 ? 'MA5✓ ' : 'MA5✗ ') + (r.support_ma10 ? 'MA10✓' : 'MA10✗'), '现价贴近期均线且获得支撑加 5 分/条，共 +' + ((r.support_ma5 ? 5 : 0) + (r.support_ma10 ? 5 : 0))],
+        ['MACD', r.macd_status + ' · DIF ' + RV.fmt.num(r.macd_dif) + ' / DEA ' + RV.fmt.num(r.macd_dea), '零上金叉最优，死叉/下穿零轴最差；红绿柱方向提示动能'],
+        ['RSI12', RV.fmt.num(r.rsi12, 1) + ' · ' + r.rsi_status, '>70 超买、<30 超卖；超卖加分，超买不得分'],
+        ['综合分', r.score + ' → ' + r.signal, '六维求和：趋势+乖离+量能+支撑+MACD+RSI'],
+        ['买卖点位', '买' + RV.fmt.num(r.ideal_buy) + '/' + RV.fmt.num(r.secondary_buy) + ' · 损' + RV.fmt.num(r.stop_loss) + ' · 盈' + RV.fmt.num(r.take_profit), 'MA5 理想买点、MA10 次优、MA20 止损、20日高点止盈'],
+      ];
+      return rows.map(([k, v, d]) =>
+        `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
+         <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');
+    }
+    const stockDot = r => RV.ui.infoDot(stockDetail(r), r.name + ' · 评分原因');
+
     function miniCards(items) {
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
             <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
-            <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${RV.ui.signalBadge(r.signal_key, r.signal)}</span>
+            <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
             <span class="date-tag">${r.date}</span>
@@ -107,6 +125,32 @@
         </div>`).join('')}</div>`;
     }
 
+    // 板块汇总详情（'?' 弹层）
+    function sectorDetail(sec, list) {
+      const up = list.filter(r => r.change_pct > 0).length;
+      const down = list.length - up;
+      const buys = list.filter(r => r.signal_key === 'buy' || r.signal_key === 'strong_buy').length;
+      const sells = list.filter(r => r.signal_key === 'sell' || r.signal_key === 'reduce').length;
+      const strong = list.filter(r => r.trend_status === '强势多头' || r.trend_status === '多头排列').length;
+      const avgScore = list.reduce((s, r) => s + r.score, 0) / list.length;
+      const avgChg = list.reduce((s, r) => s + r.change_pct, 0) / list.length;
+      const best = list.slice().sort((a, b) => b.score - a.score)[0];
+      const rows = [
+        ['板块标的', list.length + ' 只'],
+        ['上涨 / 下跌', up + ' / ' + down],
+        ['买入信号', buys + ' 只（' + (list.length ? (buys / list.length * 100).toFixed(0) : 0) + '%）'],
+        ['卖出信号', sells + ' 只'],
+        ['多头排列', strong + ' 只'],
+        ['平均评分', RV.fmt.num(avgScore, 1)],
+        ['平均涨跌', RV.fmt.pct(avgChg)],
+      ];
+      const bestHtml = best ? `${RV.ui.pctBadge(best.change_pct)} <b>${best.name}</b> 评分 ${best.score} · ${best.signal}` : '--';
+      return rows.map(([k, v]) => `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')
+        + '<hr><div style="color:var(--text-2);font-size:11px;line-height:1.5">板块内信号强弱（strong_buy>buy>watch>reduce>sell）排序，同级按评分降序</div>'
+        + `<hr><div class="it-row"><span class="k">板块最强</span><span class="v" style="text-align:right">${bestHtml}</span></div>`;
+    }
+    const sectorDot = (sec, list) => RV.ui.infoDot(sectorDetail(sec, list), sec + ' · 板块汇总');
+
     function sectorSection(items, key) {
       const groups = groupBySector(items);
       const names = Object.keys(groups).sort((a, b) => {
@@ -123,6 +167,7 @@
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${sec}</span>
+            ${sectorDot(sec, list)}
             <span class="sec-chip">${list.length}只</span>
             ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}
             <span class="sector-stat">
@@ -143,7 +188,7 @@
       <div class="card">
         <div class="card-header">
           <div><span class="card-title">${r.name}</span> <span class="date-tag">${r.date}</span> <span class="sec-chip">${r.sector || '其他'}</span></div>
-          ${RV.ui.signalBadge(r.signal_key, r.signal)}
+          <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
         </div>
         <div class="score-ring">
           <span class="score-num ${r.score >= 60 ? 'up' : (r.score < 40 ? 'down' : '')}">${r.score}</span>
@@ -205,7 +250,10 @@
         + cardSec()
         + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';      // 板块展开/收起
       app.querySelectorAll('.sector-group').forEach(g => {
-        g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
+        g.querySelector('.sector-header').addEventListener('click', ev => {
+          if (ev.target.closest('.info-dot')) return;
+          g.classList.toggle('open');
+        });
       });
       app.querySelectorAll('.pg-btn').forEach(b => b.addEventListener('click', ev => {
         ev.preventDefault();

@@ -170,6 +170,22 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .sector-body table.data-table tr:last-child td { border-bottom:none; }
 .sec-chip { font-size:11px; padding:1px 7px; border-radius:5px; background:var(--surface-2); color:var(--text-2); font-weight:600; }
 
+/* 信息问号（详情浮层） */
+.info-dot { position:relative; display:inline-flex; align-items:center; color:var(--text-2); cursor:help; }
+.info-dot-ic { font-size:12px; }
+.info-dot:hover .info-tip, .info-dot:focus .info-tip { display:block; }
+.info-tip {
+    display:none; position:absolute; z-index:60; top:calc(100% + 8px); right:0;
+    min-width:260px; max-width:360px; padding:12px 14px; border-radius:10px;
+    background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-hover);
+    color:var(--text); font-size:12px; line-height:1.6; text-align:left;
+}
+.info-tip b { display:block; font-size:12px; margin-bottom:6px; }
+.info-tip .it-row { display:flex; justify-content:space-between; gap:14px; padding:2px 0; }
+.info-tip .it-row .k { color:var(--text-2); flex-shrink:0; }
+.info-tip .it-row .v { font-weight:600; text-align:right; font-variant-numeric:tabular-nums; }
+.info-tip hr { border:none; border-top:1px dashed var(--border); margin:8px 0; }
+
 /* 板块内个股迷你卡片（手机友好，替代宽表格） */
 .mini-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
 .mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }

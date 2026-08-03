@@ -65,6 +65,12 @@
       <p>均衡偏低均值线 + 不对称网格，近 N 年收益/回撤/夏普验证</p>
       ${bt && bt.overall ? `<div class="e-stat">${RV.ui.icon('circle-check', 'fa-xs')} ${bt.overall.stocks ?? 0} 只标的 · 平均年化 ${bt.overall.avg_annual_return ? (bt.overall.avg_annual_return * 100).toFixed(1) + '%' : '--'}</div>` : ''}
     </a>`);
+  cards.push(`
+    <a class="entry-card" href="docs.html">
+      <div class="e-icon">${RV.ui.icon('book-open')}</div><h3>策略说明</h3>
+      <p>复盘技术分析 / 推荐多因子选股 / 网格回测，三套逻辑详解</p>
+      <div class="e-stat">${RV.ui.icon('circle-question', 'fa-xs')} 看看每个指标怎么算</div>
+    </a>`);
   box.innerHTML = cards.join('');
 })();
 </script>

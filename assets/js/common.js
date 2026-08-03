@@ -50,6 +50,7 @@
         ['review', '复盘', 'clipboard-list', 'review.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
+        ['docs', '说明', 'book-open', 'docs.html'],
       ];
       const navHtml = navs.map(([k, label, icon, href]) =>
         `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${ui.icon(icon)} ${label}</a>`
@@ -92,6 +93,13 @@
         neutral: `${ui.icon('minus', 'fa-xs')} 中性`
       };
       return `<span class="outcome-${o}">${map[o] || o}</span>`;
+    },
+    /* 右上角小问号：悬停/点击弹出详情 */
+    infoDot(content, label = '') {
+      return `<span class="info-dot" tabindex="0" aria-label="查看详情">
+        <span class="info-dot-ic">${ui.icon('circle-question')}</span>
+        <span class="info-tip">${label ? `<b>${label}</b>` : ''}${content}</span>
+      </span>`;
     },
     loading(msg = '数据加载中…') { return `<div class="loading">${msg}</div>`; },
     empty(msg = '暂无数据') { return `<div class="empty">${msg}</div>`; },
