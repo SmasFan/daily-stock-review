@@ -65,7 +65,7 @@
       const cards = gridSignals.map((s, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name} ${s.is_holding ? holdingBadge(s) : ''}</span>
           <span class="mini-head-right">${gridActionBadge(s)}</span>
         </div>
         <div class="mini-tags">

@@ -154,12 +154,15 @@ def signal_from_backtest(name: str, code: str, stock: Dict,
 def build_grid_signals(codes: List[Tuple[str, str]],
                        gparams: Optional[gbt.GridParams] = None,
                        ap: Optional[gbt.AnchorParams] = None,
-                       backtest_data: Optional[Dict] = None) -> List[Dict]:
+                       backtest_data: Optional[Dict] = None,
+                       holding_codes: Optional[set] = None) -> List[Dict]:
     """批量计算网格信号。codes: [(name, code), ...]。返回按操作优先级排序列表。
 
     backtest_data: 可选，若提供则优先复用其中已有的回测结果（按名称匹配，
     并自动用回测标的代码兜底），其余标的再现场计算，避免重复拉取长K线/估值数据。
+    holding_codes: 可选，持仓代码集合，命中时在信号中标记 is_holding=True。
     """
+    holding_codes = holding_codes or set()
     out = []
     order = {"clear": 0, "buy": 1, "reduce": 2, "hold": 3, "wait": 4}
     done = set()
@@ -186,7 +189,8 @@ def build_grid_signals(codes: List[Tuple[str, str]],
                 continue
             sig = signal_from_backtest(bt_name, code, s, gparams)
             if sig:
-                sig["_prio"] = order.get(sig["action_key"], 5)
+                sig["is_holding"] = code in holding_codes
+                sig["_prio"] = (0 if sig["is_holding"] else 1, order.get(sig["action_key"], 5))
                 out.append(sig)
                 done.add(code)
     for name, code in codes:
@@ -197,7 +201,8 @@ def build_grid_signals(codes: List[Tuple[str, str]],
         except Exception:
             s = None
         if s:
-            s["_prio"] = order.get(s["action_key"], 5)
+            s["is_holding"] = code in holding_codes
+            s["_prio"] = (0 if s["is_holding"] else 1, order.get(s["action_key"], 5))
             out.append(s)
     out.sort(key=lambda x: x["_prio"])
     for x in out:

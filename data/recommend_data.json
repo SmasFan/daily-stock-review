@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-03 23:38:33",
+  "generatedAt": "2026-08-03 23:53:55",
   "total": 13,
   "picks": [
     {
@@ -925,128 +925,23 @@
     {
       "name": "道琼斯",
       "code": "usDJI",
-      "close": 53028.58,
-      "change_pct": 1.04
+      "close": 53049.58,
+      "change_pct": 1.08
     },
     {
       "name": "纳斯达克",
       "code": "usIXIC",
-      "close": 25837.48,
-      "change_pct": 1.83
+      "close": 25858.59,
+      "change_pct": 1.91
     },
     {
       "name": "标普500",
       "code": "usINX",
-      "close": 7578.17,
-      "change_pct": 1.18
+      "close": 7585.18,
+      "change_pct": 1.27
     }
   ],
   "grid_signals": [
-    {
-      "name": "中证红利ETF招商",
-      "code": "515080",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 1.4151,
-      "price_only": true,
-      "position": 0.4705,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.4796,
-      "dev": 0.1102,
-      "grid_idx": 22,
-      "reason": "偏离均值线 +11.02%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "五 粮 液",
-      "code": "000858",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 51.4492,
-      "price_only": false,
-      "position": 0.1,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.1,
-      "dev": 0.5172,
-      "grid_idx": 103,
-      "reason": "偏离均值线 +51.72%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "招商银行",
-      "code": "600036",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 37.0053,
-      "price_only": false,
-      "position": 0.5172,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.5186,
-      "dev": 0.0907,
-      "grid_idx": 18,
-      "reason": "偏离均值线 +9.07%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "中远海控",
-      "code": "601919",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 8.3391,
-      "price_only": false,
-      "position": 0.1,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.1,
-      "dev": 0.8851,
-      "grid_idx": 177,
-      "reason": "偏离均值线 +88.51%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "藏格矿业",
-      "code": "000408",
-      "date": "2026-08-03",
-      "close": 79.93,
-      "anchor": 54.8964,
-      "price_only": false,
-      "position": 0.1,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.1,
-      "dev": 0.456,
-      "grid_idx": 91,
-      "reason": "偏离均值线 +45.60%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "龙佰集团",
-      "code": "002601",
-      "date": "2026-08-03",
-      "close": 16.67,
-      "anchor": 5.0988,
-      "price_only": false,
-      "position": 0.1,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.1,
-      "dev": 2.2694,
-      "grid_idx": 453,
-      "reason": "偏离均值线 +226.94%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
-    {
-      "name": "新凤鸣",
-      "code": "603225",
-      "date": "2026-08-03",
-      "close": 19.73,
-      "anchor": 12.964,
-      "price_only": false,
-      "position": 0.1,
-      "action": "超涨清仓",
-      "action_key": "clear",
-      "target_pos": 0.1,
-      "dev": 0.5219,
-      "grid_idx": 104,
-      "reason": "偏离均值线 +52.19%（≥+5%），策略超涨清仓，建议分批卖出离场"
-    },
     {
       "name": "长江电力",
       "code": "600900",
@@ -1060,37 +955,8 @@
       "target_pos": 0.8071,
       "dev": -0.0515,
       "grid_idx": -11,
-      "reason": "偏离均值线 -5.15%，目标仓位 81% 与当前 81% 接近，维持现有仓位"
-    },
-    {
-      "name": "红利低波ETF富国",
-      "code": "159525",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 1.1008,
-      "price_only": true,
-      "position": 0.6741,
-      "action": "持有观察",
-      "action_key": "hold",
-      "target_pos": 0.6742,
-      "dev": 0.0129,
-      "grid_idx": 2,
-      "reason": "偏离均值线 +1.29%，目标仓位 67% 与当前 67% 接近，维持现有仓位"
-    },
-    {
-      "name": "紫金矿业",
-      "code": "601899",
-      "date": "2026-08-03",
-      "close": null,
-      "anchor": 37.6655,
-      "price_only": false,
-      "position": 0.9825,
-      "action": "满仓锁仓",
-      "action_key": "hold",
-      "target_pos": 0.9825,
-      "dev": -0.1358,
-      "grid_idx": -28,
-      "reason": "偏离均值线 -13.58%，策略仓位已到上限 100%，回踩均值前持有不动"
+      "reason": "偏离均值线 -5.15%，目标仓位 81% 与当前 81% 接近，维持现有仓位",
+      "is_holding": true
     },
     {
       "name": "中证A500ETF景顺",
@@ -1105,7 +971,8 @@
       "target_pos": 0.7469,
       "dev": -0.0226,
       "grid_idx": -5,
-      "reason": "偏离均值线 -2.26%，目标仓位 75% 与当前 75% 接近，维持现有仓位"
+      "reason": "偏离均值线 -2.26%，目标仓位 75% 与当前 75% 接近，维持现有仓位",
+      "is_holding": true
     },
     {
       "name": "中概互联网ETF易方达",
@@ -1120,7 +987,152 @@
       "target_pos": 0.7459,
       "dev": -0.0221,
       "grid_idx": -5,
-      "reason": "偏离均值线 -2.21%，目标仓位 75% 与当前 75% 接近，维持现有仓位"
+      "reason": "偏离均值线 -2.21%，目标仓位 75% 与当前 75% 接近，维持现有仓位",
+      "is_holding": true
+    },
+    {
+      "name": "中证红利ETF招商",
+      "code": "515080",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 1.4151,
+      "price_only": true,
+      "position": 0.4705,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.4796,
+      "dev": 0.1102,
+      "grid_idx": 22,
+      "reason": "偏离均值线 +11.02%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "五 粮 液",
+      "code": "000858",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 51.4492,
+      "price_only": false,
+      "position": 0.1,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.1,
+      "dev": 0.5172,
+      "grid_idx": 103,
+      "reason": "偏离均值线 +51.72%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "招商银行",
+      "code": "600036",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 37.0053,
+      "price_only": false,
+      "position": 0.5172,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.5186,
+      "dev": 0.0907,
+      "grid_idx": 18,
+      "reason": "偏离均值线 +9.07%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "中远海控",
+      "code": "601919",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 8.3391,
+      "price_only": false,
+      "position": 0.1,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.1,
+      "dev": 0.8851,
+      "grid_idx": 177,
+      "reason": "偏离均值线 +88.51%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "藏格矿业",
+      "code": "000408",
+      "date": "2026-08-03",
+      "close": 79.93,
+      "anchor": 54.8964,
+      "price_only": false,
+      "position": 0.1,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.1,
+      "dev": 0.456,
+      "grid_idx": 91,
+      "reason": "偏离均值线 +45.60%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "龙佰集团",
+      "code": "002601",
+      "date": "2026-08-03",
+      "close": 16.67,
+      "anchor": 5.0988,
+      "price_only": false,
+      "position": 0.1,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.1,
+      "dev": 2.2694,
+      "grid_idx": 453,
+      "reason": "偏离均值线 +226.94%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "新凤鸣",
+      "code": "603225",
+      "date": "2026-08-03",
+      "close": 19.73,
+      "anchor": 12.964,
+      "price_only": false,
+      "position": 0.1,
+      "action": "超涨清仓",
+      "action_key": "clear",
+      "target_pos": 0.1,
+      "dev": 0.5219,
+      "grid_idx": 104,
+      "reason": "偏离均值线 +52.19%（≥+5%），策略超涨清仓，建议分批卖出离场",
+      "is_holding": false
+    },
+    {
+      "name": "红利低波ETF富国",
+      "code": "159525",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 1.1008,
+      "price_only": true,
+      "position": 0.6741,
+      "action": "持有观察",
+      "action_key": "hold",
+      "target_pos": 0.6742,
+      "dev": 0.0129,
+      "grid_idx": 2,
+      "reason": "偏离均值线 +1.29%，目标仓位 67% 与当前 67% 接近，维持现有仓位",
+      "is_holding": false
+    },
+    {
+      "name": "紫金矿业",
+      "code": "601899",
+      "date": "2026-08-03",
+      "close": null,
+      "anchor": 37.6655,
+      "price_only": false,
+      "position": 0.9825,
+      "action": "满仓锁仓",
+      "action_key": "hold",
+      "target_pos": 0.9825,
+      "dev": -0.1358,
+      "grid_idx": -28,
+      "reason": "偏离均值线 -13.58%，策略仓位已到上限 100%，回踩均值前持有不动",
+      "is_holding": false
     },
     {
       "name": "红利ETF汇添富",
@@ -1135,7 +1147,8 @@
       "target_pos": 0.6312,
       "dev": 0.0344,
       "grid_idx": 6,
-      "reason": "偏离均值线 +3.44%，目标仓位 63% 与当前 63% 接近，维持现有仓位"
+      "reason": "偏离均值线 +3.44%，目标仓位 63% 与当前 63% 接近，维持现有仓位",
+      "is_holding": false
     },
     {
       "name": "九号公司-WD",
@@ -1150,7 +1163,8 @@
       "target_pos": 1.0,
       "dev": -0.2149,
       "grid_idx": -43,
-      "reason": "偏离均值线 -21.49%，策略仓位已到上限 100%，回踩均值前持有不动"
+      "reason": "偏离均值线 -21.49%，策略仓位已到上限 100%，回踩均值前持有不动",
+      "is_holding": false
     },
     {
       "name": "甘李药业",
@@ -1165,7 +1179,8 @@
       "target_pos": 0.9064,
       "dev": -0.0993,
       "grid_idx": -20,
-      "reason": "偏离均值线 -9.93%，目标仓位 91% 与当前 91% 接近，维持现有仓位"
+      "reason": "偏离均值线 -9.93%，目标仓位 91% 与当前 91% 接近，维持现有仓位",
+      "is_holding": false
     },
     {
       "name": "荣盛石化",
@@ -1180,7 +1195,8 @@
       "target_pos": 0.6728,
       "dev": 0.0136,
       "grid_idx": 2,
-      "reason": "偏离均值线 +1.36%，目标仓位 67% 与当前 67% 接近，维持现有仓位"
+      "reason": "偏离均值线 +1.36%，目标仓位 67% 与当前 67% 接近，维持现有仓位",
+      "is_holding": false
     }
   ]
 }

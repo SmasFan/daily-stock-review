@@ -312,7 +312,7 @@ def run_recommend(args):
     for it in sector_picks:
         it.reasons = scr.build_buy_reason(it)
 
-    # 网格策略操作提醒：对推荐候选（自选+大盘+板块选股）计算均值线偏离信号
+    # 网格策略操作提醒：对推荐候选（自选+大盘+板块选股+持仓股）计算均值线偏离信号
     # 优先复用已有回测结果，避免重复拉取长K线/估值（未覆盖的标的现场计算）
     print("== 网格策略操作提醒 ==")
     gparams = gbt.GridParams()
@@ -321,6 +321,16 @@ def run_recommend(args):
     for it in list(picks) + list(market_picks) + list(sector_picks):
         if it.code and it.code not in cand:
             cand[it.code] = (it.name, it.code)
+    # 持仓股强制加入网格信号（即使不在推荐候选里）
+    holding_codes = load_holding_codes()
+    if holding_codes:
+        pool_by_code = {it.code: it for it in screen_items}
+        for hc in sorted(holding_codes):
+            if hc in cand:
+                continue
+            hit = pool_by_code.get(hc)
+            if hit:
+                cand[hc] = (hit.name, hc)
     bt_data_prev = None
     bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
     if os.path.exists(bt_path):
@@ -329,7 +339,7 @@ def run_recommend(args):
                 bt_data_prev = json.load(fp)
         except Exception:
             bt_data_prev = None
-    grid_signals = gs.build_grid_signals(list(cand.values()), gparams, gap, bt_data_prev)
+    grid_signals = gs.build_grid_signals(list(cand.values()), gparams, gap, bt_data_prev, holding_codes)
     print(f"   推荐候选 {len(cand)} 只，网格信号成功 {len(grid_signals)} 只")
     for s in grid_signals:
         print(f"   {s['name']}: dev={s['dev']*100:+.1f}% 仓位{s['position']*100:.0f}% → {s['action']}")
