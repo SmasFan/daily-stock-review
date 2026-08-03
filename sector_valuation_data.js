@@ -213,9 +213,9 @@ window.sectorValuationData = {
       "price": 6465.7,
       "prevClose": 6465.7,
       "change": 0.0,
-      "pe": 15.0,
+      "pe": -3.05,
       "pb": 0.9,
-      "level": "合理"
+      "level": "低估"
     },
     {
       "name": "300基建",
@@ -225,7 +225,7 @@ window.sectorValuationData = {
       "price": 1769.71,
       "prevClose": 1769.71,
       "change": 0.0,
-      "pe": 10.0,
+      "pe": 14.34,
       "pb": 1.0,
       "level": "低估"
     },
@@ -254,6 +254,6 @@ window.sectorValuationData = {
       "level": "合理"
     }
   ],
-  "generatedAt": "2026-08-03 15:39:35",
+  "generatedAt": "2026-08-03 17:41:28",
   "dataSource": "腾讯行情 + 东方财富（PE/PB 补全）"
 };
