@@ -138,17 +138,17 @@
       return list.map(p => `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span></div>
-          ${RV.ui.ratingBadge(p.rating)}
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span></div>
+          ${RV.ui.signalBadge(p.signal_key, p.signal)}
         </div>
         <div class="score-ring">
           <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
           <div style="flex:1">${RV.ui.progress(p.total_score)}</div>
-          ${RV.ui.signalBadge(p.signal_key, p.signal)}
+          ${RV.ui.pctBadge(p.change_pct)}
         </div>
         <div class="card-kv">
           <span class="k">现价</span><span class="v">${RV.fmt.money(p.price)}</span>
-          <span class="k">趋势</span><span class="v">${p.trend_status || '--'}</span>
+          <span class="k">评级</span><span class="v">${p.rating}</span>
           <span class="k">技术 / 截面</span><span class="v">${RV.fmt.num(p.tech_score, 0)} / ${RV.fmt.num(p.cross_score, 0)}</span>
           <span class="k">PE / PB</span><span class="v">${RV.fmt.num(p.pe, 1)} / ${RV.fmt.num(p.pb, 2)}</span>
         </div>
@@ -158,7 +158,7 @@
           <div class="point"><span class="p-label">止损</span><span class="p-val">${RV.fmt.num(p.stop_loss)}</span></div>
           <div class="point"><span class="p-label">止盈</span><span class="p-val">${RV.fmt.num(p.take_profit)}</span></div>
         </div>
-        <div class="reason">${RV.ui.icon('lightbulb')} 当日购买原因：${p.reasons}</div>
+        <div class="reason">${RV.ui.icon('lightbulb', 'fa-xs')} 当日购买原因：${p.reasons}</div>
       </div>`).join('');
     }
 
