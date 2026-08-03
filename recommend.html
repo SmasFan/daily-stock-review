@@ -56,9 +56,32 @@
         <td>${RV.fmt.amount(p.amount)}</td>
         <td style="max-width:260px;font-size:12px;color:var(--text-2)">${p.reasons || '--'}</td>
       </tr>`).join('');
-      return `<div class="table-wrap"><table class="data-table">
-        <thead><tr><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>涨跌</th><th>成交额</th><th>当日购买原因</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`;
+      const mobileCards = list.map((p, i) => `
+      <div class="mini-card">
+        <div class="mini-head">
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+          <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
+        </div>
+        <div class="mini-tags">
+          <span class="sec-chip">${p.sector || '其他'}</span>
+          <span class="date-tag">${p.trend_status || '--'}</span>
+          ${RV.ui.ratingBadge(p.rating)}
+        </div>
+        <div class="mini-score">
+          <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
+          <div class="mini-score-bar">${RV.ui.progress(p.total_score)}</div>
+        </div>
+        <div class="mini-kv">
+          <span class="k">成交额</span><span class="v">${RV.fmt.amount(p.amount)}</span>
+          <span class="k">技术 / 截面</span><span class="v">${RV.fmt.num(p.tech_score, 0)} / ${RV.fmt.num(p.cross_score, 0)}</span>
+        </div>
+        <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('lightbulb', 'fa-xs')} ${p.reasons}</div>
+      </div>`).join('');
+      return `
+        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>涨跌</th><th>成交额</th><th>当日购买原因</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>
+        <div class="cards-mobile"><div class="mini-cards">${mobileCards}</div></div>`;
     }
 
     // 板块分组 + 迷你卡片（与复盘一致：点开板块展开个股卡片）
@@ -162,26 +185,33 @@
       </div>`).join('');
     }
 
-    // 板块推荐
-    function sectorSection() {
+    // 板块推荐（估值 + 动量）—— 复盘风格：可展开的板块分组卡片
+    function sectorRecSection() {
       if (!sectors.length) return '';
       const cards = sectors.map((s, i) => `
-        <div class="sector-card">
-          <span class="rank">${i + 1}</span>
-          <div>
-            <div class="s-name">${s.name}</div>
-            <div class="s-cat">${s.category}</div>
+        <div class="sector-group sector-reco" data-sec="${s.name}">
+          <div class="sector-header">
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+            <span class="sector-name">${s.name}</span>
+            <span class="sec-chip">${s.category}</span>
+            ${s.highlight ? `<span class="signal-badge s-strong_buy">推荐</span>` : ''}
+            <span class="sector-stat">
+              <span>${RV.ui.icon('bullseye', 'fa-xs')} 分 <b>${RV.fmt.num(s.sector_score, 2)}</b></span>
+              <span class="${RV.fmt.cls(s.change)}">${RV.fmt.pct(s.change)}</span>
+            </span>
           </div>
-          <div class="s-meta">
-            <div class="m-item">PE <b>${RV.fmt.num(s.pe, 1)}</b></div>
-            <div class="m-item">PB <b>${RV.fmt.num(s.pb, 2)}</b></div>
-            <div class="m-item">估值 <b>${s.level || '--'}</b></div>
-            <div class="m-item">涨跌 <b class="${RV.fmt.cls(s.change)}">${RV.fmt.pct(s.change)}</b></div>
+          <div class="sector-body">
+            <div class="sector-detail">
+              <div class="s-item"><span class="k">PE</span><span class="v">${RV.fmt.num(s.pe, 1)}</span></div>
+              <div class="s-item"><span class="k">PB</span><span class="v">${RV.fmt.num(s.pb, 2)}</span></div>
+              <div class="s-item"><span class="k">估值</span><span class="v">${s.level || '--'}</span></div>
+              <div class="s-item"><span class="k">涨跌</span><span class="v ${RV.fmt.cls(s.change)}">${RV.fmt.pct(s.change)}</span></div>
+            </div>
           </div>
         </div>`).join('');
       return `<div class="section">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>板块推荐（估值 + 动量）</h2></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px">${cards}</div>
+        ${cards}
       </div>`;
     }
 
@@ -197,7 +227,7 @@
           </div>
         </div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
-        + indicesHtml + sectorSection() + tabs
+        + indicesHtml + sectorRecSection() + tabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
         + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
