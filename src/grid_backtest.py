@@ -612,6 +612,7 @@ def build_backtest_data(per_stock: Dict[str, BacktestResult], rf: float = 0.0) -
             "dates": res.dates,
             "position": [round(x, 4) if x == x else None for x in res.position],
             "dev": [round(x, 4) if x is not None else None for x in res.dev],
+            "anchor": [round(x, 4) if x is not None else None for x in res.anchor],
             "trades": [t.to_dict() for t in res.trades],
             "price_only": res.price_only,
         }

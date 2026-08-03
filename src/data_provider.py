@@ -258,3 +258,63 @@ def fetch_daily_kline_long(code: str, count: int = 320, min_days: int = 750,
     except Exception:
         pass
     return out
+
+
+def fetch_daily_kline_us(sym: str, count: int = 320, use_cache: bool = True,
+                         cache_max_age_hours: int = 20):
+    """拉取美股指数/个股日K（腾讯 usfqkline 接口），支持长历史翻页。
+
+    sym 为完整前缀+代码（如 usDJI / usIXIC / usINX）。
+    返回 {dates, opens, closes, highs, lows, volumes}，升序。带缓存（key 含 count）。
+    """
+    cp = _cache_path(f"us_{sym}_{count}")
+    if use_cache and os.path.exists(cp):
+        age = time.time() - os.path.getmtime(cp)
+        if age < cache_max_age_hours * 3600:
+            try:
+                with open(cp, "r", encoding="utf-8") as fp:
+                    return json.load(fp)
+            except Exception:
+                pass
+    PAGE = 640
+    rows_all = []
+    end = datetime.now().strftime("%Y-%m-%d")
+    for _ in range(12):
+        url = (f"https://web.ifzq.gtimg.cn/appstock/app/usfqkline/get"
+               f"?param={sym},day,1990-01-01,{end},{PAGE},qfq")
+        try:
+            raw = _get(url)
+            data = json.loads(raw)
+            node = data["data"][sym]
+            rows = node.get("qfqday") or node.get("day") or []
+        except Exception:
+            break
+        if not rows:
+            break
+        rows_all = rows + rows_all
+        first_date = rows[0][0]
+        if len(rows) < PAGE:
+            break
+        end = first_date
+        if len(rows_all) >= count and count > 0:
+            break
+        time.sleep(0.2)
+    if not rows_all:
+        return None
+    rows = rows_all[-count:] if count > 0 and len(rows_all) > count else rows_all
+    dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
+    for r in rows:
+        dates.append(r[0])
+        opens.append(float(r[1]))
+        closes.append(float(r[2]))
+        highs.append(float(r[3]))
+        lows.append(float(r[4]))
+        vols.append(float(r[5]) if len(r) > 5 else 0.0)
+    out = {"dates": dates, "opens": opens, "closes": closes,
+           "highs": highs, "lows": lows, "volumes": vols}
+    try:
+        with open(cp, "w", encoding="utf-8") as fp:
+            json.dump(out, fp)
+    except Exception:
+        pass
+    return out

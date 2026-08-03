@@ -13,6 +13,7 @@
     review() { return this.fetch('review_data.json'); },
     recommend() { return this.fetch('recommend_data.json'); },
     backtest() { return this.fetch('backtest_data.json'); },
+    holdings() { return this.fetch('holdings_data.json'); },
   };
 
   /* ---------- 格式化工具 ---------- */
@@ -49,6 +50,7 @@
       const navs = [
         ['review', '复盘', 'clipboard-list', 'review.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
+        ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];

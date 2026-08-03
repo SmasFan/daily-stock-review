@@ -1,0 +1,114 @@
+{
+  "generatedAt": "2026-08-03 21:44:58",
+  "market_open": false,
+  "holdings": [
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "cost": 28.5,
+      "shares": 1000
+    },
+    {
+      "name": "中证A500ETF景顺",
+      "code": "159353",
+      "cost": 1.15,
+      "shares": 10000
+    },
+    {
+      "name": "中概互联网ETF易方达",
+      "code": "513050",
+      "cost": 1.2,
+      "shares": 10000
+    }
+  ],
+  "items": [
+    {
+      "name": "中证A500ETF景顺",
+      "code": "159353",
+      "sector": "宽基跨境",
+      "cost": 1.15,
+      "shares": 10000.0,
+      "price": 1.208,
+      "change_pct": -1.23,
+      "market_value": 12080.0,
+      "cost_value": 11500.0,
+      "pnl": 580.0,
+      "pnl_pct": 0.0504,
+      "grid": {
+        "name": "中证A500ETF景顺",
+        "code": "159353",
+        "date": "2026-08-03",
+        "close": 1.208,
+        "anchor": 1.2359,
+        "price_only": true,
+        "position": 0.7469,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.7469,
+        "dev": -0.0226,
+        "grid_idx": -5,
+        "reason": "偏离均值线 -2.26%，目标仓位 75% 与当前 75% 接近，维持现有仓位"
+      }
+    },
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "sector": "新能源电力",
+      "cost": 28.5,
+      "shares": 1000.0,
+      "price": 29.05,
+      "change_pct": -0.14,
+      "market_value": 29050.0,
+      "cost_value": 28500.0,
+      "pnl": 550.0,
+      "pnl_pct": 0.0193,
+      "grid": {
+        "name": "长江电力",
+        "code": "600900",
+        "date": "2026-08-03",
+        "close": null,
+        "anchor": 30.6265,
+        "price_only": false,
+        "position": 0.8072,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.8071,
+        "dev": -0.0515,
+        "grid_idx": -11,
+        "reason": "偏离均值线 -5.15%，目标仓位 81% 与当前 81% 接近，维持现有仓位"
+      }
+    },
+    {
+      "name": "中概互联网ETF易方达",
+      "code": "513050",
+      "sector": "科技-互联网传媒",
+      "cost": 1.2,
+      "shares": 10000.0,
+      "price": 1.18,
+      "change_pct": 3.06,
+      "market_value": 11800.0,
+      "cost_value": 12000.0,
+      "pnl": -200.0,
+      "pnl_pct": -0.0167,
+      "grid": {
+        "name": "中概互联网ETF易方达",
+        "code": "513050",
+        "date": "2026-08-03",
+        "close": 1.18,
+        "anchor": 1.2066,
+        "price_only": true,
+        "position": 0.7459,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.7459,
+        "dev": -0.0221,
+        "grid_idx": -5,
+        "reason": "偏离均值线 -2.21%，目标仓位 75% 与当前 75% 接近，维持现有仓位"
+      }
+    }
+  ],
+  "total_cost": 52000.0,
+  "total_market": 52930.0,
+  "total_pnl": 930.0,
+  "pnl_pct": 0.0179
+}

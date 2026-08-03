@@ -126,19 +126,20 @@ def signal_from_backtest(name: str, code: str, stock: Dict,
     devs = stock.get("dev") or []
     positions = stock.get("position") or []
     dates = stock.get("dates") or []
+    anchors = stock.get("anchor") or []
     if not devs or devs[-1] is None or not dates:
         return None
     dev = devs[-1]
     pos = positions[-1] if positions else None
     sig = grid_action(dev, pos, gparams)
     last_close = None
-    anchor = None
+    anchor = anchors[-1] if anchors else None
     return {
         "name": name,
         "code": code,
         "date": dates[-1],
         "close": last_close,
-        "anchor": anchor,
+        "anchor": round(anchor, 4) if anchor is not None else None,
         "price_only": bool(stock.get("price_only", False)),
         "position": round(pos, 4) if pos is not None else None,
         "action": sig["action"],

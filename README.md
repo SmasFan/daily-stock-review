@@ -34,15 +34,33 @@ python -m http.server 8000
 
 ## 页面入口（新版）
 
-- [工作台首页](index.html) —— 三合一入口
+- [工作台首页](index.html) —— 四合一入口
 - [每日复盘](review.html) —— 按板块分组、点击展开股票；信号一览、趋势评分、买卖点位、大盘温度计
-- [每日推荐](recommend.html) —— 自选 TopN + 大盘 Top5 + 板块推荐（估值+动量）
+- [每日推荐](recommend.html) —— 自选 TopN + 大盘 Top5 + 板块推荐（估值+动量）+ 网格策略操作提醒
+- [持仓跟踪](holdings.html) —— 盘中实时跟踪 + 盘后复盘 + 网格策略操作提醒（配置见 holdings.json）
 - [网格回测](backtest.html) —— 均衡偏低均值线 + 不对称网格回测
+
+## 持仓配置（holdings.json）
+
+在项目根目录 `holdings.json` 维护持仓（代码/名称/成本价/股数），运行
+`python run_review.py --mode holdings` 生成 `data/holdings_data.json`：
+
+```json
+{
+  "holdings": [
+    {"name": "长江电力", "code": "600900", "cost": 28.5, "shares": 1000},
+    {"name": "中证A500ETF景顺", "code": "159353", "cost": 1.15, "shares": 10000},
+    {"name": "中概互联网ETF易方达", "code": "513050", "cost": 1.2, "shares": 10000}
+  ]
+}
+```
+
+页面展示总市值/总成本/总盈亏、各持仓现价涨跌与盈亏、以及基于均值线偏离度的网格操作提醒。
 
 ## 架构
 
 ```
-run_review.py            # 统一入口（拉数→分析→复盘→推荐→回测）
+run_review.py            # 统一入口（拉数→分析→复盘→推荐→回测→持仓）
 src/
 ├── indicators.py        # MA/MACD/RSI/布林带/乖离率/量比（纯Python）
 ├── analyzer.py          # 趋势七档 + 百分制评分 + 五档信号 + 买卖点位
@@ -52,6 +70,8 @@ src/
 │                        #   均值线(PE40分位/PB60分位/ROE60分位加权几何平均，
 │                        #   无估值→价格锚) + 不对称网格(0.5%档,涨抛1%/跌买1.04%)
 │                        #   + 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) + 单边成本0.05%
+├── grid_signal.py       # 网格策略操作信号（均值线偏离 → 加仓/减仓/清仓/持有）
+├── holdings.py          # 持仓分析（实时行情 + 盈亏 + 网格提醒）
 ├── data_provider.py     # 腾讯行情快照 + 日K线(支持长历史翻页) + 本地缓存
 ├── stock_pool.py        # 自选池/大盘池/回测标的 + code→板块映射
 └── report.py            # 汇总生成前端 JSON
@@ -62,8 +82,9 @@ data/
 ├── review_data.json     # 复盘数据
 ├── recommend_data.json  # 推荐数据
 ├── backtest_data.json   # 网格回测数据
+├── holdings_data.json   # 持仓数据
 └── cache/               # K线/估值缓存（不入库）
-index.html / review.html / recommend.html / backtest.html   # 数据驱动页面
+index.html / review.html / recommend.html / holdings.html / backtest.html   # 数据驱动页面
 ```
 
 ## 分析逻辑口径
@@ -87,11 +108,6 @@ index.html / review.html / recommend.html / backtest.html   # 数据驱动页面
 3. **半永久锁仓**：偏离 ≤ −5% 后的加仓锁仓，反弹不回吐；偏离 ≥ +5% 超涨清仓
 4. **回测口径**：交易触发 = dev 每跨越一个 grid_step 边界才调仓；收益 = 价格 + 日股息；
    单边成本 0.05%；基准 = 满仓买入持有（含股息）；指标含年化/波动/夏普/最大回撤/卡玛/超额
-
-## 旧版页面
-
-保留的旧版静态页：
-[完整回测报告](report.html) · [自选股](watchlist.html) · [工作台](dashboard.html)
 
 ## 免责声明
 

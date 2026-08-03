@@ -53,6 +53,14 @@ INDEX_CODES = [
     {"name": "创业板指", "code": "sz399006"},
     {"name": "沪深300", "code": "sh000300"},
     {"name": "恒生指数", "code": "hkHSI"},
+    {"name": "道琼斯", "code": "usDJI"},
+    {"name": "纳斯达克", "code": "usIXIC"},
+    {"name": "标普500", "code": "usINX"},
+]
+
+# 美股三大指数（用于回测：网格均值回归策略在美股宽基上的验证）
+US_INDEX_CODES = [
+    {"name": "道琼斯", "code": "usDJI"},
     {"name": "纳斯达克", "code": "usIXIC"},
     {"name": "标普500", "code": "usINX"},
 ]

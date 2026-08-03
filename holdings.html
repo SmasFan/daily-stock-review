@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>持仓跟踪 · 盘中/盘后</title>
+<link rel="stylesheet" href="assets/css/common.css">
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.holdings();
+    const items = d.items || [];
+
+    // 操作徽章（对齐推荐页网格提醒）
+    const ACTION_META = {
+      clear:  { icon: 'right-from-bracket',  cls: 'down',  label: '超涨清仓' },
+      buy:    { icon: 'cart-plus',           cls: 'up',    label: '逢低加仓' },
+      reduce: { icon: 'cart-shopping',       cls: 'down',  label: '逢高减仓' },
+      hold:   { icon: 'pause',               cls: 'neutral', label: '持有观察' },
+      wait:   { icon: 'hourglass-half',      cls: 'neutral', label: '空仓等待' },
+    };
+    function actionBadge(g) {
+      if (!g) return RV.ui.signalBadge('watch', '--');
+      const m = ACTION_META[g.action_key] || { icon: 'question', cls: 'neutral' };
+      const label = g.action || m.label;
+      return `<span class="signal-badge s-${g.action_key}">${RV.ui.icon(m.icon, 'fa-xs')} ${label}</span>`;
+    }
+
+    // 汇总卡片
+    const totalPnlCls = d.total_pnl > 0 ? 'up' : (d.total_pnl < 0 ? 'down' : '');
+    const summary = `
+      <div class="summary-grid">
+        ${RV.ui.summaryCard('wallet', RV.fmt.money(d.total_market), '总市值')}
+        ${RV.ui.summaryCard('coins', RV.fmt.money(d.total_cost), '总成本')}
+        <div class="summary-card ${totalPnlCls}">
+          <div class="icon">${RV.ui.icon('arrow-trend-up')}</div>
+          <div class="summary-text"><div class="val ${totalPnlCls}">${RV.fmt.money(d.total_pnl)}</div>
+          <div class="label">总盈亏 · ${RV.fmt.pct(d.pnl_pct * 100)}</div></div>
+        </div>
+        ${RV.ui.summaryCard('chart-line', items.length + ' 只', '持仓标的')}
+      </div>`;
+
+    // 操作状态徽章（盘中/盘后）
+    const phase = d.market_open ? '盘中' : '盘后';
+    const phaseCls = d.market_open ? 's-buy' : 's-watch';
+
+    function gridInfo(g) {
+      if (!g || g.dev === null || g.dev === undefined) return '';
+      const devCls = RV.fmt.cls(g.dev);
+      return `
+      <div class="s-item"><span class="k">偏离均值线</span><span class="v ${devCls}">${RV.fmt.pct(g.dev * 100, 1)}</span></div>
+      <div class="s-item"><span class="k">目标仓位</span><span class="v">${g.target_pos != null ? RV.fmt.num(g.target_pos * 100, 0) + '%' : '--'}</span></div>
+      <div class="s-item"><span class="k">均值线</span><span class="v">${g.anchor != null ? RV.fmt.num(g.anchor) : '--'}</span></div>
+      <div class="s-item"><span class="k">网格档位</span><span class="v">${g.grid_idx ?? '--'}</span></div>`;
+    }
+
+    // 持仓卡片
+    const cards = items.map((p, i) => {
+      const g = p.grid || {};
+      const pnlCls = RV.fmt.cls(p.pnl);
+      return `
+      <div class="card">
+        <div class="card-header">
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.code}</span></div>
+          ${actionBadge(p.grid)}
+        </div>
+        <div class="score-ring">
+          <div style="flex:1">
+            <span style="font-size:22px;font-weight:800">${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)}</span>
+            <span class="date-tag" style="margin-left:8px">${RV.fmt.pct(p.change_pct)}</span>
+          </div>
+          <span class="val ${pnlCls}">${RV.fmt.money(p.pnl)}<br><small>${RV.fmt.pct(p.pnl_pct * 100)}</small></span>
+        </div>
+        <div class="points" style="grid-template-columns:repeat(4,1fr)">
+          <div class="point"><span class="p-label">成本价</span><span class="p-val">${RV.fmt.num(p.cost, p.cost < 5 ? 3 : 2)}</span></div>
+          <div class="point"><span class="p-label">持仓</span><span class="p-val">${RV.fmt.num(p.shares, 0)}</span></div>
+          <div class="point"><span class="p-label">市值</span><span class="p-val">${RV.fmt.money(p.market_value)}</span></div>
+          <div class="point"><span class="p-label">成本额</span><span class="p-val">${RV.fmt.money(p.cost_value)}</span></div>
+        </div>
+        ${g.dev !== undefined && g.dev !== null ? `
+        <div class="reason" style="margin-top:10px">${RV.ui.icon('grid-2', 'fa-xs')} 网格：${g.reason}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    // 网格提醒区块（操作优先级排序后的明细）
+    const reminderRows = items.map((p, i) => {
+      const g = p.grid || {};
+      const dev = g.dev;
+      return `
+      <tr>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</td>
+        <td>${actionBadge(p.grid)}</td>
+        <td style="font-weight:800">${dev !== null && dev !== undefined ? RV.fmt.pct(dev * 100, 1) : '--'}</td>
+        <td>${g.target_pos != null ? RV.fmt.num(g.target_pos * 100, 0) + '%' : '--'}</td>
+        <td>${g.grid_idx ?? '--'}</td>
+        <td style="max-width:300px;font-size:12px;color:var(--text-2)">${g.reason || '--'}</td>
+      </tr>`;
+    }).join('');
+
+    const reminderTable = items.length ? `
+      <div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('grid-2')}</span><h2>网格策略 · 操作提醒</h2>
+          ${RV.ui.infoDot('口径：均值线 = 750日滚动分位估值锚（PE/PB/ROE），无估值退化为价格均线。仓位 = 均衡70% − 斜率×偏离度，每涨0.5%抛1%、每跌0.5%买1.04%。偏离≤−5%半永久锁仓加仓，≥+5%超涨清仓。目标仓位为策略理论值。')}
+        </div>
+        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>标的</th><th>操作建议</th><th>偏离均值线</th><th>目标仓位</th><th>网格档</th><th>说明</th></tr></thead>
+          <tbody>${reminderRows}</tbody></table></div></div>
+        <div class="cards-mobile"><div class="mini-cards">${items.map((p, i) => {
+          const g = p.grid || {};
+          const devCls = RV.fmt.cls(g.dev);
+          return `
+          <div class="mini-card">
+            <div class="mini-head">
+              <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+              <span class="mini-head-right">${actionBadge(p.grid)}</span>
+            </div>
+            <div class="mini-kv">
+              <span class="k">偏离均值线</span><span class="v ${devCls}">${g.dev !== null && g.dev !== undefined ? RV.fmt.pct(g.dev * 100, 1) : '--'}</span>
+              <span class="k">目标仓位</span><span class="v">${g.target_pos != null ? RV.fmt.num(g.target_pos * 100, 0) + '%' : '--'}</span>
+            </div>
+            <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('grid-2', 'fa-xs')} ${g.reason || '--'}</div>
+          </div>`;
+        }).join('')}</div></div>
+      </div>` : '';
+
+    // 配置说明
+    const configSection = `
+      <div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('gear')}</span><h2>持仓配置</h2></div>
+        <div class="reason">${RV.ui.icon('pen-to-square', 'fa-xs')} 编辑项目根目录 <code>holdings.json</code> 添加/修改持仓：
+        <br>{"holdings": [{"name": "长江电力", "code": "600900", "cost": 28.5, "shares": 1000}]}
+        <br>修改后运行 <code>python run_review.py --mode holdings</code> 重新生成数据。</div>
+      </div>`;
+
+    const emptyMsg = items.length ? '' : RV.ui.empty('暂无持仓配置，请编辑 holdings.json');
+
+    app.innerHTML = RV.ui.header('持仓跟踪', `盘中实时跟踪 · 盘后复盘 · 网格提醒`, 'holdings', d.generatedAt)
+      + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('clock')}</span><h2>交易时段</h2>
+           <span class="signal-badge ${phaseCls}" style="margin-left:8px">${RV.ui.icon(d.market_open ? 'sun' : 'moon', 'fa-xs')} ${phase}</span>
+         </div>${summary}</div>`
+      + reminderTable
+      + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('briefcase')}</span><h2>持仓详情</h2></div>
+         ${emptyMsg}<div class="cards">${cards}</div></div>`
+      + configSection
+      + '<footer>盈亏按成本价×持仓估算 · 网格建议来自均值线偏离策略 · 目标仓位为理论值非投资建议 · 不构成投资建议</footer>';
+  } catch (e) {
+    app.innerHTML = RV.ui.header('持仓跟踪', '', 'holdings') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

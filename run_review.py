@@ -26,9 +26,10 @@ from src import screener as scr
 from src import backtest as bt
 from src import grid_backtest as gbt
 from src import grid_signal as gs
+from src import holdings as hd
 from src import report as rp
 from src import stock_pool as sp
-from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES
+from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES, US_INDEX_CODES
 
 
 def fetch_index_rows():
@@ -140,6 +141,30 @@ def run_review(args):
             s = gbt.summary_metrics(res)
             print(f"   {name}: 年化{s['annual_return']*100:.1f}% 回撤{s['max_drawdown']*100:.1f}% "
                   f"夏普{s['sharpe']} 交易{s['trade_count']}次 基准年化{s['benchmark_annual']*100:.1f}%")
+
+        # 美股三大指数回测（价格锚，无估值数据）
+        print("== 美股三大指数回测 ==")
+        for meta in US_INDEX_CODES:
+            name, code = meta["name"], meta["code"]
+            k = dp.fetch_daily_kline_us(code, count=3200)
+            if not k or len(k["closes"]) < 300:
+                print(f"   [跳过] {name}: K线不足")
+                continue
+            panel = gbt.build_panel(name, code, k["dates"], k["opens"], k["closes"],
+                                    k["highs"], k["lows"], k["volumes"])
+            if not panel:
+                print(f"   [跳过] {name}: 面板构建失败")
+                continue
+            try:
+                res = gbt.run_grid_backtest(name, panel, gparams, ap, cfg)
+            except Exception as e:
+                print(f"   [跳过] {name}: 均值线样本不足")
+                continue
+            per_stock[name] = res
+            s = gbt.summary_metrics(res)
+            print(f"   {name}: 年化{s['annual_return']*100:.1f}% 回撤{s['max_drawdown']*100:.1f}% "
+                  f"夏普{s['sharpe']} 交易{s['trade_count']}次 基准年化{s['benchmark_annual']*100:.1f}%")
+
         bt_data = gbt.build_backtest_data(per_stock)
         p = rp.save("backtest_data.json", bt_data)
         print(f"   {p}  共 {len(per_stock)} 只 / {bt_data['overall'].get('total', 0)}")
@@ -272,9 +297,31 @@ def run_recommend(args):
         print(f"       💡 {it.reasons}")
 
 
+def run_holdings():
+    """生成持仓页面数据：盘中实时跟踪 + 盘后复盘 + 网格提醒。"""
+    print("== 持仓跟踪 ==")
+    gparams = gbt.GridParams()
+    gap = gbt.AnchorParams(lookback_days=750, min_periods=500)
+    bt_data_prev = None
+    bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
+    if os.path.exists(bt_path):
+        try:
+            with open(bt_path, "r", encoding="utf-8") as fp:
+                bt_data_prev = json.load(fp)
+        except Exception:
+            bt_data_prev = None
+    data = hd.build_holdings_data(gparams, gap, bt_data_prev)
+    p = hd.save_holdings_data(data)
+    open_now = "盘中" if data.get("market_open") else "盘后"
+    print(f"   {p}  [{open_now}] 持仓 {len(data['items'])} 只  总盈亏 {data['total_pnl']:.0f}元 ({data['pnl_pct']*100:+.1f}%)")
+    for it in data["items"]:
+        g = it.get("grid") or {}
+        print(f"   {it['name']}: 现价{it['price']} 涨跌{it['change_pct']:+.2f}% 盈亏{it['pnl']:.0f}元 → {g.get('action') or '--'}")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["review", "recommend", "all"], default="all")
+    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
     ap.add_argument("--offline", action="store_true")
@@ -285,6 +332,8 @@ def main():
         run_review(args)
     if args.mode in ("recommend", "all"):
         run_recommend(args)
+    if args.mode in ("holdings", "all"):
+        run_holdings()
     print("完成。")
 
 
