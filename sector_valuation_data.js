@@ -254,6 +254,6 @@ window.sectorValuationData = {
       "level": "合理"
     }
   ],
-  "generatedAt": "2026-08-03 17:41:28",
+  "generatedAt": "2026-08-03 10:58:49",
   "dataSource": "腾讯行情 + 东方财富（PE/PB 补全）"
 };
