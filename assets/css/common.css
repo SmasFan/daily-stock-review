@@ -224,7 +224,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 @media (max-width:640px) {
     .container { padding:14px; }
     header.top h1 { font-size:22px; }
-    .card-kv { grid-template-columns:1fr; }
+    .card-kv { grid-template-columns:1fr 1fr; }
     .sector-header { flex-wrap:wrap; gap:8px; padding:12px 14px; }
     .sector-header .sector-stat { margin-left:0; width:100%; justify-content:space-between; gap:8px; }
     .mini-cards { grid-template-columns:1fr; }
