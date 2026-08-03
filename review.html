@@ -125,31 +125,88 @@
         </div>`).join('')}</div>`;
     }
 
-    // 板块汇总详情（'?' 弹层）
+    // 板块汇总详情（'?' 弹层）—— 结构化卡片布局
     function sectorDetail(sec, list) {
+      const n = list.length;
       const up = list.filter(r => r.change_pct > 0).length;
-      const down = list.length - up;
-      const buys = list.filter(r => r.signal_key === 'buy' || r.signal_key === 'strong_buy').length;
-      const sells = list.filter(r => r.signal_key === 'sell' || r.signal_key === 'reduce').length;
+      const down = n - up;
+      const strongBuy = list.filter(r => r.signal_key === 'strong_buy').length;
+      const buy = list.filter(r => r.signal_key === 'buy').length;
+      const watch = list.filter(r => r.signal_key === 'watch').length;
+      const reduce = list.filter(r => r.signal_key === 'reduce').length;
+      const sell = list.filter(r => r.signal_key === 'sell').length;
+      const buys = strongBuy + buy;
+      const sells = reduce + sell;
       const strong = list.filter(r => r.trend_status === '强势多头' || r.trend_status === '多头排列').length;
-      const avgScore = list.reduce((s, r) => s + r.score, 0) / list.length;
-      const avgChg = list.reduce((s, r) => s + r.change_pct, 0) / list.length;
+      const avgScore = list.reduce((s, r) => s + r.score, 0) / n;
+      const avgChg = list.reduce((s, r) => s + r.change_pct, 0) / n;
       const best = list.slice().sort((a, b) => b.score - a.score)[0];
-      const rows = [
-        ['板块标的', list.length + ' 只'],
-        ['上涨 / 下跌', up + ' / ' + down],
-        ['买入信号', buys + ' 只（' + (list.length ? (buys / list.length * 100).toFixed(0) : 0) + '%）'],
-        ['卖出信号', sells + ' 只'],
-        ['多头排列', strong + ' 只'],
-        ['平均评分', RV.fmt.num(avgScore, 1)],
-        ['平均涨跌', RV.fmt.pct(avgChg)],
-      ];
-      const bestHtml = best ? `${RV.ui.pctBadge(best.change_pct)} <b>${best.name}</b> 评分 ${best.score} · ${best.signal}` : '--';
-      return rows.map(([k, v]) => `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join('')
-        + '<hr><div style="color:var(--text-2);font-size:11px;line-height:1.5">板块内信号强弱（strong_buy>buy>watch>reduce>sell）排序，同级按评分降序</div>'
-        + `<hr><div class="it-row"><span class="k">板块最强</span><span class="v" style="text-align:right">${bestHtml}</span></div>`;
+      const worst = list.slice().sort((a, b) => a.score - b.score)[0];
+
+      // 信号分布占比条
+      const seg = (cnt, color) => cnt > 0
+        ? `<span style="display:block;width:${(cnt / n * 100).toFixed(1)}%;background:${color};height:100%"></span>` : '';
+      const distBar = `
+        <div style="display:flex;height:8px;border-radius:99px;overflow:hidden;margin:4px 0 8px">
+          ${seg(strongBuy, '#b91c1c')}${seg(buy, '#dc2626')}${seg(watch, '#d97706')}${seg(reduce, '#16a34a')}${seg(sell, '#059669')}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-2);flex-wrap:wrap;gap:2px 8px">
+          ${strongBuy ? `<span><i style="background:#b91c1c;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>强买 ${strongBuy}</span>` : ''}
+          ${buy ? `<span><i style="background:#dc2626;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>买入 ${buy}</span>` : ''}
+          ${watch ? `<span><i style="background:#d97706;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>观望 ${watch}</span>` : ''}
+          ${reduce ? `<span><i style="background:#16a34a;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>减仓 ${reduce}</span>` : ''}
+          ${sell ? `<span><i style="background:#059669;display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>卖出 ${sell}</span>` : ''}
+        </div>`;
+
+      // 评分条（0-100）
+      const scoreBar = `<div style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--surface-2);border:1px solid var(--border);margin:4px 0 6px"><div style="width:${Math.max(0, Math.min(100, avgScore))}%;background:${avgScore >= 70 ? '#dc2626' : (avgScore >= 55 ? '#d97706' : (avgScore >= 40 ? '#2563eb' : '#16a34a'))};height:100%"></div></div>`;
+
+      // 涨跌/信号/趋势三块统计卡
+      const statCard = (icon, title, val, sub, cls = '') => `
+        <div style="flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center">
+          <div style="font-size:10px;color:var(--text-2)">${title}</div>
+          <div style="font-size:17px;font-weight:800;font-variant-numeric:tabular-nums" class="${cls}">${val}</div>
+          <div style="font-size:10px;color:var(--text-2)">${sub}</div>
+        </div>`;
+
+      const head = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 10px">
+          <span style="font-weight:800;font-size:14px">${sec}</span>
+          <span class="${RV.fmt.cls(avgChg)}" style="font-weight:800;font-size:15px;font-variant-numeric:tabular-nums">${RV.fmt.pct(avgChg)}</span>
+        </div>`;
+
+      const statRow = `<div style="display:flex;gap:8px;margin-bottom:10px">
+        ${statCard('', '标的数', n + ' 只', up + ' 涨 / ' + down + ' 跌')}
+        ${statCard('', '平均评分', RV.fmt.num(avgScore, 1), '满分 100')}
+        ${statCard('', '买入信号', buys + ' 只', '占 ' + (buys / n * 100).toFixed(0) + '%')}
+      </div>`;
+
+      const trendRow = `<div style="display:flex;gap:8px;margin-bottom:10px">
+        ${statCard('', '多头排列', strong + ' 只', '强势+多头')}
+        ${statCard('', '减仓/卖出', sells + ' 只', '弱信号')}
+        ${statCard('', '波动', RV.fmt.pct(avgChg, 1), '平均涨跌')}
+      </div>`;
+
+      // 最强/最弱卡
+      const pickCard = (r, tag) => r ? `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px">
+          <span style="font-size:11px;font-weight:700;color:var(--text-2);flex-shrink:0">${tag}</span>
+          <span style="flex:1;min-width:0;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
+          <span class="${RV.fmt.cls(r.change_pct)}" style="font-weight:700;font-variant-numeric:tabular-nums">${RV.fmt.pct(r.change_pct)}</span>
+          <span style="font-size:12px;font-weight:800;font-variant-numeric:tabular-nums">${r.score}</span>
+          ${RV.ui.signalBadge(r.signal_key, r.signal)}
+        </div>` : '';
+
+      const note = `<div style="font-size:10px;color:var(--text-2);line-height:1.6;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
+        板块内按信号强弱（强买>买入>观望>减仓>卖出）排序，同级按评分降序；买入信号 = 强买 + 买入
+      </div>`;
+
+      return head + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评分分布：' +
+        `强买${strongBuy} · 买入${buy} · 观望${watch} · 减仓${reduce} · 卖出${sell}` + '</div>' + scoreBar
+        + '<div style="font-size:10px;color:var(--text-2);margin:2px 0 10px;display:flex;justify-content:space-between"><span>0</span><span>均分 ' + RV.fmt.num(avgScore, 1) + '</span><span>100</span></div>'
+        + trendRow + pickCard(best, '最强') + pickCard(worst, '最弱') + note;
     }
-    const sectorDot = (sec, list) => RV.ui.infoDot(sectorDetail(sec, list), sec + ' · 板块汇总');
+    const sectorDot = (sec, list) => RV.ui.infoDot(sectorDetail(sec, list), '');
 
     function sectorSection(items, key) {
       const groups = groupBySector(items);
