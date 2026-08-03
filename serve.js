@@ -6,7 +6,7 @@ const PORT = 7584;
 const BASE_DIR = __dirname;
 
 const server = http.createServer((req, res) => {
-    let filePath = req.url === '/' ? '/dashboard.html' : req.url;
+    let filePath = req.url === '/' ? '/index.html' : req.url;
     filePath = path.join(BASE_DIR, decodeURIComponent(filePath));
 
     fs.readFile(filePath, (err, data) => {

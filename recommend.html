@@ -16,6 +16,7 @@
     const d = await RV.API.recommend();
     const picks = d.picks || [], mpicks = d.market_picks || [], sectors = d.sectors || [];
     const sectorPicks = d.sector_picks || [];
+    const gridSignals = d.grid_signals || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
     // 大盘指数（方块卡片，英文简写，背景按涨跌着色）
@@ -40,6 +41,51 @@
     const indicesHtml = `<div class="section">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
       <div class="idx-cards">${idxCards}</div></div>`;
+
+    // 网格策略操作提醒（均值线偏离度 → 操作建议）
+    const ACTION_META = {
+      clear:  { icon: 'right-from-bracket',  cls: 'down',  label: '超涨清仓' },
+      buy:    { icon: 'cart-plus',           cls: 'up',    label: '逢低加仓' },
+      reduce: { icon: 'cart-shopping',       cls: 'down',  label: '逢高减仓' },
+      hold:   { icon: 'pause',               cls: 'neutral', label: '持有观察' },
+      wait:   { icon: 'hourglass-half',      cls: 'neutral', label: '空仓等待' },
+    };
+    function gridActionBadge(s) {
+      const m = ACTION_META[s.action_key] || { icon: 'question', cls: 'neutral' };
+      const label = s.action || m.label;
+      return `<span class="signal-badge s-${s.action_key}">${RV.ui.icon(m.icon, 'fa-xs')} ${label}</span>`;
+    }
+    function devText(s) {
+      if (s.dev === null || s.dev === undefined) return '--';
+      return `<span class="${RV.fmt.cls(s.dev)}">${RV.fmt.pct(s.dev * 100, 1)}</span>`;
+    }
+    function gridSignalSection() {
+      if (!gridSignals.length) return '';
+      const cards = gridSignals.map((s, i) => `
+      <div class="mini-card">
+        <div class="mini-head">
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name}</span>
+          <span class="mini-head-right">${gridActionBadge(s)}</span>
+        </div>
+        <div class="mini-tags">
+          <span class="date-tag">${s.date || '--'}</span>
+          <span class="sec-chip">${s.price_only ? '价格锚' : '估值锚'}</span>
+        </div>
+        <div class="mini-kv">
+          <span class="k">偏离均值线</span><span class="v">${devText(s)}</span>
+          <span class="k">当前 / 目标仓位</span><span class="v">${s.position != null ? RV.fmt.num(s.position * 100, 0) + '%' : '--'} / ${s.target_pos != null ? RV.fmt.num(s.target_pos * 100, 0) + '%' : '--'}</span>
+          <span class="k">网格档位</span><span class="v">${s.grid_idx ?? '--'}</span>
+          <span class="k">参考价 / 均值线</span><span class="v">${RV.fmt.num(s.close)} / ${RV.fmt.num(s.anchor)}</span>
+        </div>
+        <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('grid-2', 'fa-xs')} ${s.reason}</div>
+      </div>`).join('');
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('grid-2')}</span><h2>网格策略 · 操作提醒</h2>
+          ${RV.ui.infoDot('口径：均值线 = 750日滚动分位估值锚（PE/PB/ROE，缺因子自动归一），无估值数据退化为价格均线。仓位 = 均衡 70% − 斜率×偏离度，每涨 0.5% 抛 1%、每跌 0.5% 买 1.04%。偏离 ≤ −5% 半永久锁仓加仓，≥ +5% 超涨清仓。目标仓位为策略理论值，非持仓建议。')}
+        </div>
+        <div class="mini-cards">${cards}</div>
+      </div>`;
+    }
 
     function topCards(list, title) {
       const a = list.filter(p => p.rating === 'A').length;
@@ -284,7 +330,7 @@
         + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
-        + indicesHtml + modTabs
+        + indicesHtml + gridSignalSection() + modTabs
         + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
       app.querySelectorAll('.sector-group').forEach(g => {

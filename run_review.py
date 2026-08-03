@@ -25,6 +25,7 @@ from src import analyzer as az
 from src import screener as scr
 from src import backtest as bt
 from src import grid_backtest as gbt
+from src import grid_signal as gs
 from src import report as rp
 from src import stock_pool as sp
 from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES
@@ -239,8 +240,31 @@ def run_recommend(args):
     for it in sector_picks:
         it.reasons = scr.build_buy_reason(it)
 
+    # 网格策略操作提醒：对推荐候选（自选+大盘+板块选股）计算均值线偏离信号
+    # 优先复用已有回测结果，避免重复拉取长K线/估值（未覆盖的标的现场计算）
+    print("== 网格策略操作提醒 ==")
+    gparams = gbt.GridParams()
+    gap = gbt.AnchorParams(lookback_days=750, min_periods=500)
+    cand = {}
+    for it in list(picks) + list(market_picks) + list(sector_picks):
+        if it.code and it.code not in cand:
+            cand[it.code] = (it.name, it.code)
+    bt_data_prev = None
+    bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
+    if os.path.exists(bt_path):
+        try:
+            with open(bt_path, "r", encoding="utf-8") as fp:
+                bt_data_prev = json.load(fp)
+        except Exception:
+            bt_data_prev = None
+    grid_signals = gs.build_grid_signals(list(cand.values()), gparams, gap, bt_data_prev)
+    print(f"   推荐候选 {len(cand)} 只，网格信号成功 {len(grid_signals)} 只")
+    for s in grid_signals:
+        print(f"   {s['name']}: dev={s['dev']*100:+.1f}% 仓位{s['position']*100:.0f}% → {s['action']}")
+
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
-                             sectors=sector_recs, sector_picks=sector_picks)
+                             sectors=sector_recs, sector_picks=sector_picks,
+                             grid_signals=grid_signals)
     p = rp.save("recommend_data.json", rec)
     print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {len(sector_picks)}")
     for it in picks[:5]:

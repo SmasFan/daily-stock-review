@@ -223,6 +223,25 @@ def fetch_daily_kline_long(code: str, count: int = 320, min_days: int = 750,
         return None
     # 截取需要的根数（保留最近 count 根）
     rows = rows_all[-count:] if count > 0 and len(rows_all) > count else rows_all
+    # 分页接口对大 count 请求存在数据更新延迟（最新 1-2 个交易日可能缺失），
+    # 用单次小请求(320根)核对并补齐最新交易日，避免回测数据滞后。
+    try:
+        url_latest = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+                      f"?param={sym},day,,,{320},qfq")
+        raw_l = _get(url_latest)
+        data_l = json.loads(raw_l)
+        node_l = data_l["data"][sym]
+        rows_l = node_l.get("qfqday") or node_l.get("day") or []
+        if rows_l:
+            latest_existing = rows[-1][0] if rows else ""
+            # 用日期映射补齐缺失的最新交易日（按日期去重，保留小请求的更新版本）
+            merged = {r[0]: r for r in rows}
+            for r in rows_l:
+                if r[0] > latest_existing:
+                    merged[r[0]] = r
+            rows = [merged[k] for k in sorted(merged.keys())]
+    except Exception:
+        pass
     dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
     for r in rows:
         dates.append(r[0])

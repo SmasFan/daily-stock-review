@@ -19,6 +19,7 @@ import json
 import math
 import os
 import re
+import socket
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field, asdict
@@ -106,9 +107,21 @@ def fetch_stock_value_em(code: str) -> Optional[List[Dict]]:
     }
     url = "https://datacenter-web.eastmoney.com/api/data/v1/get?" + urllib.parse.urlencode(params)
     try:
-        data = _get_json(url)
+        # 东财接口在本机网络下常不可达，缩短超时并快速退化，避免拖慢整体流程
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(8)
+        try:
+            data = _get_json(url, timeout=8)
+        finally:
+            socket.setdefaulttimeout(old_timeout)
         rows = (data.get("result") or {}).get("data") or []
         if not rows:
+            # 缓存空结果，避免同一代码反复重试拖慢流程
+            try:
+                with open(cache, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+            except Exception:
+                pass
             return None
         # 数据源为降序（最新在前），转为升序
         rows = sorted(rows, key=lambda r: r.get("TRADE_DATE") or "")
@@ -119,6 +132,12 @@ def fetch_stock_value_em(code: str) -> Optional[List[Dict]]:
             pass
         return rows
     except Exception:
+        # 网络失败同样缓存空结果，避免重复请求
+        try:
+            with open(cache, "w", encoding="utf-8") as f:
+                json.dump([], f)
+        except Exception:
+            pass
         return None
 
 
