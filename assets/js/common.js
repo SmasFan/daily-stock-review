@@ -59,7 +59,9 @@
       <header class="top">
         <h1>${title}</h1>
         <div class="gen-time">${subtitle || ''}${genTime ? ' · 生成于 ' + genTime : ''}</div>
-        <nav class="nav">${navHtml}</nav>
+        <nav class="nav">${navHtml}
+          <a class="nav-link repo-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">${ui.icon('github')} 项目源码</a>
+        </nav>
       </header>`;
     },
 
