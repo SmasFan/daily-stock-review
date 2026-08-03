@@ -118,8 +118,8 @@
   let tipEl = null;
   const TIP = document.createElement('div');
   TIP.className = 'info-tip-global';
-  TIP.style.cssText = 'display:none;position:fixed;z-index:9999;max-width:380px;min-width:280px;' +
-    'padding:12px 14px;border-radius:10px;background:var(--surface,#fff);' +
+  TIP.style.cssText = 'display:none;position:fixed;z-index:9999;max-width:380px;width:max-content;' +
+    'max-width:calc(100vw - 16px);padding:12px 14px;border-radius:10px;background:var(--surface,#fff);' +
     'border:1px solid var(--border,#e5e7eb);box-shadow:0 8px 24px rgba(0,0,0,0.12);' +
     'color:var(--text,#111827);font-size:12px;line-height:1.6;text-align:left;' +
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;';
@@ -147,18 +147,26 @@
     TIP.style.top = Math.round(y) + 'px';
   }
 
+  // 触摸设备（无 hover）：mouseover 会由触摸模拟触发，只在非触摸端使用 hover 显示
+  const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
   document.addEventListener('mouseover', e => {
+    if (isTouch) return;
     const dot = e.target.closest('.info-dot');
     if (dot && !dot.classList.contains('info-active')) { dot.classList.add('info-active'); show(dot); }
     else if (!dot && tipEl) hide();
   });
   document.addEventListener('click', e => {
     const dot = e.target.closest('.info-dot');
-    if (dot) { e.stopPropagation(); show(dot); tipEl = dot; }
-    else hide();
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.closest('.info-dot')) hide();
+    if (dot) {
+      e.stopPropagation();
+      // 已展开则再次点击关闭
+      if (tipEl === dot && TIP.style.display === 'block') { hide(); tipEl = null; return; }
+      show(dot);
+      tipEl = dot;
+    } else {
+      hide();
+      tipEl = null;
+    }
   });
   window.addEventListener('scroll', () => { if (tipEl) position(tipEl); }, { passive: true });
   window.addEventListener('resize', () => { if (tipEl) position(tipEl); });
