@@ -102,18 +102,18 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .metric-with-bar { display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; }
 
 /* 卡片网格 */
-.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
-.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow); transition:box-shadow .15s; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); transition:box-shadow .15s; }
 .card:hover { box-shadow:var(--shadow-hover); }
-.card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:14px; }
-.card-title { font-size:16px; font-weight:700; }
-.card-kv { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; font-size:13px; }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px; }
+.card-title { font-size:15px; font-weight:700; }
+.card-kv { display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; font-size:12px; }
 .card-kv .k { color:var(--text-2); }
 .card-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
-.score-ring { display:flex; align-items:center; gap:12px; margin:10px 0; }
-.score-num { font-size:30px; font-weight:800; }
-.points { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
-.point { font-size:12px; }
+.score-ring { display:flex; align-items:center; gap:10px; margin:8px 0; }
+.score-num { font-size:24px; font-weight:800; }
+.points { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.point { font-size:11px; }
 .point .p-label { color:var(--text-2); display:block; }
 .point .p-val { font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
 
