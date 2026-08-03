@@ -21,31 +21,38 @@
 
     function pct(v, digits = 2) { return RV.fmt.pct(v * 100, digits); }
 
+    // 紧凑指标卡：手机端更小、更密
+    function metricSmall(val, label, cls = '', icon = '') {
+      return `<div class="m-small"><div class="m-s-val ${cls}">${icon ? RV.ui.icon(icon, 'fa-xs') + ' ' : ''}${val}</div><div class="m-s-label">${label}</div></div>`;
+    }
+    function metricGroup(title, icon, body) {
+      return `<div class="metric-group"><div class="mg-title">${RV.ui.icon(icon, 'fa-xs')} ${title}</div><div class="mg-body">${body}</div></div>`;
+    }
+
     function overallMetrics(s) {
-      return `<div class="metric-grid">
-        ${RV.ui.metric(s.stocks ?? 0, '回测标的')}
-        ${RV.ui.metric(pct(s.avg_annual_return, 1), '平均年化', RV.fmt.cls(s.avg_annual_return))}
-        ${RV.ui.metric(RV.fmt.num(s.avg_sharpe, 2), '平均夏普')}
-        ${RV.ui.metric(pct(s.avg_max_drawdown, 1), '平均最大回撤', 'down')}
-        ${RV.ui.metric(pct(s.avg_excess_return, 1), '平均超额收益', RV.fmt.cls(s.avg_excess_return))}
-      </div>`;
+      return metricGroup('整体 · 回测标的 ' + (s.stocks ?? 0), 'chart-pie', `
+        ${metricSmall(pct(s.avg_annual_return, 1), '平均年化', RV.fmt.cls(s.avg_annual_return))}
+        ${metricSmall(RV.fmt.num(s.avg_sharpe, 2), '平均夏普')}
+        ${metricSmall(pct(s.avg_max_drawdown, 1), '平均回撤', 'down')}
+        ${metricSmall(pct(s.avg_excess_return, 1), '超额收益', RV.fmt.cls(s.avg_excess_return))}`);
     }
 
     function stockMetrics(s) {
-      return `<div class="metric-grid">
-        ${RV.ui.metric(pct(s.annual_return, 1), '年化收益', RV.fmt.cls(s.annual_return))}
-        ${RV.ui.metric(pct(s.total_return, 1), '总收益', RV.fmt.cls(s.total_return))}
-        ${RV.ui.metric(RV.fmt.num(s.sharpe, 2), '夏普')}
-        ${RV.ui.metric(pct(s.max_drawdown, 1), '最大回撤', 'down')}
-        ${RV.ui.metric(RV.fmt.num(s.calmar, 2), '卡玛')}
-        ${RV.ui.metric(RV.fmt.num(s.annual_vol * 100, 1) + '%', '年化波动')}
-        ${RV.ui.metric(pct(s.benchmark_annual, 1), '基准年化', RV.fmt.cls(s.benchmark_annual))}
-        ${RV.ui.metric(pct(s.excess_return, 1), '超额收益', RV.fmt.cls(s.excess_return))}
-        ${RV.ui.metric(s.trade_count, '交易次数')}
-        ${RV.ui.metric(RV.fmt.num(s.avg_position * 100, 0) + '%', '平均仓位')}
-        ${RV.ui.metric(s.years + '年', '回测区间')}
-        ${RV.ui.metric(s.price_only ? '价格锚' : '估值锚', '均值线')}
-      </div>`;
+      return metricGroup('收益', 'arrow-trend-up', `
+        ${metricSmall(pct(s.annual_return, 1), '年化收益', RV.fmt.cls(s.annual_return))}
+        ${metricSmall(pct(s.total_return, 1), '总收益', RV.fmt.cls(s.total_return))}
+        ${metricSmall(pct(s.excess_return, 1), '超额收益', RV.fmt.cls(s.excess_return))}
+        ${metricSmall(pct(s.benchmark_annual, 1), '基准年化', RV.fmt.cls(s.benchmark_annual))}`)
+        + metricGroup('风险', 'triangle-exclamation', `
+        ${metricSmall(pct(s.max_drawdown, 1), '最大回撤', 'down')}
+        ${metricSmall(RV.fmt.num(s.annual_vol * 100, 1) + '%', '年化波动')}
+        ${metricSmall(RV.fmt.num(s.sharpe, 2), '夏普')}
+        ${metricSmall(RV.fmt.num(s.calmar, 2), '卡玛')}`)
+        + metricGroup('交易', 'receipt', `
+        ${metricSmall(s.trade_count, '交易次数')}
+        ${metricSmall(RV.fmt.num(s.avg_position * 100, 0) + '%', '平均仓位')}
+        ${metricSmall(s.years + '年', '回测区间')}
+        ${metricSmall(s.price_only ? '价格锚' : '估值锚', '均值线')}`);
     }
 
     // 净值曲线（交互式：时间轴 + 悬浮查看数据）
