@@ -28,7 +28,7 @@ else
   git commit -m "auto update $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG" 2>&1 || echo "commit 跳过" >> "$LOG"
   # push 带重试（TLS/网络抖动）
   for i in 1 2 3; do
-    git push >> "$LOG" 2>&1 && { echo "[$(date '+%Y-%m-%d %H:%M:%S')] push 成功" >> "$LOG"; break; }
+    git push -u origin main >> "$LOG" 2>&1 && { echo "[$(date '+%Y-%m-%d %H:%M:%S')] push 成功" >> "$LOG"; break; }
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] push 第${i}次失败，重试..." >> "$LOG"
     sleep 5
   done
