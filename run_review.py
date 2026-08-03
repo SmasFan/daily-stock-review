@@ -177,6 +177,36 @@ def _rank_sectors(sectors):
     return sectors
 
 
+# 板块推荐名（估值指数） -> watchlist 个股分类，用于从推荐板块中挑出对应个股
+SECTOR_RECO_MAP = {
+    "中证银行": ["红利金融"],
+    "非银金融": ["红利金融"],
+    "证券公司": ["红利金融"],
+    "内地地产": ["房地产"],
+    "300基建": ["基建交通"],
+    "一带一路": ["基建交通"],
+    "养老产业": ["医药医疗", "大消费"],
+    "中证白酒": ["大消费"],
+    "中证医疗": ["医药医疗"],
+    "中证医药": ["医药医疗"],
+    "中证新能": ["新能源电力"],
+    "中证军工": ["军工"],
+    "CSSW电子": ["科技-半导体芯片", "科技-通信电子"],
+}
+
+
+def pick_sector_stocks(sector_recs, screen_items, top_n=5):
+    """从板块推荐的对应个股分类中，选出综合分最高的 top_n 只（按板块推荐名过滤）。"""
+    reco_cats = set()
+    for s in sector_recs:
+        reco_cats.update(SECTOR_RECO_MAP.get(s.get("name", ""), []))
+    if not reco_cats:
+        return []
+    matched = [it for it in screen_items if it.sector in reco_cats]
+    matched.sort(key=lambda it: it.total_score, reverse=True)
+    return matched[:top_n]
+
+
 def run_recommend(args):
     print("== 拉取自选股数据（推荐）==")
     names, quotes = build_names_from_quotes(WATCHLIST_CODES, args.offline)
@@ -198,16 +228,21 @@ def run_recommend(args):
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())
 
+    # 板块推荐对应个股：从推荐板块分类中挑综合分 Top5
+    sector_picks = pick_sector_stocks(sector_recs, screen_items, top_n=5)
+
     # 生成当日购买原因
     for it in picks:
         it.reasons = scr.build_buy_reason(it)
     for it in market_picks:
         it.reasons = scr.build_buy_reason(it)
+    for it in sector_picks:
+        it.reasons = scr.build_buy_reason(it)
 
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
-                             sectors=sector_recs)
+                             sectors=sector_recs, sector_picks=sector_picks)
     p = rp.save("recommend_data.json", rec)
-    print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)}")
+    print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {len(sector_picks)}")
     for it in picks[:5]:
         print(f"     {it.rating} {it.total_score:5.1f}  {it.name}  {it.signal}")
         print(f"       💡 {it.reasons}")

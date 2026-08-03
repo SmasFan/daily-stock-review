@@ -15,6 +15,7 @@
   try {
     const d = await RV.API.recommend();
     const picks = d.picks || [], mpicks = d.market_picks || [], sectors = d.sectors || [];
+    const sectorPicks = d.sector_picks || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
     // 大盘指数（竖排：上证指数置顶，右侧两行显示涨跌幅 + 指数点）
@@ -215,6 +216,40 @@
       </div>`;
     }
 
+    // 板块推荐对应个股（Top5，复盘卡片样式）
+    function sectorPickSection() {
+      if (!sectorPicks.length) return '';
+      const cards = sectorPicks.map((p, i) => `
+      <div class="card">
+        <div class="card-header">
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span></div>
+          ${RV.ui.signalBadge(p.signal_key, p.signal)}
+        </div>
+        <div class="score-ring">
+          <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
+          <div style="flex:1">${RV.ui.progress(p.total_score)}</div>
+          ${RV.ui.pctBadge(p.change_pct)}
+        </div>
+        <div class="card-kv">
+          <span class="k">现价</span><span class="v">${RV.fmt.money(p.price)}</span>
+          <span class="k">评级</span><span class="v">${p.rating}</span>
+          <span class="k">技术 / 截面</span><span class="v">${RV.fmt.num(p.tech_score, 0)} / ${RV.fmt.num(p.cross_score, 0)}</span>
+          <span class="k">PE / PB</span><span class="v">${RV.fmt.num(p.pe, 1)} / ${RV.fmt.num(p.pb, 2)}</span>
+        </div>
+        <div class="points">
+          <div class="point"><span class="p-label">理想买点</span><span class="p-val">${RV.fmt.num(p.ideal_buy)}</span></div>
+          <div class="point"><span class="p-label">次优买点</span><span class="p-val">${RV.fmt.num(p.secondary_buy)}</span></div>
+          <div class="point"><span class="p-label">止损</span><span class="p-val">${RV.fmt.num(p.stop_loss)}</span></div>
+          <div class="point"><span class="p-label">止盈</span><span class="p-val">${RV.fmt.num(p.take_profit)}</span></div>
+        </div>
+        <div class="reason">${RV.ui.icon('lightbulb', 'fa-xs')} ${p.reasons}</div>
+      </div>`).join('');
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('tags')}</span><h2>板块推荐 · 对应个股 Top${sectorPicks.length}</h2></div>
+        <div class="cards">${cards}</div>
+      </div>`;
+    }
+
     let tab = 'watch';
     function render() {
       const list = tab === 'watch' ? picks : mpicks;
@@ -227,7 +262,7 @@
           </div>
         </div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
-        + indicesHtml + sectorRecSection() + tabs
+        + indicesHtml + sectorRecSection() + sectorPickSection() + tabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
         + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')

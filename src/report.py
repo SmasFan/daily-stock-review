@@ -83,13 +83,15 @@ def build_review(market_name: str, analyses: List[az.AnalysisResult],
 
 
 def build_recommend(items: List[scr.ScreenItem], market_items: Optional[List[scr.ScreenItem]] = None,
-                    indices: Optional[List[Dict]] = None, sectors: Optional[List[Dict]] = None) -> Dict:
+                    indices: Optional[List[Dict]] = None, sectors: Optional[List[Dict]] = None,
+                    sector_picks: Optional[List[scr.ScreenItem]] = None) -> Dict:
     return {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total": len(items),
         "picks": [it.to_dict() for it in items],
         "market_picks": [it.to_dict() for it in (market_items or [])],
         "sectors": sectors or [],
+        "sector_picks": [it.to_dict() for it in (sector_picks or [])],
         "indices": indices or [],
     }
 
