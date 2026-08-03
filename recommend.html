@@ -80,11 +80,28 @@
         </div>
         <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('grid-2', 'fa-xs')} ${s.reason}</div>
       </div>`).join('');
+      // 默认折叠：点击标题展开/收起
+      const buys = gridSignals.filter(s => s.action_key === 'buy' || s.action_key === 'clear').length;
+      const warns = gridSignals.filter(s => s.action_key === 'reduce').length;
+      const withTarget = gridSignals.filter(s => s.target_pos != null);
+      const avgTarget = withTarget.length ? withTarget.reduce((a, b) => a + b.target_pos, 0) / withTarget.length * 100 : null;
       return `<div class="section">
-        <div class="section-title"><span class="title-icon">${RV.ui.icon('grid-2')}</span><h2>网格策略 · 操作提醒</h2>
-          ${RV.ui.infoDot('口径：均值线 = 750日滚动分位估值锚（PE/PB/ROE，缺因子自动归一），无估值数据退化为价格均线。仓位 = 均衡 70% − 斜率×偏离度，每涨 0.5% 抛 1%、每跌 0.5% 买 1.04%。偏离 ≤ −5% 半永久锁仓加仓，≥ +5% 超涨清仓。目标仓位为策略理论值，非持仓建议。')}
+        <div class="sector-group grid-signal" data-sec="__grid">
+          <div class="sector-header">
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+            <span class="sector-name">${RV.ui.icon('grid-2')} 网格策略 · 操作提醒</span>
+            <span class="sec-chip">${gridSignals.length}只</span>
+            ${buys ? `<span class="signal-badge s-buy">买${buys}</span>` : ''}
+            ${warns ? `<span class="signal-badge s-reduce">减${warns}</span>` : ''}
+            <span class="sector-stat">
+              <span>${RV.ui.icon('bullseye', 'fa-xs')} 目标仓位 ${avgTarget != null ? RV.fmt.num(avgTarget, 0) + '%' : '--'}</span>
+            </span>
+          </div>
+          <div class="sector-body">
+            ${RV.ui.infoDot('口径：均值线 = 750日滚动分位估值锚（PE/PB/ROE，缺因子自动归一），无估值数据退化为价格均线。仓位 = 均衡 70% − 斜率×偏离度，每涨 0.5% 抛 1%、每跌 0.5% 买 1.04%。偏离 ≤ −5% 半永久锁仓加仓，≥ +5% 超涨清仓。目标仓位为策略理论值，非持仓建议。')}
+            <div class="mini-cards">${cards}</div>
+          </div>
         </div>
-        <div class="mini-cards">${cards}</div>
       </div>`;
     }
 
@@ -99,10 +116,14 @@
       </div>`;
     }
 
+    function holdingBadge(p) {
+      return p.is_holding ? `<span class="signal-badge s-buy">${RV.ui.icon('briefcase', 'fa-xs')} 持仓</span>` : '';
+    }
+
     function listTable(list) {
       const rows = list.map((p, i) => `
       <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</td>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</td>
         <td><span class="sec-chip">${p.sector || '--'}</span></td>
         <td>${RV.ui.ratingBadge(p.rating)}</td>
         <td style="font-weight:800">${RV.fmt.num(p.total_score, 1)}</td>
@@ -114,7 +135,7 @@
       const mobileCards = list.map((p, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
           <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
         </div>
         <div class="mini-tags">
@@ -159,7 +180,7 @@
       return `<div class="mini-cards">${list.map((p, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
           </div>
           <div class="mini-tags">
@@ -216,7 +237,7 @@
       return list.map(p => `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span></div>
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
           ${RV.ui.signalBadge(p.signal_key, p.signal)}
         </div>
         <div class="score-ring">
@@ -276,7 +297,7 @@
       const cards = sectorPicks.map((p, i) => `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span></div>
+          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
           ${RV.ui.signalBadge(p.signal_key, p.signal)}
         </div>
         <div class="score-ring">

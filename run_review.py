@@ -233,6 +233,41 @@ def pick_sector_stocks(sector_recs, screen_items, top_n=5):
     return matched[:top_n]
 
 
+def load_holding_codes():
+    """读取 holdings.json 的持仓代码集合。"""
+    hpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "holdings.json")
+    try:
+        with open(hpath, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return {str(h.get("code", "")).zfill(6) for h in (d.get("holdings") or [])}
+    except Exception:
+        return set()
+
+
+def _sector_rank(sector: str) -> int:
+    """板块优先级：红利 > 蓝筹(宽基/大消费/银行) > 其他。"""
+    if not sector:
+        return 3
+    s = sector
+    if "红利" in s or "银行" in s:
+        return 0
+    if "宽基" in s or "大消费" in s or "沪深" in s:
+        return 1
+    return 2
+
+
+def prioritize_picks(picks, holding_codes):
+    """排序推荐列表：持仓股优先 → 红利 → 蓝筹 → 其他；同级按综合分降序。"""
+    for it in picks:
+        it.is_holding = it.code in holding_codes
+    picks.sort(key=lambda it: (
+        0 if it.is_holding else 1,
+        _sector_rank(it.sector),
+        -it.total_score,
+    ))
+    return picks
+
+
 def run_recommend(args):
     print("== 拉取自选股数据（推荐）==")
     names, quotes = build_names_from_quotes(WATCHLIST_CODES, args.offline)
@@ -243,6 +278,18 @@ def run_recommend(args):
 
     screen_items = [to_screen_item(c, v) for c, v in pool.items()]
     picks = scr.screen(screen_items, tech_weight=0.5, top_n=args.top)
+
+    # 持仓股置顶：把持仓股并入自选推荐（若不在 TopN 中则补入），并打持仓标记
+    holding_codes = load_holding_codes()
+    if holding_codes:
+        picked = {it.code for it in picks}
+        pool_by_code = {it.code: it for it in screen_items}
+        for code in sorted(holding_codes):
+            if code in picked or code not in pool_by_code:
+                continue
+            picks.append(pool_by_code[code])
+        picks = prioritize_picks(picks, holding_codes)
+        print(f"   持仓股置顶: {[it.name for it in picks if it.is_holding]}")
 
     # 大盘推荐：从大盘池中选，默认前 5
     pool_names = {m['code']: m['name'] for m in MARKET_POOL}

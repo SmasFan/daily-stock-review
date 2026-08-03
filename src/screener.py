@@ -67,6 +67,8 @@ class ScreenItem:
     # 综合
     total_score: float = 50.0
     rating: str = "C"
+    # 持仓标记（在推荐列表中置顶并展示徽章）
+    is_holding: bool = False
     # 买卖点位
     ideal_buy: Optional[float] = None
     secondary_buy: Optional[float] = None
