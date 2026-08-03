@@ -162,9 +162,25 @@
 
     // ===== 自选 / 大盘 Tab =====
     let tab = 'watch';
-    const cardSec = () => `
-      <div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
-        <div class="cards">${cards(tab === 'watch' ? d.items : d.market_items)}</div></div>`;
+    let page = 0;
+    const PAGE_SIZE = 10;
+    const pageItems = () => tab === 'watch' ? d.items : (d.market_items || []);
+    const pageCount = () => Math.max(1, Math.ceil(pageItems().length / PAGE_SIZE));
+
+    const cardSec = () => {
+      const all = pageItems();
+      const paged = all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+      const pageNav = `
+        <div class="pagination">
+          <button class="pg-btn ${page <= 0 ? 'disabled' : ''}" data-pg="prev">${RV.ui.icon('chevron-left', 'fa-xs')} 上一页</button>
+          <span class="pg-info">第 ${page + 1} / ${pageCount()} 页 · 共 ${all.length} 只</span>
+          <button class="pg-btn ${page >= pageCount() - 1 ? 'disabled' : ''}" data-pg="next">下一页 ${RV.ui.icon('chevron-right', 'fa-xs')}</button>
+        </div>`;
+      return `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
+        ${pageNav}
+        <div class="cards">${cards(paged)}</div>
+        ${pageNav}</div>`;
+    };
 
     function render() {
       const tabs = `
@@ -175,7 +191,7 @@
             <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘（${(d.market_items||[]).length}只）</a>
           </div>
         </div>`;
-      const items = tab === 'watch' ? d.items : (d.market_items || []);
+      const items = pageItems();
       app.innerHTML = RV.ui.header(`${d.market}每日复盘`, '趋势 · 评分 · 买卖点位 · 板块分组', 'review', d.generatedAt)
         + indicesHtml + summary + tabs
         + sectorSection(items, tab === 'watch' ? '自选股' : '大盘')
@@ -184,9 +200,17 @@
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
       });
+      app.querySelectorAll('.pg-btn').forEach(b => b.addEventListener('click', ev => {
+        ev.preventDefault();
+        if (b.classList.contains('disabled')) return;
+        page += b.getAttribute('data-pg') === 'next' ? 1 : -1;
+        page = Math.max(0, Math.min(pageCount() - 1, page));
+        render();
+      }));
       app.querySelectorAll('.nav-link[data-tab]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         tab = a.getAttribute('data-tab');
+        page = 0;
         render();
       }));
     }

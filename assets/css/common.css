@@ -200,6 +200,18 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .eq-chart { width:100%; height:120px; }
 .sparkline { display:block; margin-top:6px; width:100%; }
 
+/* 分页导航 */
+.pagination { display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
+.pagination:last-child { margin-top:16px; margin-bottom:0; }
+.pg-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px;
+    font-size:13px; font-weight:600; cursor:pointer; color:var(--text);
+    background:var(--surface); border:1px solid var(--border); transition:all .15s;
+}
+.pg-btn:hover:not(.disabled) { box-shadow:var(--shadow-hover); border-color:var(--accent); }
+.pg-btn.disabled { opacity:.4; cursor:not-allowed; }
+.pg-info { font-size:13px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+
 /* 榜单表格：桌面表格 + 手机卡片（隐藏其一） */
 .cards-mobile { display:none; }
 .table-desktop { display:block; }
