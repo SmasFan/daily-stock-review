@@ -22,6 +22,16 @@ python -m http.server 8000
 # 打开 http://localhost:8000/
 ```
 
+## 自动化（GitHub Actions）
+
+云端自动执行每日复盘/推荐并部署 GitHub Pages，无需本地定时任务：
+
+- 周一至周五 **09:05**（北京）自动生成开盘推荐
+- 周一至周五 **15:40**（北京）自动生成盘后复盘 + 网格回测 + 板块估值
+- 也支持在 **Actions → Daily Stock Review → Run workflow** 手动触发
+
+完整说明见 [docs/github-actions.md](docs/github-actions.md)。
+
 ## 页面入口（新版）
 
 - [工作台首页](index.html) —— 三合一入口

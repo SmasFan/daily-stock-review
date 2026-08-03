@@ -173,6 +173,20 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .sector-body table.data-table tr:last-child td { border-bottom:none; }
 .sec-chip { font-size:11px; padding:1px 7px; border-radius:5px; background:var(--surface-2); color:var(--text-2); font-weight:600; }
 
+/* 板块内个股迷你卡片（手机友好，替代宽表格） */
+.mini-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
+.mini-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
+.mini-name { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mini-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.mini-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.mini-score { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.mini-score .score-num { font-size:24px; }
+.mini-score-bar { flex:1; }
+.mini-kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:12px; border-top:1px dashed var(--border); padding-top:10px; }
+.mini-kv .k { color:var(--text-2); }
+.mini-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+
 /* 板块推荐卡 */
 .sector-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
 .sector-card .rank { font-size:13px; font-weight:800; color:var(--accent); width:22px; }
@@ -190,4 +204,8 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
     .container { padding:14px; }
     header.top h1 { font-size:22px; }
     .card-kv { grid-template-columns:1fr; }
+    .sector-header { flex-wrap:wrap; gap:8px; padding:12px 14px; }
+    .sector-header .sector-stat { margin-left:0; width:100%; justify-content:space-between; gap:8px; }
+    .mini-cards { grid-template-columns:1fr; }
+    .mini-head-right { flex-direction:column; align-items:flex-end; gap:4px; }
 }

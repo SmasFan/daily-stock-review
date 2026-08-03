@@ -1,0 +1,104 @@
+name: Daily Stock Review
+
+# A股复盘定时任务 + 手动触发。
+#
+# 定时（北京时间，UTC+8）：
+#   - 周一至周五 09:05  → 开盘推荐（recommend）
+#   - 周一至周五 15:40  → 盘后复盘 + 回测（review，含板块估值更新）
+#
+# 手动触发：Actions → Daily Stock Review → Run workflow，
+#   可指定 mode（review / recommend / all）与 top（推荐数量）。
+#
+# 执行流程：
+#   1. 更新板块估值（sector_valuation_data.js）
+#   2. 运行 run_review.py 生成 data/*.json
+#   3. 提交并推送数据到 main（保留 git 历史）
+#   4. 直接部署 GitHub Pages（GITHUB_TOKEN 的 push 不会触发 push 事件工作流，
+#      因此本工作流内自行部署，避免依赖 deploy-pages.yml 被递归触发）
+
+"on":
+  schedule:
+    - cron: "5 1 * * 1-5"   # 09:05 北京时间 开盘推荐
+    - cron: "40 7 * * 1-5"  # 15:40 北京时间 盘后复盘
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 运行模式
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - review
+          - recommend
+      top:
+        description: 推荐数量 TopN
+        required: false
+        default: "10"
+        type: number
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily-review
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 更新板块估值
+        run: |
+          python3 scripts/update_sector_valuation.py || echo "[warn] 板块估值更新失败（不阻断主流程）"
+
+      - name: 运行复盘 / 推荐
+        run: |
+          python3 run_review.py --mode "${{ inputs.mode != '' && inputs.mode || 'all' }}" --top ${{ inputs.top || 10 }}
+
+      - name: 提交并推送数据
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A . ':!data/cache' ':!*.log'
+          if git diff --cached --quiet; then
+            echo "无数据变更"
+          else
+            git commit -m "auto update $(date -u '+%Y-%m-%d %H:%M:%S') UTC"
+            for i in 1 2 3; do
+              if git push; then
+                echo "push 成功"
+                break
+              fi
+              echo "push 第${i}次失败，重试..."
+              sleep 5
+            done
+          fi
+        # push 失败不阻断 pages 部署（工作区数据仍为最新计算结果）
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

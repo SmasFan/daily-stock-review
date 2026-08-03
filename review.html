@@ -72,22 +72,32 @@
       return groups;
     }
 
-    function table(items) {
-      const rows = items.map((r, i) => `
-      <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</td>
-        <td><span class="date-tag">${r.date}</span></td>
-        <td>${RV.ui.pctBadge(r.change_pct)}</td>
-        <td style="font-weight:800">${r.score}</td>
-        <td>${RV.ui.signalBadge(r.signal_key, r.signal)}</td>
-        <td><span class="date-tag">${r.trend_status}</span></td>
-        <td><div class="metric-with-bar"><span>${RV.fmt.num(r.rsi12, 1)}</span>${RV.ui.progress(r.rsi12)}</div></td>
-        <td>${r.macd_status}</td>
-        <td>${r.volume_status}</td>
-      </tr>`).join('');
-      return `<div class="table-wrap"><table class="data-table">
-        <thead><tr><th>标的</th><th>日期</th><th>涨跌</th><th>评分</th><th>信号</th><th>趋势</th><th>RSI12</th><th>MACD</th><th>量能</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`;
+    function miniCards(items) {
+      return `<div class="mini-cards">${items.map((r, i) => `
+        <div class="mini-card">
+          <div class="mini-head">
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
+            <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${RV.ui.signalBadge(r.signal_key, r.signal)}</span>
+          </div>
+          <div class="mini-tags">
+            <span class="date-tag">${r.date}</span>
+            <span class="sec-chip">${r.sector || '其他'}</span>
+            <span class="date-tag">${r.trend_status}</span>
+            <span class="date-tag">${r.volume_status}</span>
+          </div>
+          <div class="mini-score">
+            <span class="score-num ${r.score >= 60 ? 'up' : (r.score < 40 ? 'down' : '')}">${r.score}</span>
+            <div class="mini-score-bar">${RV.ui.progress(r.score)}</div>
+          </div>
+          <div class="mini-kv">
+            <span class="k">MA5 / MA20</span><span class="v">${RV.fmt.num(r.ma5)} / ${RV.fmt.num(r.ma20)}</span>
+            <span class="k">乖离MA5</span><span class="v ${RV.fmt.cls(r.bias_ma5)}">${RV.fmt.pct(r.bias_ma5)}</span>
+            <span class="k">RSI12</span><span class="v">${RV.fmt.num(r.rsi12, 1)}</span>
+            <span class="k">MACD</span><span class="v">${r.macd_status}</span>
+            <span class="k">买点(MA5/10)</span><span class="v">${RV.fmt.num(r.ideal_buy)} / ${RV.fmt.num(r.secondary_buy)}</span>
+            <span class="k">止损 / 止盈</span><span class="v">${RV.fmt.num(r.stop_loss)} / ${RV.fmt.num(r.take_profit)}</span>
+          </div>
+        </div>`).join('')}</div>`;
     }
 
     function sectorSection(items, key) {
@@ -114,7 +124,7 @@
               <span>最高分 <b>${top ? top.score : '--'}</b></span>
             </span>
           </div>
-          <div class="sector-body">${table(list)}</div>
+          <div class="sector-body">${miniCards(list)}</div>
         </div>`;
       }).join('');
       return `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>${key} · 按板块</h2></div>${secHtml}</div>`;
@@ -170,8 +180,7 @@
         + indicesHtml + summary + tabs
         + sectorSection(items, tab === 'watch' ? '自选股' : '大盘')
         + cardSec()
-        + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';
-      // 板块展开/收起
+        + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';      // 板块展开/收起
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
       });
