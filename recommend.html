@@ -61,6 +61,79 @@
         <tbody>${rows}</tbody></table></div>`;
     }
 
+    // 板块分组 + 迷你卡片（与复盘一致：点开板块展开个股卡片）
+    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
+    function buyStrength(r) {
+      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
+    }
+    function groupBySector(items) {
+      const groups = {};
+      (items || []).forEach(r => {
+        const sec = r.sector || '其他';
+        (groups[sec] = groups[sec] || []).push(r);
+      });
+      Object.keys(groups).forEach(k => groups[k].sort((a, b) =>
+        buyStrength(a) - buyStrength(b) || b.total_score - a.total_score));
+      return groups;
+    }
+
+    function miniCards(list) {
+      return `<div class="mini-cards">${list.map((p, i) => `
+        <div class="mini-card">
+          <div class="mini-head">
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+            <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
+          </div>
+          <div class="mini-tags">
+            <span class="sec-chip">${p.sector || '其他'}</span>
+            <span class="date-tag">${p.trend_status || '--'}</span>
+            ${RV.ui.ratingBadge(p.rating)}
+          </div>
+          <div class="mini-score">
+            <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
+            <div class="mini-score-bar">${RV.ui.progress(p.total_score)}</div>
+          </div>
+          <div class="mini-kv">
+            <span class="k">现价</span><span class="v">${RV.fmt.money(p.price)}</span>
+            <span class="k">技术 / 截面</span><span class="v">${RV.fmt.num(p.tech_score, 0)} / ${RV.fmt.num(p.cross_score, 0)}</span>
+            <span class="k">PE / PB</span><span class="v">${RV.fmt.num(p.pe, 1)} / ${RV.fmt.num(p.pb, 2)}</span>
+            <span class="k">买点(MA5/10)</span><span class="v">${RV.fmt.num(p.ideal_buy)} / ${RV.fmt.num(p.secondary_buy)}</span>
+            <span class="k">止损 / 止盈</span><span class="v">${RV.fmt.num(p.stop_loss)} / ${RV.fmt.num(p.take_profit)}</span>
+          </div>
+          <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('lightbulb', 'fa-xs')} ${p.reasons}</div>
+        </div>`).join('')}</div>`;
+    }
+
+    function sectorSection(list, title) {
+      const groups = groupBySector(list);
+      const names = Object.keys(groups).sort((a, b) => {
+        const la = groups[a].length, lb = groups[b].length;
+        return lb - la || b.localeCompare(a, 'zh');
+      });
+      const secHtml = names.map(sec => {
+        const items = groups[sec];
+        const up = items.filter(r => r.change_pct > 0).length;
+        const buys = items.filter(r => r.signal_key === 'buy' || r.signal_key === 'strong_buy').length;
+        const top = items[0];
+        return `
+        <div class="sector-group" data-sec="${sec}">
+          <div class="sector-header">
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+            <span class="sector-name">${sec}</span>
+            <span class="sec-chip">${items.length}只</span>
+            ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}
+            <span class="sector-stat">
+              <span>${RV.ui.icon('arrow-trend-up', 'fa-xs')} ${up} <span class="down">${RV.ui.icon('arrow-trend-down', 'fa-xs')} ${items.length - up}</span></span>
+              <span>${RV.ui.icon('bullseye', 'fa-xs')} 买${buys}</span>
+              <span>最高分 <b>${top ? RV.fmt.num(top.total_score, 1) : '--'}</b></span>
+            </span>
+          </div>
+          <div class="sector-body">${miniCards(items)}</div>
+        </div>`;
+      }).join('');
+      return `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>${title} · 按板块</h2></div>${secHtml}</div>`;
+    }
+
     function listCards(list) {
       return list.map(p => `
       <div class="card">
@@ -127,8 +200,12 @@
         + indicesHtml + sectorSection() + tabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
+        + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`
-        + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 不构成投资建议</footer>';
+        + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
+      app.querySelectorAll('.sector-group').forEach(g => {
+        g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
+      });
       app.querySelectorAll('.nav-link[data-tab]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         tab = a.getAttribute('data-tab');
