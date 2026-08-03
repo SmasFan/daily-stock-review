@@ -132,6 +132,10 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .outcome-loss { color:var(--down); font-weight:700; }
 .outcome-neutral { color:var(--neutral); font-weight:700; }
 
+/* 回测调仓时间线：未调仓日 */
+.trade-noop { opacity:.65; background:var(--surface-2); }
+.trade-noop td { color:var(--text-2); }
+
 footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .loading { text-align:center; padding:60px; color:var(--text-2); }
 .empty { text-align:center; padding:50px; color:var(--text-2); }
