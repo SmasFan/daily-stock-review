@@ -250,23 +250,35 @@
       </div>`;
     }
 
-    let tab = 'watch';
+    let mod = 'stock';      // 顶层模块: sector 板块 / stock 个股
+    let tab = 'watch';      // 二级: watch 自选 / market 大盘
     function render() {
       const list = tab === 'watch' ? picks : mpicks;
-      const tabs = `
+      const modTabs = `
         <div class="section">
           <div class="section-title"><span class="title-icon">${RV.ui.icon('table-columns')}</span><h2>模块</h2></div>
+          <div class="nav" style="justify-content:flex-start;margin-top:0">
+            <a href="#" class="nav-link ${mod === 'sector' ? 'active' : ''}" data-mod="sector">${RV.ui.icon('layer-group')} 板块推荐</a>
+            <a href="#" class="nav-link ${mod === 'stock' ? 'active' : ''}" data-mod="stock">${RV.ui.icon('bullseye')} 个股推荐</a>
+          </div>
+        </div>`;
+      const stockTabs = `
+        <div class="section">
+          <div class="section-title"><span class="title-icon">${RV.ui.icon('list-ul')}</span><h2>股票范围</h2></div>
           <div class="nav" style="justify-content:flex-start;margin-top:0">
             <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">${RV.ui.icon('list-check')} 自选推荐（${picks.length}）</a>
             <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘推荐（${mpicks.length}）</a>
           </div>
         </div>`;
-      app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
-        + indicesHtml + sectorRecSection() + sectorPickSection() + tabs
+      const sectorHtml = sectorRecSection() + sectorPickSection();
+      const stockHtml = stockTabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
         + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
-        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`
+        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`;
+      app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
+        + indicesHtml + modTabs
+        + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
@@ -274,6 +286,11 @@
       app.querySelectorAll('.nav-link[data-tab]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         tab = a.getAttribute('data-tab');
+        render();
+      }));
+      app.querySelectorAll('.nav-link[data-mod]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        mod = a.getAttribute('data-mod');
         render();
       }));
     }
