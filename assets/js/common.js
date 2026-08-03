@@ -94,11 +94,12 @@
       };
       return `<span class="outcome-${o}">${map[o] || o}</span>`;
     },
-    /* 右上角小问号：悬停/点击弹出详情 */
+    /* 右上角小问号：悬停/点击弹出详情。浮层由共享监听器挂到 body，避免被 overflow 裁剪 */
     infoDot(content, label = '') {
-      return `<span class="info-dot" tabindex="0" aria-label="查看详情">
+      const data = JSON.stringify({ label: label || '', content: content || '' })
+        .replace(/"/g, '&quot;');
+      return `<span class="info-dot" tabindex="0" role="button" data-info='${data}'>
         <span class="info-dot-ic">${ui.icon('circle-question')}</span>
-        <span class="info-tip">${label ? `<b>${label}</b>` : ''}${content}</span>
       </span>`;
     },
     loading(msg = '数据加载中…') { return `<div class="loading">${msg}</div>`; },
@@ -108,3 +109,55 @@
 
   global.RV = { API, fmt, ui };
 })(window);
+
+/* ===== 全局浮层监听：.info-dot 共享一个浮层，挂到 body 顶层 ===== */
+(function () {
+  if (!document || typeof window === 'undefined') return;
+  let tipEl = null;
+  const TIP = document.createElement('div');
+  TIP.className = 'info-tip-global';
+  TIP.style.cssText = 'display:none;position:fixed;z-index:9999;max-width:380px;min-width:280px;' +
+    'padding:12px 14px;border-radius:10px;background:var(--surface,#fff);' +
+    'border:1px solid var(--border,#e5e7eb);box-shadow:0 8px 24px rgba(0,0,0,0.12);' +
+    'color:var(--text,#111827);font-size:12px;line-height:1.6;text-align:left;' +
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;';
+  document.body.appendChild(TIP);
+
+  function show(dot) {
+    try {
+      const d = JSON.parse(dot.getAttribute('data-info') || '{}');
+      TIP.innerHTML = (d.label ? '<b>' + d.label + '</b>' : '') + (d.content || '');
+      TIP.style.display = 'block';
+      position(dot);
+    } catch (e) { hide(); }
+  }
+  function hide() { TIP.style.display = 'none'; }
+  function position(dot) {
+    const r = dot.getBoundingClientRect();
+    const tw = TIP.offsetWidth, th = TIP.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let x = r.left + r.width / 2 - tw / 2;
+    if (x < 8) x = 8;
+    if (x + tw > vw - 8) x = vw - tw - 8;
+    let y = r.bottom + 8;
+    if (y + th > vh - 8) y = r.top - th - 8;
+    TIP.style.left = Math.round(x) + 'px';
+    TIP.style.top = Math.round(y) + 'px';
+  }
+
+  document.addEventListener('mouseover', e => {
+    const dot = e.target.closest('.info-dot');
+    if (dot && !dot.classList.contains('info-active')) { dot.classList.add('info-active'); show(dot); }
+    else if (!dot && tipEl) hide();
+  });
+  document.addEventListener('click', e => {
+    const dot = e.target.closest('.info-dot');
+    if (dot) { e.stopPropagation(); show(dot); tipEl = dot; }
+    else hide();
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.info-dot')) hide();
+  });
+  window.addEventListener('scroll', () => { if (tipEl) position(tipEl); }, { passive: true });
+  window.addEventListener('resize', () => { if (tipEl) position(tipEl); });
+})();
