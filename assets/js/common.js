@@ -120,24 +120,72 @@
       // 移除旧的侧边栏（页面重渲染时重建）
       const old = document.querySelector('.sidebar-nav');
       if (old) old.remove();
+      const oldFab = document.querySelector('.sidebar-fab');
+      if (oldFab) oldFab.remove();
+      const oldSheet = document.querySelector('.sidebar-sheet');
+      if (oldSheet) oldSheet.remove();
       const sections = Array.from(document.querySelectorAll('[data-nav]')).filter(s => s.offsetParent !== null);
       if (sections.length < 2) return;
+      const navItems = sections.map((s, i) => ({
+        icon: s.getAttribute('data-nav-icon') || '',
+        label: s.getAttribute('data-nav') || '',
+        idx: i,
+      }));
+
+      // 渲染条目 HTML
+      const itemHtml = (cls = '') => navItems.map(it => `
+        <a href="#" data-sidebar-target="${it.idx}" class="${cls && it.idx === 0 ? cls : ''}">
+          ${it.icon ? ui.icon(it.icon) : ''}
+          <span>${it.label}</span>
+        </a>`).join('');
+
+      // 大屏：右侧固定导航
       const nav = document.createElement('div');
       nav.className = 'sidebar-nav';
-      nav.innerHTML = sections.map((s, i) => `
-        <a href="#" data-sidebar-target="${i}" class="${i === 0 ? 'active' : ''}">
-          ${s.getAttribute('data-nav-icon') ? ui.icon(s.getAttribute('data-nav-icon')) : ''}
-          <span>${s.getAttribute('data-nav')}</span>
-        </a>`).join('');
+      nav.innerHTML = itemHtml('active');
       document.body.appendChild(nav);
 
-      // 平滑滚动
+      // 小屏：浮动按钮 + 抽屉
+      const fab = document.createElement('div');
+      fab.className = 'sidebar-fab';
+      fab.innerHTML = ui.icon('list-ul');
+      fab.setAttribute('aria-label', '章节导航');
+      const sheet = document.createElement('div');
+      sheet.className = 'sidebar-sheet';
+      sheet.innerHTML = `<div class="sidebar-sheet-head">${ui.icon('list-ul')} 章节导航
+        <a class="sidebar-sheet-close" href="#" aria-label="关闭">${ui.icon('xmark')}</a></div>
+        <div class="sidebar-sheet-body">${itemHtml('active')}</div>`;
+      document.body.appendChild(fab);
+      document.body.appendChild(sheet);
+      // 遮罩
+      const overlay = document.createElement('div');
+      overlay.className = 'sidebar-overlay';
+      document.body.appendChild(overlay);
+
+      function openSheet() { sheet.classList.add('open'); overlay.classList.add('show'); document.body.style.overflow = 'hidden'; }
+      function closeSheet() { sheet.classList.remove('open'); overlay.classList.remove('show'); document.body.style.overflow = ''; }
+
+      fab.addEventListener('click', openSheet);
+      overlay.addEventListener('click', closeSheet);
+      sheet.querySelector('.sidebar-sheet-close').addEventListener('click', e => { e.preventDefault(); closeSheet(); });
+
+      function triggerTarget(idx) {
+        const sec = sections[idx];
+        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
       nav.addEventListener('click', e => {
         const a = e.target.closest('[data-sidebar-target]');
         if (!a) return;
         e.preventDefault();
-        const sec = sections[+a.getAttribute('data-sidebar-target')];
-        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        triggerTarget(+a.getAttribute('data-sidebar-target'));
+      });
+      sheet.addEventListener('click', e => {
+        const a = e.target.closest('[data-sidebar-target]');
+        if (!a) return;
+        e.preventDefault();
+        triggerTarget(+a.getAttribute('data-sidebar-target'));
+        closeSheet();
       });
 
       // 滚动高亮：当前视口内的区块高亮
@@ -152,6 +200,7 @@
         if (idx !== activeIdx) {
           activeIdx = idx;
           nav.querySelectorAll('a').forEach((a, i) => a.classList.toggle('active', i === idx));
+          sheet.querySelectorAll('a').forEach((a, i) => a.classList.toggle('active', i === idx));
         }
       };
       let ticking = false;

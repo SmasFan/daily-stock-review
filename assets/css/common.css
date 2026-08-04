@@ -168,7 +168,44 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .sidebar-nav a i { width:16px; text-align:center; flex-shrink:0; }
 .sidebar-nav a:hover { color:var(--text); background:var(--surface-2); }
 .sidebar-nav a.active { color:#fff; background:var(--primary); }
-@media (max-width:1320px) { .sidebar-nav { display:none; } }
+
+/* 小屏侧边栏抽屉：浮动按钮 + 托盘 + 遮罩 */
+.sidebar-fab {
+    display:none; position:fixed; right:16px; bottom:18px; z-index:950;
+    width:48px; height:48px; border-radius:50%; background:var(--primary); color:#fff;
+    align-items:center; justify-content:center; font-size:18px; cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.28); border:none;
+}
+.sidebar-fab:hover { transform:translateY(-1px); }
+.sidebar-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+    z-index:960; opacity:0; transition:opacity .2s;
+}
+.sidebar-overlay.show { display:block; opacity:1; }
+.sidebar-sheet {
+    display:block; position:fixed; right:0; top:0; bottom:0; width:78vw; max-width:300px;
+    background:var(--surface); border-left:1px solid var(--border); box-shadow:-6px 0 24px rgba(0,0,0,.18);
+    transform:translateX(100%); transition:transform .25s ease; z-index:970; overflow-y:auto;
+    padding:14px 8px;
+}
+.sidebar-sheet.open { transform:translateX(0); }
+.sidebar-sheet-head {
+    display:flex; align-items:center; gap:8px; padding:6px 12px 12px; font-weight:700; font-size:14px;
+    border-bottom:1px solid var(--border); margin-bottom:6px;
+}
+.sidebar-sheet-head .sidebar-sheet-close { margin-left:auto; color:var(--text-2); font-size:18px; text-decoration:none; padding:2px 8px; }
+.sidebar-sheet-body { display:flex; flex-direction:column; gap:2px; }
+.sidebar-sheet-body a {
+    display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px;
+    font-size:14px; font-weight:600; color:var(--text); text-decoration:none;
+    transition:background .15s;
+}
+.sidebar-sheet-body a i { width:18px; text-align:center; flex-shrink:0; color:var(--accent); }
+.sidebar-sheet-body a:hover, .sidebar-sheet-body a.active { background:var(--surface-2); color:var(--primary); }
+.sidebar-sheet-body a.active { background:var(--primary); color:#fff; }
+.sidebar-sheet-body a.active i { color:#fff; }
+
+@media (max-width:1320px) { .sidebar-nav { display:none; } .sidebar-fab { display:flex; } }
 
 /* 大盘指数方块卡片 */
 .idx-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
