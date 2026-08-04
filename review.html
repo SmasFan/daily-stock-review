@@ -69,7 +69,7 @@
       </div>`;
     }
     const factorCards = (d.indices || []).filter(i => i.factors).map(indexFactorCard).join('');
-    const indicesHtml = `<div class="section">
+      const indicesHtml = `<div class="section" data-nav="大盘指数" data-nav-icon="chart-column">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
       <div class="idx-cards">${idxCards}</div>
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
@@ -321,7 +321,7 @@
           <span class="pg-info">第 ${page + 1} / ${pageCount()} 页 · 共 ${all.length} 只</span>
           <button class="pg-btn ${page >= pageCount() - 1 ? 'disabled' : ''}" data-pg="next">下一页 ${RV.ui.icon('chevron-right', 'fa-xs')}</button>
         </div>`;
-      return `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
+      return `<div class="section" data-nav="详情卡片" data-nav-icon="id-card"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选股' : '大盘'} · 详情卡片</h2></div>
         ${pageNav}
         <div class="cards">${cards(paged)}</div>
         ${pageNav}</div>`;
@@ -338,10 +338,11 @@
         </div>`;
       const items = pageItems();
       app.innerHTML = RV.ui.header(`${d.market}每日复盘`, '趋势 · 评分 · 买卖点位 · 板块分组', 'review', d.generatedAt)
-        + indicesHtml + summary + tabs
-        + sectorSection(items, tab === 'watch' ? '自选股' : '大盘')
+        + indicesHtml + `<div class="section" data-nav="温度总览" data-nav-icon="temperature-high">${summary}</div>` + tabs
+        + `<div data-nav="按板块" data-nav-icon="layer-group">${sectorSection(items, tab === 'watch' ? '自选股' : '大盘')}</div>`
         + cardSec()
         + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';      // 板块展开/收起
+      RV.ui.initSidebar();
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', ev => {
           if (ev.target.closest('.info-dot')) return;

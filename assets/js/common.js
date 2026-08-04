@@ -109,6 +109,57 @@
     loading(msg = '数据加载中…') { return `<div class="loading">${msg}</div>`; },
     empty(msg = '暂无数据') { return `<div class="empty">${msg}</div>`; },
     error(e) { return `<div class="empty">${ui.icon('triangle-exclamation')} ${e.message || e}<br><small>请先运行 <code>python run_review.py</code> 生成数据</small></div>`; },
+
+    /* 侧边栏章节导航：扫描带 data-nav 的区块，生成右侧固定导航 + 滚动高亮
+       用法：区块 <div class="section" data-nav="名称" data-nav-icon="chart-line"></div>
+       页面渲染完成后调用 RV.ui.initSidebar() */
+    initSidebar() {
+      if (!document || typeof window === 'undefined') return;
+      // 移除旧的侧边栏（页面重渲染时重建）
+      const old = document.querySelector('.sidebar-nav');
+      if (old) old.remove();
+      const sections = Array.from(document.querySelectorAll('[data-nav]')).filter(s => s.offsetParent !== null);
+      if (sections.length < 2) return;
+      const nav = document.createElement('div');
+      nav.className = 'sidebar-nav';
+      nav.innerHTML = sections.map((s, i) => `
+        <a href="#" data-sidebar-target="${i}" class="${i === 0 ? 'active' : ''}">
+          ${s.getAttribute('data-nav-icon') ? ui.icon(s.getAttribute('data-nav-icon')) : ''}
+          <span>${s.getAttribute('data-nav')}</span>
+        </a>`).join('');
+      document.body.appendChild(nav);
+
+      // 平滑滚动
+      nav.addEventListener('click', e => {
+        const a = e.target.closest('[data-sidebar-target]');
+        if (!a) return;
+        e.preventDefault();
+        const sec = sections[+a.getAttribute('data-sidebar-target')];
+        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      // 滚动高亮：当前视口内的区块高亮
+      let activeIdx = 0;
+      const update = () => {
+        const mid = window.innerHeight * 0.3;
+        let idx = activeIdx;
+        for (let i = 0; i < sections.length; i++) {
+          const r = sections[i].getBoundingClientRect();
+          if (r.top <= mid) idx = i;
+        }
+        if (idx !== activeIdx) {
+          activeIdx = idx;
+          nav.querySelectorAll('a').forEach((a, i) => a.classList.toggle('active', i === idx));
+        }
+      };
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => { update(); ticking = false; });
+      }, { passive: true });
+      update();
+    },
   };
 
   global.RV = { API, fmt, ui };

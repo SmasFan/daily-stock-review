@@ -72,7 +72,7 @@
       </div>`;
     }
     const factorCards = (d.indices || []).filter(i => i.factors).map(indexFactorCard).join('');
-    const indicesHtml = `<div class="section">
+    const indicesHtml = `<div class="section" data-nav="大盘指数" data-nav-icon="chart-column">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
       <div class="idx-cards">${idxCards}</div>
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
@@ -120,7 +120,7 @@
       const warns = gridSignals.filter(s => s.action_key === 'reduce').length;
       const withTarget = gridSignals.filter(s => s.target_pos != null);
       const avgTarget = withTarget.length ? withTarget.reduce((a, b) => a + b.target_pos, 0) / withTarget.length * 100 : null;
-      return `<div class="section">
+      return `<div class="section" data-nav="网格策略" data-nav-icon="grid-2">
         <div class="sector-group grid-signal" data-sec="__grid">
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
@@ -155,6 +155,28 @@
       return p.is_holding ? `<span class="signal-badge s-buy">${RV.ui.icon('briefcase', 'fa-xs')} 持仓</span>` : '';
     }
 
+    // 个股推荐评分原因（'?' 弹层，与复盘页一致）
+    function recDetail(p) {
+      const rows = [
+        ['综合分', p.total_score + ' → ' + p.signal + ' · ' + p.rating + '级', '技术分×50% + 横截面分×50%'],
+        ['技术分', p.tech_score, '趋势/乖离/量能/支撑/MACD/RSI 六维技术评分'],
+        ['趋势', p.trend_status || '--', 'MA5/MA10/MA20 排列，多头排列加分、空头排列减分'],
+        ['动量', RV.fmt.num(p.momentum_score, 1), '当日涨跌 + 60日趋势（>45% 过热、<-20% 破位惩罚）'],
+        ['价值', RV.fmt.num(p.value_score, 1), 'PE/PB 横截面分位，越低越好'],
+        ['流动性', RV.fmt.num(p.liquidity_score, 1), '成交额横截面分位，越高越好'],
+        ['活跃度', RV.fmt.num(p.activity_score, 1), '量比/换手率，理想区间加分'],
+        ['稳定性', RV.fmt.num(p.stability_score, 1), '低波动/低回撤加分'],
+        ['横截面分', RV.fmt.num(p.cross_score, 1), '动量+价值+流动性+活跃度+稳定性 加权'],
+        ['量比', RV.fmt.num(p.volume_ratio, 2), '>1.5 放量、<0.7 缩量'],
+        ['60日涨跌', RV.fmt.pct(p.change_60d), '近60个交易日累计涨跌幅'],
+        ['买卖点位', '买' + RV.fmt.num(p.ideal_buy) + '/' + RV.fmt.num(p.secondary_buy) + ' · 损' + RV.fmt.num(p.stop_loss) + ' · 盈' + RV.fmt.num(p.take_profit), 'MA5 理想买点、MA10 次优、MA20 止损、20日高点止盈'],
+      ];
+      return rows.map(([k, v, d]) =>
+        `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
+         <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');
+    }
+    const recDot = p => RV.ui.infoDot(recDetail(p), p.name + ' · 推荐评分原因');
+
     function listTable(list) {
       const rows = list.map((p, i) => `
       <tr>
@@ -171,7 +193,7 @@
       <div class="mini-card">
         <div class="mini-head">
           <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
-          <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
+          <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="mini-tags">
           <span class="sec-chip">${p.sector || '其他'}</span>
@@ -230,7 +252,7 @@
         <div class="mini-card">
           <div class="mini-head">
             <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
-            <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
+            <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
           </div>
           <div class="mini-tags">
             <span class="sec-chip">${p.sector || '其他'}</span>
@@ -287,7 +309,7 @@
       <div class="card">
         <div class="card-header">
           <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
-          ${RV.ui.signalBadge(p.signal_key, p.signal)}
+          <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="score-ring">
           <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
@@ -347,7 +369,7 @@
       <div class="card">
         <div class="card-header">
           <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
-          ${RV.ui.signalBadge(p.signal_key, p.signal)}
+          <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="score-ring">
           <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
@@ -394,16 +416,17 @@
             <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘推荐（${mpicks.length}）</a>
           </div>
         </div>`;
-      const sectorHtml = sectorRecSection() + sectorPickSection();
+      const sectorHtml = `<div data-nav="板块推荐" data-nav-icon="layer-group">${sectorRecSection() + sectorPickSection()}</div>`;
       const stockHtml = stockTabs
-        + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
-        + `<div class="section">${listTable(list)}</div>`
-        + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
-        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`;
+        + `<div data-nav="首推总览" data-nav-icon="crown">${topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')}</div>`
+        + `<div data-nav="推荐榜单" data-nav-icon="table-list">${listTable(list)}</div>`
+        + `<div data-nav="按板块" data-nav-icon="layer-group">${sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')}</div>`
+        + `<div data-nav="推荐详情" data-nav-icon="id-card"><div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div></div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
         + indicesHtml + gridSignalSection() + modTabs
         + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
+      RV.ui.initSidebar();
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
       });
