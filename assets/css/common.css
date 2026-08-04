@@ -165,6 +165,19 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .idx-card .idx-card-pct { font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
 .idx-card .idx-card-close { font-size:11px; opacity:.85; font-variant-numeric:tabular-nums; }
 
+/* 指数技术因子卡（趋势/评分/买卖点位/均线偏离） */
+.idx-factor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:10px; }
+.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
+.idx-f-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.idx-f-name { font-weight:800; font-size:15px; }
+.idx-f-price { font-size:13px; font-weight:700; margin-left:auto; font-variant-numeric:tabular-nums; }
+.idx-f-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:6px 12px; font-size:12px; padding-top:8px; border-top:1px dashed var(--border); }
+.idx-f-item { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+.idx-f-item .k { color:var(--text-2); font-size:11px; }
+.idx-f-item .v { font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.idx-f-points { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.idx-f-points span { font-size:11px; color:var(--text-2); background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:3px 8px; font-variant-numeric:tabular-nums; }
+
 /* 板块分组（复盘/推荐） */
 .sector-group { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; background:var(--surface-2); }
 .sector-header {
@@ -254,4 +267,6 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
     .mini-head-right { flex-direction:column; align-items:flex-end; gap:4px; }
     .table-desktop { display:none; }
     .cards-mobile { display:block; }
+    .idx-factor-grid { grid-template-columns:1fr; }
+    .idx-f-grid { grid-template-columns:1fr 1fr; }
 }

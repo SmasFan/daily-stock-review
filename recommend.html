@@ -39,9 +39,44 @@
         <span class="idx-card-close">${RV.fmt.num(i.close)}</span>
       </div>`;
     }).join('');
+
+    // 指数技术因子卡：对有 factor 数据的指数（含纳指/标普）展示趋势/评分/买卖点位/均线偏离
+    function indexFactorCard(i) {
+      const f = i.factors;
+      if (!f) return '';
+      const scoreCls = f.score >= 60 ? 'up' : (f.score < 40 ? 'down' : '');
+      const trendCls = RV.fmt.cls(f.bias_ma20);
+      return `
+      <div class="idx-factor-card">
+        <div class="idx-f-head">
+          <span class="idx-f-name">${i.name}</span>
+          <span class="idx-f-price">${RV.fmt.num(i.close)} <span class="${RV.fmt.cls(i.change_pct)}">${RV.fmt.pct(i.change_pct)}</span></span>
+          ${RV.ui.signalBadge(f.signal_key, f.signal)}
+        </div>
+        <div class="idx-f-grid">
+          <div class="idx-f-item"><span class="k">评分</span><span class="v ${scoreCls}">${f.score}</span></div>
+          <div class="idx-f-item"><span class="k">趋势</span><span class="v">${f.trend_status}</span></div>
+          <div class="idx-f-item"><span class="k">MA5 / MA20</span><span class="v">${RV.fmt.num(f.ma5)} / ${RV.fmt.num(f.ma20)}</span></div>
+          <div class="idx-f-item"><span class="k">偏离MA20</span><span class="v ${trendCls}">${RV.fmt.pct(f.bias_ma20)}</span></div>
+          <div class="idx-f-item"><span class="k">MACD</span><span class="v">${f.macd_status}</span></div>
+          <div class="idx-f-item"><span class="k">RSI12</span><span class="v">${RV.fmt.num(f.rsi12, 1)}</span></div>
+          <div class="idx-f-item"><span class="k">量能</span><span class="v">${f.volume_status}</span></div>
+          <div class="idx-f-item"><span class="k">60日</span><span class="v ${RV.fmt.cls(f.change_60d)}">${RV.fmt.pct(f.change_60d)}</span></div>
+        </div>
+        <div class="idx-f-points">
+          <span>买点 ${RV.fmt.num(f.ideal_buy)}</span>
+          <span>次优 ${RV.fmt.num(f.secondary_buy)}</span>
+          <span>止损 ${RV.fmt.num(f.stop_loss)}</span>
+          <span>止盈 ${RV.fmt.num(f.take_profit)}</span>
+        </div>
+      </div>`;
+    }
+    const factorCards = (d.indices || []).filter(i => i.factors).map(indexFactorCard).join('');
     const indicesHtml = `<div class="section">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
-      <div class="idx-cards">${idxCards}</div></div>`;
+      <div class="idx-cards">${idxCards}</div>
+      ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
+    </div>`;
 
     // 网格策略操作提醒（均值线偏离度 → 操作建议）
     const ACTION_META = {
