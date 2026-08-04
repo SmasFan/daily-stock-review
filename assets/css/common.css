@@ -107,12 +107,13 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .card:hover { box-shadow:var(--shadow-hover); }
 .card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px; }
 .card-title { font-size:15px; font-weight:700; }
-.card-kv { display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; font-size:12px; }
+.card-kv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px 12px; font-size:12px; }
 .card-kv .k { color:var(--text-2); }
-.card-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+.card-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .score-ring { display:flex; align-items:center; gap:10px; margin:8px 0; }
-.score-num { font-size:24px; font-weight:800; }
-.points { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.points { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.points .point { min-width:0; }
+.points .p-val { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .point { font-size:11px; }
 .point .p-label { color:var(--text-2); display:block; }
 .point .p-val { font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
@@ -167,7 +168,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 
 /* 指数技术因子卡（趋势/评分/买卖点位/均线偏离） */
 .idx-factor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:10px; }
-.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
+.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; }
 .idx-f-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .idx-f-name { font-weight:800; font-size:15px; }
 .idx-f-price { font-size:13px; font-weight:700; margin-left:auto; font-variant-numeric:tabular-nums; }
@@ -182,11 +183,11 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .sector-group { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; background:var(--surface-2); }
 .sector-header {
     display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer;
-    background:var(--surface); user-select:none; transition:background .15s;
+    background:var(--surface); user-select:none; transition:background .15s; flex-wrap:wrap;
 }
 .sector-header:hover { background:var(--surface-2); }
-.sector-header .sector-name { font-weight:700; font-size:15px; }
-.sector-header .sector-stat { font-size:12px; color:var(--text-2); margin-left:auto; display:flex; gap:14px; }
+.sector-header .sector-name { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.sector-header .sector-stat { font-size:12px; color:var(--text-2); margin-left:auto; display:flex; gap:14px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
 .sector-header .chev { transition:transform .2s; color:var(--text-2); font-size:12px; }
 .sector-group.open .chev { transform:rotate(90deg); }
 .sector-body { display:none; padding:6px 12px 12px; }
@@ -208,7 +209,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 
 /* 板块内个股迷你卡片（手机友好，替代宽表格） */
 .mini-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
-.mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
+.mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; }
 .mini-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
 .mini-name { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
 .mini-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
@@ -216,7 +217,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .mini-score { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
 .mini-score .score-num { font-size:24px; }
 .mini-score-bar { flex:1; }
-.mini-kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:12px; border-top:1px dashed var(--border); padding-top:10px; }
+.mini-kv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px 14px; font-size:12px; border-top:1px dashed var(--border); padding-top:10px; }
 .mini-kv .k { color:var(--text-2); }
 .mini-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 
