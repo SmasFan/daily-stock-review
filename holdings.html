@@ -32,37 +32,15 @@
     }
 
     // 汇总卡片
-    const totalPnlCls = d.total_pnl > 0 ? 'up' : (d.total_pnl < 0 ? 'down' : '');
     const summary = `
       <div class="summary-grid">
         ${RV.ui.summaryCard('wallet', RV.fmt.money(d.total_market), '总市值')}
-        ${RV.ui.summaryCard('coins', RV.fmt.money(d.total_cost), '总成本')}
-        <div class="summary-card ${totalPnlCls}">
-          <div class="icon">${RV.ui.icon('arrow-trend-up')}</div>
-          <div class="summary-text"><div class="val ${totalPnlCls}">${RV.fmt.money(d.total_pnl)}</div>
-          <div class="label">总盈亏 · ${RV.fmt.pct(d.pnl_pct * 100)}</div></div>
-        </div>
         ${RV.ui.summaryCard('chart-line', items.length + ' 只', '持仓标的')}
       </div>`;
-
-    // 操作状态徽章（盘中/盘后）
-    const phase = d.market_open ? '盘中' : '盘后';
-    const phaseCls = d.market_open ? 's-buy' : 's-watch';
-
-    function gridInfo(g) {
-      if (!g || g.dev === null || g.dev === undefined) return '';
-      const devCls = RV.fmt.cls(g.dev);
-      return `
-      <div class="s-item"><span class="k">偏离均值线</span><span class="v ${devCls}">${RV.fmt.pct(g.dev * 100, 1)}</span></div>
-      <div class="s-item"><span class="k">目标仓位</span><span class="v">${g.target_pos != null ? RV.fmt.num(g.target_pos * 100, 0) + '%' : '--'}</span></div>
-      <div class="s-item"><span class="k">均值线</span><span class="v">${g.anchor != null ? RV.fmt.num(g.anchor) : '--'}</span></div>
-      <div class="s-item"><span class="k">网格档位</span><span class="v">${g.grid_idx ?? '--'}</span></div>`;
-    }
 
     // 持仓卡片
     const cards = items.map((p, i) => {
       const g = p.grid || {};
-      const pnlCls = RV.fmt.cls(p.pnl);
       return `
       <div class="card">
         <div class="card-header">
@@ -74,13 +52,10 @@
             <span style="font-size:22px;font-weight:800">${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)}</span>
             <span class="date-tag" style="margin-left:8px">${RV.fmt.pct(p.change_pct)}</span>
           </div>
-          <span class="val ${pnlCls}">${RV.fmt.money(p.pnl)}<br><small>${RV.fmt.pct(p.pnl_pct * 100)}</small></span>
         </div>
-        <div class="points" style="grid-template-columns:repeat(4,1fr)">
-          <div class="point"><span class="p-label">成本价</span><span class="p-val">${RV.fmt.num(p.cost, p.cost < 5 ? 3 : 2)}</span></div>
+        <div class="points" style="grid-template-columns:repeat(3,1fr)">
           <div class="point"><span class="p-label">持仓</span><span class="p-val">${RV.fmt.num(p.shares, 0)}</span></div>
           <div class="point"><span class="p-label">市值</span><span class="p-val">${RV.fmt.money(p.market_value)}</span></div>
-          <div class="point"><span class="p-label">成本额</span><span class="p-val">${RV.fmt.money(p.cost_value)}</span></div>
         </div>
         ${g.dev !== undefined && g.dev !== null ? `
         <div class="reason" style="margin-top:10px">${RV.ui.icon('grid-2', 'fa-xs')} 网格：${g.reason}</div>` : ''}
@@ -140,14 +115,12 @@
     const emptyMsg = items.length ? '' : RV.ui.empty('暂无持仓配置，请编辑 holdings.json');
 
     app.innerHTML = RV.ui.header('持仓跟踪', `盘中实时跟踪 · 盘后复盘 · 网格提醒`, 'holdings', d.generatedAt)
-      + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('clock')}</span><h2>交易时段</h2>
-           <span class="signal-badge ${phaseCls}" style="margin-left:8px">${RV.ui.icon(d.market_open ? 'sun' : 'moon', 'fa-xs')} ${phase}</span>
-         </div>${summary}</div>`
+      + `<div class="section">${summary}</div>`
       + reminderTable
       + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('briefcase')}</span><h2>持仓详情</h2></div>
          ${emptyMsg}<div class="cards">${cards}</div></div>`
       + configSection
-      + '<footer>盈亏按成本价×持仓估算 · 网格建议来自均值线偏离策略 · 目标仓位为理论值非投资建议 · 不构成投资建议</footer>';
+      + '<footer>网格建议来自均值线偏离策略 · 目标仓位为理论值非投资建议 · 不构成投资建议</footer>';
   } catch (e) {
     app.innerHTML = RV.ui.header('持仓跟踪', '', 'holdings') + RV.ui.error(e);
   }

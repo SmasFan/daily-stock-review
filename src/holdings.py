@@ -4,7 +4,6 @@
 - 配置: holdings.json（{name, code, cost, shares}）
 - 实时行情: 腾讯快照（现价/涨跌/PE/PB）
 - 网格信号: 复用 grid_signal 的均值线偏离度操作提醒
-- 盈亏: 基于成本价与现价
 - 输出: data/holdings_data.json
 """
 from __future__ import annotations
@@ -53,16 +52,15 @@ def is_market_open() -> bool:
 def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
                         ap: Optional[gbt.AnchorParams] = None,
                         bt_data: Optional[Dict] = None) -> Dict:
-    """生成持仓数据：行情 + 盈亏 + 网格信号 + 汇总。
+    """生成持仓数据：行情 + 网格信号 + 汇总。
 
-    返回 {generatedAt, market_open, total_cost, total_market, total_pnl,
-         pnl_pct, items: [...]}，items 按涨跌优先级排序。
+    返回 {generatedAt, market_open, total_market, items: [...]}，items 按操作优先级排序。
     """
     holdings = load_holdings()
     if not holdings:
         return {"generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "market_open": is_market_open(), "holdings": [], "items": [],
-                "total_cost": 0, "total_market": 0, "total_pnl": 0, "pnl_pct": 0}
+                "total_market": 0}
     gparams = gparams or gbt.GridParams()
     ap = ap or gbt.AnchorParams(lookback_days=750, min_periods=500)
 
@@ -76,13 +74,9 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
         q = quotes.get(code) or {}
         price = q.get("price") or 0
         change = q.get("change") or 0
-        cost = float(h.get("cost") or 0)
         shares = float(h.get("shares") or 0)
 
         market = price * shares if price else 0
-        cost_total = cost * shares if cost else 0
-        pnl = market - cost_total
-        pnl_pct = (pnl / cost_total) if cost_total else 0
 
         # 网格信号：优先复用回测结果，否则现场计算
         grid = None
@@ -109,27 +103,20 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
             "name": q.get("name") or h["name"],
             "code": code,
             "sector": sector_map.get(code, ""),
-            "cost": cost,
             "shares": shares,
             "price": price or q.get("prevClose") or 0,
             "change_pct": change,
             "market_value": round(market, 2),
-            "cost_value": round(cost_total, 2),
-            "pnl": round(pnl, 2),
-            "pnl_pct": round(pnl_pct, 4),
             "grid": grid,
         })
 
-    total_cost = sum(i["cost_value"] for i in items)
     total_market = sum(i["market_value"] for i in items)
-    total_pnl = total_market - total_cost
-    pnl_pct = (total_pnl / total_cost) if total_cost else 0
 
     # 排序：有网格操作建议的优先（clear/buy/reduce 在前），其次按涨跌
     prio = {"clear": 0, "buy": 1, "reduce": 2, "hold": 3, "wait": 4, None: 5}
     items.sort(key=lambda x: (
         prio.get((x.get("grid") or {}).get("action_key"), 5),
-        -abs(x.get("pnl_pct") or 0),
+        -abs(x.get("change_pct") or 0),
     ))
 
     return {
@@ -137,10 +124,7 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
         "market_open": is_market_open(),
         "holdings": holdings,
         "items": items,
-        "total_cost": round(total_cost, 2),
         "total_market": round(total_market, 2),
-        "total_pnl": round(total_pnl, 2),
-        "pnl_pct": round(pnl_pct, 4),
     }
 
 

@@ -197,7 +197,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .mini-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
 .mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
 .mini-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
-.mini-name { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mini-name { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
 .mini-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .mini-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
 .mini-score { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
@@ -205,7 +205,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .mini-score-bar { flex:1; }
 .mini-kv { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:12px; border-top:1px dashed var(--border); padding-top:10px; }
 .mini-kv .k { color:var(--text-2); }
-.mini-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+.mini-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 
 /* 板块推荐卡 */
 .sector-card { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; background:var(--surface); }

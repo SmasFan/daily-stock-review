@@ -154,10 +154,24 @@
         <div class="reason" style="margin-top:10px;font-size:12px">${RV.ui.icon('lightbulb', 'fa-xs')} ${p.reasons}</div>
       </div>`).join('');
       return `
-        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
-          <thead><tr><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>涨跌</th><th>成交额</th><th>当日购买原因</th></tr></thead>
-          <tbody>${rows}</tbody></table></div></div>
-        <div class="cards-mobile"><div class="mini-cards">${mobileCards}</div></div>`;
+        <div class="sector-group" data-sec="__rank">
+          <div class="sector-header">
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+            <span class="sector-name">${RV.ui.icon('table-list')} 推荐榜单</span>
+            <span class="sec-chip">${list.length}只</span>
+            <span class="sector-stat">
+              <span>${RV.ui.icon('bullseye', 'fa-xs')} A${list.filter(p => p.rating === 'A').length}</span>
+              <span>${RV.ui.icon('award', 'fa-xs')} B${list.filter(p => p.rating === 'B').length}</span>
+              <span>最高分 <b>${RV.fmt.num(Math.max(...list.map(p => p.total_score)), 1)}</b></span>
+            </span>
+          </div>
+          <div class="sector-body">
+            <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+              <thead><tr><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>涨跌</th><th>成交额</th><th>当日购买原因</th></tr></thead>
+              <tbody>${rows}</tbody></table></div></div>
+            <div class="cards-mobile"><div class="mini-cards">${mobileCards}</div></div>
+          </div>
+        </div>`;
     }
 
     // 板块分组 + 迷你卡片（与复盘一致：点开板块展开个股卡片）
@@ -348,7 +362,7 @@
       const sectorHtml = sectorRecSection() + sectorPickSection();
       const stockHtml = stockTabs
         + topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')
-        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐榜单</h2></div>${listTable(list)}</div>`
+        + `<div class="section">${listTable(list)}</div>`
         + sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)

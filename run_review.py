@@ -370,10 +370,10 @@ def run_holdings():
     data = hd.build_holdings_data(gparams, gap, bt_data_prev)
     p = hd.save_holdings_data(data)
     open_now = "盘中" if data.get("market_open") else "盘后"
-    print(f"   {p}  [{open_now}] 持仓 {len(data['items'])} 只  总盈亏 {data['total_pnl']:.0f}元 ({data['pnl_pct']*100:+.1f}%)")
+    print(f"   {p}  [{open_now}] 持仓 {len(data['items'])} 只")
     for it in data["items"]:
         g = it.get("grid") or {}
-        print(f"   {it['name']}: 现价{it['price']} 涨跌{it['change_pct']:+.2f}% 盈亏{it['pnl']:.0f}元 → {g.get('action') or '--'}")
+        print(f"   {it['name']}: 现价{it['price']} 涨跌{it['change_pct']:+.2f}% → {g.get('action') or '--'}")
 
 
 def main():
