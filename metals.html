@@ -152,7 +152,7 @@
 
   function metalGroup(item, idx) {
     const chg = item.change;
-    return `<div class="metal-group" data-idx="${idx}">
+    return `<div class="metal-group" data-idx="${idx}" data-nav="${item.name}" data-nav-icon="coin">
       <div class="metal-head" data-toggle="${idx}">
         <i class="fa-solid fa-coins" style="color:var(--accent)"></i>
         <span class="m-name">${item.name}</span><span class="m-en">${item.en || ''} · ${item.exchange}</span>
@@ -190,8 +190,8 @@
     </div>`).join('');
 
   app.innerHTML = RV.ui.header('有色金属期货', 'SHFE 主力连续合约 · 行情 + 趋势 + 技术因子', 'metals', d.generatedAt)
-    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
-    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>各品种速览（点击可直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
+    + `<div class="section" data-nav="今日概览" data-nav-icon="gauge-high"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
+    + `<div class="section" data-nav="品种速览" data-nav-icon="coins"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>品种速览（点击直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
     + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>分品种分析 · 点击展开看走势与技术因子</h2></div>${items.map((m, i) => metalGroup(m, i)).join('')}</div>`
     + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN） · 技术指标口径同股票分析 · 不构成投资建议</footer>';
 
@@ -219,6 +219,24 @@
     first.classList.add('open');
     initChart(first);
   }
+
+  /* 侧边栏：扫描 data-nav 区块 + 点击自动展开对应金属 */
+  RV.ui.initSidebar();
+  (function patchSidebar() {
+    const nav = document.querySelector('.sidebar-nav');
+    if (!nav) return;
+    const sections = Array.from(document.querySelectorAll('[data-nav]')).filter(s => s.offsetParent !== null);
+    nav.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => {
+        const idx = +a.getAttribute('data-sidebar-target');
+        const sec = sections[idx];
+        if (sec && sec.classList.contains('metal-group')) {
+          sec.classList.add('open');
+          initChart(sec);
+        }
+      });
+    });
+  })();
 
   function initChart(group) {
     const wrap = group.querySelector('.chart-wrap');
