@@ -33,7 +33,11 @@ from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POO
 
 
 def fetch_index_rows():
-    """拉取大盘指数行情，返回 [{name, code, close, change_pct}]。"""
+    """拉取大盘指数行情 + 技术分析因子，返回 [{name, code, close, change_pct, factors}]。
+
+    对能拉到日K的指数（含纳指/标普）附加技术因子：
+    trend_status/score/signal/ma5/ma20/macd_status/rsi12/bias_ma20 等。
+    """
     rows = []
     symbols = [ix["code"] for ix in INDEX_CODES]
     qs = dp.fetch_index_quotes(symbols)
@@ -41,10 +45,37 @@ def fetch_index_rows():
         q = qs.get(ix["code"])
         if not q:
             continue
-        rows.append({
+        row = {
             "name": ix["name"], "code": ix["code"],
             "close": q.get("price"), "change_pct": q.get("change"),
-        })
+        }
+        # 技术分析因子：拉指数日K，失败则跳过因子（仅保留行情）
+        try:
+            k = dp.fetch_index_kline(ix["code"], count=320)
+            if k and len(k["closes"]) >= 30:
+                a = az.analyze_stock(ix["name"], k["dates"], k["opens"], k["closes"],
+                                     k["highs"], k["lows"], k["volumes"], code=ix["code"])
+                if a is not None:
+                    row["factors"] = {
+                        "date": a.date,
+                        "trend_status": a.trend_status,
+                        "trend_strength": a.trend_strength,
+                        "ma5": a.ma5, "ma10": a.ma10, "ma20": a.ma20, "ma60": a.ma60,
+                        "bias_ma5": a.bias_ma5, "bias_ma20": a.bias_ma20,
+                        "volume_ratio": a.volume_ratio, "volume_status": a.volume_status,
+                        "macd_status": a.macd_status,
+                        "macd_dif": a.macd_dif, "macd_dea": a.macd_dea, "macd_bar": a.macd_bar,
+                        "rsi6": a.rsi6, "rsi12": a.rsi12, "rsi24": a.rsi24, "rsi_status": a.rsi_status,
+                        "score": a.score, "signal_key": a.signal_key, "signal": a.signal,
+                        "ideal_buy": a.ideal_buy, "secondary_buy": a.secondary_buy,
+                        "stop_loss": a.stop_loss, "take_profit": a.take_profit,
+                        "support": a.support, "resistance": a.resistance,
+                        "high20": a.high20, "low20": a.low20, "change_60d": a.change_60d,
+                        "boll_pos": a.boll_pos,
+                    }
+        except Exception as e:
+            print(f"   [warn] 指数 {ix['name']} 因子分析失败: {e}")
+        rows.append(row)
     return rows
 
 

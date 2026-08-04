@@ -143,22 +143,70 @@ def fetch_daily_kline(code: str, count: int = 320, use_cache: bool = True,
         node = data["data"][sym]
         rows = node.get("qfqday") or node.get("day") or []
         dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
-        for r in rows:
-            # r: [date, open, close, high, low, volume, ...]
-            dates.append(r[0])
-            opens.append(float(r[1]))
-            closes.append(float(r[2]))
-            highs.append(float(r[3]))
-            lows.append(float(r[4]))
-            vols.append(float(r[5]) if len(r) > 5 else 0.0)
-        out = {"dates": dates, "opens": opens, "closes": closes,
-               "highs": highs, "lows": lows, "volumes": vols}
-        try:
-            with open(cp, "w", encoding="utf-8") as fp:
-                json.dump(out, fp)
-        except Exception:
-            pass
-        return out
+    for r in rows:
+        # r: [date, open, close, high, low, volume, ...]
+        dates.append(r[0])
+        opens.append(float(r[1]))
+        closes.append(float(r[2]))
+        highs.append(float(r[3]))
+        lows.append(float(r[4]))
+        vols.append(float(r[5]) if len(r) > 5 else 0.0)
+    out = {"dates": dates, "opens": opens, "closes": closes,
+           "highs": highs, "lows": lows, "volumes": vols}
+    try:
+        with open(cp, "w", encoding="utf-8") as fp:
+            json.dump(out, fp)
+    except Exception:
+        pass
+    return out
+
+
+def fetch_index_kline(sym: str, count: int = 320, use_cache: bool = True,
+                      cache_max_age_hours: int = 20):
+    """拉取指数日K（含前缀的完整符号，如 sh000001 / sz399001 / hkHSI / usIXIC）。
+
+    根据前缀选择接口：us 前缀走 usfqkline（美股），其余走 fqkline。
+    返回 {dates, opens, closes, highs, lows, volumes}，升序。带缓存（key 含 count）。
+    """
+    if sym.startswith("us"):
+        return fetch_daily_kline_us(sym, count=count, use_cache=use_cache,
+                                    cache_max_age_hours=cache_max_age_hours)
+    cp = _cache_path(f"idx_{sym}_{count}")
+    if use_cache and os.path.exists(cp):
+        age = time.time() - os.path.getmtime(cp)
+        if age < cache_max_age_hours * 3600:
+            try:
+                with open(cp, "r", encoding="utf-8") as fp:
+                    return json.load(fp)
+            except Exception:
+                pass
+    url = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+           f"?param={sym},day,,,{count},qfq")
+    try:
+        raw = _get(url)
+        data = json.loads(raw)
+        node = data["data"][sym]
+        rows = node.get("qfqday") or node.get("day") or []
+    except Exception:
+        return None
+    if not rows:
+        return None
+    dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
+    for r in rows:
+        dates.append(r[0])
+        opens.append(float(r[1]))
+        closes.append(float(r[2]))
+        highs.append(float(r[3]))
+        lows.append(float(r[4]))
+        vols.append(float(r[5]) if len(r) > 5 else 0.0)
+    out = {"dates": dates, "opens": opens, "closes": closes,
+           "highs": highs, "lows": lows, "volumes": vols}
+    try:
+        with open(cp, "w", encoding="utf-8") as fp:
+            json.dump(out, fp)
+    except Exception:
+        pass
+    return out
     except Exception as e:
         print(f"[data] {code} 日K拉取失败: {e}")
         return None
