@@ -14,6 +14,7 @@
     recommend() { return this.fetch('recommend_data.json'); },
     backtest() { return this.fetch('backtest_data.json'); },
     holdings() { return this.fetch('holdings_data.json'); },
+    metals() { return this.fetch('metals_data.json'); },
   };
 
   /* ---------- 格式化工具 ---------- */
@@ -52,6 +53,7 @@
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
         ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
+        ['metals', '有色', 'coins', 'metals.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];
       const navHtml = navs.map(([k, label, icon, href]) =>

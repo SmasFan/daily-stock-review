@@ -6,6 +6,7 @@
 用法：
   python run_review.py --mode review       # 盘后：复盘 + 回测（自选+大盘）
   python run_review.py --mode recommend    # 开盘：推荐 + 当日购买原因
+  python run_review.py --mode metals       # 有色金属期货行情 + 分析
   python run_review.py --mode all          # 全部（默认）
 
   python run_review.py --top 15
@@ -28,6 +29,7 @@ from src import grid_backtest as gbt
 from src import grid_signal as gs
 from src import holdings as hd
 from src import report as rp
+from src import futures as fm
 from src import stock_pool as sp
 from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES, US_INDEX_CODES
 
@@ -407,9 +409,20 @@ def run_holdings():
         print(f"   {it['name']}: 现价{it['price']} 涨跌{it['change_pct']:+.2f}% → {g.get('action') or '--'}")
 
 
+def run_metals():
+    """生成有色金属期货页面数据：行情概览 + 各品种技术因子 + K线。"""
+    print("== 有色金属期货分析 ==")
+    data = fm.build_metals_data()
+    p = fm.save_metals_data(data)
+    s = data["stats"]
+    print(f"   {p}  共 {s['total']} 个品种  平均 {s['avg_change']:+.2f}%  "
+          f"上涨 {s['up']}/下跌 {s['down']}  领涨 {s['leader']}({s['leader_change']:+.2f}%) "
+          f"领跌 {s['laggard']}({s['laggard_change']:+.2f}%)")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "all"], default="all")
+    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
     ap.add_argument("--offline", action="store_true")
@@ -422,6 +435,8 @@ def main():
         run_recommend(args)
     if args.mode in ("holdings", "all"):
         run_holdings()
+    if args.mode in ("metals", "all"):
+        run_metals()
     print("完成。")
 
 

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>有色金属期货 · 复盘</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+  /* 金属子项可折叠卡 */
+  .metal-group { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; background:var(--surface); }
+  .metal-head { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; background:var(--surface); user-select:none; transition:background .15s; flex-wrap:wrap; }
+  .metal-head:hover { background:var(--surface-2); }
+  .metal-head .m-name { font-weight:800; font-size:15px; }
+  .metal-head .m-en { font-size:11px; color:var(--text-2); margin-left:4px; }
+  .metal-head .m-price { font-weight:700; font-variant-numeric:tabular-nums; margin-left:8px; }
+  .metal-head .m-meta { margin-left:auto; display:flex; gap:14px; font-size:12px; color:var(--text-2); flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+  .metal-head .chev { transition:transform .2s; color:var(--text-2); font-size:12px; }
+  .metal-group.open .chev { transform:rotate(90deg); }
+  .metal-body { display:none; padding:16px; border-top:1px solid var(--border); }
+  .metal-group.open .metal-body { display:block; }
+  .metal-trend { display:inline-block; padding:2px 9px; border-radius:6px; font-size:11px; font-weight:700; }
+  .metal-trend.t-bull { background:#fef2f2; color:#dc2626; }
+  .metal-trend.t-bear { background:#f0fdf4; color:#16a34a; }
+  .metal-trend.t-neut { background:#fffbeb; color:#d97706; }
+  .metal-trend.t-na { background:var(--surface-2); color:var(--text-2); }
+  .metal-chart { width:100%; height:240px; display:block; }
+  .metal-factors { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:1px; background:var(--border); margin-top:14px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .mf-cell { background:var(--surface); padding:10px 8px; text-align:center; min-width:0; }
+  .mf-v { font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; }
+  .mf-l { font-size:10px; color:var(--text-2); margin-top:3px; }
+  /* 复用大屏四方分钟度卡概览 */
+  .idx-metal-quick { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; }
+  .mq-card { padding:12px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); text-align:center; cursor:pointer; transition:box-shadow .15s,border-color .15s; }
+  .mq-card:hover { box-shadow:var(--shadow-hover); border-color:var(--accent); }
+  .mq-card.up { border-top:3px solid var(--up); }
+  .mq-card.down { border-top:3px solid var(--down); }
+  .mq-name { font-weight:800; font-size:14px; }
+  .mq-pct { font-weight:800; font-size:17px; font-variant-numeric:tabular-nums; margin-top:4px; }
+  .mq-price { font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums; margin-top:2px; }
+  @media (max-width:640px) { .metal-head .m-meta { margin-left:0; width:100%; justify-content:space-between; gap:6px; } }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  let d = null;
+  try { d = await RV.API.metals(); } catch (e) { app.innerHTML = RV.ui.header('有色金属期货', '', 'metals') + RV.ui.error(e); return; }
+
+  const items = d.items || [];
+  if (!items.length) {
+    app.innerHTML = RV.ui.header('有色金属期货', '', 'metals', d.generatedAt) + RV.ui.empty('暂无期货数据，请先运行 python run_review.py --mode metals');
+    return;
+  }
+  const stats = d.stats || {};
+  const cls = RV.fmt.cls;
+
+  function trendBadge(t) {
+    const key = t.indexOf('多头') >= 0 ? 't-bull' : (t.indexOf('空头') >= 0 ? 't-bear' : (t === '数据不足' ? 't-na' : 't-neut'));
+    return `<span class="metal-trend ${key}">${t}</span>`;
+  }
+
+  /* K线 + 均线图：收盘价折线 + MA5/MA20/MA60 + 量能条 */
+  function metalChart(item, id) {
+    const ch = item.chart || {};
+    const dates = ch.dates || [], c = ch.closes || [], ma5 = ch.ma5 || [], ma20 = ch.ma20 || [], ma60 = ch.ma60 || [], v = ch.volumes || [];
+    const n = c.length;
+    if (n < 2) return RV.ui.empty('K线数据不足');
+    const W = 860, H = 240, padL = 54, padR = 14, padT = 12, padB = 28;
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    let max = -Infinity, min = Infinity;
+    const series = [c, ma5, ma20, ma60];
+    for (const arr of series) for (let i = 0; i < n; i++) { const x = arr[i]; if (x == null) continue; if (x > max) max = x; if (x < min) min = x; }
+    let vmax = 0; for (let i = 0; i < n; i++) if (v[i] > vmax) vmax = v[i];
+    max *= 1.03; min *= 0.97;
+    const range = max - min || 1;
+    const x = i => padL + innerW * i / (n - 1);
+    const y = p => padT + innerH * (max - p) / range;
+    const yv = val => padT + innerH - innerH * 0.18 * (val / (vmax || 1));
+    function path(arr, gap) {
+      const g = gap || 0; let p = ''; let started = false;
+      for (let i = 0; i < n; i += g || 1) {
+        const val = arr[i]; if (val == null) { started = false; continue; }
+        p += (started ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(val).toFixed(1); started = true;
+      }
+      if ((n - 1) % (g || 1) !== 0) { const val = arr[n - 1]; if (val != null) p += 'L' + x(n - 1).toFixed(1) + ',' + y(val).toFixed(1); }
+      return p;
+    }
+    const yN = 5, yTicks = []; for (let i = 0; i <= yN; i++) yTicks.push(min + range * i / yN);
+    const years = dates.map(s => Number(s.slice(0, 4)));
+    const y0 = years[0], y1 = years[years.length - 1];
+    const xTicks = []; for (let yr = y0; yr <= y1; yr++) { const idx = years.indexOf(yr); if (idx >= 0) xTicks.push({ x: x(idx), label: yr }); }
+    return `<div class="chart-wrap" data-c="${JSON.stringify(c)}" data-dt="${JSON.stringify(dates)}">
+      <svg class="metal-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
+        <rect width="${W}" height="${H}" fill="#f9fafb"/>
+        ${yTicks.map(val => `<line x1="${padL}" y1="${y(val).toFixed(1)}" x2="${W - padR}" y2="${y(val).toFixed(1)}" stroke="#eef0f3" stroke-width="1"/>
+          <text x="${padL - 8}" y="${(y(val) + 4).toFixed(1)}" fill="#6b7280" font-size="11" text-anchor="end" font-variant-numeric="tabular-nums">${val.toFixed(0)}</text>`).join('')}
+        ${xTicks.map(t => `<line x1="${t.x.toFixed(1)}" y1="${padT}" x2="${t.x.toFixed(1)}" y2="${padT + innerH}" stroke="#eef0f3" stroke-width="1" stroke-dasharray="3,3"/>
+          <text x="${t.x.toFixed(1)}" y="${H - 8}" fill="#6b7280" font-size="11" text-anchor="middle">${t.label}</text>`).join('')}
+        ${v.map((val, i) => { if (!val) return ''; return `<rect x="${(x(i) - 0.6).toFixed(1)}" y="${yv(val).toFixed(1)}" width="1.2" height="${(padT + innerH - yv(val)).toFixed(1)}" fill="#d1d5db" opacity="0.5"/>`; }).join('')}
+        <path d="${path(ma60)}" fill="none" stroke="#a1a1aa" stroke-width="1.2" opacity="0.85"/>
+        <path d="${path(ma20)}" fill="none" stroke="#f59e0b" stroke-width="1.4" opacity="0.85"/>
+        <path d="${path(ma5)}" fill="none" stroke="#3b82f6" stroke-width="1.4" opacity="0.85"/>
+        <path d="${path(c)}" fill="none" stroke="#c78d5a" stroke-width="2.1"/>
+        <line class="hover-line" x1="0" y1="${padT}" x2="0" y2="${padT + innerH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" style="opacity:0"/>
+        <circle class="hover-dot" r="4" fill="#c78d5a" style="opacity:0"/>
+      </svg>
+      <div class="chart-tip" style="position:absolute;pointer-events:none;opacity:0;background:#111827;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.7;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.25);white-space:nowrap">
+        <div class="tip-date" style="margin-bottom:2px"></div>
+        <div style="color:#c78d5a">收盘：<b class="tip-close"></b></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:6px">
+        <span style="color:#c78d5a;font-weight:700">收盘</span> ·
+        <span style="color:#3b82f6">MA5</span> · <span style="color:#f59e0b">MA20</span> · <span style="color:#a1a1aa">MA60</span> ·
+        <span style="color:#d1d5db">柱=成交量</span> ·
+        <span style="color:var(--text-2)">鼠标悬浮查看数值</span>
+      </div>
+    </div>`;
+  }
+
+  function factorGrid(item) {
+    const cell = (val, label, cls2) => `<div class="mf-cell"><div class="mf-v ${cls2 || ''}">${val}</div><div class="mf-l">${label}</div></div>`;
+    const pct = v => (v == null ? '--' : RV.fmt.pct(v));
+    const num = v => (v == null ? '--' : RV.fmt.num(v, 2));
+    return `<div class="metal-factors">
+      ${cell(pct(item.change), '今日涨跌', cls(item.change))}
+      ${cell(pct(item.change5), '5日涨跌', cls(item.change5))}
+      ${cell(pct(item.change20), '20日涨跌', cls(item.change20))}
+      ${cell(pct(item.change60), '60日涨跌', cls(item.change60))}
+      ${cell(num(item.ma5), 'MA5')}
+      ${cell(num(item.ma20), 'MA20')}
+      ${cell(num(item.ma60), 'MA60')}
+      ${cell(pct(item.bias_ma5), 'MA5乖离', cls(item.bias_ma5))}
+      ${cell(pct(item.bias_ma20), 'MA20乖离', cls(item.bias_ma20))}
+      ${cell(pct(item.bias_ma60), 'MA60乖离', cls(item.bias_ma60))}
+      ${cell(item.macd_status, 'MACD状态', item.macd_status === '金叉' ? 'up' : 'down')}
+      ${cell(num(item.macd_bar), 'MACD柱', cls(item.macd_bar))}
+      ${cell(num(item.rsi12), 'RSI12')}
+      ${cell(item.rsi_status, 'RSI状态')}
+      ${cell(num(item.high20), '20日高')}
+      ${cell(num(item.low20), '20日低')}
+      ${cell(item.pos20 + '%', '20日位置')}
+      ${cell(num(item.high60), '60日高')}
+      ${cell(num(item.low60), '60日低')}
+      ${cell(item.pos60 + '%', '60日位置')}
+      ${cell(pct(item.max_dd60), '60日最大回撤', 'down')}
+      ${cell(num(item.volume), '今日成交量')}
+    </div>`;
+  }
+
+  function metalGroup(item, idx) {
+    const chg = item.change;
+    return `<div class="metal-group" data-idx="${idx}">
+      <div class="metal-head" data-toggle="${idx}">
+        <i class="fa-solid fa-coins" style="color:var(--accent)"></i>
+        <span class="m-name">${item.name}</span><span class="m-en">${item.en || ''} · ${item.exchange}</span>
+        <span class="m-price">${item.price.toFixed(0)}<span style="font-size:11px;color:var(--text-2);font-weight:500"> ${item.unit}</span></span>
+        ${RV.ui.pctBadge(chg)}
+        ${trendBadge(item.trend_status)}
+        <span class="m-meta">
+          <span><i class="fa-solid fa-arrow-trend-up fa-xs"></i> MACD ${item.macd_status}</span>
+          <span>RSI ${item.rsi12}</span>
+          <span class="chev">${RV.ui.icon('chevron-right')}</span>
+        </span>
+      </div>
+      <div class="metal-body">
+        ${metalChart(item, 'm' + idx)}
+        ${factorGrid(item)}
+      </div>
+    </div>`;
+  }
+
+  /* 头部概览 */
+  const headCards = [
+    RV.ui.summaryCard('temperature-half', `${(stats.avg_change ?? 0) >= 0 ? '+' : ''}${RV.fmt.num(stats.avg_change, 2)}%`, '今日平均涨跌', cls(stats.avg_change)),
+    RV.ui.summaryCard('arrow-trend-up', `${stats.up ?? 0} 只`, '上涨品种', 'up'),
+    RV.ui.summaryCard('arrow-trend-down', `${stats.down ?? 0} 只`, '下跌品种', 'down'),
+    RV.ui.summaryCard('crown', `${stats.leader || '--'} <span style="font-size:13px;font-weight:600">(${RV.fmt.pct(stats.leader_change || 0)})</span>`, '领涨品种', 'up'),
+    RV.ui.summaryCard('face-frown', `${stats.laggard || '--'} <span style="font-size:13px;font-weight:600">(${RV.fmt.pct(stats.laggard_change || 0)})</span>`, '领跌品种', 'down'),
+  ].join('');
+
+  /* 行情速览：方块卡片，点击直接展开对应金属 */
+  const quick = items.map((m, i) => `
+    <div class="mq-card ${cls(m.change)}" data-jump="${i}">
+      <div class="mq-name">${m.name}</div>
+      <div class="mq-pct ${cls(m.change)}">${RV.fmt.pct(m.change)}</div>
+      <div class="mq-price">${m.price.toFixed(0)} ${m.unit}</div>
+    </div>`).join('');
+
+  app.innerHTML = RV.ui.header('有色金属期货', 'SHFE 主力连续合约 · 行情 + 趋势 + 技术因子', 'metals', d.generatedAt)
+    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
+    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>各品种速览（点击可直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
+    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>分品种分析 · 点击展开看走势与技术因子</h2></div>${items.map((m, i) => metalGroup(m, i)).join('')}</div>`
+    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN） · 技术指标口径同股票分析 · 不构成投资建议</footer>';
+
+  /* 折叠交互 */
+  app.querySelectorAll('.metal-head[data-toggle]').forEach(h => {
+    h.addEventListener('click', () => {
+      const g = h.parentElement;
+      g.classList.toggle('open');
+      if (g.classList.contains('open')) initChart(g);
+    });
+  });
+  app.querySelectorAll('.mq-card[data-jump]').forEach(c => {
+    c.addEventListener('click', () => {
+      const i = c.getAttribute('data-jump');
+      const g = app.querySelector(`.metal-group[data-idx="${i}"]`);
+      if (!g) return;
+      g.classList.add('open');
+      initChart(g);
+      g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  /* 数据更新于今日则默认展开第一个 */
+  if (items.length) {
+    const first = app.querySelector('.metal-group[data-idx="0"]');
+    first.classList.add('open');
+    initChart(first);
+  }
+
+  function initChart(group) {
+    const wrap = group.querySelector('.chart-wrap');
+    if (!wrap || wrap.dataset.inited) return;
+    wrap.dataset.inited = '1';
+    const svg = wrap.querySelector('svg.metal-chart');
+    if (!svg) return;
+    let c, dt; try { c = JSON.parse(wrap.dataset.c); dt = JSON.parse(wrap.dataset.dt); } catch (e) { return; }
+    const n = c.length; if (n < 2) return;
+    const W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
+    const padL = 54, padR = 14, padT = 12, padB = 28;
+    const IW = W - padL - padR, IH = H - padT - padB;
+    let max = -Infinity, min = Infinity; for (let i = 0; i < n; i++) { if (c[i] > max) max = c[i]; if (c[i] < min) min = c[i]; }
+    max *= 1.03; min *= 0.97; const range = max - min || 1;
+    const sx = i => padL + IW * i / (n - 1);
+    const sy = p => padT + IH * (max - p) / range;
+    const hl = svg.querySelector('.hover-line');
+    const dot = svg.querySelector('.hover-dot');
+    const tip = wrap.querySelector('.chart-tip');
+    const tD = tip.querySelector('.tip-date'), tC = tip.querySelector('.tip-close');
+    svg.addEventListener('mousemove', e => {
+      const rect = svg.getBoundingClientRect();
+      const vx = (e.clientX - rect.left) / rect.width * W;
+      const px = Math.max(0, Math.min(1, (vx - padL) / IW));
+      const idx = Math.round(px * (n - 1));
+      const X = sx(idx), Y = sy(c[idx]);
+      hl.setAttribute('x1', X); hl.setAttribute('x2', X); hl.style.opacity = 1;
+      dot.setAttribute('cx', X); dot.setAttribute('cy', Y); dot.style.opacity = 1;
+      tD.textContent = '\uD83D\uDCC5 ' + dt[idx]; tC.textContent = c[idx].toFixed(2);
+      tip.style.opacity = 1;
+      const tw = tip.offsetWidth || 160;
+      const left = (vx + tw + 16 > W) ? (vx - tw - 12) : (vx + 14);
+      tip.style.left = (left / W * rect.width) + 'px'; tip.style.top = '8px';
+    });
+    svg.addEventListener('mouseleave', () => { hl.style.opacity = 0; dot.style.opacity = 0; tip.style.opacity = 0; });
+  }
+})();
+</script>
+</body>
+</html>

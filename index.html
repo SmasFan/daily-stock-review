@@ -41,10 +41,11 @@
 (async function () {
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null;
+  let review = null, rec = null, bt = null, metals = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
+  try { metals = await RV.API.metals(); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -65,6 +66,12 @@
       <div class="e-icon">${RV.ui.icon('flask')}</div><h3>网格回测</h3>
       <p>均衡偏低均值线 + 不对称网格，近 N 年收益/回撤/夏普验证</p>
       ${bt && bt.overall ? `<div class="e-stat">${RV.ui.icon('circle-check', 'fa-xs')} ${bt.overall.stocks ?? 0} 只标的 · 平均年化 ${bt.overall.avg_annual_return ? (bt.overall.avg_annual_return * 100).toFixed(1) + '%' : '--'}</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="metals.html">
+      <div class="e-icon">${RV.ui.icon('coins')}</div><h3>有色金属期货</h3>
+      <p>SHFE 主力连续合约（铜/铝/锌/铅/镍/锡）行情 + 走势 + 技术因子，点击展开各品种</p>
+      ${metals && metals.stats ? `<div class="e-stat">${RV.ui.icon('temperature-half', 'fa-xs')} 平均 ${RV.fmt.pct(metals.stats.avg_change)} · 领涨 ${metals.stats.leader}(${RV.fmt.pct(metals.stats.leader_change)})</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="docs.html">

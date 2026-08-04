@@ -16,6 +16,7 @@ python run_review.py
 python run_review.py --top 15          # 推荐输出前15
 python run_review.py --no-backtest     # 跳过回测（更快）
 python run_review.py --offline         # 仅用缓存数据
+  python run_review.py --mode metals     # 仅生成有色金属期货页面
 
 # 本地查看
 python -m http.server 8000
@@ -39,6 +40,7 @@ python -m http.server 8000
 - [每日推荐](recommend.html) —— 自选 TopN + 大盘 Top5 + 板块推荐（估值+动量）+ 网格策略操作提醒
 - [持仓跟踪](holdings.html) —— 盘中实时跟踪 + 盘后复盘 + 网格策略操作提醒（配置见 holdings.json）
 - [网格回测](backtest.html) —— 均衡偏低均值线 + 不对称网格回测
+- [有色金属期货](metals.html) —— SHFE 主力连续合约（铜/铝/锌/铅/镍/锡）行情、走势与技术因子，点击展开各品种
 
 ## 持仓配置（holdings.json）
 
@@ -74,6 +76,7 @@ src/
 ├── holdings.py          # 持仓分析（实时行情 + 盈亏 + 网格提醒）
 ├── data_provider.py     # 腾讯行情快照 + 日K线(支持长历史翻页) + 本地缓存
 ├── stock_pool.py        # 自选池/大盘池/回测标的 + code→板块映射
+├── futures.py           # 有色金属期货数据（新浪期货日线 SHFE 主力连续）+ 趋势/技术因子
 └── report.py            # 汇总生成前端 JSON
 assets/
 ├── css/common.css       # 统一设计语言（含板块分组/展开样式）
@@ -83,8 +86,9 @@ data/
 ├── recommend_data.json  # 推荐数据
 ├── backtest_data.json   # 网格回测数据
 ├── holdings_data.json   # 持仓数据
+├── metals_data.json     # 有色金属期货行情/技术因子数据
 └── cache/               # K线/估值缓存（不入库）
-index.html / review.html / recommend.html / holdings.html / backtest.html   # 数据驱动页面
+index.html / review.html / recommend.html / holdings.html / backtest.html / metals.html   # 数据驱动页面
 ```
 
 ## 分析逻辑口径
