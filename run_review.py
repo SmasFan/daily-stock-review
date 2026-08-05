@@ -176,29 +176,6 @@ def run_review(args):
             print(f"   {name}: 年化{s['annual_return']*100:.1f}% 回撤{s['max_drawdown']*100:.1f}% "
                   f"夏普{s['sharpe']} 交易{s['trade_count']}次 基准年化{s['benchmark_annual']*100:.1f}%")
 
-        # 美股三大指数回测（价格锚，无估值数据）
-        print("== 美股三大指数回测 ==")
-        for meta in US_INDEX_CODES:
-            name, code = meta["name"], meta["code"]
-            k = dp.fetch_daily_kline_us(code, count=3200)
-            if not k or len(k["closes"]) < 300:
-                print(f"   [跳过] {name}: K线不足")
-                continue
-            panel = gbt.build_panel(name, code, k["dates"], k["opens"], k["closes"],
-                                    k["highs"], k["lows"], k["volumes"])
-            if not panel:
-                print(f"   [跳过] {name}: 面板构建失败")
-                continue
-            try:
-                res = gbt.run_grid_backtest(name, panel, gparams, ap, cfg)
-            except Exception as e:
-                print(f"   [跳过] {name}: 均值线样本不足")
-                continue
-            per_stock[name] = res
-            s = gbt.summary_metrics(res)
-            print(f"   {name}: 年化{s['annual_return']*100:.1f}% 回撤{s['max_drawdown']*100:.1f}% "
-                  f"夏普{s['sharpe']} 交易{s['trade_count']}次 基准年化{s['benchmark_annual']*100:.1f}%")
-
         bt_data = gbt.build_backtest_data(per_stock)
         p = rp.save("backtest_data.json", bt_data)
         print(f"   {p}  共 {len(per_stock)} 只 / {bt_data['overall'].get('total', 0)}")
