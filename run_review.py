@@ -292,14 +292,10 @@ def _sector_rank(sector: str) -> int:
 
 
 def prioritize_picks(picks, holding_codes):
-    """排序推荐列表：持仓股优先 → 红利 → 蓝筹 → 其他；同级按综合分降序。"""
+    """标记持仓并排序推荐列表：按综合分降序（保留持仓标记，不做板块优先级加权）。"""
     for it in picks:
         it.is_holding = it.code in holding_codes
-    picks.sort(key=lambda it: (
-        0 if it.is_holding else 1,
-        _sector_rank(it.sector),
-        -it.total_score,
-    ))
+    picks.sort(key=lambda it: -it.total_score)
     return picks
 
 
