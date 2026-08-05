@@ -216,6 +216,20 @@
   global.RV = { API, fmt, ui };
 })(window);
 
+/* ===== 卡片展开/收起：点击 .card-header 在下方展开/收起详情 ===== */
+(function () {
+  if (!document || typeof window === 'undefined') return;
+  document.addEventListener('click', e => {
+    const skip = e.target.closest('.info-dot, a, button');
+    if (skip) return;
+    const header = e.target.closest('.card-header');
+    if (header) {
+      const card = header.closest('.card');
+      if (card) card.classList.toggle('open');
+    }
+  });
+})();
+
 /* ===== 全局浮层监听：.info-dot 共享一个浮层，挂到 body 顶层 ===== */
 (function () {
   if (!document || typeof window === 'undefined') return;

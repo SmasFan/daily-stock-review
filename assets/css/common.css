@@ -117,13 +117,26 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .progress-fill { height:100%; border-radius:99px; }
 .metric-with-bar { display:flex; align-items:center; gap:8px; font-variant-numeric:tabular-nums; }
 
-/* 卡片网格 */
-.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
-.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); transition:box-shadow .15s; }
+/* 卡片（扁平条状：默认只显示头部，点击展开下方详情） */
+.cards { display:flex; flex-direction:column; gap:10px; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; box-shadow:var(--shadow); transition:box-shadow .15s; }
 .card:hover { box-shadow:var(--shadow-hover); }
-.card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px; }
+.card-header {
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding:12px 14px; margin:0; cursor:pointer; border-bottom:1px solid transparent;
+}
+.card-header::after {
+    content:'▾'; font-size:12px; color:var(--text-2); flex-shrink:0;
+    transition:transform .2s; margin-left:4px;
+}
+.card.open .card-header { border-bottom:1px dashed var(--border); }
+.card.open .card-header::after { transform:rotate(180deg); }
 .card-title { font-size:15px; font-weight:700; }
-.card-kv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px 12px; font-size:12px; }
+.card .score-ring, .card .card-kv, .card .points, .card .reason { display:none; }
+.card.open .score-ring { display:flex; margin:0; padding:12px 14px 0; }
+.card.open .card-kv { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px 12px; font-size:12px; padding:10px 14px 0; }
+.card.open .points { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:5px; padding:10px 14px 0; border-top:none; margin:0; }
+.card.open .reason { display:block; margin:10px 14px 14px; }
 .card-kv .k { color:var(--text-2); }
 .card-kv .v { font-weight:600; font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 .score-ring { display:flex; align-items:center; gap:10px; margin:8px 0; }

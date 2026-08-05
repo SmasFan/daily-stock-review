@@ -1104,6 +1104,7 @@ function render(data) {
         card.className = 'sector-card';
         card.style.background = level.color;
 
+        stocks = stocks.slice().sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
         const rows = stocks.map(s => {
             const flow = s.estNetFlow || 0;
             const flowClass = flow > 0 ? 'flow-up' : flow < 0 ? 'flow-down' : '';
