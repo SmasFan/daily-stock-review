@@ -216,17 +216,16 @@
   global.RV = { API, fmt, ui };
 })(window);
 
-/* ===== 卡片展开/收起：点击 .card-header 在下方展开/收起详情 ===== */
+/* ===== 卡片展开/收起：点击头部在下方展开/收起详情 ===== */
 (function () {
   if (!document || typeof window === 'undefined') return;
   document.addEventListener('click', e => {
     const skip = e.target.closest('.info-dot, a, button');
     if (skip) return;
-    const header = e.target.closest('.card-header');
-    if (header) {
-      const card = header.closest('.card');
-      if (card) card.classList.toggle('open');
-    }
+    const bar = e.target.closest('.card-header, .card-summary, .mini-head');
+    if (!bar) return;
+    const host = bar.closest('.card') || bar.closest('.mini-card');
+    if (host) host.classList.toggle('open');
   });
 })();
 

@@ -50,6 +50,7 @@ class AnalysisResult:
     name: str
     code: str = ""
     date: str = ""
+    open: float = 0.0
     close: float = 0.0
     change_pct: float = 0.0
     sector: str = ""
@@ -287,7 +288,7 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     take_profit = resistance
 
     return AnalysisResult(
-        name=name, code=code, date=dates[idx], close=round(close, 3),
+        name=name, code=code, date=dates[idx], open=round(opens[idx], 3), close=round(close, 3),
         change_pct=round(change_pct, 2),
         trend_status=trend_status, trend_strength=trend_strength,
         ma5=_r(ma5), ma10=_r(ma10), ma20=_r(ma20), ma60=_r(ma60),

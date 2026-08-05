@@ -322,6 +322,13 @@
           <div><span class="card-title">${nameBlock(p)}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
           <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
+        <div class="card-summary">
+          <span class="cs-item"><i>分数</i><b class="${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</b></span>
+          <span class="cs-item"><i>现价</i><b>${RV.fmt.num(p.price)}</b></span>
+          <span class="cs-item"><i>开盘</i><b>${RV.fmt.num(p.open)}</b></span>
+          <span class="cs-item"><i>涨幅</i><b class="${RV.fmt.cls(p.change_pct)}">${RV.fmt.pct(p.change_pct)}</b></span>
+        </div>
+        <div class="card-detail">
         <div class="score-ring">
           <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
           <div style="flex:1">${RV.ui.progress(p.total_score)}</div>
@@ -340,6 +347,7 @@
           <div class="point"><span class="p-label">止盈</span><span class="p-val">${RV.fmt.num(p.take_profit)}</span></div>
         </div>
         <div class="reason">${RV.ui.icon('lightbulb', 'fa-xs')} 当日购买原因：${p.reasons}</div>
+        </div>
       </div>`).join('');
     }
 

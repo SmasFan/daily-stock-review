@@ -101,6 +101,7 @@ def to_screen_item(code, item):
     return scr.ScreenItem(
         name=name, code=code, sector=sector_map.get(code, ""),
         price=(q or {}).get("price") or a.close,
+        open=(q or {}).get("open") or a.open,
         change_pct=(q or {}).get("change") or a.change_pct,
         amount=(q or {}).get("amount") or 0,
         turnover=(q or {}).get("turnover") or 0,

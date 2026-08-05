@@ -287,6 +287,13 @@
           <div><span class="card-title">${r.name}</span> <span class="date-tag">${r.date}</span> <span class="sec-chip">${r.sector || '其他'}</span></div>
           <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
         </div>
+        <div class="card-summary">
+          <span class="cs-item"><i>分数</i><b class="${r.score >= 60 ? 'up' : (r.score < 40 ? 'down' : '')}">${r.score}</b></span>
+          <span class="cs-item"><i>现价</i><b>${RV.fmt.num(r.close)}</b></span>
+          <span class="cs-item"><i>开盘</i><b>${RV.fmt.num(r.open)}</b></span>
+          <span class="cs-item"><i>涨幅</i><b class="${RV.fmt.cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</b></span>
+        </div>
+        <div class="card-detail">
         <div class="score-ring">
           <span class="score-num ${r.score >= 60 ? 'up' : (r.score < 40 ? 'down' : '')}">${r.score}</span>
           <div style="flex:1">${RV.ui.progress(r.score)}</div>
@@ -305,6 +312,7 @@
           <div class="point"><span class="p-label">次优买点(MA10)</span><span class="p-val">${RV.fmt.num(r.secondary_buy)}</span></div>
           <div class="point"><span class="p-label">止损(MA20)</span><span class="p-val">${RV.fmt.num(r.stop_loss)}</span></div>
           <div class="point"><span class="p-label">止盈(前高)</span><span class="p-val">${RV.fmt.num(r.take_profit)}</span></div>
+        </div>
         </div>
       </div>`).join('');
     }

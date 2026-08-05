@@ -47,18 +47,19 @@
           <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.code}</span></div>
           ${actionBadge(p.grid)}
         </div>
-        <div class="score-ring">
-          <div style="flex:1">
-            <span style="font-size:22px;font-weight:800">${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)}</span>
-            <span class="date-tag" style="margin-left:8px">${RV.fmt.pct(p.change_pct)}</span>
-          </div>
+        <div class="card-summary">
+          <span class="cs-item"><i>现价</i><b>${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)}</b></span>
+          <span class="cs-item"><i>涨幅</i><b class="${RV.fmt.cls(p.change_pct)}">${RV.fmt.pct(p.change_pct)}</b></span>
+          <span class="cs-item"><i>市值</i><b>${RV.fmt.money(p.market_value)}</b></span>
         </div>
+        <div class="card-detail">
         <div class="points" style="grid-template-columns:repeat(3,1fr)">
           <div class="point"><span class="p-label">持仓</span><span class="p-val">${RV.fmt.num(p.shares, 0)}</span></div>
           <div class="point"><span class="p-label">市值</span><span class="p-val">${RV.fmt.money(p.market_value)}</span></div>
         </div>
         ${g.dev !== undefined && g.dev !== null ? `
         <div class="reason" style="margin-top:10px">${RV.ui.icon('grid-2', 'fa-xs')} 网格：${g.reason}</div>` : ''}
+        </div>
       </div>`;
     }).join('');
 

@@ -53,6 +53,7 @@ class ScreenItem:
     code: str
     sector: str = ""
     price: float = 0.0
+    open: float = 0.0
     change_pct: float = 0.0
     amount: float = 0.0
     turnover: float = 0.0
