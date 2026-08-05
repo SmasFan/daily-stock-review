@@ -15,12 +15,9 @@
   const app = document.getElementById('app');
   try {
     const d = await RV.API.backtest();
-    const o = d.overall || {};
     const stocks = d.stocks || {};
     const names = Object.keys(stocks);
     let selected = names[0] || null;
-
-    function pct(v, digits = 2) { return RV.fmt.pct(v * 100, digits); }
 
     // 区间收益表：左列固定名称，右侧各时间段收益可横向滑动（时间最短在前）
     const WINDOWS = ['1周', '1月', '半年', '1年', '3年', '5年'];
@@ -46,37 +43,6 @@
         </table></div>
         <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('arrows-left-right', 'fa-xs')} 左列固定，可左右滑动查看不同时间段收益；绿色=正收益，红色=负收益。</div>
       </div>`;
-    }
-
-    function metricSmall(val, label, cls = '', icon = '') {
-      return `<div class="m-small"><div class="m-s-val ${cls}">${icon ? RV.ui.icon(icon, 'fa-xs') + ' ' : ''}${val}</div><div class="m-s-label">${label}</div></div>`;
-    }
-    function metricGroup(title, icon, body) {
-      return `<div class="metric-group"><div class="mg-title">${RV.ui.icon(icon, 'fa-xs')} ${title}</div><div class="mg-body">${body}</div></div>`;
-    }
-    function overallMetrics(s) {
-      return metricGroup('整体 · 回测标的 ' + (s.stocks ?? 0), 'chart-pie', `
-        ${metricSmall(pct(s.avg_annual_return, 1), '平均年化', RV.fmt.cls(s.avg_annual_return))}
-        ${metricSmall(RV.fmt.num(s.avg_sharpe, 2), '平均夏普')}
-        ${metricSmall(pct(s.avg_max_drawdown, 1), '平均回撤', 'down')}
-        ${metricSmall(pct(s.avg_excess_return, 1), '超额收益', RV.fmt.cls(s.avg_excess_return))}`);
-    }
-    function stockMetrics(s) {
-      return metricGroup('收益', 'arrow-trend-up', `
-        ${metricSmall(pct(s.annual_return, 1), '年化收益', RV.fmt.cls(s.annual_return))}
-        ${metricSmall(pct(s.total_return, 1), '总收益', RV.fmt.cls(s.total_return))}
-        ${metricSmall(pct(s.excess_return, 1), '超额收益', RV.fmt.cls(s.excess_return))}
-        ${metricSmall(pct(s.benchmark_annual, 1), '基准年化', RV.fmt.cls(s.benchmark_annual))}`)
-        + metricGroup('风险', 'triangle-exclamation', `
-        ${metricSmall(pct(s.max_drawdown, 1), '最大回撤', 'down')}
-        ${metricSmall(RV.fmt.num(s.annual_vol * 100, 1) + '%', '年化波动')}
-        ${metricSmall(RV.fmt.num(s.sharpe, 2), '夏普')}
-        ${metricSmall(RV.fmt.num(s.calmar, 2), '卡玛')}`)
-        + metricGroup('交易', 'receipt', `
-        ${metricSmall(s.trade_count, '交易次数')}
-        ${metricSmall(RV.fmt.num(s.avg_position * 100, 0) + '%', '平均仓位')}
-        ${metricSmall(s.years + '年', '回测区间')}
-        ${metricSmall(s.price_only ? '价格锚' : '估值锚', '均值线')}`);
     }
 
     // ECharts 净值曲线 + 买卖点（trades 标记在收盘价轴上）
@@ -161,7 +127,6 @@
     }
 
     function render() {
-      const s = selected ? stocks[selected].summary : o;
       const stock = selected ? stocks[selected] : null;
       const tabs = [`<a href="#" class="nav-link ${!selected ? 'active' : ''}" data-k="">整体</a>`]
         .concat(names.map(n => `<a href="#" class="nav-link ${selected === n ? 'active' : ''}" data-k="${n}">${n}</a>`)).join('');
@@ -170,7 +135,6 @@
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-pie')}</span><h2>选择标的</h2></div>
              <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
         + returnTable()
-        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
         + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · 买卖点标记</h2></div>${eqChart(stock, 'eq')}</div>` : '')
         + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>调仓记录 · 完整时间线（最近 ${dailyLog(stock).length} 个交易日，含未调仓日）</h2></div>${tradesTable(stock)}</div>` : '')
         + strategyExplain()
