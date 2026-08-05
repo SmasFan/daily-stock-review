@@ -254,16 +254,18 @@ SECTOR_RECO_MAP = {
 }
 
 
-def pick_sector_stocks(sector_recs, screen_items, top_n=5):
-    """从板块推荐的对应个股分类中，选出综合分最高的 top_n 只（按板块推荐名过滤）。"""
-    reco_cats = set()
+def pick_sector_stocks(sector_recs, screen_items, top_n=10):
+    """按推荐板块分组，从对应自选分类中选出综合分最高的 top_n 只，返回 {板块名: [个股...]}。"""
+    result = {}
     for s in sector_recs:
-        reco_cats.update(SECTOR_RECO_MAP.get(s.get("name", ""), []))
-    if not reco_cats:
-        return []
-    matched = [it for it in screen_items if it.sector in reco_cats]
-    matched.sort(key=lambda it: it.total_score, reverse=True)
-    return matched[:top_n]
+        cats = SECTOR_RECO_MAP.get(s.get("name", ""), [])
+        if not cats:
+            continue
+        matched = [it for it in screen_items if it.sector in cats]
+        matched.sort(key=lambda it: it.total_score, reverse=True)
+        if matched:
+            result[s["name"]] = matched[:top_n]
+    return result
 
 
 def load_holding_codes():
@@ -334,15 +336,15 @@ def run_recommend(args):
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())
 
-    # 板块推荐对应个股：从推荐板块分类中挑综合分 Top5
-    sector_picks = pick_sector_stocks(sector_recs, screen_items, top_n=5)
+    # 板块推荐对应个股：按推荐板块分组，每板块挑综合分 Top10
+    sector_stocks = pick_sector_stocks(sector_recs, screen_items, top_n=10)
 
     # 生成当日购买原因
     for it in picks:
         it.reasons = scr.build_buy_reason(it)
     for it in market_picks:
         it.reasons = scr.build_buy_reason(it)
-    for it in sector_picks:
+    for it in [x for lst in sector_stocks.values() for x in lst]:
         it.reasons = scr.build_buy_reason(it)
 
     # 网格策略操作提醒：对推荐候选（自选+大盘+板块选股+持仓股）计算均值线偏离信号
@@ -351,7 +353,7 @@ def run_recommend(args):
     gparams = gbt.GridParams()
     gap = gbt.AnchorParams(lookback_days=750, min_periods=500)
     cand = {}
-    for it in list(picks) + list(market_picks) + list(sector_picks):
+    for it in list(picks) + list(market_picks) + [x for lst in sector_stocks.values() for x in lst]:
         if it.code and it.code not in cand:
             cand[it.code] = (it.name, it.code)
     # 持仓股强制加入网格信号（即使不在推荐候选里）
@@ -375,13 +377,18 @@ def run_recommend(args):
     grid_signals = gs.build_grid_signals(list(cand.values()), gparams, gap, bt_data_prev, holding_codes)
     print(f"   推荐候选 {len(cand)} 只，网格信号成功 {len(grid_signals)} 只")
     for s in grid_signals:
-        print(f"   {s['name']}: dev={s['dev']*100:+.1f}% 仓位{s['position']*100:.0f}% → {s['action']}")
+        _dev = s.get("dev")
+        _pos = s.get("position")
+        _dev_s = "" if _dev is None else f"{_dev*100:+.1f}%"
+        _pos_s = "" if _pos is None else f"{_pos*100:.0f}%"
+        print(f"   {s['name']}: dev={_dev_s} 仓位{_pos_s} → {s.get('action')}")
 
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
-                             sectors=sector_recs, sector_picks=sector_picks,
+                             sectors=sector_recs, sector_stocks=sector_stocks,
                              grid_signals=grid_signals)
     p = rp.save("recommend_data.json", rec)
-    print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {len(sector_picks)}")
+    n_picks = sum(len(v) for v in sector_stocks.values())
+    print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {n_picks}")
     for it in picks[:5]:
         print(f"     {it.rating} {it.total_score:5.1f}  {it.name}  {it.signal}")
         print(f"       💡 {it.reasons}")
