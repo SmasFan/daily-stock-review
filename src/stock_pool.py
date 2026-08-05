@@ -145,3 +145,28 @@ def get_code_sector() -> Dict[str, str]:
     if not _CODE_SECTOR_CACHE:
         _CODE_SECTOR_CACHE = _load_code_sector()
     return _CODE_SECTOR_CACHE
+
+
+def _load_code_name() -> Dict[str, str]:
+    """从 watchlist_data.js 解析 code -> name 映射（脚本生成，单一真源）。"""
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "watchlist_data.js")
+    mapping: Dict[str, str] = {}
+    try:
+        raw = open(path, "r", encoding="utf-8").read()
+        for m in re.finditer(r'"code":\s*"(\d+)".*?"name":\s*"([^"]*)"', raw, re.S):
+            mapping[m.group(1)] = m.group(2)
+    except Exception:
+        pass
+    return mapping
+
+
+# 代码 -> 名称（懒加载）
+_CODE_NAME_CACHE: Dict[str, str] = {}
+
+
+def get_code_name() -> Dict[str, str]:
+    global _CODE_NAME_CACHE
+    if not _CODE_NAME_CACHE:
+        _CODE_NAME_CACHE = _load_code_name()
+    return _CODE_NAME_CACHE

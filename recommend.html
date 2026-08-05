@@ -100,7 +100,7 @@
       const cards = gridSignals.map((s, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name} ${s.is_holding ? holdingBadge(s) : ''}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(s)} ${s.is_holding ? holdingBadge(s) : ''}</span>
           <span class="mini-head-right">${gridActionBadge(s)}</span>
         </div>
         <div class="mini-tags">
@@ -155,6 +155,11 @@
       return p.is_holding ? `<span class="signal-badge s-buy">${RV.ui.icon('briefcase', 'fa-xs')} 持仓</span>` : '';
     }
 
+    // 股票名称 + 代码小字
+    function nameBlock(p, suffix) {
+      return `${p.name}${suffix || ''}<span class="stock-code">${p.code}</span>`;
+    }
+
     // 个股推荐评分原因（'?' 弹层，与复盘页一致）
     function recDetail(p) {
       const rows = [
@@ -180,7 +185,7 @@
     function listTable(list) {
       const rows = list.map((p, i) => `
       <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</td>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</td>
         <td><span class="sec-chip">${p.sector || '--'}</span></td>
         <td>${RV.ui.ratingBadge(p.rating)}</td>
         <td style="font-weight:800">${RV.fmt.num(p.total_score, 1)}</td>
@@ -192,7 +197,7 @@
       const mobileCards = list.map((p, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</span>
           <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="mini-tags">
@@ -251,7 +256,7 @@
       return `<div class="mini-cards">${list.map((p, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name} ${holdingBadge(p)}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
           </div>
           <div class="mini-tags">
@@ -308,7 +313,7 @@
       return list.map(p => `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
+          <div><span class="card-title">${nameBlock(p)}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
           <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="score-ring">

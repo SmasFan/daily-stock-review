@@ -267,6 +267,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .mini-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; }
 .mini-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px; }
 .mini-name { font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.stock-code { display:block; font-size:11px; font-weight:400; color:var(--text-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mini-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .mini-tags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
 .mini-score { display:flex; align-items:center; gap:12px; margin-bottom:10px; }

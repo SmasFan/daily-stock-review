@@ -115,7 +115,8 @@ def to_screen_item(code, item):
 
 def build_names_from_quotes(codes, offline):
     quotes = {} if offline else dp.fetch_quotes(codes)
-    return {c: (quotes.get(c) or {}).get("name") or c for c in codes}, quotes
+    name_map = sp.get_code_name()
+    return {c: (quotes.get(c) or {}).get("name") or name_map.get(c) or c for c in codes}, quotes
 
 
 def run_review(args):
