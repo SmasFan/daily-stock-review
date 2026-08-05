@@ -1,10 +1,10 @@
 name: Daily Stock Review
 
-# A股复盘定时任务 + 手动触发。
+# 复盘/推荐：仅在手动触发时运行。
 #
-# 定时（北京时间，UTC+8）：
-#   - 周一至周五 09:05  → 开盘推荐（recommend）
-#   - 周一至周五 15:40  → 盘后复盘 + 回测（review，含板块估值更新）
+# 说明：定时任务已由本地服务器 cron 全权负责（盘前 09:05 / 盘中每 5 分钟 / 盘后 15:40），
+#       且本地 push 会触发 deploy-pages.yml 部署。GitHub Actions 的 schedule 因排队延迟
+#       会滞后执行并用旧代码覆盖盘中最新数据，故已停用 schedule。
 #
 # 手动触发：Actions → Daily Stock Review → Run workflow，
 #   可指定 mode（review / recommend / all）与 top（推荐数量）。
@@ -17,9 +17,6 @@ name: Daily Stock Review
 #      因此本工作流内自行部署，避免依赖 deploy-pages.yml 被递归触发）
 
 "on":
-  schedule:
-    - cron: "5 1 * * 1-5"   # 09:05 北京时间 开盘推荐
-    - cron: "40 7 * * 1-5"  # 15:40 北京时间 盘后复盘
   workflow_dispatch:
     inputs:
       mode:
