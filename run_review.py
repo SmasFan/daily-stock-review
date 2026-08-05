@@ -308,9 +308,20 @@ def run_recommend(args):
     indices = fetch_index_rows()
 
     screen_items = [to_screen_item(c, v) for c, v in pool.items()]
-    picks = scr.screen(screen_items, tech_weight=0.5, top_n=args.top)
 
-    # 持仓股置顶：把持仓股并入自选推荐（若不在 TopN 中则补入），并打持仓标记
+    # 自选推荐：先对全部自选股打分，再按板块分组，每板块挑综合分 TopN
+    all_scored = scr.screen(screen_items, tech_weight=0.5, top_n=len(screen_items))
+    sector_top = args.top  # 每板块推荐数量
+    sec_groups = {}
+    for it in all_scored:
+        sec = (it.sector or "").strip() or "其他"
+        sec_groups.setdefault(sec, []).append(it)
+    picks = []
+    for sec, items in sec_groups.items():
+        picks.extend(items[:sector_top])
+    print(f"   自选推荐按板块分组：{len(sec_groups)} 个板块，每板块 Top{sector_top}，共 {len(picks)} 只")
+
+    # 持仓股置顶：把持仓股并入自选推荐（若不在推荐中则补入），并打持仓标记
     holding_codes = load_holding_codes()
     if holding_codes:
         picked = {it.code for it in picks}

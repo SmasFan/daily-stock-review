@@ -390,9 +390,9 @@
       const sectorHtml = `<div data-nav="板块推荐" data-nav-icon="layer-group">${sectorRecSection()}</div>`;
       const stockHtml = stockTabs
         + `<div data-nav="首推总览" data-nav-icon="crown">${topCards(list, tab === 'watch' ? '自选首推' : '大盘首推')}</div>`
-        + `<div data-nav="推荐榜单" data-nav-icon="table-list">${listTable(list)}</div>`
         + `<div data-nav="按板块" data-nav-icon="layer-group">${sectorSection(list, tab === 'watch' ? '自选推荐' : '大盘推荐')}</div>`
-        + `<div data-nav="推荐详情" data-nav-icon="id-card"><div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list)}</div></div></div>`;
+        + `<div data-nav="推荐榜单" data-nav-icon="table-list">${listTable(list.slice(0, 20))}</div>`
+        + `<div data-nav="推荐详情" data-nav-icon="id-card"><div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list.slice(0, 20))}</div></div></div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
         + indicesHtml + gridSignalSection() + modTabs
         + (mod === 'sector' ? sectorHtml : stockHtml)
