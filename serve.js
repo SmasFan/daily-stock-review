@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const PORT = 7584;
 const BASE_DIR = __dirname;
@@ -23,7 +24,20 @@ const server = http.createServer((req, res) => {
     });
 });
 
+function lanAddresses() {
+    const list = [];
+    const ifs = os.networkInterfaces();
+    for (const name of Object.keys(ifs)) {
+        for (const info of ifs[name]) {
+            if (info.family === 'IPv4' && !info.internal) list.push(info.address);
+        }
+    }
+    return list.filter(a => a.startsWith('192.') || a.startsWith('10.') || a.startsWith('172.'));
+}
+
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`服务器已启动: http://localhost:${PORT}/`);
-    console.log(`局域网访问: http://192.168.31.128:${PORT}/`);
+    for (const ip of lanAddresses()) {
+        console.log(`局域网访问: http://${ip}:${PORT}/`);
+    }
 });
