@@ -19,6 +19,16 @@
     const gridSignals = d.grid_signals || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
+    // 推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按综合分降序
+    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
+    function buyStrength(r) {
+      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
+    }
+    const byStrength = (a, b) => buyStrength(a) - buyStrength(b) || b.total_score - a.total_score;
+    picks.sort(byStrength);
+    mpicks.sort(byStrength);
+    Object.keys(sectorStocks).forEach(k => sectorStocks[k].sort(byStrength));
+
     // 大盘指数（方块卡片，英文简写，背景按涨跌着色）
     const IDX_SHORT = {
       '上证指数': 'SH',
@@ -237,10 +247,6 @@
     }
 
     // 板块分组 + 迷你卡片（与复盘一致：点开板块展开个股卡片）
-    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
-    function buyStrength(r) {
-      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
-    }
     function groupBySector(items) {
       const groups = {};
       (items || []).forEach(r => {

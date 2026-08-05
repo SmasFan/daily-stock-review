@@ -19,6 +19,14 @@ from dataclasses import dataclass, asdict
 from typing import List, Optional, Dict
 
 
+SIG_STRENGTH = {"strong_buy": 0, "buy": 1, "watch": 2, "reduce": 3, "sell": 4}
+
+
+def strength_key(it) -> int:
+    """推荐强度排序键：strong_buy(0) > buy(1) > watch(2) > reduce(3) > sell(4)。"""
+    return SIG_STRENGTH.get(it.signal_key, 5)
+
+
 def rank_pct(values: List[float], higher_is_better: bool = True) -> List[float]:
     """横截面百分位排名（0-100）。相同值取平均名次。无效值(None)给 25。"""
     n = len(values)

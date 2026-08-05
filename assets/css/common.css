@@ -80,15 +80,18 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .data-table tbody tr:hover { background:var(--surface-2); }
 .asset-name { font-weight:600; white-space:nowrap; }
 
-/* 区间收益表：左侧名称列固定，右侧列可横向滑动 */
+/* 区间收益表：左侧名称列固定占 50%，右侧列可横向滑动；左列超长换行，默认两行行高 */
 .ret-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .ret-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:14px; }
-.ret-table th, .ret-table td { padding:12px 14px; border-bottom:1px solid var(--border); white-space:nowrap; text-align:right; }
+.ret-table th, .ret-table td { padding:12px 14px; border-bottom:1px solid var(--border); white-space:nowrap; text-align:right; line-height:1.5; }
 .ret-table th { background:var(--surface-2); color:var(--text-2); font-weight:600; font-size:12px; position:sticky; top:0; z-index:2; }
 .ret-table th:first-child, .ret-table td:first-child {
     text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
     font-weight:700; box-shadow:1px 0 0 var(--border);
+    width:50%; max-width:calc(50vw - 46px);
+    white-space:normal; word-break:break-word; line-height:1.5;
 }
+.ret-table td:first-child { height:calc(3em + 24px); }
 .ret-table th:first-child { z-index:3; background:var(--surface-2); }
 .ret-table tbody tr:hover { background:var(--surface-2); }
 .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }

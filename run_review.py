@@ -135,6 +135,9 @@ def run_review(args):
 
     analyses = [v[2] for v in pool.values()]
     market_analyses = [v[2] for v in market_pool.values()]
+    # 复盘列表按推荐强度排序（强买>买入>观望>减仓>卖出），同级按评分降序
+    analyses.sort(key=lambda a: (scr.strength_key(a), -a.score))
+    market_analyses.sort(key=lambda a: (scr.strength_key(a), -a.score))
 
     # 板块映射（复盘按板块分组展示）
     sector_map = sp.get_code_sector()
@@ -270,10 +273,10 @@ def _sector_rank(sector: str) -> int:
 
 
 def prioritize_picks(picks, holding_codes):
-    """标记持仓并排序推荐列表：按综合分降序（保留持仓标记，不做板块优先级加权）。"""
+    """标记持仓并排序推荐列表：按推荐强度降序（强买>买入>观望>减仓>卖出），同级按综合分降序。"""
     for it in picks:
         it.is_holding = it.code in holding_codes
-    picks.sort(key=lambda it: -it.total_score)
+    picks.sort(key=lambda it: (scr.strength_key(it), -it.total_score))
     return picks
 
 
@@ -317,6 +320,7 @@ def run_recommend(args):
     market_items = [to_screen_item(c, v) for c, v in market_pool.items()]
     market_top = min(5, len(market_items))
     market_picks = scr.screen(market_items, tech_weight=0.5, top_n=market_top)
+    market_picks.sort(key=lambda it: (scr.strength_key(it), -it.total_score))
 
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())

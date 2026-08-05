@@ -16,6 +16,15 @@
     const d = await RV.API.review();
     const t = d.temperature, s = d.stats;
 
+    // 买入推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按评分降序
+    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
+    function buyStrength(r) {
+      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
+    }
+    const byStrength = (a, b) => buyStrength(a) - buyStrength(b) || b.score - a.score;
+    (d.items || []).sort(byStrength);
+    (d.market_items || []).sort(byStrength);
+
     // ===== 大盘指数模块（方块卡片，英文简写，背景按涨跌着色） =====
     const IDX_SHORT = {
       '上证指数': 'SH',
@@ -98,11 +107,6 @@
       </div>`;
 
     // ===== 板块分组渲染（先按板块，点开展开股票） =====
-    // 买入推荐强度排序：strong_buy > buy > watch > reduce > sell
-    const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
-    function buyStrength(r) {
-      return r.signal_key in SIG_ORDER ? SIG_ORDER[r.signal_key] : 5;
-    }
     function groupBySector(items) {
       const groups = {};
       (items || []).forEach(r => {
