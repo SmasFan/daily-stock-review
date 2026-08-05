@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>网格回测 · 复盘</title>
 <link rel="stylesheet" href="assets/css/common.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 </head>
 <body>
 <div class="container" id="app"><div class="loading">数据加载中…</div></div>
@@ -21,14 +22,38 @@
 
     function pct(v, digits = 2) { return RV.fmt.pct(v * 100, digits); }
 
-    // 紧凑指标卡：手机端更小、更密
+    // 区间收益表：左列固定名称，右侧各时间段收益可横向滑动（时间最短在前）
+    const WINDOWS = ['1周', '1月', '半年', '1年', '3年', '5年'];
+    function returnTable() {
+      const rows = names.map(name => {
+        const s = stocks[name];
+        const wr = s.window_returns || {};
+        return `<tr>
+          <td>${name}${s.price_only ? '<span class="sec-chip" style="margin-left:6px">价格锚</span>' : ''}</td>
+          ${WINDOWS.map(w => {
+            const r = (wr[w] || {}).strategy;
+            return r == null
+              ? '<td style="color:var(--text-2)">--</td>'
+              : `<td class="${RV.fmt.cls(r)}">${RV.fmt.pct(r * 100, 1)}</td>`;
+          }).join('')}
+        </tr>`;
+      }).join('');
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>绩效汇总 · 区间收益</h2><span class="sec-chip">${names.length}只</span></div>
+        <div class="ret-table-wrap"><table class="ret-table">
+          <thead><tr><th>标的</th>${WINDOWS.map(w => `<th>最近${w}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('arrows-left-right', 'fa-xs')} 左列固定，可左右滑动查看不同时间段收益；绿色=正收益，红色=负收益。</div>
+      </div>`;
+    }
+
     function metricSmall(val, label, cls = '', icon = '') {
       return `<div class="m-small"><div class="m-s-val ${cls}">${icon ? RV.ui.icon(icon, 'fa-xs') + ' ' : ''}${val}</div><div class="m-s-label">${label}</div></div>`;
     }
     function metricGroup(title, icon, body) {
       return `<div class="metric-group"><div class="mg-title">${RV.ui.icon(icon, 'fa-xs')} ${title}</div><div class="mg-body">${body}</div></div>`;
     }
-
     function overallMetrics(s) {
       return metricGroup('整体 · 回测标的 ' + (s.stocks ?? 0), 'chart-pie', `
         ${metricSmall(pct(s.avg_annual_return, 1), '平均年化', RV.fmt.cls(s.avg_annual_return))}
@@ -36,7 +61,6 @@
         ${metricSmall(pct(s.avg_max_drawdown, 1), '平均回撤', 'down')}
         ${metricSmall(pct(s.avg_excess_return, 1), '超额收益', RV.fmt.cls(s.avg_excess_return))}`);
     }
-
     function stockMetrics(s) {
       return metricGroup('收益', 'arrow-trend-up', `
         ${metricSmall(pct(s.annual_return, 1), '年化收益', RV.fmt.cls(s.annual_return))}
@@ -55,89 +79,85 @@
         ${metricSmall(s.price_only ? '价格锚' : '估值锚', '均值线')}`);
     }
 
-    // 净值曲线（交互式：时间轴 + 悬浮查看数据）
+    // ECharts 净值曲线 + 买卖点（trades 标记在收盘价轴上）
+    const chartPool = [];
     function eqChart(stock, id) {
       const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
+      const close = stock.close || [];
+      const trades = stock.trades || [];
       if (eq.length < 2) return '';
-      // 抽稀：最多 1000 个点保证流畅
-      const step = Math.ceil(eq.length / 1000);
-      const n = eq.length;
-      const W = 860, H = 260;
-      const padL = 52, padR = 14, padT = 14, padB = 30;
-      const innerW = W - padL - padR, innerH = H - padT - padB;
-      let maxV = -Infinity, minV = Infinity;
-      for (let i = 0; i < n; i++) {
-        if (eq[i] > maxV) maxV = eq[i];
-        if (eq[i] < minV) minV = eq[i];
-        if (bench[i] > maxV) maxV = bench[i];
-        if (bench[i] < minV) minV = bench[i];
-      }
-      maxV *= 1.03; minV *= 0.97;
-      const range = maxV - minV || 1;
-      const x = i => padL + innerW * i / (n - 1);
-      const y = v => padT + innerH * (maxV - v) / range;
-      // 抽稀后路径
-      function path(arr) {
-        let p = '';
-        for (let i = 0; i < n; i += step) {
-          p += (p ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(arr[i]).toFixed(1);
-        }
-        // 最后一个点
-        if ((n - 1) % step !== 0) p += 'L' + x(n - 1).toFixed(1) + ',' + y(arr[n - 1]).toFixed(1);
-        return p;
-      }
-      // y 轴刻度（4-5 档）
-      const yTicks = [];
-      const yN = 5;
-      for (let i = 0; i <= yN; i++) yTicks.push(minV + range * i / yN);
-      // x 轴时间刻度（按年）
-      const xTicks = [];
-      const years = dates.map(d => Number(d.slice(0, 4)));
-      const y0 = years[0], y1 = years[years.length - 1];
-      for (let yr = y0; yr <= y1; yr++) {
-        const idx = years.indexOf(yr);
-        if (idx >= 0) xTicks.push({ x: x(idx), label: yr });
-      }
-      // 格式化净值
-      const fv = v => v.toFixed(3);
-      // 基准线 y=1
-      const baseY = y(1);
+      const wrapId = 'eq-' + id + '-' + Math.random().toString(36).slice(2, 7);
+      // 买卖点：仅保留有价格且落在日期序列内的
+      const idxMap = {};
+      dates.forEach((dd, i) => { idxMap[dd] = i; });
+      const marks = trades.filter(t => t.price != null && t.date in idxMap);
+      const buyPts = marks.filter(t => t.side === 'buy').map(t => [dates.indexOf(t.date), t.price, t.date]);
+      const sellPts = marks.filter(t => t.side === 'sell').map(t => [dates.indexOf(t.date), t.price, t.date]);
 
-      return `<div class="chart-wrap" style="position:relative"
-            data-eq="${JSON.stringify(eq.map(v => +v.toFixed(4)))}"
-            data-bm="${JSON.stringify(bench.map(v => +v.toFixed(4)))}"
-            data-dt="${JSON.stringify(dates)}">
-        <svg id="eq-svg-${id}" class="eq-chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
-          <rect width="${W}" height="${H}" fill="#f9fafb"/>
-          <!-- y 轴网格 + 刻度 -->
-          ${yTicks.map(v => `
-            <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="#eef0f3" stroke-width="1"/>
-            <text x="${padL - 8}" y="${(y(v) + 4).toFixed(1)}" fill="#6b7280" font-size="11" text-anchor="end" font-variant-numeric="tabular-nums">${fv(v)}</text>`).join('')}
-          <!-- x 轴时间刻度 -->
-          ${xTicks.map(t => `
-            <line x1="${t.x.toFixed(1)}" y1="${padT}" x2="${t.x.toFixed(1)}" y2="${padT + innerH}" stroke="#eef0f3" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="${t.x.toFixed(1)}" y="${H - 10}" fill="#6b7280" font-size="11" text-anchor="middle">${t.label}</text>`).join('')}
-          <!-- 基准线 1.0 -->
-          <line x1="${padL}" y1="${baseY.toFixed(1)}" x2="${W - padR}" y2="${baseY.toFixed(1)}" stroke="#d1d5db" stroke-width="1" stroke-dasharray="5,4"/>
-          <!-- 曲线 -->
-          <path d="${path(bench)}" fill="none" stroke="#9ca3af" stroke-width="1.6" opacity="0.75"/>
-          <path d="${path(eq)}" fill="none" stroke="#c78d5a" stroke-width="2.2"/>
-          <line class="hover-line" x1="0" y1="${padT}" x2="0" y2="${padT + innerH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" style="opacity:0"/>
-          <circle class="hover-dot-eq" r="4" fill="#c78d5a" style="opacity:0"/>
-          <circle class="hover-dot-bm" r="4" fill="#9ca3af" style="opacity:0"/>
-        </svg>
-        <div class="chart-tip" style="position:absolute;pointer-events:none;opacity:0;background:#111827;color:#fff;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.7;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.25);white-space:nowrap">
-          <div class="tip-date" style="margin-bottom:2px"></div>
-          <div style="color:#c78d5a"><i class="fa-solid fa-chart-line"></i> 网格策略：<b class="tip-eq"></b></div>
-          <div style="color:#9ca3af"><i class="fa-solid fa-chart-line"></i> 买入持有：<b class="tip-bm"></b></div>
-        </div>
-        <div style="font-size:12px;color:var(--text-2);margin-top:6px">
-          <span style="color:#c78d5a;font-weight:700"><i class="fa-solid fa-chart-line"></i> 网格策略</span> ·
-          <span style="color:#9ca3af"><i class="fa-solid fa-chart-line"></i> 买入持有基准</span> ·
-          <span style="color:#d1d5db">-- 初始净值1.0</span> ·
-          <span style="color:var(--text-2)">鼠标悬浮查看数值</span>
-        </div>
-      </div>`;
+      const opt = {
+        animation: false,
+        tooltip: {
+          trigger: 'axis',
+          formatter(params) {
+            const i = params[0].dataIndex;
+            const dt = dates[i] || '';
+            const eqV = eq[i] != null ? eq[i].toFixed(3) : '--';
+            const bmV = bench[i] != null ? bench[i].toFixed(3) : '--';
+            const px = close[i] != null ? close[i].toFixed(2) : '--';
+            let lines = [`<b>${dt}</b>`, `净值(网格): <b>${eqV}</b>`, `基准(持有): ${bmV}`, `收盘价: ${px}`];
+            const t = marks.find(x => x.date === dt);
+            if (t) lines.push(t.side === 'buy' ? '🟢 买入 @ ' + t.price : '🔴 卖出 @ ' + t.price);
+            return lines.join('<br/>');
+          }
+        },
+        legend: { data: ['网格策略', '买入持有', '收盘价'], textStyle: { color: '#6b6258' } },
+        grid: { left: 60, right: 70, top: 40, bottom: 40 },
+        dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', height: 16, bottom: 8 }],
+        xAxis: {
+          type: 'category', data: dates, boundaryGap: false,
+          axisLabel: { color: '#6b6258', formatter: v => v.slice(0, 7) },
+          axisLine: { lineStyle: { color: '#d1c9bf' } }
+        },
+        yAxis: [
+          { type: 'value', name: '净值', scale: true, axisLabel: { color: '#6b6258' }, splitLine: { lineStyle: { color: '#efe9df' } } },
+          { type: 'value', name: '价格', scale: true, axisLabel: { color: '#b0a89d' }, splitLine: { show: false } }
+        ],
+        series: [
+          {
+            name: '网格策略', type: 'line', data: eq, showSymbol: false,
+            lineStyle: { width: 2.2, color: '#c78d5a' }, itemStyle: { color: '#c78d5a' }
+          },
+          {
+            name: '买入持有', type: 'line', data: bench, showSymbol: false,
+            lineStyle: { width: 1.6, color: '#9ca3af' }, itemStyle: { color: '#9ca3af' }
+          },
+          {
+            name: '收盘价', type: 'line', data: close, yAxisIndex: 1, showSymbol: false,
+            lineStyle: { width: 1, color: '#d6cbbd', opacity: 0.8 }, itemStyle: { color: '#d6cbbd' },
+            tooltip: { show: false }
+          },
+          {
+            name: '买入', type: 'scatter', data: buyPts, symbol: 'triangle', symbolSize: 9,
+            itemStyle: { color: '#16a34a' }, xAxisIndex: 0, yAxisIndex: 1,
+            markPoint: { symbol: 'triangle', symbolSize: 9, itemStyle: { color: '#16a34a' } }
+          },
+          {
+            name: '卖出', type: 'scatter', data: sellPts, symbol: 'triangle', symbolRotate: 180, symbolSize: 9,
+            itemStyle: { color: '#dc2626' }, xAxisIndex: 0, yAxisIndex: 1,
+            markPoint: { symbol: 'triangle', symbolRotate: 180, symbolSize: 9, itemStyle: { color: '#dc2626' } }
+          }
+        ]
+      };
+      setTimeout(() => {
+        const el = document.getElementById(wrapId);
+        if (el && window.echarts) {
+          const chart = echarts.init(el);
+          chart.setOption(opt);
+          chartPool.push(chart);
+          window.addEventListener('resize', () => chart.resize());
+        }
+      }, 0);
+      return `<div id="${wrapId}" style="width:100%;height:380px"></div>`;
     }
 
     function render() {
@@ -149,17 +169,32 @@
       app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-pie')}</span><h2>选择标的</h2></div>
              <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
+        + returnTable()
         + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>${selected || '整体'} · 绩效汇总</h2></div>${selected ? stockMetrics(s) : overallMetrics(s)}</div>`
-        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线</h2></div>${eqChart(stock, 'eq')}</div>` : '')
+        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · 买卖点标记</h2></div>${eqChart(stock, 'eq')}</div>` : '')
         + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>调仓记录 · 完整时间线（最近 ${dailyLog(stock).length} 个交易日，含未调仓日）</h2></div>${tradesTable(stock)}</div>` : '')
+        + strategyExplain()
         + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
 
       app.querySelectorAll('.nav-link[data-k]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         selected = a.getAttribute('data-k') || null;
         render();
-        window._initEqCharts && window._initEqCharts();
       }));
+    }
+
+    // 回测说明：买卖触发规则
+    function strategyExplain() {
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>回测说明 · 买卖触发规则</h2></div>
+        <div style="font-size:13px;line-height:2;color:var(--text)">
+          <p>${RV.ui.icon('scale-balanced', 'fa-xs')} <b>均值线（估值锚）</b>：PE40分位 / PB60分位 / ROE60分位 加权几何平均得到"合理估值中枢"；无估值数据时退化为价格均线（<i>价格锚</i>）。偏离度 = 收盘价 ÷ 均值线 − 1。</p>
+          <p>${RV.ui.icon('cart-plus', 'fa-xs')} <b>买入（下跌分批）</b>：每跌 <b>0.5%</b> 一档，按 <b>1.04%</b> 仓位加仓（向下摊低成本）；偏离 ≤ <b>−5%</b> 进入<b>半永久锁仓</b>，继续加仓至最大仓位。</p>
+          <p>${RV.ui.icon('cart-shopping', 'fa-xs')} <b>卖出（上涨分批）</b>：每涨 <b>0.5%</b> 一档，按 <b>1%</b> 仓位减仓（向上兑现收益）；偏离 ≥ <b>+5%</b> 视为<b>超涨清仓</b>。</p>
+          <p>${RV.ui.icon('bullseye', 'fa-xs')} <b>目标仓位</b>：均衡 70% − 斜率 × 偏离度，仓位区间自动收窄在 [最小, 最大]；偏离越大仓位越低。</p>
+          <p>${RV.ui.icon('receipt', 'fa-xs')} <b>成本</b>：单边手续费 0.05%；收益已含日股息；基准 = 满仓买入持有（含分红再投资）。</p>
+        </div>
+      </div>`;
     }
 
     // 完整时间线：把调仓事件与每个交易日合并，未调仓日也显示（持有不动）
@@ -208,70 +243,9 @@
     }
 
     render();
-    window._initEqCharts && window._initEqCharts();
   } catch (e) {
     app.innerHTML = RV.ui.header('网格回测', '', 'backtest') + RV.ui.error(e);
   }
-})();
-</script>
-<script>
-/* 净值曲线悬浮交互：初始化所有 .chart-wrap 的 mousemove 事件 */
-(function () {
-  window._initEqCharts = function () {
-    document.querySelectorAll('.chart-wrap').forEach(function (wrap) {
-      if (wrap.dataset.inited) return;
-      wrap.dataset.inited = '1';
-      var svg = wrap.querySelector('svg.eq-chart');
-      if (!svg) return;
-      var ptsEq, ptsBm, dt;
-      try { ptsEq = JSON.parse(wrap.dataset.eq); ptsBm = JSON.parse(wrap.dataset.bm); dt = JSON.parse(wrap.dataset.dt); }
-      catch (e) { return; }
-      var n = ptsEq.length;
-      if (n < 2) return;
-      var sViewW = svg.viewBox.baseVal.width;
-      var sViewH = svg.viewBox.baseVal.height;
-      var sPadL = 52, sPadR = 14, sPadT = 14;
-      var sIW = sViewW - sPadL - sPadR;
-      var maxV = -Infinity, minV = Infinity;
-      for (var i = 0; i < n; i++) {
-        maxV = Math.max(maxV, ptsEq[i], ptsBm[i]);
-        minV = Math.min(minV, ptsEq[i], ptsBm[i]);
-      }
-      maxV *= 1.03; minV *= 0.97;
-      var range = maxV - minV || 1;
-      var sx = function (i) { return sPadL + sIW * i / (n - 1); };
-      var sy = function (v) { return sPadT + (sViewH - 30 - sPadT) * (maxV - v) / range; };
-      var hl = svg.querySelector('.hover-line');
-      var de = svg.querySelector('.hover-dot-eq');
-      var db = svg.querySelector('.hover-dot-bm');
-      var tip = wrap.querySelector('.chart-tip');
-      var tipDate = tip.querySelector('.tip-date');
-      var tipEq = tip.querySelector('.tip-eq');
-      var tipBm = tip.querySelector('.tip-bm');
-      function update(clientX) {
-        var rect = svg.getBoundingClientRect();
-        var vx = (clientX - rect.left) / rect.width * sViewW;
-        var px = Math.max(0, Math.min(1, (vx - sPadL) / sIW));
-        var idx = Math.round(px * (n - 1));
-        var X = sx(idx), Y1 = sy(ptsEq[idx]), Y2 = sy(ptsBm[idx]);
-        hl.setAttribute('x1', X); hl.setAttribute('x2', X); hl.style.opacity = 1;
-        de.setAttribute('cx', X); de.setAttribute('cy', Y1); de.style.opacity = 1;
-        db.setAttribute('cx', X); db.setAttribute('cy', Y2); db.style.opacity = 1;
-        tipDate.textContent = '\uD83D\uDCC5 ' + dt[idx];
-        tipEq.textContent = ptsEq[idx].toFixed(3);
-        tipBm.textContent = ptsBm[idx].toFixed(3);
-        tip.style.opacity = 1;
-        var tw = tip.offsetWidth || 160;
-        var left = (vx + tw + 16 > sViewW) ? (vx - tw - 12) : (vx + 14);
-        tip.style.left = (left / sViewW * rect.width) + 'px';
-        tip.style.top = '8px';
-      }
-      svg.addEventListener('mousemove', function (e) { update(e.clientX); });
-      svg.addEventListener('mouseleave', function () {
-        hl.style.opacity = 0; de.style.opacity = 0; db.style.opacity = 0; tip.style.opacity = 0;
-      });
-    });
-  };
 })();
 </script>
 </body>

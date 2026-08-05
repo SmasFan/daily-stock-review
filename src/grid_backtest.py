@@ -381,6 +381,7 @@ class BacktestResult:
     dev: List[float]
     anchor: List[float]
     locked: List[float]
+    close: List[float]
     dates: List[str]
     trades: List[TradeRecord]
     start_date: str
@@ -501,6 +502,7 @@ def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
         dev=devs[first:],
         anchor=anchors[first:],
         locked=locks[first:],
+        close=close[first:],
         dates=dates[first:],
         trades=trades,
         start_date=dates[first],
@@ -601,19 +603,59 @@ def summary_metrics(res: BacktestResult, rf: float = 0.0) -> Dict:
     }
 
 
+def _window_returns(res: BacktestResult) -> Dict[str, float]:
+    """按最近交易日窗口计算策略/基准收益。窗口从短到长排列。"""
+    from datetime import datetime
+    dates = res.dates
+    equity = res.equity
+    bench = res.benchmark
+    windows = [("1周", 5), ("1月", 21), ("半年", 126), ("1年", 252), ("3年", 756), ("5年", 1260)]
+    out = {}
+    n = len(dates)
+    for label, w in windows:
+        out[label] = {}
+        # 用日期差值精确到自然日（不足窗口则返回 None）
+        try:
+            d_end = datetime.strptime(dates[-1], "%Y-%m-%d")
+            target = None
+            for i in range(n - 1, -1, -1):
+                if (d_end - datetime.strptime(dates[i], "%Y-%m-%d")).days >= w * 7 / 5:
+                    target = i
+                    break
+        except Exception:
+            target = n - 1 - w if n - 1 - w >= 0 else None
+        if target is None or target < 0:
+            out[label] = {"strategy": None, "benchmark": None}
+            continue
+        out[label] = {
+            "strategy": round(equity[n - 1] / equity[target] - 1.0, 4),
+            "benchmark": round(bench[n - 1] / bench[target] - 1.0, 4),
+        }
+    return out
+
+
 def build_backtest_data(per_stock: Dict[str, BacktestResult], rf: float = 0.0) -> Dict:
     """生成前端可消费的回测 JSON（对齐 report.build_backtest 输出结构）。"""
     stocks = {}
     for name, res in per_stock.items():
+        # trades 附上当日收盘价，供前端图表标记买卖点
+        date_close = {d: c for d, c in zip(res.dates, res.close)}
+        trades = []
+        for t in res.trades:
+            td = t.to_dict()
+            td["price"] = round(date_close[t.date], 3) if t.date in date_close else None
+            trades.append(td)
         stocks[name] = {
             "summary": summary_metrics(res, rf),
             "equity": [round(x, 6) for x in res.equity],
             "benchmark": [round(x, 6) for x in res.benchmark],
+            "close": [round(x, 4) if x is not None else None for x in res.close],
             "dates": res.dates,
             "position": [round(x, 4) if x == x else None for x in res.position],
             "dev": [round(x, 4) if x is not None else None for x in res.dev],
             "anchor": [round(x, 4) if x is not None else None for x in res.anchor],
-            "trades": [t.to_dict() for t in res.trades],
+            "trades": trades,
+            "window_returns": _window_returns(res),
             "price_only": res.price_only,
         }
     # 整体：各标的汇总并集

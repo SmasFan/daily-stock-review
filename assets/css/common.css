@@ -79,6 +79,19 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .data-table td { padding:12px; border-bottom:1px solid var(--border); vertical-align:middle; }
 .data-table tbody tr:hover { background:var(--surface-2); }
 .asset-name { font-weight:600; white-space:nowrap; }
+
+/* 区间收益表：左侧名称列固定，右侧列可横向滑动 */
+.ret-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.ret-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:14px; }
+.ret-table th, .ret-table td { padding:12px 14px; border-bottom:1px solid var(--border); white-space:nowrap; text-align:right; }
+.ret-table th { background:var(--surface-2); color:var(--text-2); font-weight:600; font-size:12px; position:sticky; top:0; z-index:2; }
+.ret-table th:first-child, .ret-table td:first-child {
+    text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
+    font-weight:700; box-shadow:1px 0 0 var(--border);
+}
+.ret-table th:first-child { z-index:3; background:var(--surface-2); }
+.ret-table tbody tr:hover { background:var(--surface-2); }
+.ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
 .row-num { color:var(--text-2); font-size:11px; margin-right:7px; font-variant-numeric:tabular-nums; }
 .date-tag { font-size:12px; color:var(--text-2); background:var(--surface-2); padding:2px 8px; border-radius:6px; white-space:nowrap; }
 
