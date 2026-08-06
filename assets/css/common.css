@@ -240,37 +240,66 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 
 @media (max-width:1320px) { .sidebar-nav { display:none; } .sidebar-fab { display:flex; } }
 
-/* 大盘指数方块卡片（热度+涨幅背景，点击展开下方技术详情） */
+/* 大盘评估卡（扁平设计：白底 + 左侧热度色条） */
 .idx-assess {
     display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-    border-radius:10px; padding:14px 16px; margin-bottom:12px; border:1px solid var(--border);
+    border-radius:12px; padding:14px 16px; margin-bottom:12px;
+    border:1px solid var(--border); background:#fff;
+    border-left:4px solid var(--ia-color, #3498db);
+    box-shadow:var(--shadow);
 }
 .ia-left { display:flex; align-items:center; gap:10px; }
-.ia-label { font-size:13px; font-weight:700; color:var(--text-2); }
-.ia-score { font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; }
-.ia-tag { font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px; }
+.ia-label { font-size:12px; font-weight:600; color:var(--text-2); display:block; margin-bottom:2px; }
+.ia-score-row { display:flex; align-items:baseline; gap:8px; }
+.ia-score { font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1; }
+.ia-tag { font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px; background:var(--surface-2); color:var(--text-2); }
 .ia-mid { flex:1; min-width:200px; }
-.ia-mid .tempo-bar { height:8px; }
-.ia-metrics { display:flex; gap:14px; font-size:11px; color:var(--text-2); margin-top:6px; flex-wrap:wrap; }
+.ia-mid .tempo-bar { height:8px; margin-top:4px; }
+.ia-metrics { display:flex; gap:14px; font-size:11px; color:var(--text-2); margin-top:8px; flex-wrap:wrap; }
 .ia-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
 .ia-hint { font-size:11px; color:var(--text-2); }
+
+/* 大盘指数方块卡片（扁平配色：柔和红涨绿跌 + 深浅分级） */
 .idx-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
 .idx-card {
     display:flex; flex-direction:column; align-items:center; gap:4px;
-    padding:14px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.07);
-    text-align:center; color:#1f2937; cursor:pointer;
+    padding:14px 10px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.06);
+    border-top:3px solid transparent; text-align:center; color:#374151; cursor:pointer;
     transition:transform .15s, box-shadow .15s;
 }
 .idx-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-hover); }
 .idx-card .idx-short { font-weight:800; font-size:14px; letter-spacing:.3px; }
-.idx-card .idx-short i { font-size:12px; opacity:.85; margin-right:4px; }
-.idx-card .idx-card-pct { font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; color:#111827; }
-.idx-card .idx-card-close { font-size:11px; opacity:.85; font-variant-numeric:tabular-nums; }
+.idx-card .idx-short i { font-size:12px; opacity:.8; margin-right:4px; }
+.idx-card .idx-card-pct { font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; }
+.idx-card .idx-card-close { font-size:11px; color:var(--text-2); font-variant-numeric:tabular-nums; }
 
-/* 指数技术因子卡（趋势/评分/买卖点位/均线偏离） */
-.idx-factor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:10px; }
-.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; display:none; }
-.idx-factor-card.open { display:block; }
+/* 指数技术因子卡（隐藏容器，点击指数卡时内容载入弹窗） */
+.idx-factor-grid { display:none; }
+.idx-factor-card { display:block; }
+
+/* 指数详情弹窗（扁平设计） */
+.idx-modal-overlay {
+    position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:9990;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:40px 16px; overflow-y:auto;
+}
+.idx-modal {
+    background:#fff; border-radius:14px; width:100%; max-width:520px;
+    box-shadow:0 20px 60px rgba(0,0,0,.28); overflow:hidden; animation:idxPop .18s ease-out;
+}
+@keyframes idxPop { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+.idx-modal-head {
+    display:flex; align-items:center; gap:10px; padding:12px 16px;
+    background:#f8fafc; border-bottom:1px solid var(--border);
+}
+.idx-modal-head .idx-m-name { font-size:16px; font-weight:800; }
+.idx-modal-head .idx-m-price { font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; margin-left:auto; }
+.idx-modal-close {
+    margin-left:8px; width:28px; height:28px; border:none; background:#e5e7eb;
+    border-radius:8px; color:#374151; font-size:15px; cursor:pointer; line-height:1;
+}
+.idx-modal-close:hover { background:#d1d5db; }
+.idx-modal-body { padding:14px 16px; }
 .idx-f-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .idx-f-name { font-weight:800; font-size:15px; }
 .idx-f-price { font-size:13px; font-weight:700; margin-left:auto; font-variant-numeric:tabular-nums; }

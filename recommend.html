@@ -51,49 +51,60 @@
       '标普500': 'star',
     };
     const marketTemp = d.temperature || null;
-    const heatHue = score => Math.max(0, Math.min(120, 120 - score * 1.2));
-    // 卡片背景：涨=红/跌=绿（A股口径），颜色深浅由涨幅大小与市场热度共同决定
-    function idxBg(change, temp) {
-      const t = temp == null ? 50 : Math.max(0, Math.min(100, temp));
-      const mag = Math.min(Math.abs(change || 0) / 3, 1);
-      const h = (change || 0) >= 0 ? 0 : 120;
-      const s = 35 + mag * 40 + (t / 100) * 15;
-      const l = 80 - mag * 10 - (t / 100) * 6;
-      return `hsl(${h}, ${s.toFixed(0)}%, ${l.toFixed(0)}%)`;
+    // 扁平配色：柔和红涨绿跌 + 强度分级（Flat Design 色板）
+    const IDX_PALETTE = {
+      up: { bg: ['#fef2f2', '#fee2e2', '#fecaca'], tx: ['#dc2626', '#dc2626', '#b91c1c'] },
+      down: { bg: ['#f0fdf4', '#dcfce7', '#bbf7d0'], tx: ['#16a34a', '#16a34a', '#15803d'] },
+      neu: { bg: '#f4f5f7', tx: '#4b5563' },
+    };
+    function idxStyle(change) {
+      if (!change) return { bg: IDX_PALETTE.neu.bg, tx: IDX_PALETTE.neu.tx };
+      const mag = Math.min(Math.abs(change) / 3, 1);   // 3% 封顶
+      const lvl = mag < 0.4 ? 0 : (mag < 0.8 ? 1 : 2);
+      const p = change > 0 ? IDX_PALETTE.up : IDX_PALETTE.down;
+      return { bg: p.bg[lvl], tx: p.tx[lvl] };
     }
     const idxCards = (d.indices || []).map((i, idx) => {
-      const bg = idxBg(i.change_pct, marketTemp && marketTemp.score);
+      const s = idxStyle(i.change_pct);
       const short = IDX_SHORT[i.name] || i.name;
       const ico = IDX_ICON[i.name] ? RV.ui.icon(IDX_ICON[i.name]) : '';
       return `
-      <div class="idx-card" data-i="${idx}" style="background:${bg}" title="点击展开 ${i.name} 技术详情">
+      <div class="idx-card" data-i="${idx}" style="background:${s.bg};border-top-color:${s.tx}" title="点击查看 ${i.name} 技术详情">
         <span class="idx-short">${ico} ${short}</span>
-        <span class="idx-card-pct">${RV.fmt.pct(i.change_pct)}</span>
+        <span class="idx-card-pct" style="color:${s.tx}">${RV.fmt.pct(i.change_pct)}</span>
         <span class="idx-card-close">${RV.fmt.num(i.close)}</span>
       </div>`;
     }).join('');
 
     // 大盘评估（市场热度）：复用复盘温度计口径（涨跌家数/平均涨跌/买卖信号）
+    function tempColor(score) {
+      if (score >= 70) return '#e74c3c';
+      if (score >= 55) return '#f39c12';
+      if (score >= 40) return '#3498db';
+      return '#27ae60';
+    }
     function assessCard(t) {
       if (!t || t.score == null) return '';
-      const h = heatHue(t.score);
-      const barBg = t.score >= 70 ? '#dc2626' : (t.score >= 55 ? '#d97706' : (t.score >= 40 ? '#2563eb' : '#16a34a'));
-      const labelCls = t.score >= 70 ? 'up' : (t.score >= 55 ? 'up' : (t.score >= 40 ? 'neutral' : 'down'));
-      return `<div class="idx-assess" style="background:linear-gradient(120deg,hsl(${h},48%,87%),hsl(${h},65%,94%))">
+      const c = tempColor(t.score);
+      return `<div class="idx-assess" style="--ia-color:${c}">
         <div class="ia-left">
-          <span class="ia-label">${RV.ui.icon('temperature-high', 'fa-xs')} 大盘评估</span>
-          <span class="ia-score" style="color:hsl(${h},78%,38%)">${t.score}</span>
-          <span class="ia-tag ${labelCls}" style="background:hsl(${h},70%,85%)">${t.label}</span>
+          <div>
+            <span class="ia-label">${RV.ui.icon('temperature-high', 'fa-xs')} 大盘评估</span>
+            <div class="ia-score-row">
+              <span class="ia-score" style="color:${c}">${t.score}</span>
+              <span class="ia-tag">${t.label}</span>
+            </div>
+          </div>
         </div>
         <div class="ia-mid">
-          <div class="tempo-bar"><div class="tempo-fill" style="width:${t.score}%;background:${barBg}"></div></div>
+          <div class="tempo-bar"><div class="tempo-fill" style="width:${t.score}%;background:${c}"></div></div>
           <div class="ia-metrics">
             <span>${RV.ui.icon('arrow-trend-up', 'fa-xs')} 涨家占比 <b>${t.breadth != null ? t.breadth + '%' : '--'}</b></span>
             <span>${RV.ui.icon('scale-balanced', 'fa-xs')} 平均涨跌 <b class="${RV.fmt.cls(t.avg_change)}">${RV.fmt.pct(t.avg_change)}</b></span>
             <span>${RV.ui.icon('bullseye', 'fa-xs')} 买${t.bull ?? '--'} / 卖${t.bear ?? '--'}</span>
           </div>
         </div>
-        <span class="ia-hint">${RV.ui.icon('mouse-pointer', 'fa-xs')} 点击下方指数卡展开详情</span>
+        <span class="ia-hint">${RV.ui.icon('mouse-pointer', 'fa-xs')} 点击指数卡弹出详情</span>
       </div>`;
     }
 
@@ -464,15 +475,32 @@
         + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
       RV.ui.initSidebar();
-      // 大盘指数卡点击：展开/收起对应指数的技术详情
+      // 大盘指数卡点击：弹出技术详情弹窗
+      function openIdxModal(idx) {
+        const src = app.querySelector(`.idx-factor-card[data-i="${idx}"]`);
+        if (!src) return;
+        const idxObj = (d.indices || [])[idx];
+        const body = src.innerHTML;
+        const overlay = document.createElement('div');
+        overlay.className = 'idx-modal-overlay';
+        overlay.innerHTML = `<div class="idx-modal">
+          <div class="idx-modal-head">
+            <span class="idx-m-name">${RV.ui.icon('chart-line', 'fa-xs')} ${idxObj ? idxObj.name : ''}</span>
+            <span class="idx-m-price ${idxObj ? RV.fmt.cls(idxObj.change_pct) : ''}">${idxObj ? RV.fmt.num(idxObj.close) + ' ' + RV.fmt.pct(idxObj.change_pct) : ''}</span>
+            <button class="idx-modal-close" aria-label="关闭">${RV.ui.icon('xmark')}</button>
+          </div>
+          <div class="idx-modal-body">${body}</div>
+        </div>`;
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+        const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+        const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
+      }
       app.querySelectorAll('.idx-card[data-i]').forEach(c => {
-        c.addEventListener('click', () => {
-          const i = c.getAttribute('data-i');
-          const fc = app.querySelector(`.idx-factor-card[data-i="${i}"]`);
-          if (!fc) return;
-          fc.classList.toggle('open');
-          if (fc.classList.contains('open')) fc.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        });
+        c.addEventListener('click', () => openIdxModal(c.getAttribute('data-i')));
       });
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', () => g.classList.toggle('open'));
