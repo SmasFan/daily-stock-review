@@ -375,7 +375,8 @@ def run_recommend(args):
 
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
                              sectors=sector_recs, sector_stocks=sector_stocks,
-                             grid_signals=grid_signals)
+                             grid_signals=grid_signals,
+                             temperature=rp._market_temperature(screen_items))
     p = rp.save("recommend_data.json", rec)
     n_picks = sum(len(v) for v in sector_stocks.values())
     print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {n_picks}")

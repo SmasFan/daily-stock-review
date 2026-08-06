@@ -240,23 +240,37 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 
 @media (max-width:1320px) { .sidebar-nav { display:none; } .sidebar-fab { display:flex; } }
 
-/* 大盘指数方块卡片 */
+/* 大盘指数方块卡片（热度+涨幅背景，点击展开下方技术详情） */
+.idx-assess {
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    border-radius:10px; padding:14px 16px; margin-bottom:12px; border:1px solid var(--border);
+}
+.ia-left { display:flex; align-items:center; gap:10px; }
+.ia-label { font-size:13px; font-weight:700; color:var(--text-2); }
+.ia-score { font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; }
+.ia-tag { font-size:12px; font-weight:700; padding:3px 10px; border-radius:99px; }
+.ia-mid { flex:1; min-width:200px; }
+.ia-mid .tempo-bar { height:8px; }
+.ia-metrics { display:flex; gap:14px; font-size:11px; color:var(--text-2); margin-top:6px; flex-wrap:wrap; }
+.ia-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
+.ia-hint { font-size:11px; color:var(--text-2); }
 .idx-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
 .idx-card {
     display:flex; flex-direction:column; align-items:center; gap:4px;
-    padding:14px 10px; border-radius:10px; border:1px solid transparent;
-    text-align:center; color:#fff;
+    padding:14px 10px; border-radius:10px; border:1px solid rgba(0,0,0,.07);
+    text-align:center; color:#1f2937; cursor:pointer;
+    transition:transform .15s, box-shadow .15s;
 }
-.idx-card.up { background:var(--up); }
-.idx-card.down { background:var(--down); }
-.idx-card.neutral { background:var(--neutral); }
+.idx-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-hover); }
 .idx-card .idx-short { font-weight:800; font-size:14px; letter-spacing:.3px; }
-.idx-card .idx-card-pct { font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; }
+.idx-card .idx-short i { font-size:12px; opacity:.85; margin-right:4px; }
+.idx-card .idx-card-pct { font-weight:800; font-size:15px; font-variant-numeric:tabular-nums; color:#111827; }
 .idx-card .idx-card-close { font-size:11px; opacity:.85; font-variant-numeric:tabular-nums; }
 
 /* 指数技术因子卡（趋势/评分/买卖点位/均线偏离） */
 .idx-factor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; margin-top:10px; }
-.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; }
+.idx-factor-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); min-width:0; overflow:hidden; display:none; }
+.idx-factor-card.open { display:block; }
 .idx-f-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .idx-f-name { font-weight:800; font-size:15px; }
 .idx-f-price { font-size:13px; font-weight:700; margin-left:auto; font-variant-numeric:tabular-nums; }

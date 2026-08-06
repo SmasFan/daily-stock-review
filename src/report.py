@@ -85,7 +85,8 @@ def build_review(market_name: str, analyses: List[az.AnalysisResult],
 def build_recommend(items: List[scr.ScreenItem], market_items: Optional[List[scr.ScreenItem]] = None,
                     indices: Optional[List[Dict]] = None, sectors: Optional[List[Dict]] = None,
                     sector_stocks: Optional[Dict[str, List[scr.ScreenItem]]] = None,
-                    grid_signals: Optional[List[Dict]] = None) -> Dict:
+                    grid_signals: Optional[List[Dict]] = None,
+                    temperature: Optional[Dict] = None) -> Dict:
     return {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total": len(items),
@@ -94,6 +95,7 @@ def build_recommend(items: List[scr.ScreenItem], market_items: Optional[List[scr
         "sectors": sectors or [],
         "sector_stocks": {k: [it.to_dict() for it in v] for k, v in (sector_stocks or {}).items()},
         "indices": indices or [],
+        "temperature": temperature,
         "grid_signals": grid_signals or [],
     }
 
