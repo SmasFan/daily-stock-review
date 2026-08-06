@@ -348,6 +348,8 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .stock-code { display:block; font-size:11px; font-weight:400; color:var(--text-2); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mini-head-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .mini-tags { display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 8px; margin:0; }
+.mini-price { display:flex; gap:16px; padding:0 12px 10px; font-size:12px; color:var(--text-2); }
+.mini-price b { font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
 .mini-score { display:flex; align-items:center; gap:12px; padding:0 12px 10px; margin:0; }
 .mini-score .score-num { font-size:24px; }
 .mini-score-bar { flex:1; }

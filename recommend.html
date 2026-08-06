@@ -273,6 +273,10 @@
           <span class="date-tag">${p.trend_status || '--'}</span>
           ${RV.ui.ratingBadge(p.rating)}
         </div>
+        <div class="mini-price">
+          <span>现价 <b>${RV.fmt.num(p.price)}</b></span>
+          <span>开盘 <b>${RV.fmt.num(p.open)}</b></span>
+        </div>
         <div class="mini-score">
           <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>
           <div class="mini-score-bar">${RV.ui.progress(p.total_score)}</div>
@@ -327,6 +331,10 @@
             <span class="sec-chip">${p.sector || '其他'}</span>
             <span class="date-tag">${p.trend_status || '--'}</span>
             ${RV.ui.ratingBadge(p.rating)}
+          </div>
+          <div class="mini-price">
+            <span>现价 <b>${RV.fmt.num(p.price)}</b></span>
+            <span>开盘 <b>${RV.fmt.num(p.open)}</b></span>
           </div>
           <div class="mini-score">
             <span class="score-num ${p.total_score >= 60 ? 'up' : ''}">${RV.fmt.num(p.total_score, 1)}</span>

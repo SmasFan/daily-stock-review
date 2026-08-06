@@ -150,6 +150,10 @@
             <span class="date-tag">${r.trend_status}</span>
             <span class="date-tag">${r.volume_status}</span>
           </div>
+          <div class="mini-price">
+            <span>现价 <b>${RV.fmt.num(r.close)}</b></span>
+            <span>开盘 <b>${RV.fmt.num(r.open)}</b></span>
+          </div>
           <div class="mini-score">
             <span class="score-num ${r.score >= 60 ? 'up' : (r.score < 40 ? 'down' : '')}">${r.score}</span>
             <div class="mini-score-bar">${RV.ui.progress(r.score)}</div>
