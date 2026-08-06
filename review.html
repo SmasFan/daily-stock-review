@@ -250,9 +250,11 @@
 
     function sectorSection(items, key) {
       const groups = groupBySector(items);
+      // 板块按平均评分倒序（板块评分），同分按数量、名称
+      const avgScore = arr => arr.reduce((s, r) => s + (r.score || 0), 0) / arr.length;
       const names = Object.keys(groups).sort((a, b) => {
-        const la = groups[a].length, lb = groups[b].length;
-        return lb - la || b.localeCompare(a, 'zh');
+        const sa = avgScore(groups[a]), sb = avgScore(groups[b]);
+        return sb - sa || groups[b].length - groups[a].length || b.localeCompare(a, 'zh');
       });
       const secHtml = names.map(sec => {
         const list = groups[sec];
