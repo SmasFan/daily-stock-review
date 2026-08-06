@@ -18,6 +18,9 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
+# K 线缓存最大存活小时数，可用环境变量 CACHE_MAX_AGE_HOURS 覆盖（如 99999 表示只用缓存）。
+CACHE_MAX_AGE_HOURS = float(os.environ.get("CACHE_MAX_AGE_HOURS", "20"))
+
 
 def tencent_symbol(code: str) -> str:
     """腾讯行情前缀：sh=沪市/沪基金/可转债, sz=深市, bj=北交所。"""
@@ -123,12 +126,12 @@ def _cache_path(key: str) -> str:
 
 
 def fetch_daily_kline(code: str, count: int = 320, use_cache: bool = True,
-                      cache_max_age_hours: int = 20):
+                      cache_max_age_hours: float = None):
     """拉取前复权日K线，返回 {dates, opens, closes, highs, lows, volumes}。带缓存。"""
     cp = _cache_path(code)
     if use_cache and os.path.exists(cp):
         age = time.time() - os.path.getmtime(cp)
-        if age < cache_max_age_hours * 3600:
+        if age < (cache_max_age_hours if cache_max_age_hours is not None else CACHE_MAX_AGE_HOURS) * 3600:
             try:
                 with open(cp, "r", encoding="utf-8") as fp:
                     return json.load(fp)
@@ -176,7 +179,7 @@ def fetch_daily_kline_batch(codes, count: int = 320, sleep: float = 0.3):
 
 
 def fetch_daily_kline_long(code: str, count: int = 320, min_days: int = 750,
-                           use_cache: bool = True, cache_max_age_hours: int = 20):
+                           use_cache: bool = True, cache_max_age_hours: float = None):
     """拉取前复权日K，支持超过 640 根的长历史（腾讯单次上限 640，分页向后翻）。
 
     返回 {dates, opens, closes, highs, lows, volumes}，升序。带缓存（key 含 count）。
@@ -185,7 +188,7 @@ def fetch_daily_kline_long(code: str, count: int = 320, min_days: int = 750,
     cp = _cache_path(f"long_{code}_{count}")
     if use_cache and os.path.exists(cp):
         age = time.time() - os.path.getmtime(cp)
-        if age < cache_max_age_hours * 3600:
+        if age < (cache_max_age_hours if cache_max_age_hours is not None else CACHE_MAX_AGE_HOURS) * 3600:
             try:
                 with open(cp, "r", encoding="utf-8") as fp:
                     return json.load(fp)
@@ -261,7 +264,7 @@ def fetch_daily_kline_long(code: str, count: int = 320, min_days: int = 750,
 
 
 def fetch_daily_kline_us(sym: str, count: int = 320, use_cache: bool = True,
-                         cache_max_age_hours: int = 20):
+                         cache_max_age_hours: float = None):
     """拉取美股指数/个股日K（腾讯 usfqkline 接口），支持长历史翻页。
 
     sym 为完整前缀+代码（如 usDJI / usIXIC / usINX）。
@@ -270,7 +273,7 @@ def fetch_daily_kline_us(sym: str, count: int = 320, use_cache: bool = True,
     cp = _cache_path(f"us_{sym}_{count}")
     if use_cache and os.path.exists(cp):
         age = time.time() - os.path.getmtime(cp)
-        if age < cache_max_age_hours * 3600:
+        if age < (cache_max_age_hours if cache_max_age_hours is not None else CACHE_MAX_AGE_HOURS) * 3600:
             try:
                 with open(cp, "r", encoding="utf-8") as fp:
                     return json.load(fp)
@@ -321,7 +324,7 @@ def fetch_daily_kline_us(sym: str, count: int = 320, use_cache: bool = True,
 
 
 def fetch_index_kline(sym: str, count: int = 320, use_cache: bool = True,
-                      cache_max_age_hours: int = 20):
+                      cache_max_age_hours: float = None):
     """拉取指数日K（含前缀的完整符号，如 sh000001 / sz399001 / hkHSI / usIXIC）。
 
     根据前缀选择接口：us 前缀走 usfqkline（美股），其余走 fqkline。
@@ -333,7 +336,7 @@ def fetch_index_kline(sym: str, count: int = 320, use_cache: bool = True,
     cp = _cache_path(f"idx_{sym}_{count}")
     if use_cache and os.path.exists(cp):
         age = time.time() - os.path.getmtime(cp)
-        if age < cache_max_age_hours * 3600:
+        if age < (cache_max_age_hours if cache_max_age_hours is not None else CACHE_MAX_AGE_HOURS) * 3600:
             try:
                 with open(cp, "r", encoding="utf-8") as fp:
                     return json.load(fp)

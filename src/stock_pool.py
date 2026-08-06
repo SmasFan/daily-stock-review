@@ -147,8 +147,8 @@ def _load_code_name() -> Dict[str, str]:
     mapping: Dict[str, str] = {}
     try:
         raw = open(path, "r", encoding="utf-8").read()
-        for m in re.finditer(r'"code":\s*"(\d+)".*?"name":\s*"([^"]*)"', raw, re.S):
-            mapping[m.group(1)] = m.group(2)
+        for m in re.finditer(r'"name":\s*"([^"]*)"[^{}]*?"code":\s*"(\d+)"', raw, re.S):
+            mapping[m.group(2)] = m.group(1)
     except Exception:
         pass
     return mapping
