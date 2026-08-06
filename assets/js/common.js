@@ -53,6 +53,7 @@
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
         ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
+        ['tracking', '跟踪', 'route', 'tracking.html'],
         ['metals', '有色', 'coins', 'metals.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];

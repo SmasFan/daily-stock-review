@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>历史跟踪 · 每日推荐Top10</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  /* 稳定榜 / 按日折叠 局部样式 */
+  .tk-btn { border:none; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:4px 12px; font-size:12px; font-weight:600; cursor:pointer; color:var(--accent); }
+  .tk-btn:hover { background:#f1e4d8; }
+  .tk-day { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; background:var(--surface); }
+  .tk-day-head { display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; user-select:none; flex-wrap:wrap; }
+  .tk-day-head:hover { background:var(--surface-2); }
+  .tk-day-head .chev { transition:transform .2s; color:var(--text-2); font-size:12px; }
+  .tk-day.open .chev { transform:rotate(90deg); }
+  .tk-day-date { font-weight:800; font-size:14px; }
+  .tk-day-body { display:none; padding:6px 14px 14px; border-top:1px solid var(--border); }
+  .tk-day.open .tk-day-body { display:block; }
+  .tk-stable-hint { font-size:12px; color:var(--text-2); margin-top:8px; }
+  .tk-modal-body { padding:0; }
+  .tk-chart { width:100%; height:400px; }
+  .tk-chart-head { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .tk-chart-name { font-weight:800; font-size:16px; }
+  .tk-chart-last { margin-left:auto; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  let d = null;
+  try { d = await RV.API.fetch('tracking_data.json'); }
+  catch (e) { app.innerHTML = RV.ui.header('历史跟踪', '', 'tracking') + RV.ui.error(e); return; }
+
+  const days = d.days || [], stable = d.stable || [], klines = d.klines || {};
+  if (!days.length) {
+    app.innerHTML = RV.ui.header('历史跟踪', '', 'tracking', d.generatedAt)
+      + RV.ui.empty('暂无跟踪数据，请先运行 python run_review.py --mode tracking');
+    return;
+  }
+  const cls = RV.fmt.cls;
+  const SIG_LABEL = { strong_buy: '强烈买入', buy: '买入', watch: '观望', reduce: '减仓', sell: '卖出' };
+  const sigBadge = (k, l) => RV.ui.signalBadge(k, l || SIG_LABEL[k] || k);
+
+  /* ===== 稳定榜：每天推荐 Top10 里上榜最稳的票 ===== */
+  function stableTable() {
+    if (!stable.length) return '';
+    const rows = stable.map((s, i) => {
+      const tr = s.latest_track_return;
+      return `<tr>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name}<span class="stock-code">${s.code}</span></td>
+        <td>${s.sector || '--'}</td>
+        <td style="font-weight:800">${s.count}<span style="color:var(--text-2);font-weight:500">/${d.total_days}天</span></td>
+        <td style="font-weight:800">${s.rate}%</td>
+        <td style="font-weight:800">${s.latest_score != null ? s.latest_score : '--'}</td>
+        <td>${sigBadge(s.latest_signal)}</td>
+        <td class="${cls(tr)}" style="font-weight:800">${tr != null ? RV.fmt.pct(tr) : '--'}</td>
+        <td><button class="tk-btn" data-code="${s.code}">K线</button></td>
+      </tr>`;
+    }).join('');
+    return `<div class="section" data-nav="稳定榜" data-nav-icon="shield-halved">
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('shield-halved')}</span><h2>前10跟踪 · 稳定榜</h2><span class="sec-chip">${stable.length}只</span></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>标的</th><th>板块</th><th>上榜天数</th><th>上榜率</th><th>最近评分</th><th>最近信号</th><th>累计跟踪</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 上榜率 = 该股出现在每日推荐 Top10 的天数占比；累计跟踪 = 最近一次上榜日后首根K线收盘 → 最新收盘 涨幅。点击「K线」看日K。</div>
+    </div>`;
+  }
+
+  /* ===== 历史按日：每天一个可折叠分组 ===== */
+  function dayGroups() {
+    return days.map(day => {
+      const items = day.items;
+      const avg = items.reduce((s, it) => s + (it.total_score || 0), 0) / Math.max(items.length, 1);
+      const up = items.filter(it => (it.track_return ?? -999) > 0).length;
+      const rows = items.map((it, i) => `
+        <tr>
+          <td><span class="row-num">${String(i + 1).padStart(2, '0')}</span><span class="asset-name">${it.name}</span><span class="stock-code">${it.code}</span></td>
+          <td>${it.sector || '--'}</td>
+          <td>${it.rating || '--'}</td>
+          <td style="font-weight:800">${it.total_score ?? '--'}</td>
+          <td>${sigBadge(it.signal_key, it.signal)}</td>
+          <td style="font-variant-numeric:tabular-nums">${it.price != null ? RV.fmt.num(it.price) : '--'}</td>
+          <td class="${cls(it.track_return)}" style="font-weight:800">${it.track_return != null ? RV.fmt.pct(it.track_return) : '--'}</td>
+          <td><button class="tk-btn" data-code="${it.code}">K线</button></td>
+        </tr>`).join('');
+      return `<div class="tk-day" data-date="${day.date}">
+        <div class="tk-day-head">
+          <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+          <span class="tk-day-date">${RV.ui.icon('calendar-day', 'fa-xs')} ${day.date}</span>
+          <span class="sec-chip">${items.length}只</span>
+          <span class="sec-chip">均分 ${RV.fmt.num(avg, 1)}</span>
+          <span class="sec-chip up">${RV.ui.icon('arrow-trend-up', 'fa-xs')} ${up} 涨</span>
+        </div>
+        <div class="tk-day-body">
+          <div class="table-wrap"><table class="data-table">
+            <thead><tr><th>#</th><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>当时价</th><th>跟踪收益</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ===== ECharts 日K线（蜡烛图 + MA + 成交量） ===== */
+  function maArr(c, p) {
+    const out = [];
+    for (let i = 0; i < c.length; i++) {
+      if (i < p - 1) { out.push(null); continue; }
+      let s = 0; for (let j = i - p + 1; j <= i; j++) s += c[j];
+      out.push(+(s / p).toFixed(2));
+    }
+    return out;
+  }
+  function klineOption(k) {
+    const dates = k.dates, o = k.o, h = k.h, l = k.l, c = k.c, v = k.v || [];
+    const n = dates.length;
+    const candle = dates.map((_, i) => [o[i], c[i], l[i], h[i]]);
+    const volColor = dates.map((_, i) => c[i] >= o[i] ? '#dc2626' : '#16a34a');
+    return {
+      animation: false,
+      tooltip: {
+        trigger: 'axis', axisPointer: { type: 'cross' },
+        formatter(params) {
+          const i = params[0].dataIndex;
+          const dt = dates[i] || '';
+          let s = '<b>' + dt + '</b><br/>';
+          for (const p of params) {
+            if (p.seriesName === 'K线') {
+              s += '开盘 ' + o[i] + '<br/>收盘 <b>' + c[i] + '</b><br/>最低 ' + l[i] + '<br/>最高 ' + h[i];
+            } else {
+              s += p.seriesName + ' <b>' + (p.value == null ? '--' : p.value) + '</b><br/>';
+            }
+          }
+          return s;
+        }
+      },
+      legend: { data: ['MA5', 'MA10', 'MA20'], top: 4, textStyle: { color: '#6b7280' } },
+      grid: [
+        { left: 60, right: 70, top: 32, height: '56%' },
+        { left: 60, right: 70, top: '72%', height: '14%' }
+      ],
+      xAxis: [
+        { type: 'category', data: dates, boundaryGap: true, axisLabel: { color: '#9ca3af', formatter: v => v.slice(5) }, axisLine: { lineStyle: { color: '#d1d5db' } } },
+        { type: 'category', gridIndex: 1, data: dates, axisLabel: { show: false }, axisLine: { show: false } }
+      ],
+      yAxis: [
+        { scale: true, splitLine: { lineStyle: { color: '#efe9df' } }, axisLabel: { color: '#6b7280' } },
+        { gridIndex: 1, splitNumber: 2, axisLabel: { color: '#9ca3af', formatter: v => (v >= 1e8 ? (v / 1e8).toFixed(1) + '亿' : v >= 1e4 ? (v / 1e4).toFixed(0) + '万' : v) }, splitLine: { show: false } }
+      ],
+      dataZoom: [
+        { type: 'inside', xAxisIndex: [0, 1], start: Math.max(0, 100 - 80), end: 100 },
+        { type: 'slider', xAxisIndex: [0, 1], height: 16, bottom: 8, start: Math.max(0, 100 - 80), end: 100 }
+      ],
+      series: [
+        {
+          name: 'K线', type: 'candlestick', data: candle,
+          itemStyle: { color: '#dc2626', color0: '#16a34a', borderColor: '#dc2626', borderColor0: '#16a34a' }
+        },
+        { name: 'MA5', type: 'line', data: maArr(c, 5), symbol: 'none', smooth: true, lineStyle: { width: 1, color: '#f59e0b' } },
+        { name: 'MA10', type: 'line', data: maArr(c, 10), symbol: 'none', smooth: true, lineStyle: { width: 1, color: '#3b82f6' } },
+        { name: 'MA20', type: 'line', data: maArr(c, 20), symbol: 'none', smooth: true, lineStyle: { width: 1, color: '#a1a1aa' } },
+        { name: '成交量', type: 'bar', xAxisIndex: 1, yAxisIndex: 1, data: v, itemStyle: { color: params => volColor[params.dataIndex] }, barWidth: '60%' }
+      ]
+    };
+  }
+
+  /* ===== 弹窗 ===== */
+  function openKline(code, name) {
+    const k = klines[code];
+    if (!k || !k.c || !k.c.length) return;
+    const last = k.c[k.c.length - 1], prev = k.c[k.c.length - 2] || last;
+    const chg = prev ? (last / prev - 1) * 100 : 0;
+    const overlay = document.createElement('div');
+    overlay.className = 'idx-modal-overlay';
+    overlay.innerHTML = `<div class="idx-modal">
+      <div class="tk-chart-head">
+        <span class="tk-chart-name">${RV.ui.icon('chart-line', 'fa-xs')} ${name} <span class="stock-code">${code}</span></span>
+        <span class="tk-chart-last ${cls(chg)}">${RV.fmt.num(last)} <span class="${cls(chg)}">${RV.fmt.pct(chg)}</span></span>
+        <button class="idx-modal-close" aria-label="关闭">${RV.ui.icon('xmark')}</button>
+      </div>
+      <div class="idx-modal-body tk-modal-body"><div class="tk-chart"></div></div>
+      <div style="padding:0 16px 12px;font-size:11px;color:var(--text-2)">${RV.ui.icon('chart-line', 'fa-xs')} 日K蜡烛图 · 红涨绿跌 · MA5/MA10/MA20 · 滚轮缩放</div>
+    </div>`;
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+    const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+    document.addEventListener('keydown', esc);
+    setTimeout(() => {
+      const el = overlay.querySelector('.tk-chart');
+      if (el && window.echarts) {
+        const chart = echarts.init(el);
+        chart.setOption(klineOption(k));
+        window.addEventListener('resize', () => chart.resize());
+      }
+    }, 0);
+  }
+
+  /* ===== 渲染 ===== */
+  app.innerHTML = RV.ui.header('历史跟踪', '每日推荐 Top10 · 日K跟踪 · 稳定榜', 'tracking', d.generatedAt)
+    + stableTable()
+    + `<div class="section" data-nav="历史按日" data-nav-icon="calendar-days">
+         <div class="section-title"><span class="title-icon">${RV.ui.icon('calendar-days')}</span><h2>历史按日 · 每日推荐 Top10</h2><span class="sec-chip">${days.length}天</span></div>
+         ${dayGroups()}
+       </div>`
+    + '<footer>跟踪池 = 每日推荐里买入/强烈买入信号的前10名 · 按日快照取自 git 历史（每日盘前推荐） · 点击日期展开当日榜单 · 点击K线看日K · 不构成投资建议</footer>';
+  RV.ui.initSidebar();
+
+  app.querySelectorAll('.tk-day-head').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+  app.querySelectorAll('.tk-btn[data-code]').forEach(b => b.addEventListener('click', () => openKline(b.getAttribute('data-code'), b.getAttribute('data-name') || b.closest('tr').querySelector('.asset-name').textContent.trim())));
+})();
+</script>
+</body>
+</html>

@@ -420,7 +420,7 @@ def run_metals():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "all"], default="all")
+    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "tracking", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
     ap.add_argument("--offline", action="store_true")
@@ -435,6 +435,9 @@ def main():
         run_holdings()
     if args.mode in ("metals", "all"):
         run_metals()
+    if args.mode == "tracking":
+        import build_tracking
+        build_tracking.main()
     print("完成。")
 
 
