@@ -9,6 +9,7 @@
 
 覆盖 SHFE（上海期货交易所）主要有色金属品种主力连续合约：
   CU0 沪铜 / AL0 沪铝 / ZN0 沪锌 / PB0 沪铅 / NI0 沪镍 / SN0 沪锡
+  AU0 沪金 / AG0 沪银 / LC0 碳酸锂（GFEX 广州期货交易所）
 """
 import json
 import os
@@ -33,6 +34,9 @@ METALS: List[Dict[str, str]] = [
     {"symbol": "PB0", "name": "沪铅", "en": "Lead", "unit": "元/吨", "exchange": "SHFE"},
     {"symbol": "NI0", "name": "沪镍", "en": "Nickel", "unit": "元/吨", "exchange": "SHFE"},
     {"symbol": "SN0", "name": "沪锡", "en": "Tin", "unit": "元/吨", "exchange": "SHFE"},
+    {"symbol": "AU0", "name": "沪金", "en": "Gold", "unit": "元/克", "exchange": "SHFE"},
+    {"symbol": "AG0", "name": "沪银", "en": "Silver", "unit": "元/千克", "exchange": "SHFE"},
+    {"symbol": "LC0", "name": "碳酸锂", "en": "Lithium Carbonate", "unit": "元/吨", "exchange": "GFEX"},
 ]
 
 

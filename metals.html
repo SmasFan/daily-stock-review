@@ -193,7 +193,7 @@
     + `<div class="section" data-nav="今日概览" data-nav-icon="gauge-high"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
     + `<div class="section" data-nav="品种速览" data-nav-icon="coins"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>品种速览（点击直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
     + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>分品种分析 · 点击展开看走势与技术因子</h2></div>${items.map((m, i) => metalGroup(m, i)).join('')}</div>`
-    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN） · 技术指标口径同股票分析 · 不构成投资建议</footer>';
+    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN/AU/AG · 碳酸锂 LC 广期所） · 技术指标口径同股票分析 · 不构成投资建议</footer>';
 
   /* 折叠交互 */
   app.querySelectorAll('.metal-head[data-toggle]').forEach(h => {
