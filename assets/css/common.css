@@ -259,6 +259,15 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .ia-metrics b { color:var(--text); font-variant-numeric:tabular-nums; }
 .ia-hint { font-size:11px; color:var(--text-2); }
 
+/* 普涨过热日横幅（2026-08-07：过热降档 + 相对强度过滤提示） */
+.regime-banner {
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    border-radius:10px; padding:10px 14px; margin-bottom:12px;
+    background:#fff7ed; border:1px solid #fed7aa; color:#9a3412;
+    font-size:13px; font-weight:600;
+}
+.regime-banner span:nth-child(n+2) { font-weight:400; color:#b45309; }
+
 /* 大盘指数方块卡片（扁平配色：柔和红涨绿跌 + 深浅分级） */
 .idx-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
 .idx-card {

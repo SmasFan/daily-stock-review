@@ -142,6 +142,12 @@
     const indicesHtml = `<div class="section" data-nav="大盘指数" data-nav-icon="chart-column">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数 · 市场评估</h2></div>
       ${assessCard(marketTemp)}
+      ${d.market_regime && d.market_regime.overheat
+        ? `<div class="regime-banner">
+            <span>${RV.ui.icon('triangle-exclamation', 'fa-xs')} 普涨过热日</span>
+            <span>全市场上涨占比 ${(d.market_regime.breadth_up_ratio * 100).toFixed(0)}%（≥${(d.market_regime.threshold * 100).toFixed(0)}%）</span>
+            <span>仅保留跑赢沪深300(${RV.fmt.pct(d.market_regime.benchmark_change)})的买入信号，${d.market_regime.downgraded_count} 只降为观望</span>
+          </div>` : ''}
       <div class="idx-cards">${idxCards}</div>
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
     </div>`;

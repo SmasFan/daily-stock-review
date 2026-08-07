@@ -335,6 +335,39 @@ def run_recommend(args):
     market_picks = scr.screen(market_items, tech_weight=0.5, top_n=market_top)
     market_picks.sort(key=lambda it: (scr.strength_key(it), -it.total_score))
 
+    # 普涨过热日闸门（2026-08-07）：全市场上涨家数占比 ≥65% 视为过热日，
+    # 当日未跑赢沪深300 的买入信号降为观望，避免普涨日推荐买入泛滥。
+    # 全市场数据缺失时退用自选池上涨占比；两者任一超阈即触发（自选池普涨
+    # 同样会导致推荐买入泛滥，哪怕大盘只有 43% 上涨）。
+    breadth = mb.fetch_market_breadth(use_cache=True)
+    if breadth and breadth.get("total"):
+        print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
+              f"平{breadth['flat']} 共{breadth['total']}")
+    idx_chg = None
+    for ix in indices:
+        if ix.get("code") == "sh000300" and ix.get("change_pct") is not None:
+            idx_chg = ix["change_pct"]
+            break
+    pool_up = sum(1 for it in screen_items if it.change_pct > 0)
+    pool_ratio = pool_up / len(screen_items) if screen_items else None
+    mkt_ratio = None
+    if breadth and breadth.get("total"):
+        mkt_ratio = breadth["up"] / breadth["total"]
+    b_up_ratio = None
+    src_ratio = ""
+    if mkt_ratio is not None and pool_ratio is not None:
+        b_up_ratio = max(mkt_ratio, pool_ratio)
+        src_ratio = "全市场" if mkt_ratio >= pool_ratio else "自选池"
+    elif mkt_ratio is not None:
+        b_up_ratio, src_ratio = mkt_ratio, "全市场"
+    elif pool_ratio is not None:
+        b_up_ratio, src_ratio = pool_ratio, "自选池"
+    regime = scr.apply_market_regime(screen_items, b_up_ratio, idx_chg)
+    regime_m = scr.apply_market_regime(market_items, b_up_ratio, idx_chg)
+    if regime["overheat"]:
+        print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
+              f"{len(regime['downgraded'])} 只未跑赢沪深300({idx_chg:+.2f}%)降为观望")
+
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())
 
@@ -388,8 +421,19 @@ def run_recommend(args):
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
                              sectors=sector_recs, sector_stocks=sector_stocks,
                              grid_signals=grid_signals,
-                             temperature=rp._market_temperature(screen_items,
-                                                                mb.fetch_market_breadth(use_cache=True)))
+                             temperature=rp._market_temperature(screen_items, breadth))
+    rec["market_regime"] = {
+        "overheat": regime["overheat"],
+        "threshold": regime["threshold"],
+        "breadth_up_ratio": regime["breadth_up_ratio"],
+        "breadth_source": src_ratio,
+        "benchmark_change": regime["benchmark"],
+        "downgraded_count": len(regime["downgraded"]) + len(regime_m["downgraded"]),
+        "downgraded": regime["downgraded"] + regime_m["downgraded"],
+        "note": ("普涨过热日（%s上涨占比≥%.0f%%）：仅保留跑赢沪深300(%.2f%%)的买入信号，"
+                 "其余降为观望，警惕普涨次日回踩"
+                 % (src_ratio, regime["threshold"] * 100, idx_chg or 0)) if regime["overheat"] else None,
+    }
     p = rp.save("recommend_data.json", rec)
     n_picks = sum(len(v) for v in sector_stocks.values())
     print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {n_picks}")

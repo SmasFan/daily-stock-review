@@ -84,6 +84,8 @@ class ScreenItem:
     rating: str = "C"
     # 持仓标记（在推荐列表中置顶并展示徽章）
     is_holding: bool = False
+    # 普涨过热日被降档标记（2026-08-07 新增：未跑赢大盘的买入信号降为观望）
+    overheat_downgraded: bool = False
     # 买卖点位
     ideal_buy: Optional[float] = None
     secondary_buy: Optional[float] = None
@@ -217,6 +219,42 @@ def screen(items: List[ScreenItem], tech_weight: float = 0.5, top_n: int = 10) -
     return pool[:top_n]
 
 
+def apply_market_regime(items: List[ScreenItem], breadth_up_ratio: Optional[float],
+                        index_change: Optional[float],
+                        overheat_threshold: float = 0.65) -> Dict:
+    """普涨过热日闸门 + 相对强度过滤（2026-08-07 新增）。
+
+    问题：普涨日技术分整体抬升，绝对阈值(评分≥60)让全市场都变成"买入"。
+    对策（配合全市场涨跌家数）：
+    - 当 breadth_up_ratio（全市场上涨家数占比）≥ overheat_threshold 视为过热日
+    - 过热日：只有当日跑赢大盘（change_pct ≥ index_change）的 strong_buy/buy
+      保留买入信号，其余降为观望（watch），避免普涨日追高
+    - 指数数据缺失时用池内平均涨幅作代理基准
+    - 非过热日不干预，信号维持原样
+
+    返回 {overheat, threshold, breadth_up_ratio, benchmark, downgraded: [names]}。
+    """
+    if breadth_up_ratio is None or index_change is None:
+        return {"overheat": False, "threshold": overheat_threshold,
+                "breadth_up_ratio": breadth_up_ratio, "benchmark": index_change,
+                "downgraded": []}
+    overheat = breadth_up_ratio >= overheat_threshold
+    downgraded = []
+    if overheat:
+        for it in items:
+            if it.signal_key not in ("strong_buy", "buy"):
+                continue
+            if it.change_pct < index_change:
+                it.signal_key = "watch"
+                it.signal = "观望"
+                it.overheat_downgraded = True
+                downgraded.append(it.name)
+    return {"overheat": overheat, "threshold": overheat_threshold,
+            "breadth_up_ratio": round(breadth_up_ratio, 4),
+            "benchmark": index_change,
+            "downgraded": downgraded}
+
+
 def build_buy_reason(it: "ScreenItem") -> str:
     """生成"当日购买原因"（规则化，基于技术信号/趋势/动量/买卖点位）。
 
@@ -250,6 +288,8 @@ def build_buy_reason(it: "ScreenItem") -> str:
             parts.append(f"现价距理想买点({it.ideal_buy})仅{dist:.1f}%")
     if it.stop_loss:
         parts.append(f"止损位{it.stop_loss}，破位离场")
+    if it.overheat_downgraded:
+        parts.append("普涨过热日未跑赢大盘，降为观望，暂缓追高")
     if not parts:
         parts.append("综合评分靠前，可小仓跟踪")
     return "；".join(parts)

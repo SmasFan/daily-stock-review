@@ -36,17 +36,7 @@
     const btYears = bt && bt.overall && bt.overall.avg_max_drawdown != null ? ' · 平均最大回撤 ' + (bt.overall.avg_max_drawdown * 100).toFixed(1) + '%' : '';
 
     const html = `
-      <header class="top">
-        <h1>策略说明</h1>
-        <div class="gen-time">复盘 / 推荐 / 回测 三大模块逻辑文档${gen ? ' · 数据更新于 ' + gen : ''}</div>
-        <nav class="nav">
-          <a class="nav-link" href="review.html">${RV.ui.icon('clipboard-list')} 复盘</a>
-          <a class="nav-link" href="recommend.html">${RV.ui.icon('bullseye')} 推荐</a>
-          <a class="nav-link" href="backtest.html">${RV.ui.icon('flask')} 回测</a>
-          <a class="nav-link active" href="docs.html">${RV.ui.icon('book-open')} 说明</a>
-          <a class="nav-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">${RV.ui.icon('github')} 项目源码</a>
-        </nav>
-      </header>
+      ${RV.ui.header('策略说明', '复盘 / 推荐 / 回测 三大模块逻辑文档' + (gen ? ' · 数据更新于 ' + gen : ''), 'docs')}
 
       <div class="docs-grid">
 
@@ -82,8 +72,15 @@
             <li>ATR 止损（2026-08 新增）：atr_stop = 收盘价 − 2×ATR14，波动自适应，与 MA20 并存展示</li>
           </ul>
 
-          <h4>大盘温度计</h4>
-          <p>上涨广度 45% + 平均涨跌指数分 35% + 买入信号占比 20%，≥70 强势 / ≥55 偏暖 / ≥40 震荡 / 偏弱</p>
+          <h4>大盘温度计（2026-08-07 去偏）</h4>
+          <p>上涨广度 45% + 平均涨跌指数分 35% + 买入信号占比 20%，≥70 强势 / ≥55 偏暖 / ≥40 震荡 / 偏弱；
+          广度优先用<b>全市场涨跌家数</b>（东财，含沪深京），数据缺失时回退自选池广度</p>
+
+          <h4>普涨过热日闸门（2026-08-07）</h4>
+          <ul>
+            <li>上涨家数占比 ≥65%（全市场或自选池任一）视为过热日</li>
+            <li>过热日只有当日<b>跑赢沪深300</b>的买入信号保留，其余降为观望（理由标注"暂缓追高"）</li>
+          </ul>
         </div>
 
         <div class="doc-card">

@@ -106,6 +106,49 @@ class TestScreener(unittest.TestCase):
         items.sort(key=scr.strength_key)
         self.assertEqual([it.name for it in items], ["强买", "买", "卖"])
 
+    def test_market_regime_normal_day(self):
+        items = [
+            make_item("A", "1", 10.0, change_pct=1.0, signal_key="buy"),
+            make_item("B", "2", 10.0, change_pct=-0.5, signal_key="buy"),
+        ]
+        r = scr.apply_market_regime(items, 0.50, 0.5)  # 广度50%，非过热
+        self.assertFalse(r["overheat"])
+        self.assertEqual(items[0].signal_key, "buy")
+        self.assertEqual(items[1].signal_key, "buy")
+        self.assertEqual(r["downgraded"], [])
+
+    def test_market_regime_overheat_downgrades_underperformer(self):
+        items = [
+            make_item("跑赢", "1", 10.0, change_pct=2.5, signal_key="strong_buy"),
+            make_item("跑平", "2", 10.0, change_pct=1.5, signal_key="buy"),
+            make_item("落后", "3", 10.0, change_pct=0.5, signal_key="buy"),
+            make_item("观望者", "4", 10.0, change_pct=3.0, signal_key="watch"),
+        ]
+        r = scr.apply_market_regime(items, 0.80, 1.5)  # 广度80% 过热，指数+1.5%
+        self.assertTrue(r["overheat"])
+        self.assertEqual(items[0].signal_key, "strong_buy")  # 跑赢 → 保留
+        self.assertEqual(items[1].signal_key, "buy")         # 跑平 → 保留
+        self.assertEqual(items[2].signal_key, "watch")       # 落后 → 降为观望
+        self.assertTrue(items[2].overheat_downgraded)
+        self.assertFalse(items[0].overheat_downgraded)
+        self.assertEqual(items[3].signal_key, "watch")       # 本来观望 → 不动
+        self.assertEqual(r["downgraded"], ["落后"])
+
+    def test_market_regime_missing_index(self):
+        items = [make_item("A", "1", 10.0, change_pct=1.0, signal_key="buy")]
+        r = scr.apply_market_regime(items, 0.80, None)  # 指数缺失 → 不干预
+        self.assertFalse(r["overheat"])
+        self.assertEqual(items[0].signal_key, "buy")
+
+    def test_buy_reason_overheat_suffix(self):
+        it = make_item("A", "1", 10.0, signal_key="buy", signal="买入",
+                       tech_score=70, trend_status="多头排列")
+        it.overheat_downgraded = True
+        it.signal_key = "watch"
+        r = scr.build_buy_reason(it)
+        self.assertIn("降为观望", r)
+        self.assertIn("暂缓追高", r)
+
 
 if __name__ == "__main__":
     unittest.main()

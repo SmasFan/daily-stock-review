@@ -27,11 +27,11 @@
 </head>
 <body>
 <div class="container">
+  <div id="app"></div>
   <div class="hero">
     <h1><i class="fa-solid fa-chart-line" style="color:var(--accent)"></i> 每日复盘工作台</h1>
     <p>技术分析 · 多因子选股 · 网格回测 —— 一站式复盘</p>
     <p id="gen" style="font-size:12px"></p>
-    <p style="margin-top:14px"><a class="nav-link repo-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener"><i class="fa-solid fa-github" style="margin-right:6px"></i>项目源码</a></p>
   </div>
   <div class="entry-grid" id="entries"><div class="loading">加载中…</div></div>
   <footer>数据由 <code>python run_review.py</code> 生成 · 仅供学习研究，不构成投资建议</footer>
@@ -39,13 +39,16 @@
 <script src="assets/js/common.js"></script>
 <script>
 (async function () {
+  document.getElementById('app').innerHTML = RV.ui.header('每日复盘工作台', '', '');
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null, metals = null;
+  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
   try { metals = await RV.API.metals(); } catch (e) {}
+  try { holdings = await RV.API.holdings(); } catch (e) {}
+  try { tracking = await RV.API.fetch('tracking_data.json'); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -72,6 +75,18 @@
       <div class="e-icon">${RV.ui.icon('coins')}</div><h3>有色金属期货</h3>
       <p>SHFE 主力连续合约（铜/铝/锌/铅/镍/锡）行情 + 走势 + 技术因子，点击展开各品种</p>
       ${metals && metals.stats ? `<div class="e-stat">${RV.ui.icon('temperature-half', 'fa-xs')} 平均 ${RV.fmt.pct(metals.stats.avg_change)} · 领涨 ${metals.stats.leader}(${RV.fmt.pct(metals.stats.leader_change)})</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="holdings.html">
+      <div class="e-icon">${RV.ui.icon('briefcase')}</div><h3>持仓跟踪</h3>
+      <p>持仓实时行情、盈亏与网格操作提醒（均值线偏离度）</p>
+      ${holdings && holdings.items ? `<div class="e-stat">${RV.ui.icon('circle-check', 'fa-xs')} ${holdings.items.length} 只持仓 · ${holdings.items.filter(h => (h.grid || {}).action_key === 'clear').length} 只超涨清仓信号</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="tracking.html">
+      <div class="e-icon">${RV.ui.icon('route')}</div><h3>历史跟踪</h3>
+      <p>每日推荐 Top10 按日折叠列表、日K弹窗与上榜稳定榜</p>
+      ${tracking && tracking.total_days ? `<div class="e-stat">${RV.ui.icon('calendar-days', 'fa-xs')} ${tracking.total_days} 天快照 · ${(tracking.stable || []).length} 只上榜</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="docs.html">
