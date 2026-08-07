@@ -1,19 +1,19 @@
 {
   "market": "A股",
   "type": "post",
-  "generatedAt": "2026-08-07 14:10:56",
+  "generatedAt": "2026-08-07 15:41:34",
   "temperature": {
-    "score": 53,
-    "label": "震荡",
-    "breadth": 43.2,
+    "score": 57,
+    "label": "偏暖",
+    "breadth": 52.3,
     "avg_change": 0.35,
     "bull": 113,
     "bear": 44,
     "total": 255,
     "source": "market",
-    "market_up": 2304,
-    "market_down": 2925,
-    "market_flat": 100,
+    "market_up": 2785,
+    "market_down": 2410,
+    "market_flat": 134,
     "market_total": 5329,
     "watchlist_up": 123,
     "watchlist_total": 255
@@ -22,8 +22,8 @@
     {
       "name": "上证指数",
       "code": "sh000001",
-      "close": 3933.58,
-      "change_pct": 0.85,
+      "close": 3940.04,
+      "change_pct": 1.02,
       "factors": {
         "date": "2026-08-07",
         "trend_status": "弱势多头",
@@ -62,8 +62,8 @@
     {
       "name": "深证成指",
       "code": "sz399001",
-      "close": 14329.82,
-      "change_pct": 1.56,
+      "close": 14311.01,
+      "change_pct": 1.42,
       "factors": {
         "date": "2026-08-07",
         "trend_status": "弱势多头",
@@ -102,8 +102,8 @@
     {
       "name": "创业板指",
       "code": "sz399006",
-      "close": 3576.61,
-      "change_pct": 1.74,
+      "close": 3563.12,
+      "change_pct": 1.35,
       "factors": {
         "date": "2026-08-07",
         "trend_status": "弱势多头",
@@ -142,8 +142,8 @@
     {
       "name": "沪深300",
       "code": "sh000300",
-      "close": 4696.38,
-      "change_pct": 0.97,
+      "close": 4694.44,
+      "change_pct": 0.93,
       "factors": {
         "date": "2026-08-07",
         "trend_status": "弱势多头",
@@ -182,8 +182,8 @@
     {
       "name": "恒生指数",
       "code": "hkHSI",
-      "close": 25568.82,
-      "change_pct": 0.15,
+      "close": 25644.44,
+      "change_pct": 0.45,
       "factors": {
         "date": "2026-08-07",
         "trend_status": "多头排列",
@@ -12637,17 +12637,17 @@
     }
   ],
   "market_temperature": {
-    "score": 54,
-    "label": "震荡",
-    "breadth": 43.2,
+    "score": 58,
+    "label": "偏暖",
+    "breadth": 52.3,
     "avg_change": 0.14,
     "bull": 8,
     "bear": 2,
     "total": 18,
     "source": "market",
-    "market_up": 2304,
-    "market_down": 2925,
-    "market_flat": 100,
+    "market_up": 2785,
+    "market_down": 2410,
+    "market_flat": 134,
     "market_total": 5329,
     "watchlist_up": 7,
     "watchlist_total": 18
