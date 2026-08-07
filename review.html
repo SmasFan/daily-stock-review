@@ -103,6 +103,8 @@
         ${RV.ui.summaryCard('scale-balanced', RV.fmt.pct(t.avg_change), '平均涨跌', RV.fmt.cls(t.avg_change))}
         ${RV.ui.summaryCard('arrow-trend-up', s.up, '上涨标的', 'up')}
         ${RV.ui.summaryCard('arrow-trend-down', s.down, '下跌标的', 'down')}
+        ${t.market_total ? RV.ui.summaryCard('users', t.market_up + '<span class="unit">/' + t.market_total + '</span>', '全市场上涨', 'up') : ''}
+        ${t.market_total ? RV.ui.summaryCard('bullseye', t.market_down + '<span class="unit">/↓</span>', '全市场下跌', 'down') : ''}
         ${RV.ui.summaryCard('bullseye', t.bull + '<span class="unit">/' + t.total + '</span>', '买入信号')}
       </div>`;
 

@@ -16,8 +16,9 @@
 - 半永久锁仓（use_lock=True，已真正生效）：dev <= dev_lock 后的加仓累入
   锁仓下限，反弹时仓位不低于该下限（不回吐）；dev >= dev_clear 解锁。
 - 交易触发：dev 每跨越一个 grid_step 网格边界才调仓。
-- 收益 = 价格收益 + 日股息(dy_daily，无则 0)，现金无利息。
-- 成本：单边 cost_rate，调仓按 |目标仓-当前仓|*cost_rate 扣除。
+- 收益 = 价格收益 + 日股息(dy_daily，真实分红序列映射除息日，无则 0)，现金无利息。
+- 成本：单边 cost_rate + slippage_rate（P2 滑点建模，默认各 5bps），
+  调仓按 |目标仓-当前仓|*(cost_rate+slippage_rate) 扣除。
 - 基准：满仓买入持有（价格收益 + 股息），归一化对比。
 - A/B 对照：GridParams(dynamic_step=False, adx_gate=False, use_lock=False)
   即回退为旧版固定 0.5% 步长网格。
@@ -37,6 +38,7 @@ from dataclasses import dataclass, field, asdict, replace
 from typing import Dict, List, Optional, Tuple
 
 from . import indicators as ind
+from . import dividends as divs
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(BASE_DIR, "data", "cache")
@@ -95,7 +97,8 @@ class AnchorParams:
 
 @dataclass
 class BacktestConfig:
-    cost_rate: float = 0.0005
+    cost_rate: float = 0.0005      # 单边佣金+印花税/过户费（按成交额比例）
+    slippage_rate: float = 0.0005  # 滑点（P2：默认 5bps 单边，按成交额比例）
     cash_rate: float = 0.0
     rf: float = 0.0
 
@@ -252,8 +255,12 @@ def _build_stock_panel(code: str, dates, closes, highs, lows, volumes) -> Option
 
     roe = [pb / pe if (pe and pb) else None for pe, pb in zip(pe_f, pb_f)]
 
-    # 日股息：个股无分红序列，置 0（用纯价格收益；估值均值线用 PE/PB/ROE 双因子）
-    dy_daily = [0.0] * n
+    # 日股息（P1 优化）：真实分红序列映射到除息日单日股息率（每股分红/昨收），
+    # 替代旧版恒为 0 的占位；无分红记录（ETF/次新股）时保持 0。
+    try:
+        dy_daily = divs.build_dy_daily(dates, closes, code)
+    except Exception:
+        dy_daily = [0.0] * n
 
     return {
         "date": dates,
@@ -542,7 +549,8 @@ def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
                 amt = target - pos
                 side = "sell" if amt < 0 else "buy"
                 if abs(amt) > 1e-9:
-                    nav *= 1.0 - abs(amt) * cfg.cost_rate
+                    # 成本 = 佣金/税费 + 滑点（P2：滑点按成交额比例计提，默认 5bps）
+                    nav *= 1.0 - abs(amt) * (cfg.cost_rate + cfg.slippage_rate)
                     trades.append(TradeRecord(
                         date=dates[i], side=side,
                         pos_before=pos, pos_after=target,

@@ -31,6 +31,7 @@ from src import holdings as hd
 from src import report as rp
 from src import futures as fm
 from src import stock_pool as sp
+from src import market_breadth as mb
 from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES, US_INDEX_CODES
 
 
@@ -148,17 +149,23 @@ def run_review(args):
         v[2].sector = sector_map.get(code, "")
 
     print("== 生成复盘数据 ==")
+    breadth = mb.fetch_market_breadth(use_cache=not args.offline)
+    if breadth and breadth.get("total"):
+        print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
+              f"平{breadth['flat']} 共{breadth['total']} 源={breadth.get('source')}")
     review = rp.build_review("A股", analyses, "post",
-                             indices=indices, market_analyses=market_analyses)
+                             indices=indices, market_analyses=market_analyses,
+                             breadth=breadth)
     p = rp.save("review_data.json", review)
-    print(f"   {p}  自选温度 {review['temperature']['score']}({review['temperature']['label']})")
+    print(f"   {p}  自选温度 {review['temperature']['score']}({review['temperature']['label']}) "
+          f"广度源={review['temperature'].get('source')}")
 
     if not args.no_backtest:
         print("== 网格均值回归回测（移植自 dividend_grid_strategy）==")
         per_stock = {}
         gparams = gbt.GridParams()
         ap = gbt.AnchorParams(lookback_days=750, min_periods=500)
-        cfg = gbt.BacktestConfig(cost_rate=0.0005, cash_rate=0.0, rf=0.0)
+        cfg = gbt.BacktestConfig(cost_rate=0.0005, slippage_rate=0.0005, cash_rate=0.0, rf=0.0)
         for meta in BACKTEST_CODES:
             name, code = meta["name"], meta["code"]
             k = dp.fetch_daily_kline_long(code, count=3200)
@@ -381,7 +388,8 @@ def run_recommend(args):
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
                              sectors=sector_recs, sector_stocks=sector_stocks,
                              grid_signals=grid_signals,
-                             temperature=rp._market_temperature(screen_items))
+                             temperature=rp._market_temperature(screen_items,
+                                                                mb.fetch_market_breadth(use_cache=not args.offline)))
     p = rp.save("recommend_data.json", rec)
     n_picks = sum(len(v) for v in sector_stocks.values())
     print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {n_picks}")
