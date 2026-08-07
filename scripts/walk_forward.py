@@ -85,12 +85,17 @@ def _oos_metric(res: gbt.BacktestResult, train_end_date: str) -> dict:
 
 def walk_forward_stock(name: str, code: str, panel: dict, folds: int = 3,
                        grid=None) -> dict:
-    """对单只标的跑 walk-forward。返回 {folds: [...], chosen_counts, avg_oos_excess}。"""
+    """对单只标的跑 walk-forward。
+
+    每折对每个参数组合同时跑：
+    - 训练段回测 → 年化超额（参数选择指标）
+    - 训练+测试段回测 → OOS 超额（参数评估指标）
+    返回逐折逐组合的 {train_excess, oos_excess}，以及每折的最优参数。
+    """
     grid = grid or param_grid()
     n = len(panel["close"])
     chosen_counts = {label: 0 for label, _ in grid}
     fold_results = []
-    total_oos = []
     for k in range(folds):
         train_end = int(n * (0.5 + k / folds * (0.5 - 0.5 / folds)))
         test_end = int(n * (0.5 + (k + 1) / folds * (0.5 - 0.5 / folds)))
@@ -100,8 +105,8 @@ def walk_forward_stock(name: str, code: str, panel: dict, folds: int = 3,
             continue
         train_date = panel["date"][train_end - 1]
 
-        best_label, best_metric, best_spot = None, None, None
-        spot_results = {}
+        best_label, best_metric = None, None
+        combos = {}
         for label, params in grid:
             try:
                 tr = gbt.run_grid_backtest(name, _slice(panel, train_end),
@@ -110,36 +115,30 @@ def walk_forward_stock(name: str, code: str, panel: dict, folds: int = 3,
                 in_metric = tm["annual_return"] - tm["benchmark_annual"]
             except Exception:
                 continue
-            spot_results[label] = in_metric
+            oos = None
+            try:
+                res = gbt.run_grid_backtest(name, _slice(panel, test_end),
+                                            params, gbt.AnchorParams(), CFG)
+                oos = _oos_metric(res, train_date)
+            except Exception:
+                pass
+            combos[label] = {"train_excess": round(in_metric, 4),
+                             "oos_excess": oos.get("excess") if oos else None}
             if best_metric is None or in_metric > best_metric:
                 best_metric, best_label = in_metric, label
 
         if best_label is None:
             continue
         chosen_counts[best_label] += 1
-
-        # 用最优参数跑 训练+测试 段，评估 OOS
-        chosen_params = dict(grid)[best_label]
-        try:
-            res = gbt.run_grid_backtest(name, _slice(panel, test_end),
-                                        chosen_params, gbt.AnchorParams(), CFG)
-        except Exception:
-            continue
-        oos = _oos_metric(res, train_date)
-        if oos.get("excess") is None:
-            continue
-        total_oos.append(oos["excess"])
         fold_results.append({
             "fold": k + 1, "train_bars": train_end, "test_bars": test_end - train_end,
-            "chosen": best_label, "train_excess": round(best_metric, 4),
-            "oos": oos,
+            "chosen": best_label, "combos": combos,
         })
     return {
         "name": name, "code": code,
         "folds": fold_results,
         "chosen_counts": chosen_counts,
-        "avg_oos_excess": round(sum(total_oos) / len(total_oos), 4) if total_oos else None,
-        "valid_folds": len(total_oos),
+        "valid_folds": len(fold_results),
     }
 
 
@@ -174,13 +173,14 @@ def main():
             continue
         st = walk_forward_stock(name, code, panel, folds=args.folds, grid=grid)
         per_stock[name] = st
-        oos_s = f"{st['avg_oos_excess']*100:+.2f}%" if st["avg_oos_excess"] is not None else "N/A"
-        print(f"  {name}: {st['valid_folds']} 折有效, OOS平均超额 {oos_s}")
+        print(f"  {name}: {st['valid_folds']} 折有效")
 
-    # 汇总：每个参数组合在所有 有效折 × 股票 上的 OOS 超额分布（用各自选中组合归集）
+    # 汇总：每个参数组合在全部 股票×折 上的 OOS 超额分布
     for name, st in per_stock.items():
         for fold in st["folds"]:
-            combo_oos[fold["chosen"]].append(fold["oos"]["excess"])
+            for label, r in fold["combos"].items():
+                if r.get("oos_excess") is not None:
+                    combo_oos[label].append(r["oos_excess"])
     rows = []
     for label, _ in grid:
         vals = combo_oos[label]
@@ -189,38 +189,45 @@ def main():
             continue
         import statistics
         avg = statistics.mean(vals)
-        # 相对基准参数（baseline 固定0.5%）的胜率
-        base_vals = combo_oos[grid[0][0]]
-        wins = sum(1 for v in vals if base_vals and v > statistics.median(base_vals)) if base_vals else 0
+        # 胜率 = 该组合 OOS 超额 > 0 的样本占比（相对基准买入持有）
+        wins = sum(1 for v in vals if v > 0)
         rows.append({"combo": label, "samples": len(vals),
                      "avg_oos_excess": round(avg, 4),
                      "median_oos_excess": round(statistics.median(vals), 4),
-                     "best_fold_win_rate": round(wins / len(vals), 3)})
+                     "win_rate": round(wins / len(vals), 3)})
     rows.sort(key=lambda r: r.get("avg_oos_excess", -1), reverse=True)
 
-    # 全局最优参数 = 平均 OOS 超额最高的组合
+    # 全局最优参数 = 平均 OOS 超额最高的组合；选中频率 = 训练段选择该组合的折数占比
     best = next((r for r in rows if r.get("avg_oos_excess") is not None), None)
+    total_folds = sum(st["valid_folds"] for st in per_stock.values())
+    picked = {label: 0 for label, _ in grid}
+    for st in per_stock.values():
+        for label, c in st["chosen_counts"].items():
+            picked[label] += c
     out = {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "folds": args.folds,
         "cost_rate": CFG.cost_rate, "slippage_rate": CFG.slippage_rate,
-        "pool_size": len(metas),
+        "pool_size": len(metas), "total_folds": total_folds,
         "best_combo": best["combo"] if best else None,
         "per_combo": rows,
+        "chosen_frequency": {label: round(c / max(total_folds, 1), 3) for label, c in picked.items()},
         "per_stock": per_stock,
     }
     with open(OUT_PATH, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
 
     print("\n== 参数组合汇总（按平均 OOS 超额排序）==")
-    print(f"{'组合':<22}{'样本':>5}{'均值OOS超额':>12}{'中位':>9}{'胜率(对基准)':>12}")
+    print(f"{'组合':<22}{'样本':>5}{'均值OOS超额':>12}{'中位':>9}{'胜率(vs持有)':>12}{'选中频率':>8}")
+    freq = out["chosen_frequency"]
     for r in rows:
         if not r.get("samples"):
             continue
         print(f"{r['combo']:<22}{r['samples']:>5}"
               f"{r['avg_oos_excess']*100:>+11.2f}%"
               f"{r['median_oos_excess']*100:>+8.2f}%"
-              f"{r['best_fold_win_rate']*100:>+11.1f}%")
+              f"{r['win_rate']*100:>+11.1f}%"
+              f"{freq[r['combo']]*100:>+7.1f}%")
     print(f"\n全局最优: {out['best_combo']}  →  {OUT_PATH}")
 
 

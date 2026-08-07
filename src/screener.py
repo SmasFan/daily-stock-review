@@ -28,7 +28,12 @@ def strength_key(it) -> int:
 
 
 def rank_pct(values: List[float], higher_is_better: bool = True) -> List[float]:
-    """横截面百分位排名（0-100）。相同值取平均名次。无效值(None)给 25。"""
+    """横截面百分位排名（0-100，0=最差 100=最好）。相同值取平均名次。无效值(None)给 25。
+
+    2026-08-07 修正：旧版把"名次位置"直接当分数，方向与参数相反——
+    高PE股拿到 100 的"估值分"（PE 4621 的股票反而进估值低位榜）。
+    现按 higher_is_better 语义归一：数值最优 → 100。
+    """
     n = len(values)
     if n == 0:
         return []
@@ -36,14 +41,15 @@ def rank_pct(values: List[float], higher_is_better: bool = True) -> List[float]:
     scores = [25.0] * n
     if not valid:
         return scores
-    sorted_vals = sorted((v for _, v in valid), reverse=higher_is_better)
+    sorted_vals = sorted(v for _, v in valid)
     rank_map: Dict[float, List[int]] = {}
     for i, v in enumerate(sorted_vals):
         rank_map.setdefault(v, []).append(i)
     m = len(sorted_vals)
     for i, v in valid:
         ranks = rank_map[v]
-        scores[i] = sum(ranks) / len(ranks) / max(m - 1, 1) * 100
+        p = sum(ranks) / len(ranks) / max(m - 1, 1)
+        scores[i] = p * 100 if higher_is_better else (1 - p) * 100
     return scores
 
 
