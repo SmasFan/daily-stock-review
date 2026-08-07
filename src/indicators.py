@@ -8,6 +8,8 @@
 - BOLL: MA20 ± 2 倍标准差（总体标准差）
 - 乖离率: bias_maN = (price - maN) / maN * 100
 - 量比: 当日成交量 / 前 N 日均量
+- ATR: Wilder 真实波幅均值（波动自适应止损/动态网格步长）
+- ADX: Wilder 平均趋向指数（趋势/震荡状态识别，>25 趋势、<20 震荡）
 """
 from typing import List, Optional
 
@@ -125,6 +127,82 @@ def rolling_std(values: List[float], period: int) -> List[Optional[float]]:
         mean = sum(window) / period
         var = sum((x - mean) ** 2 for x in window) / period
         out.append(var ** 0.5)
+    return out
+
+
+def true_range(highs: List[float], lows: List[float], closes: List[float]) -> List[Optional[float]]:
+    """真实波幅 TR = max(高-低, |高-昨收|, |低-昨收|)。首个为 None。"""
+    n = len(closes)
+    out: List[Optional[float]] = [None] * n
+    for i in range(1, n):
+        out[i] = max(highs[i] - lows[i],
+                     abs(highs[i] - closes[i - 1]),
+                     abs(lows[i] - closes[i - 1]))
+    return out
+
+
+def _wilder_smooth(values: List[Optional[float]], period: int) -> List[Optional[float]]:
+    """Wilder 平滑（alpha=1/period），前 period 个为 None。"""
+    n = len(values)
+    out: List[Optional[float]] = [None] * n
+    acc = None
+    for i, v in enumerate(values):
+        if v is None:
+            continue
+        if acc is None:
+            acc = v
+        else:
+            acc = v / period + acc * (1 - 1.0 / period)
+        if i >= period:
+            out[i] = acc
+    return out
+
+
+def atr(highs: List[float], lows: List[float], closes: List[float],
+        period: int = 14) -> List[Optional[float]]:
+    """Wilder ATR。用于波动自适应止损与动态网格步长。"""
+    return _wilder_smooth(true_range(highs, lows, closes), period)
+
+
+def adx(highs: List[float], lows: List[float], closes: List[float],
+        period: int = 14) -> List[Optional[float]]:
+    """Wilder ADX（平均趋向指数）。>25 趋势市，<20 震荡市。"""
+    n = len(closes)
+    out: List[Optional[float]] = [None] * n
+    if n < period * 2 + 2:
+        return out
+    tr = true_range(highs, lows, closes)
+    pdm: List[Optional[float]] = [None] * n
+    ndm: List[Optional[float]] = [None] * n
+    for i in range(1, n):
+        up = highs[i] - highs[i - 1]
+        down = lows[i - 1] - lows[i]
+        pdm[i] = up if (up > down and up > 0) else 0.0
+        ndm[i] = down if (down > up and down > 0) else 0.0
+    str_ = _wilder_smooth(tr, period)
+    spdm = _wilder_smooth(pdm, period)
+    sndm = _wilder_smooth(ndm, period)
+    dx: List[Optional[float]] = [None] * n
+    for i in range(n):
+        if str_[i] and spdm[i] is not None and sndm[i] is not None and str_[i] > 0:
+            pdi = 100.0 * spdm[i] / str_[i]
+            ndi = 100.0 * sndm[i] / str_[i]
+            if pdi + ndi > 0:
+                dx[i] = 100.0 * abs(pdi - ndi) / (pdi + ndi)
+    # ADX = DX 的 Wilder 平滑（从第一个有效 DX 起）
+    first = next((i for i, v in enumerate(dx) if v is not None), None)
+    if first is None:
+        return out
+    acc = None
+    cnt = 0
+    for i in range(first, n):
+        v = dx[i]
+        if v is None:
+            continue
+        acc = v if acc is None else v / period + acc * (1 - 1.0 / period)
+        cnt += 1
+        if cnt >= period:
+            out[i] = acc
     return out
 
 

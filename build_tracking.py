@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-历史跟踪数据构建：从 git 历史提取每日推荐 Top10（买入信号），拉取日 K 线，生成 data/tracking_data.json。
+历史跟踪数据构建：每日推荐 Top10（买入信号）持久化到 SQLite，
+拉取日 K 线，生成 data/tracking_data.json。
+
+数据流（2026-08 优化：SQLite 为主，不再依赖 git 历史）：
+1. 初始化 data/tracking.db（表 daily_picks：day+code 主键）
+2. 首次运行时用 git 历史一次性导入存量快照（之后 git 仅作冗余）
+3. 每次运行自动把当前 data/recommend_data.json 快照追加进库
+4. 从 SQLite 读取全部日期 → 拉K线算跟踪收益 → 输出 JSON
 
 输出结构：
 - days:    [{date, items: [{rank, name, code, total_score, rating, signal_key, signal, price, sector, track_return}]}]
@@ -14,18 +21,86 @@
 """
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 from collections import Counter, OrderedDict
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
+DB_PATH = os.path.join(DATA_DIR, "tracking.db")
 sys.path.insert(0, BASE_DIR)
 from src import data_provider as dp  # noqa: E402
 
 BUY_KEYS = ("strong_buy", "buy")
 TOPN = 10
 KLINE_BARS = 150
+
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""CREATE TABLE IF NOT EXISTS daily_picks (
+        day TEXT NOT NULL,
+        rank INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        total_score REAL,
+        rating TEXT,
+        signal_key TEXT,
+        signal TEXT,
+        price REAL,
+        sector TEXT,
+        PRIMARY KEY (day, code))""")
+    conn.commit()
+    return conn
+
+
+def upsert_day(conn, day, items):
+    """写入一天快照（day+code 主键，重复运行幂等）。"""
+    with conn:
+        conn.executemany(
+            """INSERT OR REPLACE INTO daily_picks
+               (day, rank, name, code, total_score, rating, signal_key, signal, price, sector)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            [(day, i + 1, it.get("name", ""), it.get("code", ""),
+              it.get("total_score"), it.get("rating", ""),
+              it.get("signal_key", ""), it.get("signal", ""),
+              it.get("price"), it.get("sector", ""))
+             for i, it in enumerate(items)])
+
+
+def load_days(conn):
+    """从 SQLite 读全部快照，按日期升序返回 [{date, items}]。"""
+    rows = conn.execute(
+        "SELECT day, rank, name, code, total_score, rating, signal_key, signal, price, sector "
+        "FROM daily_picks ORDER BY day, rank").fetchall()
+    days = OrderedDict()
+    for r in rows:
+        day, rank, name, code, total, rating, sk, signal, price, sector = r
+        days.setdefault(day, []).append({
+            "rank": rank, "name": name, "code": code,
+            "total_score": total, "rating": rating or "",
+            "signal_key": sk or "", "signal": signal or "",
+            "price": price, "sector": sector or ""})
+    return [{"date": d, "items": items} for d, items in days.items()]
+
+
+def import_git_history(conn):
+    """首次迁移：用 git 历史导入存量快照（重复导入幂等）。"""
+    commits = git_recommend_commits()
+    snaps = pick_daily_snapshots(commits)
+    imported = 0
+    for day, h in snaps.items():
+        try:
+            raw = subprocess.check_output(["git", "show", f"{h}:data/recommend_data.json"],
+                                          cwd=BASE_DIR)
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            continue
+        items = top10_buys(data.get("picks") or [])
+        upsert_day(conn, day, items)
+        imported += 1
+    return imported, len(snaps)
 
 
 def git_recommend_commits():
@@ -96,31 +171,34 @@ def track_return(kline, rec_date):
 
 
 def main():
-    commits = git_recommend_commits()
-    snaps = pick_daily_snapshots(commits)
-    print(f"历史快照 {len(snaps)} 天: {list(snaps.keys())}")
+    conn = init_db()
+    imported, snap_total = import_git_history(conn)
+    print(f"git 历史导入 {imported}/{snap_total} 天快照")
 
-    days = []
-    pool_codes = set()
-    for day, h in snaps.items():
+    # 追加当前推荐快照（推荐文件与 build_tracking 同日时覆盖当日旧快照）
+    rec_path = os.path.join(DATA_DIR, "recommend_data.json")
+    if os.path.exists(rec_path):
         try:
-            raw = subprocess.check_output(["git", "show", f"{h}:data/recommend_data.json"],
-                                          cwd=BASE_DIR)
-            data = json.loads(raw.decode("utf-8"))
+            with open(rec_path, "r", encoding="utf-8") as f:
+                rec = json.load(f)
+            today = (rec.get("generatedAt") or "")[:10]
+            if today:
+                upsert_day(conn, today, top10_buys(rec.get("picks") or []))
+                print(f"  追加当日快照 {today}")
         except Exception as e:
-            print(f"  [skip] {day} 解析失败: {e}")
-            continue
-        items = top10_buys(data.get("picks") or [])
-        for it in items:
+            print(f"  [skip] 当日快照追加失败: {e}")
+
+    days = load_days(conn)
+    if not days:
+        print("无历史快照，请先运行 run_review.py --mode recommend")
+        return
+    print(f"SQLite 快照 {len(days)} 天: {days[0]['date']} ~ {days[-1]['date']}")
+
+    pool_codes = set()
+    for day in days:
+        for it in day["items"]:
             pool_codes.add(it.get("code"))
-        days.append({"date": day, "items": [
-            {"rank": i + 1,
-             "name": it.get("name", ""), "code": it.get("code", ""),
-             "total_score": it.get("total_score"), "rating": it.get("rating", ""),
-             "signal_key": it.get("signal_key", ""), "signal": it.get("signal", ""),
-             "price": it.get("price"), "sector": it.get("sector", "")}
-            for i, it in enumerate(items)]})
-        print(f"  {day}: {len(items)} 只")
+        print(f"  {day['date']}: {len(day['items'])} 只")
 
     print(f"抓取 K 线（{len(pool_codes)} 个代码）…")
     kl_full = fetch_klines(sorted(pool_codes))

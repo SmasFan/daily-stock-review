@@ -120,11 +120,28 @@ def screen(items: List[ScreenItem], tech_weight: float = 0.5, top_n: int = 10) -
     pes = [it.pe if (it.pe and it.pe > 0) else None for it in pool]
     pbs = [it.pb if (it.pb and it.pb > 0) else None for it in pool]
     liquidity = rank_pct(amounts, higher_is_better=True)
-    pe_rank = rank_pct(pes, higher_is_better=False)
-    pb_rank = rank_pct(pbs, higher_is_better=False)
+    # 价值因子（2026-08 修正）：板块内分位优先（同行业才可比：银行 PE~6 与
+    # 科技 PE~50 混排会把"低PE行业"系统性顶高）；板块样本 <5 时回退全池分位
+    pool_pe_rank = rank_pct(pes, higher_is_better=False)
+    pool_pb_rank = rank_pct(pbs, higher_is_better=False)
+    pe_rank, pb_rank = list(pool_pe_rank), list(pool_pb_rank)
+    sect_groups: Dict[str, List[int]] = {}
+    for i, it in enumerate(pool):
+        sect_groups.setdefault((it.sector or "").strip() or "其他", []).append(i)
+    for sec, idxs in sect_groups.items():
+        if len(idxs) < 5:
+            continue
+        sec_pe = [pes[i] for i in idxs]
+        sec_pb = [pbs[i] for i in idxs]
+        sec_pe_rank = rank_pct(sec_pe, higher_is_better=False)
+        sec_pb_rank = rank_pct(sec_pb, higher_is_better=False)
+        for j, i in enumerate(idxs):
+            pe_rank[i] = sec_pe_rank[j]
+            pb_rank[i] = sec_pb_rank[j]
 
     for i, it in enumerate(pool):
-        # 动量：当日 60 + change*5（>5% 追高惩罚）；60日 55 + change60*0.9（>45% 过热、<-20% 破位）
+        # 动量（2026-08 降权）：当日涨跌只占 30%（单日动量是噪音），
+        # 60 日趋势占 70%；且横截面动量权重下调（技术分已含趋势，避免双重计费）
         day = 60 + it.change_pct * 5
         if it.change_pct > 5:
             day -= (it.change_pct - 5) * 10
@@ -138,7 +155,7 @@ def screen(items: List[ScreenItem], tech_weight: float = 0.5, top_n: int = 10) -
                 trend -= (-20 - it.change_60d) * 1.0
         else:
             trend = 50
-        it.momentum_score = max(0, min(100, day * 0.5 + trend * 0.5))
+        it.momentum_score = max(0, min(100, day * 0.3 + trend * 0.7))
 
         it.value_score = max(0, min(100, (pe_rank[i] + pb_rank[i]) / 2))
         it.liquidity_score = liquidity[i]
@@ -163,14 +180,14 @@ def screen(items: List[ScreenItem], tech_weight: float = 0.5, top_n: int = 10) -
             stab -= (vr - 4) * 3
         it.stability_score = max(0, min(100, stab))
 
-        # 横截面综合分（对齐原 scorer 权重结构）
-        non_tech = (1 - tech_weight)
+        # 横截面综合分（2026-08 权重修正：价值升权+板块内分位、动量降权避免
+        # 与技术分重复计费、活跃度降权减少对日内热度的追逐）
         it.cross_score = max(0, min(100,
-            it.value_score * (non_tech * 0.5)
-            + it.liquidity_score * (non_tech * 0.25)
-            + it.stability_score * (non_tech * 0.25)
-            + it.momentum_score * (tech_weight * 0.55)
-            + it.activity_score * (tech_weight * 0.45)))
+            it.value_score * 0.30
+            + it.liquidity_score * 0.15
+            + it.stability_score * 0.20
+            + it.momentum_score * 0.20
+            + it.activity_score * 0.15))
 
         # 综合总分：技术分 + 横截面分
         it.total_score = round(it.tech_score * tech_weight + it.cross_score * (1 - tech_weight), 1)

@@ -84,6 +84,9 @@ class AnalysisResult:
     rsi_status: str = ""
     # 布林带
     boll_pos: Optional[float] = None
+    # ATR 波动自适应（2026-08 新增）
+    atr14: Optional[float] = None
+    atr_stop: Optional[float] = None
     # 评分与信号
     score: int = 50
     signal_key: str = "watch"
@@ -214,6 +217,7 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     rsi12 = ind.rsi(closes, 12)
     rsi24 = ind.rsi(closes, 24)
     _, boll_u, boll_l = ind.bollinger(closes, 20)
+    atr14s = ind.atr(highs, lows, closes, 14)
 
     close = closes[idx]
     prev_close = closes[idx - 1]
@@ -251,7 +255,10 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     volume_scores = {"缩量回调": 15, "放量上涨": 12, "量能正常": 10, "缩量上涨": 6, "放量下跌": 0}
     macd_scores = {"零上金叉": 15, "金叉": 12, "上穿零轴": 10, "多头": 8,
                    "空头": 2, "下穿零轴": 0, "死叉": 0}
-    rsi_scores = {"超卖": 10, "强势": 8, "中性": 5, "弱势": 3, "超买": 0}
+    # RSI 打分（2026-08 趋势化修正）：本系统为趋势跟随口径（只做多头排列），
+    # 旧版"超卖10分/超买0分"是均值回归思维，会系统性压分强势股——
+    # 改为奖励强势、中性次之，超卖不再高分（不接下跌的刀），超买给中性分。
+    rsi_scores = {"强势": 10, "中性": 6, "超买": 5, "弱势": 3, "超卖": 2}
 
     score = 0
     score += trend_scores.get(trend_status, 12)
@@ -286,6 +293,10 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     secondary_buy = ma10
     stop_loss = ma20
     take_profit = resistance
+    # ATR 自适应止损（2026-08 新增）：止损 = 收盘价 - 2 × ATR14，
+    # 比固定 MA20 更贴合个股波动（低波红利股和高波科技股不再用同一止损口径）。
+    atr14 = atr14s[idx]
+    atr_stop = close - 2 * atr14 if (atr14 and atr14 > 0) else None
 
     return AnalysisResult(
         name=name, code=code, date=dates[idx], open=round(opens[idx], 3), close=round(close, 3),
@@ -300,6 +311,7 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
         rsi6=_r(rsi6[idx], 1), rsi12=_r(rsi12[idx], 1), rsi24=_r(rsi24[idx], 1),
         rsi_status=rsi_status,
         boll_pos=_r(boll_pos, 3),
+        atr14=_r(atr14), atr_stop=_r(atr_stop),
         score=score, signal_key=final, signal=signal_label,
         ideal_buy=_r(ideal_buy), secondary_buy=_r(secondary_buy),
         stop_loss=_r(stop_loss), take_profit=_r(take_profit),

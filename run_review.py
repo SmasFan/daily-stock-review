@@ -201,18 +201,23 @@ def _load_sector_valuation():
 
 
 def _rank_sectors(sectors):
-    """给板块打分：估值越便宜(PE低/低估档)越靠前，结合当日涨跌幅动量。"""
+    """给板块打分（2026-08 修正）：绝对 PE 改为跨板块分位（行业间绝对 PE 不可比），
+    估值档位升权，当日动量降权（单日动量是噪音）。"""
     level_score = {"低估": 3, "合理": 1, "偏高": -1, "高估": -3}
+    valid_pes = sorted(v for v in (s.get("pe") for s in sectors) if v and v > 0)
+
+    def pe_score_of(pe):
+        # PE 越低分越高（0→5），按全板块分位而不是绝对数值
+        if not pe or pe <= 0 or not valid_pes:
+            return 2.5
+        rank = sum(1 for v in valid_pes if v < pe) / len(valid_pes)
+        return round((1 - rank) * 5, 2)
+
     for s in sectors:
-        pe = s.get("pe")
-        pe_score = 0
-        if pe and pe > 0:
-            # PE 越低分越高（0→5, 60→0）
-            pe_score = max(0, min(5, 5 - pe / 12))
         chg = s.get("change") or 0
         mom = max(-3, min(3, chg * 0.5))
         lev = level_score.get(s.get("level", ""), 0)
-        s["sector_score"] = round(pe_score * 0.5 + lev * 0.3 + mom * 0.2, 2)
+        s["sector_score"] = round(pe_score_of(s.get("pe")) * 0.45 + lev * 0.35 + mom * 0.20, 2)
     sectors = [s for s in sectors if s.get("category") not in ("宽基指数",)]
     sectors.sort(key=lambda x: x.get("sector_score", 0), reverse=True)
     return sectors

@@ -1,17 +1,26 @@
 """
-网格均值回归回测引擎（移植自 dividend_grid_strategy）。
+网格均值回归回测引擎（移植自 dividend_grid_strategy，2026-08 优化版）。
 
-策略口径：均衡偏低均值线 + 不对称网格 + 半永久锁仓。
+策略口径：均衡偏低均值线 + 不对称网格 + 半永久锁仓 + ATR动态步长 + ADX趋势闸门。
 - 均值线：近 3 年(750 交易日)滚动分位锚。有估值因子(PE-TTM/PB/ROE/股息率)
   时用「加权几何平均公允价格线」；无估值数据(ETF/个股)时退化为
   「收盘价相对 750 日价格均线的偏离度」。
 - 仓位规则：pos = base_pos - slope*dev。上涨侧斜率 = sell_per_step/grid_step，
-  下跌侧斜率 = buy_per_step/grid_step。默认每 0.5% 一档，涨抛 1%、跌买 1.04%。
-- 半永久锁仓：dev <= dev_lock 后的加仓锁仓；dev >= dev_clear 一次性清仓。
+  下跌侧斜率 = buy_per_step/grid_step。默认涨抛 1%、跌买 1.04%。
+- 动态网格步长（dynamic_step=True）：步长 = atr_mult × ATR(14)/收盘价
+  （取近 250 日中位数，夹在 [min_step, max_step]），替代固定 0.5%，
+  避免高波动标的上过度交易。
+- ADX 趋势闸门（adx_gate，实验性，默认关闭）：开启时 ADX > adx_trend
+  视为趋势市，冻结调仓（上行不减仓、下行不加仓）。回测显示该闸门在
+  低波 ETF 上过度冻结拖累收益，默认关闭，留作参数实验。
+- 半永久锁仓（use_lock=True，已真正生效）：dev <= dev_lock 后的加仓累入
+  锁仓下限，反弹时仓位不低于该下限（不回吐）；dev >= dev_clear 解锁。
 - 交易触发：dev 每跨越一个 grid_step 网格边界才调仓。
 - 收益 = 价格收益 + 日股息(dy_daily，无则 0)，现金无利息。
 - 成本：单边 cost_rate，调仓按 |目标仓-当前仓|*cost_rate 扣除。
 - 基准：满仓买入持有（价格收益 + 股息），归一化对比。
+- A/B 对照：GridParams(dynamic_step=False, adx_gate=False, use_lock=False)
+  即回退为旧版固定 0.5% 步长网格。
 """
 from __future__ import annotations
 
@@ -20,14 +29,23 @@ import math
 import os
 import re
 import socket
+import statistics
+import time
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, replace
 from typing import Dict, List, Optional, Tuple
+
+from . import indicators as ind
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(BASE_DIR, "data", "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+# 估值缓存 TTL（按文件 mtime）：成功结果 24h，失败(空)结果 6h——
+# 旧版本无 TTL 且把网络失败永久缓存为空数组，导致估值锚静默退化为价格锚。
+VALUE_CACHE_OK_HOURS = 24.0
+VALUE_CACHE_EMPTY_HOURS = 6.0
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       "Referer": "https://data.eastmoney.com/"}
@@ -37,15 +55,24 @@ UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 
 @dataclass
 class GridParams:
-    """网格与仓位参数（对齐 dividend_grid_strategy/config.yaml）。"""
+    """网格与仓位参数（对齐 dividend_grid_strategy/config.yaml，含 2026-08 优化项）。"""
     base_pos: float = 0.70        # 均衡仓位
-    grid_step: float = 0.005      # 网格步长 0.5%
+    grid_step: float = 0.005      # 网格步长（dynamic_step=False 时的固定步长）
     sell_per_step: float = 0.010  # 每涨 0.5% 抛 1%
     buy_per_step: float = 0.0104  # 每跌 0.5% 买 1.04%
     dev_lock: float = -0.05       # 偏离<=-5% 后的加仓进入半永久锁仓
-    dev_clear: float = 0.05       # 偏离>=+5% 超涨清仓
+    dev_clear: float = 0.05       # 偏离>=+5% 解锁（超涨解锁）
     min_pos: float = 0.10
     max_pos: float = 1.00
+    # ---- 2026-08 优化：ATR 动态步长 / ADX 趋势闸门 / 真锁仓 ----
+    dynamic_step: bool = True     # 步长随 ATR 自适应（替代固定 0.5%）
+    atr_mult: float = 1.2         # 步长 = atr_mult × ATR(14)/收盘价（近250日中位数）
+    min_step: float = 0.01        # 步长下限 1%
+    max_step: float = 0.03        # 步长上限 3%
+    adx_gate: bool = False        # ADX 趋势闸门（实验性开关，默认关闭：回测显示
+                                  # 在低波 ETF 上过度冻结反而拖累收益）
+    adx_trend: float = 25.0       # ADX 阈值：之上为趋势市，冻结网格调仓
+    use_lock: bool = True         # 半永久锁仓真正生效（反弹不回吐）
 
     @property
     def slope_up(self) -> float:
@@ -81,18 +108,33 @@ def _get_json(url: str, timeout: int = 20):
         return json.loads(resp.read().decode("utf-8", errors="ignore"))
 
 
+def _read_value_cache(cache: str):
+    """读估值缓存。返回 (状态, 数据)：状态 fresh/stale/miss。按文件 mtime 判活：
+    非空结果 24h 有效，空结果（历史拉取失败）仅 6h 有效，到期重试。"""
+    if not os.path.exists(cache):
+        return "miss", None
+    try:
+        with open(cache, "r", encoding="utf-8") as f:
+            rows = json.load(f)
+    except Exception:
+        return "miss", None
+    if not isinstance(rows, list):
+        return "miss", None
+    age_h = (time.time() - os.path.getmtime(cache)) / 3600.0
+    ttl = VALUE_CACHE_OK_HOURS if rows else VALUE_CACHE_EMPTY_HOURS
+    return ("fresh" if age_h < ttl else "stale"), rows
+
+
 def fetch_stock_value_em(code: str) -> Optional[List[Dict]]:
     """东财每日估值分析历史（PE-TTM/PB/股息率等），返回升序列表或 None。
 
     数据源等价 akshare.stock_value_em，但仅用标准库实现，避免 akshare 依赖。
+    缓存带 TTL：空结果 6h 后自动重试，避免一次网络失败导致估值锚永久退化。
     """
     cache = os.path.join(CACHE_DIR, f"value_{code}.json")
-    if os.path.exists(cache):
-        try:
-            with open(cache, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
+    state, cached = _read_value_cache(cache)
+    if state == "fresh":
+        return cached or None
     params = {
         "sortColumns": "TRADE_DATE",
         "sortTypes": "-1",
@@ -132,12 +174,15 @@ def fetch_stock_value_em(code: str) -> Optional[List[Dict]]:
             pass
         return rows
     except Exception:
-        # 网络失败同样缓存空结果，避免重复请求
+        # 网络失败：缓存空结果（6h TTL，避免反复重试拖慢流程）；
+        # 若手头有过期但非空的旧数据，优先回退使用旧数据
         try:
             with open(cache, "w", encoding="utf-8") as f:
                 json.dump([], f)
         except Exception:
             pass
+        if state == "stale" and cached:
+            return cached
         return None
 
 
@@ -356,6 +401,28 @@ def grid_index(dev: float, p: GridParams) -> int:
     return int(math.floor(dev / p.grid_step))
 
 
+def resolve_grid_params(a: dict, sp: GridParams) -> GridParams:
+    """根据标的实际波动解析有效网格参数（ATR 动态步长）。
+
+    a 为 compute_anchor 输出（含 close/high/low）。步长 = atr_mult ×
+    ATR(14)/收盘价 的近 250 日中位数，夹在 [min_step, max_step]。
+    dynamic_step=False 或数据不足时返回原参数（固定步长）。
+    """
+    if not sp.dynamic_step:
+        return sp
+    close, high, low = a.get("close"), a.get("high"), a.get("low")
+    if not close or not high or not low:
+        return sp
+    atrs = ind.atr(high, low, close, 14)
+    pcts = [atrs[i] / close[i] for i in range(len(close))
+            if atrs[i] and close[i] and close[i] > 0]
+    recent = pcts[-250:] if len(pcts) > 250 else pcts
+    if not recent:
+        return sp
+    step = min(sp.max_step, max(sp.min_step, sp.atr_mult * statistics.median(recent)))
+    return replace(sp, grid_step=step)
+
+
 # ---------------- 回测引擎 ----------------
 
 @dataclass
@@ -387,6 +454,7 @@ class BacktestResult:
     start_date: str
     end_date: str
     price_only: bool
+    grid_step: float = 0.005
 
 
 def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
@@ -416,6 +484,11 @@ def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
     dev = a["dev"]
     anchor = a["anchor"]
 
+    # 有效参数：ATR 动态步长；ADX 序列用于趋势闸门
+    sp2 = resolve_grid_params(a, sp)
+    adx_vals = (ind.adx(a["high"], a["low"], a["close"], 14)
+                if (sp.adx_gate and a.get("high") and a.get("low")) else [None] * n)
+
     cash_daily = (1.0 + cfg.cash_rate) ** (1.0 / 252.0) - 1.0
     nav = 1.0
     pos = math.nan
@@ -437,26 +510,35 @@ def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
 
         d = dev[i]
         if i == 0 or not valid[i - 1]:
-            target = position_target(d, sp)
+            target = position_target(d, sp2)
             if target == target:
                 pos = target
-                lock = locked_from_dev(d, sp)
-            prev_grid = grid_index(d, sp)
+                lock = locked_from_dev(d, sp2) if sp2.use_lock else 0.0
+            prev_grid = grid_index(d, sp2)
         else:
             r_idx = close[i] / close[i - 1] - 1.0
             r_div = dy_daily[i] or 0.0
             r_total = r_idx + r_div
             nav *= 1.0 + pos * r_total + cash_daily * (1.0 - pos)
 
-            # 半永久锁仓：偏离<=dev_lock 后的加仓锁仓；dev>=dev_clear 清仓
-            if d < sp.dev_lock:
-                lock = max(lock, locked_from_dev(d, sp))
-            if d >= sp.dev_clear:
-                lock = 0.0
+            # 半永久锁仓：偏离<=dev_lock 后的加仓累入锁仓下限；dev>=dev_clear 解锁
+            if sp2.use_lock:
+                if d < sp2.dev_lock:
+                    lock = max(lock, locked_from_dev(d, sp2))
+                if d >= sp2.dev_clear:
+                    lock = 0.0
 
-            g = grid_index(d, sp)
+            g = grid_index(d, sp2)
             if g != prev_grid and pos == pos:
-                target = position_target(d, sp)
+                target = position_target(d, sp2)
+                # 锁仓下限：反弹时仓位不低于锁定量（不回吐）
+                if sp2.use_lock and lock > 0:
+                    target = max(target, lock)
+                # ADX 趋势闸门：趋势市冻结调仓（上行不减仓、下行不加仓）
+                ax = adx_vals[i]
+                if sp2.adx_gate and ax is not None and ax > sp2.adx_trend:
+                    target = max(target, pos) if d > 0 else min(target, pos)
+                target = max(sp2.min_pos, min(sp2.max_pos, target))
                 amt = target - pos
                 side = "sell" if amt < 0 else "buy"
                 if abs(amt) > 1e-9:
@@ -508,6 +590,7 @@ def run_grid_backtest(name: str, panel: dict, sp: GridParams, ap: AnchorParams,
         start_date=dates[first],
         end_date=dates[-1],
         price_only=a["price_only"],
+        grid_step=sp2.grid_step,
     )
 
 
@@ -600,6 +683,7 @@ def summary_metrics(res: BacktestResult, rf: float = 0.0) -> Dict:
         "trade_count": len(res.trades),
         "avg_position": round(sum(res.position) / len(res.position), 4) if res.position else None,
         "price_only": res.price_only,
+        "grid_step": res.grid_step,
     }
 
 

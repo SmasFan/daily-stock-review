@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Dict, List, Optional, Tuple
 
 from . import grid_backtest as gbt
@@ -94,6 +95,8 @@ def compute_grid_signal(name: str, code: str,
     n = len(a["close"])
     if n < 2:
         return None
+    # 与回测口径一致：解析 ATR 动态步长
+    gparams = gbt.resolve_grid_params(a, gparams)
     dev = a["dev"][-1]
     pos = gbt.position_target(dev, gparams) if dev is not None else None
     sig = grid_action(dev, pos, gparams)
@@ -123,6 +126,10 @@ def signal_from_backtest(name: str, code: str, stock: Dict,
     stock 结构对齐 build_backtest_data：{summary, equity, benchmark, dates, position, dev, trades, price_only}
     """
     gparams = gparams or gbt.GridParams()
+    # 与回测口径一致：复用回测实际使用的 ATR 动态步长
+    step = (stock.get("summary") or {}).get("grid_step")
+    if step:
+        gparams = replace(gparams, grid_step=step)
     devs = stock.get("dev") or []
     positions = stock.get("position") or []
     dates = stock.get("dates") or []
