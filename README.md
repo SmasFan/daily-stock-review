@@ -72,13 +72,19 @@ src/
 │                        #   均值线(PE40分位/PB60分位/ROE60分位加权几何平均，
 │                        #   无估值→价格锚) + 不对称网格(ATR动态步长1%~3%，
 │                        #   涨抛1%/跌买1.04%) + 半永久锁仓(偏离≤-5%锁定下限,
-│                        #   ≥+5%解锁；ADX闸门为默认关闭的实验开关) + 单边成本0.05%
+│                        #   ≥+5%解锁；ADX闸门为默认关闭的实验开关)
+│                        #   + 单边成本0.05% + 滑点0.05% + 真实分红序列(除息日)
 ├── grid_signal.py       # 网格策略操作信号（均值线偏离 → 加仓/减仓/清仓/持有）
 ├── holdings.py          # 持仓分析（实时行情 + 盈亏 + 网格提醒）
 ├── data_provider.py     # 腾讯行情快照 + 日K线(支持长历史翻页) + 本地缓存
-├── stock_pool.py        # 自选池/大盘池/回测标的 + code→板块映射
+├── market_breadth.py    # 全市场涨跌家数（东财，温度计去偏）
+├── dividends.py         # 真实分红序列（东财 RPT_SHAREBONUS_DET）
+├── stock_pool.py        # 自选池/大盘池/回测标的(31只) + code→板块映射
 ├── futures.py           # 有色金属期货数据（新浪期货日线 SHFE 主力连续）+ 趋势/技术因子
 └── report.py            # 汇总生成前端 JSON
+scripts/
+└── walk_forward.py      # walk-forward 参数敏感性（31只×3折×10组合 → data/walk_forward_data.json）
+tests/                   # 单元测试（63 例）：python -m unittest discover -s tests
 assets/
 ├── css/common.css       # 统一设计语言（含板块分组/展开样式）
 └── js/common.js         # RV.API 数据层 + RV.fmt 格式化 + RV.ui 组件
@@ -88,7 +94,8 @@ data/
 ├── backtest_data.json   # 网格回测数据
 ├── holdings_data.json   # 持仓数据
 ├── metals_data.json     # 有色金属期货行情/技术因子数据
-└── cache/               # K线/估值缓存（不入库）
+├── walk_forward_data.json # walk-forward 参数敏感性结果
+└── cache/               # K线/估值/分红/涨跌家数缓存（不入库）
 index.html / review.html / recommend.html / holdings.html / backtest.html / metals.html   # 数据驱动页面
 ```
 
@@ -118,9 +125,15 @@ index.html / review.html / recommend.html / holdings.html / backtest.html / meta
    反弹时仓位不低于下限（不回吐）；偏离 ≥ +5% 解锁
 4. **ADX 趋势闸门（实验开关，默认关闭）**：开启后 ADX>25 视为趋势市冻结调仓；
    回测显示在低波 ETF 上过度冻结拖累收益，故默认关闭
-5. **回测口径**：交易触发 = dev 每跨越一个 grid_step 边界才调仓；收益 = 价格 + 日股息；
-   单边成本 0.05%；基准 = 满仓买入持有（含股息）；指标含年化/波动/夏普/最大回撤/卡玛/超额
+5. **回测口径**：交易触发 = dev 每跨越一个 grid_step 边界才调仓；
+   收益 = 价格 + 日股息（真实分红序列映射除息日，个股 2026-08-07 起）；
+   单边成本 = 佣金 0.05% + 滑点 0.05%；基准 = 满仓买入持有（含股息）；
+   指标含年化/波动/夏普/最大回撤/卡玛/超额
 6. **优化前后回测对比 + 近半年窗口校验**：见 [docs/project-review-2026-08-06.md](docs/project-review-2026-08-06.md)
+7. **walk-forward 参数敏感性**：`python scripts/walk_forward.py`
+   31 只 × 3 折 × 10 参数组合，训练段选参 + OOS 评估，
+   结果见 data/walk_forward_data.json（结论：所有组合样本外均跑输持有，
+   网格定位为辅助仓位管理工具）
 
 ## 项目审查与优化报告
 

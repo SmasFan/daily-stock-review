@@ -149,7 +149,7 @@ def run_review(args):
         v[2].sector = sector_map.get(code, "")
 
     print("== 生成复盘数据 ==")
-    breadth = mb.fetch_market_breadth(use_cache=not args.offline)
+    breadth = mb.fetch_market_breadth(use_cache=True)
     if breadth and breadth.get("total"):
         print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
               f"平{breadth['flat']} 共{breadth['total']} 源={breadth.get('source')}")
@@ -389,7 +389,7 @@ def run_recommend(args):
                              sectors=sector_recs, sector_stocks=sector_stocks,
                              grid_signals=grid_signals,
                              temperature=rp._market_temperature(screen_items,
-                                                                mb.fetch_market_breadth(use_cache=not args.offline)))
+                                                                mb.fetch_market_breadth(use_cache=True)))
     p = rp.save("recommend_data.json", rec)
     n_picks = sum(len(v) for v in sector_stocks.values())
     print(f"   {p}  自选 Top{len(picks)} + 大盘 Top{len(market_picks)} + 板块 {len(sector_recs)} + 板块选股 {n_picks}")
