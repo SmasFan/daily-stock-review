@@ -535,8 +535,9 @@ def build_institution_data(codes: List[str]) -> Dict:
 
 def save_institution_data(data: Dict) -> str:
     path = os.path.join(BASE_DIR, "data", "institution_data.json")
+    # 紧凑序列化：线上加载更快
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False)
     return path
 
 
