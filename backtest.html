@@ -31,6 +31,14 @@
   .bt-hidden { display:none; }
   /* 调仓记录 */
   .trade-noop td { color:var(--text-2); }
+  /* 周期切换按钮 */
+  .bt-range { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .bt-range-btn { border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+    border-radius:8px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer; }
+  .bt-range-btn:hover { background:#f1e4d8; }
+  .bt-range-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  /* 区间收益：基准对照小字 */
+  .bt-bm { display:block; font-size:10px; font-weight:600; color:var(--text-2); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -69,10 +77,11 @@
         return `<tr>
           <td>${name}${s.price_only ? '<span class="sec-chip" style="margin-left:6px">价格锚</span>' : ''}</td>
           ${WINDOWS.map(w => {
-            const r = (wr[w] || {}).strategy;
-            return r == null
-              ? '<td style="color:var(--text-2)">--</td>'
-              : `<td class="${RV.fmt.cls(r)}">${RV.fmt.pct(r * 100, 1)}</td>`;
+            const wrw = wr[w] || {};
+            const r = wrw.strategy, b = wrw.benchmark;
+            if (r == null) return '<td style="color:var(--text-2)">--</td>';
+            const cls = b == null ? '' : (r > b ? 'up' : (r < b ? 'down' : 'neutral'));
+            return `<td><span class="${RV.fmt.cls(r)}">${RV.fmt.pct(r * 100, 1)}</span>${b == null ? '' : `<span class="bt-bm ${cls}">基准 ${RV.fmt.pct(b * 100, 1)}</span>`}</td>`;
           }).join('')}
         </tr>`;
       }).join('');
@@ -87,7 +96,7 @@
           <tbody>${rows}${retShowAll ? '' : (rest > 0 ? `<tr class="bt-hidden-marker"><td colspan="${WINDOWS.length + 1}" style="color:var(--text-2);text-align:center;padding:10px">… 还有 ${rest} 只已折叠 …</td></tr>` : '')}</tbody>
         </table></div>
         ${btn}
-        <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('arrows-left-right', 'fa-xs')} 左列固定，可左右滑动查看不同时间段收益；绿色=正收益，红色=负收益。</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('arrows-left-right', 'fa-xs')} 左列固定，可左右滑动查看不同时间段收益；绿色=策略跑赢基准，红色=跑输基准，主数字=策略收益，下方小字=买入持有基准。</div>
       </div>`;
     }
 
@@ -145,22 +154,35 @@
       </div>`;
     }
 
-    // ===== 净值图表：网格净值+基准+收盘价+仓位副图+买卖点，默认最近1个月、可拉到3年 =====
+    // ===== 净值图表：网格净值+基准+收盘价+估值锚+仓位副图+买卖点，默认最近1个月、可拉到3年 =====
     const chartPool = [];
+    const RANGES = [['近1月', 22], ['近3月', 66], ['近6月', 132], ['近1年', 250], ['全部', 0]];
     function eqChart(stock, id) {
       const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
-      const close = stock.close || [], pos = stock.position || [];
+      const close = stock.close || [], pos = stock.position || [], anchor = stock.anchor || [];
       const trades = stock.trades || [];
       if (eq.length < 2) return '';
       const wrapId = 'eq-' + id + '-' + Math.random().toString(36).slice(2, 7);
+      const btnId = 'rg-' + id + '-' + Math.random().toString(36).slice(2, 7);
       const idxMap = {};
       dates.forEach((dd, i) => { idxMap[dd] = i; });
       const marks = trades.filter(t => t.price != null && t.date in idxMap);
       const buyPts = marks.filter(t => t.side === 'buy').map(t => [dates.indexOf(t.date), t.price, t.date]);
       const sellPts = marks.filter(t => t.side === 'sell').map(t => [dates.indexOf(t.date), t.price, t.date]);
-      // 默认时间轴：最近一个月（约 22 个交易日），slider 可回拉 3 年
+      // 默认时间轴：最近一个月（约 22 个交易日），按钮/滑块可切换与回拉
       const LOOKBACK = 22;
       const startPct = Math.max(0, (dates.length - LOOKBACK) / dates.length * 100);
+      const anchorLine = {
+        name: '估值锚', type: 'line', data: anchor, yAxisIndex: 1, showSymbol: false,
+        lineStyle: { width: 1, color: '#f59e0b', type: 'dashed', opacity: 0.7 },
+        itemStyle: { color: '#f59e0b' }, tooltip: { show: false }
+      };
+      const rangeBtns = RANGES.map(([label, days], i) =>
+        `<button class="bt-range-btn ${i === 0 ? 'active' : ''}" data-i="${i}" data-days="${days}">${label}</button>`).join('');
+      const setZoom = (chart, days) => {
+        const start = days > 0 ? Math.max(0, (dates.length - days) / dates.length * 100) : 0;
+        chart.setOption({ dataZoom: [{ start, end: 100 }, { start, end: 100 }] });
+      };
       const opt = {
         animation: false,
         tooltip: {
@@ -173,12 +195,13 @@
             const px = close[i] != null ? close[i].toFixed(2) : '--';
             const pv = pos[i] != null ? (pos[i] * 100).toFixed(1) + '%' : '--';
             let lines = [`<b>${dt}</b>`, `网格净值: <b>${eqV}</b>`, `基准(持有): ${bmV}`, `收盘价: ${px}`, `仓位: ${pv}`];
+            if (anchor[i] != null) lines.push(`估值锚: ${anchor[i].toFixed(2)}（偏离 ${dev[i] != null ? (dev[i] * 100).toFixed(1) + '%' : '--'}）`);
             const t = marks.find(x => x.date === dt);
             if (t) lines.push(t.side === 'buy' ? '🟢 买入 @ ' + t.price : '🔴 卖出 @ ' + t.price);
             return lines.join('<br/>');
           }
         },
-        legend: { data: ['网格策略', '买入持有'], textStyle: { color: '#6b6258' } },
+        legend: { data: ['网格策略', '买入持有', '估值锚'], textStyle: { color: '#6b6258' } },
         grid: [
           { left: 70, right: 74, top: 36, height: '52%' },
           { left: 70, right: 74, top: '72%', height: '14%' }
@@ -212,6 +235,7 @@
             lineStyle: { width: 1, color: '#d6cbbd', opacity: 0.8 }, itemStyle: { color: '#d6cbbd' },
             tooltip: { show: false }
           },
+          anchorLine,
           {
             name: '仓位', type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: pos, showSymbol: false,
             lineStyle: { width: 1.4, color: '#60a5fa' }, itemStyle: { color: '#60a5fa' },
@@ -234,9 +258,17 @@
           chart.setOption(opt);
           chartPool.push(chart);
           window.addEventListener('resize', () => chart.resize());
+          const btnBox = document.getElementById(btnId);
+          if (btnBox) btnBox.querySelectorAll('.bt-range-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              btnBox.querySelectorAll('.bt-range-btn').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              setZoom(chart, parseInt(btn.dataset.days || '0', 10));
+            });
+          });
         }
       }, 0);
-      return `<div id="${wrapId}" style="width:100%;height:440px"></div>`;
+      return `<div class="bt-range" id="${btnId}">${rangeBtns}</div><div id="${wrapId}" style="width:100%;height:440px"></div>`;
     }
 
     function strategyExplain() {
@@ -252,13 +284,36 @@
       </div>`;
     }
 
+    // ===== 绩效指标卡：summary 里的核心指标 =====
+    function perfCards(stock) {
+      const s = stock.summary || {};
+      if (!s || s.total_return == null) return '';
+      const cls = v => RV.fmt.cls(v);
+      const cards = [
+        RV.ui.metric(RV.fmt.pct(s.total_return * 100, 1), '总收益', cls(s.total_return), 'arrow-trend-up'),
+        RV.ui.metric(RV.fmt.pct(s.annual_return * 100, 2), '年化收益', cls(s.annual_return), 'percent'),
+        RV.ui.metric(s.sharpe != null ? RV.fmt.num(s.sharpe, 2) : '--', '夏普比率', s.sharpe > 0 ? 'up' : 'down', 'gauge-high'),
+        RV.ui.metric(RV.fmt.pct(s.max_drawdown * 100, 1), '最大回撤', 'down', 'arrow-trend-down'),
+        RV.ui.metric(s.calmar != null ? RV.fmt.num(s.calmar, 2) : '--', '卡玛比率', s.calmar > 0 ? 'up' : 'down', 'scale-balanced'),
+        RV.ui.metric(RV.fmt.pct(s.excess_return * 100, 2), '超额收益', cls(s.excess_return), 'chart-line'),
+        RV.ui.metric(RV.fmt.pct(s.benchmark_return * 100, 1), '基准总收益', cls(s.benchmark_return), 'seedling'),
+        RV.ui.metric(s.trade_count != null ? RV.fmt.num(s.trade_count, 0) : '--', '交易次数', '', 'repeat'),
+      ];
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>绩效指标 · ${selected}</h2><span class="sec-chip">${s.years != null ? '回测 ' + RV.fmt.num(s.years, 1) + ' 年' : ''} · 平均仓位 ${s.avg_position != null ? RV.fmt.num(s.avg_position * 100, 0) + '%' : '--'} · 网格步长 ${s.grid_step != null ? RV.fmt.pct(s.grid_step * 100, 2) : '--'}</span></div>
+        <div class="metric-grid">${cards.join('')}</div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('circle-info', 'fa-xs')} 夏普/卡玛比率 &gt; 1 为良好；基准=满仓买入持有。指标基于回测区间，仅供参考。</div>
+      </div>`;
+    }
+
     function render() {
       const stock = selected ? stocks[selected] : null;
       app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
         + targetSidebar()
         + (stock ? tradesSection(stock) : '')
         + (stock && stock.equity && stock.equity.length > 1
-            ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · ${selected}</h2><span class="sec-chip">默认最近1个月 · 拖动时间轴可回看3年</span></div>${eqChart(stock, 'eq')}</div>` : '')
+            ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · ${selected}</h2><span class="sec-chip">默认近1月 · 可切换近1年/全部</span></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('location-crosshairs', 'fa-xs')} 橙色虚线=估值锚（均值线），收盘价偏离锚点越远，网格买卖档位越密集。</div></div>` : '')
+        + perfCards(stock)
         + returnTable()
         + strategyExplain()
         + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
