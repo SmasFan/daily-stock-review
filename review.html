@@ -25,7 +25,7 @@
     (d.items || []).sort(byStrength);
     (d.market_items || []).sort(byStrength);
 
-    // ===== 大盘指数模块（方块卡片，英文简写，背景按涨跌着色） =====
+    // ===== 大盘指数模块（2026-08-07 参照推荐页新样式：涨跌强度着色 + 图标 + 评估卡 + 点击弹详情） =====
     const IDX_SHORT = {
       '上证指数': 'SH',
       '深证成指': 'SZ',
@@ -36,15 +36,72 @@
       '纳斯达克': 'NDX',
       '标普500': 'S&P',
     };
-    const idxCards = (d.indices || []).map(i => {
-      const cls = RV.fmt.cls(i.change_pct);
+    const IDX_ICON = {
+      '上证指数': 'landmark',
+      '深证成指': 'building-columns',
+      '创业板指': 'rocket',
+      '沪深300': 'chart-line',
+      '恒生指数': 'city',
+      '道琼斯': 'building',
+      '纳斯达克': 'microchip',
+      '标普500': 'star',
+    };
+    // 扁平配色：柔和红涨绿跌 + 强度分级（与推荐页一致）
+    const IDX_PALETTE = {
+      up: { bg: ['#fef2f2', '#fee2e2', '#fecaca'], tx: ['#dc2626', '#dc2626', '#b91c1c'] },
+      down: { bg: ['#f0fdf4', '#dcfce7', '#bbf7d0'], tx: ['#16a34a', '#16a34a', '#15803d'] },
+      neu: { bg: '#f4f5f7', tx: '#4b5563' },
+    };
+    function idxStyle(change) {
+      if (!change) return { bg: IDX_PALETTE.neu.bg, tx: IDX_PALETTE.neu.tx };
+      const mag = Math.min(Math.abs(change) / 3, 1);   // 3% 封顶
+      const lvl = mag < 0.4 ? 0 : (mag < 0.8 ? 1 : 2);
+      const p = change > 0 ? IDX_PALETTE.up : IDX_PALETTE.down;
+      return { bg: p.bg[lvl], tx: p.tx[lvl] };
+    }
+    const idxCards = (d.indices || []).map((i, idx) => {
+      const s = idxStyle(i.change_pct);
+      const short = IDX_SHORT[i.name] || i.name;
+      const ico = IDX_ICON[i.name] ? RV.ui.icon(IDX_ICON[i.name]) : '';
       return `
-      <div class="idx-card ${cls}">
-        <span class="idx-short">${IDX_SHORT[i.name] || i.name}</span>
-        <span class="idx-card-pct">${RV.fmt.pct(i.change_pct)}</span>
+      <div class="idx-card" data-i="${idx}" style="background:${s.bg};border-top-color:${s.tx}" title="点击查看 ${i.name} 技术详情">
+        <span class="idx-short">${ico} ${short}</span>
+        <span class="idx-card-pct" style="color:${s.tx}">${RV.fmt.pct(i.change_pct)}</span>
         <span class="idx-card-close">${RV.fmt.num(i.close)}</span>
       </div>`;
     }).join('');
+
+    // 大盘评估（市场热度）：涨跌家数 / 平均涨跌 / 买卖信号（与推荐页同口径）
+    function tempColor(score) {
+      if (score >= 70) return '#e74c3c';
+      if (score >= 55) return '#f39c12';
+      if (score >= 40) return '#3498db';
+      return '#27ae60';
+    }
+    function assessCard(tt) {
+      if (!tt || tt.score == null) return '';
+      const c = tempColor(tt.score);
+      return `<div class="idx-assess" style="--ia-color:${c}">
+        <div class="ia-left">
+          <div>
+            <span class="ia-label">${RV.ui.icon('temperature-high', 'fa-xs')} 大盘评估</span>
+            <div class="ia-score-row">
+              <span class="ia-score" style="color:${c}">${tt.score}</span>
+              <span class="ia-tag">${tt.label}</span>
+            </div>
+          </div>
+        </div>
+        <div class="ia-mid">
+          <div class="tempo-bar"><div class="tempo-fill" style="width:${tt.score}%;background:${c}"></div></div>
+          <div class="ia-metrics">
+            <span>${RV.ui.icon('arrow-trend-up', 'fa-xs')} 涨家占比 <b>${tt.breadth != null ? tt.breadth + '%' : '--'}</b></span>
+            <span>${RV.ui.icon('scale-balanced', 'fa-xs')} 平均涨跌 <b class="${RV.fmt.cls(tt.avg_change)}">${RV.fmt.pct(tt.avg_change)}</b></span>
+            <span>${RV.ui.icon('bullseye', 'fa-xs')} 买${tt.bull ?? '--'} / 卖${tt.bear ?? '--'}</span>
+          </div>
+        </div>
+        <span class="ia-hint">${RV.ui.icon('mouse-pointer', 'fa-xs')} 点击指数卡弹出详情</span>
+      </div>`;
+    }
 
     // 指数技术因子卡：对有 factor 数据的指数（含纳指/标普）展示趋势/评分/买卖点位/均线偏离
     function indexFactorCard(i) {
@@ -77,9 +134,17 @@
         </div>
       </div>`;
     }
-    const factorCards = (d.indices || []).filter(i => i.factors).map(indexFactorCard).join('');
-      const indicesHtml = `<div class="section" data-nav="大盘指数" data-nav-icon="chart-column">
-      <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数</h2></div>
+    const factorCards = (d.indices || []).map((i, idx) =>
+      i.factors ? `<div class="idx-factor-card" data-i="${idx}">${indexFactorCard(i)}</div>` : '').join('');
+    const indicesHtml = `<div class="section" data-nav="大盘指数" data-nav-icon="chart-column">
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>大盘指数 · 市场评估</h2></div>
+      ${assessCard(t)}
+      ${d.market_regime && d.market_regime.overheat
+        ? `<div class="regime-banner">
+            <span>${RV.ui.icon('triangle-exclamation', 'fa-xs')} 普涨过热日</span>
+            <span>全市场上涨占比 ${(d.market_regime.breadth_up_ratio * 100).toFixed(0)}%（≥${(d.market_regime.threshold * 100).toFixed(0)}%）</span>
+            <span>仅保留跑赢沪深300(${RV.fmt.pct(d.market_regime.benchmark_change)})的买入信号，${d.market_regime.downgraded_count} 只降为观望</span>
+          </div>` : ''}
       <div class="idx-cards">${idxCards}</div>
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
     </div>`;
@@ -132,6 +197,7 @@
         ['RSI12', RV.fmt.num(r.rsi12, 1) + ' · ' + r.rsi_status, '>70 超买、<30 超卖；超卖加分，超买不得分'],
         ['综合分', r.score + ' → ' + r.signal, '六维求和：趋势+乖离+量能+支撑+MACD+RSI'],
         ['买卖点位', '买' + RV.fmt.num(r.ideal_buy) + '/' + RV.fmt.num(r.secondary_buy) + ' · 损' + RV.fmt.num(r.stop_loss) + ' · 盈' + RV.fmt.num(r.take_profit), 'MA5 理想买点、MA10 次优、MA20 止损、20日高点止盈'],
+        ['资金流', r.fund_flow ? (mf(r.fund_flow.main_net) + ' · 5日' + mf(r.fund_flow.main_net_5d) + ' · 10日' + mf(r.fund_flow.main_net_10d)) : '暂无', '主力=超大单+大单；当日+近5/10日净流入，判断资金是否持续介入'],
       ];
       return rows.map(([k, v, d]) =>
         `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
@@ -139,12 +205,35 @@
     }
     const stockDot = r => RV.ui.infoDot(stockDetail(r), r.name + ' · 评分原因');
 
+    // ===== 资金流（2026-08 新增）：当日主力净流入 + 近5日/近10日累计 =====
+    const mf = (v) => { if (v === null || v === undefined || isNaN(v)) return '--';
+      const neg = v < 0, a = Math.abs(v);
+      return (neg ? '-' : '+') + (a >= 1e8 ? (a / 1e8).toFixed(2) + '亿' : (a >= 1e4 ? (a / 1e4).toFixed(1) + '万' : a.toFixed(0))); };
+    function fundFlowBadge(r) {
+      const f = r.fund_flow;
+      if (!f || f.main_net === null || f.main_net === undefined) return '';
+      return `<span class="ff-badge ${RV.fmt.cls(f.main_net)}" title="主力=超大单+大单；近5日/10日累计${
+        f.cum_source === 'sina_super' ? '（新浪超大单口径）' : ''}">${RV.ui.icon('water', 'fa-xs')} 主力${mf(f.main_net)}</span>`;
+    }
+    function fundFlowDetail(r) {
+      const f = r.fund_flow;
+      if (!f) return '';
+      const row = (k, v, cls = '') => `<div class="it-row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+      return row('主力净流入(当日)', mf(f.main_net) + ' · 占 ' + (f.main_ratio != null ? RV.fmt.pct(f.main_ratio) : '--'), RV.fmt.cls(f.main_net)) +
+        row('超大单 / 大单', mf(f.super_net) + ' / ' + mf(f.big_net), RV.fmt.cls(f.super_net)) +
+        row('中单 / 小单', mf(f.mid_net) + ' / ' + mf(f.small_net)) +
+        row('近5日主力累计', mf(f.main_net_5d), RV.fmt.cls(f.main_net_5d)) +
+        row('近10日主力累计', mf(f.main_net_10d), RV.fmt.cls(f.main_net_10d)) +
+        (f.cum_source === 'sina_super' ? '<div style="color:var(--text-2);font-size:11px;padding-top:4px">近5/10日累计为超大单口径（新浪数据源备用）</div>' : '') +
+        '<div style="color:var(--text-2);font-size:11px;padding-top:4px">主力 = 超大单 + 大单；正=净流入，负=净流出</div>';
+    }
+
     function miniCards(items) {
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
             <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
-            <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
+            <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${fundFlowBadge(r)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
             <span class="date-tag">${r.date}</span>
@@ -315,6 +404,14 @@
           <span class="k">支撑 / 压力</span><span class="v">${RV.fmt.num(r.support)} / ${RV.fmt.num(r.resistance)}</span>
           <span class="k">MACD</span><span class="v">${r.macd_status}</span>
         </div>
+        ${r.fund_flow ? `
+        <div class="fund-flow-line" style="display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:8px;font-size:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:7px 10px">
+          <span>主力 <b class="${RV.fmt.cls(r.fund_flow.main_net)}">${mf(r.fund_flow.main_net)}</b></span>
+          <span>超大单 <b class="${RV.fmt.cls(r.fund_flow.super_net)}">${mf(r.fund_flow.super_net)}</b></span>
+          <span>大单 <b class="${RV.fmt.cls(r.fund_flow.big_net)}">${mf(r.fund_flow.big_net)}</b></span>
+          <span>近5日 <b class="${RV.fmt.cls(r.fund_flow.main_net_5d)}">${mf(r.fund_flow.main_net_5d)}</b></span>
+          <span>近10日 <b class="${RV.fmt.cls(r.fund_flow.main_net_10d)}">${mf(r.fund_flow.main_net_10d)}</b></span>
+        </div>` : ''}
         <div class="points">
           <div class="point"><span class="p-label">理想买点(MA5)</span><span class="p-val">${RV.fmt.num(r.ideal_buy)}</span></div>
           <div class="point"><span class="p-label">次优买点(MA10)</span><span class="p-val">${RV.fmt.num(r.secondary_buy)}</span></div>
@@ -363,6 +460,33 @@
         + cardSec()
         + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';      // 板块展开/收起
       RV.ui.initSidebar();
+      // 大盘指数卡点击：弹出技术详情弹窗（与推荐页一致）
+      function openIdxModal(idx) {
+        const src = app.querySelector(`.idx-factor-card[data-i="${idx}"]`);
+        if (!src) return;
+        const idxObj = (d.indices || [])[idx];
+        const body = src.innerHTML;
+        const overlay = document.createElement('div');
+        overlay.className = 'idx-modal-overlay';
+        overlay.innerHTML = `<div class="idx-modal">
+          <div class="idx-modal-head">
+            <span class="idx-m-name">${RV.ui.icon('chart-line', 'fa-xs')} ${idxObj ? idxObj.name : ''}</span>
+            <span class="idx-m-price ${idxObj ? RV.fmt.cls(idxObj.change_pct) : ''}">${idxObj ? RV.fmt.num(idxObj.close) + ' ' + RV.fmt.pct(idxObj.change_pct) : ''}</span>
+            <button class="idx-modal-close" aria-label="关闭">${RV.ui.icon('xmark')}</button>
+          </div>
+          <div class="idx-modal-body">${body}</div>
+        </div>`;
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+        const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+        const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+        document.addEventListener('keydown', esc);
+      }
+      app.querySelectorAll('.idx-card[data-i]').forEach(c => {
+        c.addEventListener('click', () => openIdxModal(c.getAttribute('data-i')));
+      });
       app.querySelectorAll('.sector-group').forEach(g => {
         g.querySelector('.sector-header').addEventListener('click', ev => {
           if (ev.target.closest('.info-dot')) return;

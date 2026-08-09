@@ -85,6 +85,31 @@ class TestMarketTemperature(unittest.TestCase):
         self.assertEqual(t["label"], "数据不足")
 
 
+class TestBuildReview(unittest.TestCase):
+
+    def test_market_regime_passthrough(self):
+        results = make_results([2.0, -1.0], ["buy", "watch"])
+        regime = {"overheat": True, "threshold": 0.65,
+                  "breadth_up_ratio": 0.8, "breadth_source": "全市场",
+                  "benchmark_change": 1.5, "downgraded_count": 1,
+                  "downgraded": ["S0"], "note": "普涨过热日"}
+        rv = rp.build_review("A股", results, "post", market_regime=regime)
+        self.assertEqual(rv["market_regime"], regime)
+        self.assertTrue(rv["market_regime"]["overheat"])
+
+    def test_market_regime_none(self):
+        results = make_results([1.0], ["buy"])
+        rv = rp.build_review("A股", results, "post")
+        self.assertIsNone(rv["market_regime"])
+
+    def test_review_structure(self):
+        results = make_results([2.0, -1.0], ["buy", "watch"])
+        rv = rp.build_review("A股", results, "post")
+        self.assertEqual(rv["stats"]["total"], 2)
+        self.assertEqual(len(rv["items"]), 2)
+        self.assertEqual(rv["stats"]["strongest"], "S0")
+
+
 class TestTracking(unittest.TestCase):
 
     def test_top10_buys(self):

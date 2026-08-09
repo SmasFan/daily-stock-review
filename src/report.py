@@ -76,13 +76,15 @@ def build_review(market_name: str, analyses: List[az.AnalysisResult],
                  review_type: str = "post",
                  indices: Optional[List[Dict]] = None,
                  market_analyses: Optional[List[az.AnalysisResult]] = None,
-                 breadth: Optional[Dict] = None) -> Dict:
+                 breadth: Optional[Dict] = None,
+                 market_regime: Optional[Dict] = None) -> Dict:
     """生成复盘页数据。
 
     - items: 自选模块分析结果
     - market_items: 大盘模块（从大盘池中选出的标的）
     - indices: 大盘指数表现
     - breadth: 全市场涨跌家数（P1 温度计去偏，None 时回退自选池广度）
+    - market_regime: 普涨过热日闸门结果（与推荐页口径一致，None 表示未触发）
     """
     rows = [a.to_dict() for a in analyses]
     temp = _market_temperature(analyses, breadth)
@@ -103,6 +105,7 @@ def build_review(market_name: str, analyses: List[az.AnalysisResult],
         "items": rows,
         "market_items": market_rows,
         "market_temperature": market_temp,
+        "market_regime": market_regime,
     }
 
 

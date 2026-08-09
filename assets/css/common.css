@@ -101,6 +101,8 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 /* 徽章 */
 .pct-badge { font-weight:700; font-variant-numeric:tabular-nums; }
 .pct-badge.up { color:var(--up); } .pct-badge.down { color:var(--down); }
+.ff-badge { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ff-badge.up { color:var(--up); } .ff-badge.down { color:var(--down); }
 .signal-badge { padding:4px 10px; border-radius:8px; font-size:12px; font-weight:700; white-space:nowrap; }
 .signal-badge.s-strong_buy, .signal-badge.s-buy { background:var(--buy-bg); color:var(--buy); }
 .signal-badge.s-watch, .signal-badge.s-hold, .signal-badge.s-wait { background:var(--watch-bg); color:var(--watch); }

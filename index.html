@@ -42,13 +42,15 @@
   document.getElementById('app').innerHTML = RV.ui.header('每日复盘工作台', '', '');
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null;
+  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
   try { metals = await RV.API.metals(); } catch (e) {}
   try { holdings = await RV.API.holdings(); } catch (e) {}
   try { tracking = await RV.API.fetch('tracking_data.json'); } catch (e) {}
+  try { inst = await RV.API.institution(); } catch (e) {}
+  try { strat = await RV.API.fetch('strategy_results.json'); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -63,6 +65,18 @@
       <div class="e-icon">${RV.ui.icon('bullseye')}</div><h3>每日推荐</h3>
       <p>多因子横截面打分 + 板块轮动，输出 Top 推荐与买卖点位</p>
       ${rec && rec.picks && rec.picks[0] ? `<div class="e-stat">${RV.ui.icon('crown', 'fa-xs')} 首推 ${rec.picks[0].name}（${rec.picks[0].rating} · ${rec.picks[0].total_score}分）</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="institution.html">
+      <div class="e-icon">${RV.ui.icon('landmark')}</div><h3>资金与机构动向</h3>
+      <p>全市场主力资金、板块/个股资金排行、龙虎榜机构席位、国家队与机构持股扫描</p>
+      ${inst && inst.overview ? `<div class="e-stat">${RV.ui.icon('arrow-trend-up', 'fa-xs')} 两市主力 ${inst.overview.main_net != null ? RV.fmt.amount(inst.overview.main_net) : '--'} · ${RV.ui.icon('landmark', 'fa-xs')} 机构命中 ${Object.values((inst.institution || {}).summary || {}).reduce((a, b) => a + b, 0)} 条</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="strategy.html">
+      <div class="e-icon">${RV.ui.icon('flask-vial')}</div><h3>策略统计</h3>
+      <p>5年回测：龙虎榜机构/国家队增持/普涨过热等策略成功率与收益 + 今日资金动向</p>
+      ${strat && strat.A_1d ? `<div class="e-stat">${RV.ui.icon('landmark', 'fa-xs')} 龙虎榜T+1胜率 ${(strat.A_1d.win_rate * 100).toFixed(0)}% · ${RV.ui.icon('shield-halved', 'fa-xs')} 国家队季度 ${strat.E_national && strat.E_national.trades ? '+' + (strat.E_national.avg_ret * 100).toFixed(1) + '%/季' : '--'}</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="backtest.html">

@@ -15,6 +15,7 @@
     backtest() { return this.fetch('backtest_data.json'); },
     holdings() { return this.fetch('holdings_data.json'); },
     metals() { return this.fetch('metals_data.json'); },
+    institution() { return this.fetch('institution_data.json'); },
   };
 
   /* ---------- 格式化工具 ---------- */
@@ -51,6 +52,8 @@
       const navs = [
         ['review', '复盘', 'clipboard-list', 'review.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
+        ['institution', '资金', 'landmark', 'institution.html'],
+        ['strategy', '策略', 'flask-vial', 'strategy.html'],
         ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
         ['tracking', '跟踪', 'route', 'tracking.html'],

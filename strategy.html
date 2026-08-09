@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>策略统计 · A股</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+  .st-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .st-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
+  .st-num { font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .st-label { font-size:12px; color:var(--text-2); margin-top:3px; }
+  .st-tag { display:inline-block; padding:3px 9px; border-radius:6px; font-size:12px; font-weight:700; margin-left:6px; }
+  .st-tag.eff { background:var(--buy-bg); color:var(--buy); }
+  .st-tag.bad { background:var(--sell-bg); color:var(--sell); }
+  .st-tag.mid { background:var(--watch-bg); color:var(--watch); }
+  .st-note { font-size:11px; color:var(--text-2); line-height:1.7; margin-top:10px; }
+  .st-verdict { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.8; margin-top:12px; }
+  .st-verdict b { color:var(--accent); }
+  .hold-compare { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
+  @media (max-width:760px) { .hold-compare { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const s = await RV.API.fetch('strategy_results.json');
+    const inst = await RV.API.institution();
+    const cls = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
+    const pct1 = v => RV.fmt.pct(v * 100, 1);
+    const pct2 = v => RV.fmt.pct(v * 100, 2);
+
+    // ===== 1. 策略总览 =====
+    const A = [['A_1d','持有1日'],['A_5d','持有5日'],['A_10d','持有10日'],['A_20d','持有20日']];
+    const overviewRows = A.map(([k, hd]) => {
+      const r = s[k];
+      if (!r || !r.trades) return '';
+      const verdict = r.win_rate >= 0.5 && r.avg_ret > 0 ? '<span class="st-tag eff">有效</span>' :
+                      (r.win_rate < 0.45 ? '<span class="st-tag bad">失效</span>' : '<span class="st-tag mid">中性</span>');
+      return `<tr><td>龙虎榜机构净买入 → ${hd}</td><td>${r.trades}</td>
+        <td class="${cls(r.win_rate - 0.5)}">${(r.win_rate * 100).toFixed(1)}%</td>
+        <td class="${cls(r.avg_ret)}">${pct2(r.avg_ret)}</td>
+        <td class="${cls(r.median_ret)}">${pct2(r.median_ret)}</td>
+        <td class="${cls(r.day_annual)}">${pct1(r.day_annual)}</td><td>${verdict}</td></tr>`;
+    }).join('');
+    const E = s.E_national;
+    const C = s.C_ma20;
+    const overviewHtml = `
+      <div class="section" data-nav="策略总览" data-nav-icon="table-list">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>策略回测总览（2021-08 ~ 2026-08 · 5年）</h2></div>
+        <div class="st-card" style="overflow-x:auto">
+          <table class="rank-table" style="min-width:720px">
+            <thead><tr><th>策略</th><th>样本数</th><th>胜率</th><th>平均单笔</th><th>中位单笔</th><th>5年组合年化*</th><th>判定</th></tr></thead>
+            <tbody>${overviewRows}${E && E.trades ? `
+            <tr><td>国家队(社保/汇金/证金/养老)季度增持/新进 → 持有一季度</td><td>${E.trades}</td>
+              <td class="${cls(E.win_rate - 0.5)}">${(E.win_rate * 100).toFixed(1)}%</td>
+              <td class="${cls(E.avg_ret)}">${pct2(E.avg_ret)}</td>
+              <td class="${cls(E.median_ret)}">${pct2(E.median_ret)}</td>
+              <td class="${cls(E.day_annual)}">${pct1(E.day_annual)}</td>
+              <td><span class="st-tag eff">有效</span></td></tr>` : ''}${C ? `
+            <tr><td>沪深300 MA20 趋势择时（对比满仓）</td><td>${C.trades}</td>
+              <td>${(C.strategy.win * 100).toFixed(0)}% / ${(C.benchmark.win * 100).toFixed(0)}%</td>
+              <td colspan="2" style="color:var(--text-2)">择时 ${pct1(C.strategy.cum)} vs 满仓 ${pct1(C.benchmark.cum)}</td>
+              <td class="down">${pct1(C.strategy.annual)}</td>
+              <td><span class="st-tag bad">无效</span></td></tr>` : ''}</tbody>
+          </table>
+          <div class="st-note">* 年化为「每日等权组合」口径（当日信号组等权、次日轮换），用于横向比较信号强弱；实际年化需扣除资金占用与滑点。
+          单笔收益已含双边 0.1% 成本。主力资金流选股策略因历史资金流接口限流无法回测（未列）。</div>
+        </div>
+      </div>`;
+
+    // ===== 2. 龙虎榜机构策略详情 =====
+    function holdCard(k, hd, note) {
+      const r = s[k];
+      if (!r || !r.trades) return '';
+      return `<div class="st-card">
+        <div style="font-size:13px;font-weight:800">持有 ${hd}${note || ''}</div>
+        <div class="st-grid" style="margin-top:10px">
+          <div><div class="st-num ${cls(r.avg_ret)}">${pct2(r.avg_ret)}</div><div class="st-label">平均单笔收益</div></div>
+          <div><div class="st-num">${(r.win_rate * 100).toFixed(1)}%</div><div class="st-label">胜率</div></div>
+          <div><div class="st-num ${cls(r.day_annual)}">${pct1(r.day_annual)}</div><div class="st-label">组合年化</div></div>
+          <div><div class="st-num ${cls(r.best)}">${pct2(r.best)}</div><div class="st-label">最好 / 最差 ${pct2(r.worst)}</div></div>
+        </div></div>`;
+    }
+    const A_1d = s.A_1d;
+    const bbHtml = `
+      <div class="section" data-nav="龙虎榜机构" data-nav-icon="landmark">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('landmark')}</span><h2>龙虎榜机构净买入策略 · 持有期对比</h2></div>
+        <div class="hold-compare">${A.map(([k, hd]) => holdCard(k, hd)).join('')}</div>
+        <div class="st-verdict">
+          <b>结论：机构净买入是「消息兑现型」短线信号。</b>持有 1 日胜率 56.9%、平均 +1.48%（${s.A_1d ? s.A_1d.trades : 0} 笔样本）；
+          持有 5 日已衰减到 +0.42%，10 日转负，20 日胜率仅 38.1%、平均 -1.25%。
+          机构上榜买入后 <b>次日冲高即可兑现，绝不长持</b>。
+          ${A_1d && A_1d.sample ? '近期样例（T+1）：' + A_1d.sample.slice(0, 5).map(t => t.code + '(' + (t.ret * 100 >= 0 ? '+' : '') + (t.ret * 100).toFixed(1) + '%)').join('、') : ''}
+        </div>
+      </div>`;
+
+    // ===== 3. 国家队增持策略 =====
+    const natHtml = `
+      <div class="section" data-nav="国家队增持" data-nav-icon="shield-halved">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('shield-halved')}</span><h2>国家队季度增持 / 新进策略</h2></div>
+        <div class="st-grid">
+          <div class="st-card"><div class="st-num up">${E ? (E.avg_ret * 100).toFixed(2) : '--'}%</div><div class="st-label">平均单季收益（含成本，60交易日）</div></div>
+          <div class="st-card"><div class="st-num">${E ? (E.win_rate * 100).toFixed(1) : '--'}%</div><div class="st-label">单季胜率</div></div>
+          <div class="st-card"><div class="st-num up">${E ? pct1(E.day_annual) : '--'}</div><div class="st-label">季度调仓组合年化</div></div>
+          <div class="st-card"><div class="st-num">${E ? E.trades : '--'}</div><div class="st-label">5年样本数（季度信号）</div></div>
+        </div>
+        ${E && E.sample ? `
+        <div class="st-card" style="margin-top:12px;overflow-x:auto">
+          <table class="rank-table" style="min-width:640px"><thead><tr><th>股票</th><th>机构</th><th>变动</th><th>信号日</th><th>单季收益</th></tr></thead><tbody>
+          ${E.sample.map(t => `<tr><td>${t.code}</td><td>${t.holder}</td><td>${t.chg}</td><td>${t.date}</td>
+            <td class="${cls(t.ret)}">${pct2(t.ret)}</td></tr>`).join('')}</tbody></table>
+        </div>` : ''}
+        <div class="st-verdict">
+          <b>结论：国家队（社保/汇金/证金/养老金）增持/新进是有效的中线信号。</b>791 个季度信号平均 +6.98%/季，胜率 51.2%，
+          显著优于市场。适用周期为一季度（约 60 交易日）。注意：回测按季报截止日买入，实际披露滞后约一个月，实盘收益略低于回测。
+        </div>
+      </div>`;
+
+    // ===== 4. 普涨过热统计 =====
+    const th = (s.D_overheat || {}).thresholds || {};
+    const overheatRows = Object.entries(th).map(([k, t]) => {
+      const f1 = t.fwd1, f5 = t.fwd5, f10 = t.fwd10;
+      return `<tr><td>≥${(t.threshold * 100).toFixed(1)}%</td><td>${(t.days || []).length}</td>
+        <td class="${cls(f1.avg)}">${pct2(f1.avg)}<br><small>胜率${(f1.win * 100).toFixed(0)}%</small></td>
+        <td class="${cls(f5.avg)}">${pct2(f5.avg)}<br><small>胜率${(f5.win * 100).toFixed(0)}%</small></td>
+        <td class="${cls(f10.avg)}">${pct2(f10.avg)}<br><small>胜率${(f10.win * 100).toFixed(0)}%</small></td></tr>`;
+    }).join('');
+    const overheatHtml = `
+      <div class="section" data-nav="普涨过热" data-nav-icon="fire">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('fire')}</span><h2>普涨过热日统计（上证指数大涨后指数表现）</h2></div>
+        <div class="st-card" style="overflow-x:auto">
+          <table class="rank-table" style="min-width:560px">
+            <thead><tr><th>上证单日涨幅</th><th>过热日数</th><th>后1日</th><th>后5日</th><th>后10日</th></tr></thead>
+            <tbody>${overheatRows}</tbody>
+          </table>
+          <div class="st-verdict">
+            <b>结论：指数层面普涨后惯性向上而非回踩</b>（≥2% 时后5日平均 +1.48%、胜率 64%；≥3% 后1日胜率 86%）。
+            但个股层面普涨日买入成本高，普涨次日分歧仍是常态，「普涨降级闸门」保留合理性——不必恐慌减仓，也不宜追高。
+          </div>
+        </div>
+      </div>`;
+
+    // ===== 5. 今日资金与机构动向（实时） =====
+    const o = inst.overview || {};
+    const mf = (v) => { if (v === null || v === undefined || isNaN(v)) return '--';
+      const neg = v < 0, a = Math.abs(v);
+      return (neg ? '-' : '+') + (a >= 1e8 ? (a / 1e8).toFixed(2) + '亿' : (a >= 1e4 ? (a / 1e4).toFixed(1) + '万' : a.toFixed(0))); };
+    function rankMini(rows, n, extra) {
+      if (!rows || !rows.length) return '<div class="empty">暂无</div>';
+      return `<table class="rank-table"><tbody>${rows.slice(0, n).map((r, i) => `<tr>
+        <td>${i + 1}</td><td>${r.name}</td>
+        <td class="num ${cls(r.main_net)}">${mf(r.main_net)}</td>
+        ${extra ? `<td class="num ${cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
+        <td class="num ${cls(r.main_ratio)}">${r.main_ratio != null ? RV.fmt.pct(r.main_ratio) : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+    }
+    const flowHtml = `
+      <div class="section" data-nav="今日资金" data-nav-icon="chart-column">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>今日资金与机构动向（${inst.generatedAt || ''}）</h2></div>
+        <div class="st-grid">
+          <div class="st-card"><div class="st-num ${cls(o.main_net)}">${o.main_net != null ? mf(o.main_net) : '--'}</div><div class="st-label">两市主力净流入（行业求和）</div></div>
+          <div class="st-card"><div class="st-num">${o.inflow_sectors ?? '--'} / ${o.outflow_sectors ?? '--'}</div><div class="st-label">净流入 / 净流出板块</div></div>
+          <div class="st-card"><div class="st-num">${inst.scanned_codes ?? '--'}</div><div class="st-label">机构持股扫描标的数（${Object.values((inst.institution || {}).summary || {}).reduce((a, b) => a + b, 0)} 条命中）</div></div>
+          ${inst.billboard && inst.billboard.date ? `<div class="st-card"><div class="st-num">${inst.billboard.date}</div><div class="st-label">龙虎榜机构席位（${(inst.billboard.net_list || []).length} 只）</div></div>` : ''}
+        </div>
+        <div class="two-col" style="margin-top:12px">
+          <div class="st-card"><div style="font-size:13px;font-weight:800;margin-bottom:6px">${RV.ui.icon('industry')} 行业主力净流入 Top10</div>${rankMini(inst.sector && inst.sector.industry && inst.sector.industry.inflow, 10, true)}</div>
+          <div class="st-card"><div style="font-size:13px;font-weight:800;margin-bottom:6px">${RV.ui.icon('industry')} 行业主力净流出 Top10</div>${rankMini(inst.sector && inst.sector.industry && inst.sector.industry.outflow, 10, true)}</div>
+        </div>
+        <div class="two-col" style="margin-top:12px">
+          <div class="st-card"><div style="font-size:13px;font-weight:800;margin-bottom:6px">${RV.ui.icon('ranking-star')} 个股主力净流入 Top20</div>${rankMini(inst.stock_rank && inst.stock_rank.inflow, 20, true)}</div>
+          <div class="st-card"><div style="font-size:13px;font-weight:800;margin-bottom:6px">${RV.ui.icon('ranking-star')} 个股主力净流出 Top20</div>${rankMini(inst.stock_rank && inst.stock_rank.outflow, 20, true)}</div>
+        </div>
+        <div class="st-card" style="margin-top:12px">
+          <div style="font-size:13px;font-weight:800;margin-bottom:6px">${RV.ui.icon('landmark')} 龙虎榜机构净买入（${(inst.billboard || {}).date || '--'}）</div>
+          <div class="two-col">
+            <div>${rankMini((inst.billboard || {}).net_list ? inst.billboard.net_list.filter(x => x.inst_net > 0).slice(0, 10) : [], 10)}</div>
+            <div>${rankMini((inst.billboard || {}).net_list ? inst.billboard.net_list.filter(x => x.inst_net < 0).slice(0, 10) : [], 10)}</div>
+          </div>
+        </div>
+      </div>`;
+
+    app.innerHTML = RV.ui.header('策略统计', '5年回测成功率 · 收益 · 今日资金与机构动向', 'strategy', s.generatedAt || inst.generatedAt)
+      + overviewHtml + bbHtml + natHtml + overheatHtml + flowHtml
+      + '<footer>主力=超大单+大单 · 回测含双边0.1%成本 · 仅供学习研究，不构成投资建议</footer>';
+    RV.ui.initSidebar();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('策略统计', '', 'strategy') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

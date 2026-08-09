@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-每日复盘统一入口（v2：自选 + 大盘双模块）。
+每日复盘统一入口（v3：自选 + 大盘双模块 + 资金流/机构动向）。
 
 用法：
-  python run_review.py --mode review       # 盘后：复盘 + 回测（自选+大盘）
+  python run_review.py --mode review       # 盘后：复盘 + 回测（自选+大盘，含个股资金流）
   python run_review.py --mode recommend    # 开盘：推荐 + 当日购买原因
   python run_review.py --mode metals       # 有色金属期货行情 + 分析
+  python run_review.py --mode institution  # 资金与机构动向页（主力资金/板块/龙虎榜机构/国家队持股）
   python run_review.py --mode all          # 全部（默认）
 
   python run_review.py --top 15
   python run_review.py --offline
   python run_review.py --no-backtest
+  python run_review.py --no-fundflow       # 跳过个股资金流（省时）
 """
 import argparse
 import json
@@ -32,6 +34,7 @@ from src import report as rp
 from src import futures as fm
 from src import stock_pool as sp
 from src import market_breadth as mb
+from src import fund_flow as ff
 from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES, US_INDEX_CODES
 
 
@@ -148,14 +151,72 @@ def run_review(args):
     for code, v in market_pool.items():
         v[2].sector = sector_map.get(code, "")
 
-    print("== 生成复盘数据 ==")
+    # 资金流（2026-08 新增）：自选+大盘池当日主力净流入 + 近5/10日累计
+    if not args.no_fundflow:
+        print("== 个股资金流（主力=超大单+大单）==")
+        fflow_codes = list(dict.fromkeys(list(pool) + list(market_pool)))
+        fflows = ff.fetch_fflow_batch(fflow_codes)
+        ok = 0
+        for code, v in pool.items():
+            if code in fflows:
+                v[2].fund_flow = fflows[code]
+                ok += 1
+        for code, v in market_pool.items():
+            if code in fflows:
+                v[2].fund_flow = fflows[code]
+                ok += 1
+        print(f"   资金流成功 {ok} / {len(fflow_codes)} 只")
+        del fflows
+
+    # 普涨过热日闸门（2026-08-07，口径与推荐模块一致）：全市场/自选池上涨占比 ≥65%
+    # 视为过热日，当日未跑赢沪深300 的买入信号降为观望，避免普涨日复盘买入信号泛滥。
+    # 全市场数据缺失时退用自选池上涨占比；两者任一超阈即触发。
     breadth = mb.fetch_market_breadth(use_cache=True)
     if breadth and breadth.get("total"):
         print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
               f"平{breadth['flat']} 共{breadth['total']} 源={breadth.get('source')}")
+    idx_chg = None
+    for ix in indices:
+        if ix.get("code") == "sh000300" and ix.get("change_pct") is not None:
+            idx_chg = ix["change_pct"]
+            break
+    pool_up = sum(1 for a in analyses if a.change_pct > 0)
+    pool_ratio = pool_up / len(analyses) if analyses else None
+    mkt_ratio = None
+    if breadth and breadth.get("total"):
+        mkt_ratio = breadth["up"] / breadth["total"]
+    b_up_ratio = None
+    src_ratio = ""
+    if mkt_ratio is not None and pool_ratio is not None:
+        b_up_ratio = max(mkt_ratio, pool_ratio)
+        src_ratio = "全市场" if mkt_ratio >= pool_ratio else "自选池"
+    elif mkt_ratio is not None:
+        b_up_ratio, src_ratio = mkt_ratio, "全市场"
+    elif pool_ratio is not None:
+        b_up_ratio, src_ratio = pool_ratio, "自选池"
+    regime = scr.apply_market_regime(analyses, b_up_ratio, idx_chg)
+    regime_m = scr.apply_market_regime(market_analyses, b_up_ratio, idx_chg)
+    if regime["overheat"]:
+        print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
+              f"{len(regime['downgraded']) + len(regime_m['downgraded'])} 只"
+              f"未跑赢沪深300({idx_chg:+.2f}%)降为观望")
+
+    print("== 生成复盘数据 ==")
     review = rp.build_review("A股", analyses, "post",
                              indices=indices, market_analyses=market_analyses,
-                             breadth=breadth)
+                             breadth=breadth, market_regime={
+                                 "overheat": regime["overheat"],
+                                 "threshold": regime["threshold"],
+                                 "breadth_up_ratio": regime["breadth_up_ratio"],
+                                 "breadth_source": src_ratio,
+                                 "benchmark_change": regime["benchmark"],
+                                 "downgraded_count": len(regime["downgraded"]) + len(regime_m["downgraded"]),
+                                 "downgraded": regime["downgraded"] + regime_m["downgraded"],
+                                 "note": ("普涨过热日（%s上涨占比≥%.0f%%）：仅保留跑赢沪深300(%.2f%%)的买入信号，"
+                                          "其余降为观望，警惕普涨次日回踩"
+                                          % (src_ratio, regime["threshold"] * 100, idx_chg or 0))
+                                 if regime["overheat"] else None,
+                             })
     p = rp.save("review_data.json", review)
     print(f"   {p}  自选温度 {review['temperature']['score']}({review['temperature']['label']}) "
           f"广度源={review['temperature'].get('source')}")
@@ -475,11 +536,24 @@ def run_metals():
           f"领跌 {s['laggard']}({s['laggard_change']:+.2f}%)")
 
 
+def run_institution(args):
+    """生成资金与机构动向页数据：全市场资金概览 + 板块/个股排行 + 龙虎榜机构 + 国家队/机构持股扫描。"""
+    print("== 机构资金动向 ==")
+    codes = list(dict.fromkeys(WATCHLIST_CODES + MARKET_POOL_CODES))
+    data = ff.build_institution_data(codes)
+    p = ff.save_institution_data(data)
+    o = data.get("overview") or {}
+    print(f"   {p}  全市场主力净流入 {o.get('main_net', 0) / 1e8:.1f}亿 · "
+          f"板块扫描 {len(codes)} 只 · 机构持股命中 {sum((data.get('institution') or {}).get('summary', {}).values())} 条")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "tracking", "all"], default="all")
+    ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "tracking",
+                                       "institution", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
+    ap.add_argument("--no-fundflow", action="store_true")
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--eval-window", type=int, default=10)
     args = ap.parse_args()
@@ -492,6 +566,8 @@ def main():
         run_holdings()
     if args.mode in ("metals", "all"):
         run_metals()
+    if args.mode in ("institution", "all"):
+        run_institution(args)
     if args.mode == "tracking":
         import build_tracking
         build_tracking.main()

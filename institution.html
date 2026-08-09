@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资金与机构动向 · A股</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+  .ff-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .ff-big { font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .ff-sub { font-size:12px; color:var(--text-2); margin-top:4px; }
+  .ff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  .ff-note { font-size:11px; color:var(--text-2); margin-top:8px; line-height:1.6; }
+  .rank-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .rank-table th { text-align:left; color:var(--text-2); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; white-space:nowrap; }
+  .rank-table td { padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .rank-table td:first-child, .rank-table th:first-child { color:var(--text-2); width:34px; }
+  .rank-table .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .rank-table tr:hover td { background:var(--surface-2); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sec-title { margin:6px 0 10px; font-size:13px; font-weight:700; color:var(--text-2); display:flex; align-items:center; gap:6px; }
+  .sec-title i { color:var(--accent); }
+  @media (max-width:760px) { .two-col { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.fetch('institution_data.json');
+    const o = d.overview || {};
+    const mf = (v) => { if (v === null || v === undefined || isNaN(v)) return '--';
+      const neg = v < 0;
+      const a = Math.abs(v);
+      return (neg ? '-' : '') + (a >= 1e8 ? (a/1e8).toFixed(2) + '亿' : (a >= 1e4 ? (a/1e4).toFixed(1) + '万' : a.toFixed(0))); };
+    const cls = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
+
+    // ===== 全市场主力资金概览 =====
+    const mainNet = o.main_net ?? null;
+    const overviewHtml = `
+      <div class="section" data-nav="全市场概览" data-nav-icon="chart-column">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>全市场主力资金概览</h2></div>
+        <div class="ff-grid">
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">两市主力净流入（${o.basis || '行业板块求和'}）</div>
+            <div class="ff-big ${cls(mainNet)}">${mainNet === null ? '--' : mf(mainNet)}</div>
+            <div class="ff-sub">主力 = 超大单 + 大单 · 正值流入 / 负值流出</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">净流入板块</div>
+            <div class="ff-big up">${o.inflow_sectors ?? '--'}</div>
+            <div class="ff-sub">/ ${o.sectors ?? '--'} 个行业板块</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">净流出板块</div>
+            <div class="ff-big down">${o.outflow_sectors ?? '--'}</div>
+            <div class="ff-sub">资金面分化的板块数量</div>
+          </div>
+          ${d.north ? `
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">沪深港通（额度快照）</div>
+            <div class="ff-big">${d.north.date || '--'}</div>
+            <div class="ff-sub">北向实时净买入已停止披露，仅供参考</div>
+          </div>` : ''}
+        </div>
+        <div class="ff-note">数据源：东方财富资金流向（主力=超大单+大单）。全市场净流入以行业板块主力净流入求和近似。</div>
+      </div>`;
+
+    // ===== 板块资金排行 =====
+    function rankTable(rows, withPct = true) {
+      if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
+      return `<table class="rank-table"><thead><tr><th>#</th><th>名称</th><th class="num">主力净流入</th>${withPct ? '<th class="num">净占比</th><th class="num">涨跌</th>' : ''}</tr></thead><tbody>` +
+        rows.map((r, i) => `<tr>
+          <td>${i + 1}</td><td>${r.name || r.code}</td>
+          <td class="num ${cls(r.main_net)}">${mf(r.main_net)}</td>
+          ${withPct ? `<td class="num ${cls(r.main_ratio)}">${RV.fmt.pct(r.main_ratio)}</td>
+          <td class="num ${RV.fmt.cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
+        </tr>`).join('') + '</tbody></table>';
+    }
+    const sector = d.sector || {};
+    const sectorHtml = `
+      <div class="section" data-nav="板块资金" data-nav-icon="layer-group">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>板块主力资金排行</h2></div>
+        <div class="two-col">
+          <div><div class="sec-title">${RV.ui.icon('industry')} 行业 · 净流入 Top10</div>${rankTable(sector.industry && sector.industry.inflow)}</div>
+          <div><div class="sec-title">${RV.ui.icon('industry')} 行业 · 净流出 Top10</div>${rankTable(sector.industry && sector.industry.outflow)}</div>
+        </div>
+        <div class="two-col" style="margin-top:14px">
+          <div><div class="sec-title">${RV.ui.icon('lightbulb')} 概念 · 净流入 Top10</div>${rankTable(sector.concept && sector.concept.inflow)}</div>
+          <div><div class="sec-title">${RV.ui.icon('lightbulb')} 概念 · 净流出 Top10</div>${rankTable(sector.concept && sector.concept.outflow)}</div>
+        </div>
+      </div>`;
+
+    // ===== 个股资金排行 =====
+    const sr = d.stock_rank || {};
+    const stockRankHtml = `
+      <div class="section" data-nav="个股资金" data-nav-icon="ranking-star">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('ranking-star')}</span><h2>个股主力净流入 / 净流出 Top20</h2></div>
+        <div class="two-col">
+          <div><div class="sec-title">${RV.ui.icon('arrow-trend-up')} 主力净流入 Top20</div>${rankTable(sr.inflow)}</div>
+          <div><div class="sec-title">${RV.ui.icon('arrow-trend-down')} 主力净流出 Top20</div>${rankTable(sr.outflow)}</div>
+        </div>
+      </div>`;
+
+    // ===== 龙虎榜机构席位 =====
+    const bb = d.billboard || {};
+    function instTable(rows) {
+      if (!rows || !rows.length) return '<div class="empty">当日无机构席位参与</div>';
+      return `<table class="rank-table"><thead><tr><th>#</th><th>股票</th><th class="num">机构买入</th><th class="num">机构卖出</th><th class="num">机构净额</th></tr></thead><tbody>` +
+        rows.map((r, i) => `<tr>
+          <td>${i + 1}</td><td>${r.name || r.code}</td>
+          <td class="num up">${mf(r.inst_buy)}</td>
+          <td class="num down">${mf(r.inst_sell)}</td>
+          <td class="num ${cls(r.inst_net)}"><b>${mf(r.inst_net)}</b></td>
+        </tr>`).join('') + '</tbody></table>';
+    }
+    const billboardHtml = `
+      <div class="section" data-nav="龙虎榜机构" data-nav-icon="landmark">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('landmark')}</span><h2>龙虎榜 · 机构专用席位动向</h2></div>
+        <div class="ff-card">
+          <div style="font-size:12px;color:var(--text-2)">最近交易日：<b>${bb.date || '--'}</b>（机构专用席位净买入/净卖出合并）</div>
+          <div class="ff-grid" style="margin-top:10px">
+            <div class="ff-card" style="background:var(--surface-2)">
+              <div style="font-size:12px;color:var(--text-2)">机构净买入 Top</div>
+              ${instTable((bb.net_list || []).filter(x => x.inst_net > 0).slice(0, 10))}
+            </div>
+            <div class="ff-card" style="background:var(--surface-2)">
+              <div style="font-size:12px;color:var(--text-2)">机构净卖出 Top</div>
+              ${instTable((bb.net_list || []).filter(x => x.inst_net < 0).slice(0, 10))}
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // ===== 国家队/机构持股扫描 =====
+    const inst = d.institution || {};
+    const CAT_LABEL = { central_hj: '中央汇金', central_zj: '证金公司', social_security: '社保基金',
+                        pension: '养老金', insurance: '保险机构', qfii: 'QFII/外资', fund: '公募基金',
+                        broker: '券商', company: '央企/国家队' };
+    const CAT_ICON = { central_hj: 'shield-halved', central_zj: 'shield', social_security: 'umbrella',
+                       pension: 'person-cane', insurance: 'house-medical', qfii: 'globe', fund: 'sack-dollar',
+                       broker: 'handshake', company: 'flag' };
+    const sum = inst.summary || {};
+    const nat = inst.national || [];
+    function natTable(rows) {
+      if (!rows.length) return '<div class="empty">暂无数据</div>';
+      const seen = new Set();
+      return `<table class="rank-table"><thead><tr><th>股票</th><th>机构</th><th>类型</th><th class="num">持股比例</th><th>变动</th></tr></thead><tbody>` +
+        rows.map(r => {
+          const key = r.code + r.holder;
+          if (seen.has(key)) return '';
+          seen.add(key);
+          return `<tr><td>${r.name || r.code}</td><td>${r.holder}</td>
+            <td>${RV.ui.icon(CAT_ICON[r.cat] || 'landmark', 'fa-xs')} ${CAT_LABEL[r.cat] || r.cat}</td>
+            <td class="num">${RV.fmt.num(r.hold_ratio, 2)}%</td>
+            <td class="${r.change === '增持' ? 'up' : (r.change === '减持' ? 'down' : '')}">${r.change || '--'}</td></tr>`;
+        }).join('') + '</tbody></table>';
+    }
+    const summaryCards = Object.entries(CAT_LABEL).map(([k, label]) => {
+      const n = sum[k] || 0;
+      return `<div class="summary-card"><div class="icon">${RV.ui.icon(CAT_ICON[k] || 'landmark')}</div>
+        <div class="summary-text"><div class="val">${n}</div><div class="label">${label}持仓</div></div></div>`;
+    }).join('');
+    const natDetail = nat.length ? `
+      <details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:var(--accent);font-weight:700">
+        ${RV.ui.icon('chevron-down', 'fa-xs')} 国家队持仓明细（汇金/证金/社保/养老金 · ${nat.length} 条）</summary>
+        <div style="margin-top:8px">${natTable(nat)}</div></details>` : '';
+    const instHtml = `
+      <div class="section" data-nav="机构持股" data-nav-icon="landmark">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('landmark')}</span><h2>国家队与机构持股扫描</h2></div>
+        <div class="ff-note" style="margin-bottom:10px">基于股票池（${d.scanned_codes} 只）最新财报十大流通股东扫描；数据按季度披露，反映存量筹码结构，非当日资金。</div>
+        <div class="summary-grid">${summaryCards}</div>
+        ${natDetail}
+      </div>`;
+
+    app.innerHTML = RV.ui.header('资金与机构动向', '主力资金 · 板块轮动 · 龙虎榜机构 · 国家队持股', 'institution', d.generatedAt)
+      + overviewHtml + sectorHtml + stockRankHtml + billboardHtml + instHtml
+      + '<footer>主力=超大单+大单 · 龙虎榜/股东数据来自交易所披露 · 数据仅供学习研究，不构成投资建议</footer>';
+    RV.ui.initSidebar();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('资金与机构动向', '', 'institution') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

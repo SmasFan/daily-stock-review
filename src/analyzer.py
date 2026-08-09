@@ -100,6 +100,8 @@ class AnalysisResult:
     high20: Optional[float] = None
     low20: Optional[float] = None
     change_60d: Optional[float] = None
+    # 资金流（2026-08 新增，由 run_review 注入：当日主力净流入/近5日/近10日）
+    fund_flow: Optional[Dict] = None
 
     def to_dict(self):
         return asdict(self)
