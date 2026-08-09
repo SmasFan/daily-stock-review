@@ -210,11 +210,29 @@
   }
   const stocks = d.stocks || [];
   const stkMacro = d.stock_macro || {};
+  function stockDetail(it) {
+    const rows = [
+      ['综合分', it.total_score != null ? RV.fmt.num(it.total_score, 1) + ' → ' + it.signal + ' · ' + (it.rating || '') + '级' : '--', '技术分×50% + 横截面因子×50%（动量/流动性/活跃度/稳定性）'],
+      ['技术分', it.tech_score != null ? RV.fmt.num(it.tech_score, 1) : '--', '趋势/乖离/量能/支撑/MACD/RSI 六维技术评分'],
+      ['趋势', it.trend_status || '--', 'MA5/MA10/MA20 排列，多头排列加分、空头排列减分'],
+      ['宏观净情绪', it.macro_net != null ? (it.macro_net > 0 ? '+' : '') + RV.fmt.num(it.macro_net, 1) : '--', '所属板块宏观净情绪（周期资源/新能源电力），±6 分内调整技术分'],
+      ['宏观提醒', (it.macro_bulls || 0) + ' 利好 / ' + (it.macro_risks || 0) + ' 风险', '宏观页：政策与新闻词典法情绪加权，同板块共享'],
+      ['主力净流', it.fund_net != null ? RV.fmt.amount(it.fund_net) : '--', '当日主力（超大单+大单）净流入，东财资金流'],
+      ['关联期货', it.link || '--', '该股对应期货品种，期货走势联动'],
+      ['买卖点位', '低吸 ' + (it.ideal_buy != null ? RV.fmt.num(it.ideal_buy) : '--') + ' · 止损 ' + (it.stop_loss != null ? RV.fmt.num(it.stop_loss) : '--'), 'MA5 理想买点、MA20 止损'],
+    ];
+    const keys = (it.macro_key || []).slice(0, 2).map(k =>
+      `<span class="${k.kind === 'bull' ? 'up' : 'down'}">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}`).join('<br>');
+    if (keys) rows.push(['关键提醒', keys, '所属板块近期命中的政策/新闻标题（详见宏观页）']);
+    return rows.map(([k, v, d]) =>
+      `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
+       <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');
+  }
   function stockCard(it) {
     const keys = (it.macro_key || []).map(k => `<span class="chip ${k.kind === 'bull' ? 'sector' : 'sector risk'}">${k.title.length > 16 ? k.title.slice(0, 16) + '…' : k.title}</span>`).join('');
     return `<div class="stk-card">
       <div class="stk-head">
-        <span class="stk-name">${it.name}</span><span class="stk-link">${it.link || ''} · ${it.sector}</span>
+        <span class="stk-name">${it.name} ${RV.ui.infoDot(stockDetail(it), it.name + ' · 评分原因')}</span><span class="stk-link">${it.link || ''} · ${it.sector}</span>
         ${RV.ui.signalBadge(it.signal_key, it.signal)}
         <span class="stk-score ${cls(it.total_score - 50)}">${RV.fmt.num(it.total_score, 1)}分</span>
         <span class="rating-badge rating-${it.rating}">${it.rating}</span>
