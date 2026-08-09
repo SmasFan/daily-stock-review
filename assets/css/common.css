@@ -96,7 +96,10 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .ret-table tbody tr:hover { background:var(--surface-2); }
 .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
 .row-num { color:var(--text-2); font-size:11px; margin-right:7px; font-variant-numeric:tabular-nums; }
-.date-tag { font-size:12px; color:var(--text-2); background:var(--surface-2); padding:2px 8px; border-radius:6px; white-space:nowrap; }
+/* 标签统一样式：板块/趋势/宏观标签并排同尺寸（2026-08） */
+.date-tag, .sec-chip, .macro-badge { font-size:12px; padding:2px 8px; border-radius:6px; white-space:nowrap; line-height:1.5; }
+.date-tag { color:var(--text-2); background:var(--surface-2); }
+.sec-chip { color:var(--text-2); background:var(--surface-2); font-weight:600; }
 
 /* 徽章 */
 .pct-badge { font-weight:700; font-variant-numeric:tabular-nums; }
@@ -108,9 +111,9 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .signal-badge.s-watch, .signal-badge.s-hold, .signal-badge.s-wait { background:var(--watch-bg); color:var(--watch); }
 .signal-badge.s-reduce, .signal-badge.s-sell, .signal-badge.s-clear { background:var(--sell-bg); color:var(--sell); }
 /* 宏观反馈徽章（2026-08：宏观页利好/风险结果，反馈到复盘/推荐页个股与板块） */
-.macro-badge { font-size:11px; font-weight:700; padding:1px 7px; border-radius:5px; white-space:nowrap; margin-left:4px; }
-.macro-badge.macro-bull { background:var(--buy-bg); color:var(--buy); }
-.macro-badge.macro-risk { background:var(--sell-bg); color:var(--sell); }
+.macro-badge { font-weight:700; margin-left:0; }
+.macro-badge.macro-bull { background:var(--buy-bg); color:var(--buy); border:1px solid #fecaca; }
+.macro-badge.macro-risk { background:var(--sell-bg); color:var(--sell); border:1px solid #bbf7d0; }
 .rating-badge { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; font-weight:800; font-size:15px; }
 .rating-A { background:#fef2f2; color:#dc2626; }
 .rating-B { background:#fff7ed; color:#ea580c; }
@@ -342,7 +345,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 .sector-body .data-table th { background:var(--surface-2); }
 .sector-body table.data-table td { border-bottom-color:var(--border); }
 .sector-body table.data-table tr:last-child td { border-bottom:none; }
-.sec-chip { font-size:11px; padding:1px 7px; border-radius:5px; background:var(--surface-2); color:var(--text-2); font-weight:600; }
+.sec-chip { font-size:12px; padding:2px 8px; border-radius:6px; background:var(--surface-2); color:var(--text-2); font-weight:600; }
 
 /* 信息问号（详情浮层，浮层 HTML 由 common.js 挂到 body） */
 .info-dot { display:inline-flex; align-items:center; color:var(--text-2); cursor:pointer; }

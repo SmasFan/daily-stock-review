@@ -221,6 +221,14 @@
         ['买卖点位', '买' + RV.fmt.num(r.ideal_buy) + '/' + RV.fmt.num(r.secondary_buy) + ' · 损' + RV.fmt.num(r.stop_loss) + ' · 盈' + RV.fmt.num(r.take_profit), 'MA5 理想买点、MA10 次优、MA20 止损、20日高点止盈'],
         ['资金流', r.fund_flow ? (mf(r.fund_flow.main_net) + ' · 5日' + mf(r.fund_flow.main_net_5d) + ' · 10日' + mf(r.fund_flow.main_net_10d)) : '暂无', '主力=超大单+大单；当日+近5/10日净流入，判断资金是否持续介入'],
       ];
+      // 宏观因素（2026-08 新增）：宏观页结果反馈到个股详情
+      const m = mIdx && mIdx[r.code];
+      if (m) {
+        rows.push(['宏观因素', (m.score > 0 ? '宏观利好' : '宏观风险') + ' · 净情绪 ' + RV.fmt.num(m.score, 1) + '（利好' + m.bulls + ' / 风险' + m.risks + '）', '宏观页：政策与新闻词典法情绪加权分，正分偏多、负分偏空，与所属板块共享']);
+        const mKeys = (m.key || []).slice(0, 2).map(k =>
+          `<span class="${k.kind === 'bull' ? 'up' : 'down'}">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}`).join('<br>');
+        if (mKeys) rows.push(['关键提醒', mKeys, '所属板块近期命中的政策/新闻标题（详见宏观页）']);
+      }
       return rows.map(([k, v, d]) =>
         `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
          <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');
@@ -254,12 +262,13 @@
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name} ${macroBadge(r.code)}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${fundFlowBadge(r)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
             <span class="date-tag">${r.date}</span>
             <span class="sec-chip">${r.sector || '其他'}</span>
+            ${macroBadge(r.code)}
             <span class="date-tag">${r.trend_status}</span>
             <span class="date-tag">${r.volume_status}</span>
           </div>
@@ -338,6 +347,18 @@
         ${statCard('', '买入信号', buys + ' 只', '占 ' + (buys / n * 100).toFixed(0) + '%')}
       </div>`;
 
+      // 宏观因素（2026-08 新增）：板块宏观净情绪 + 关键提醒
+      const mac = mSec && mSec[sec];
+      const macroBlock = mac && mac.net !== 0 ? `
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;color:var(--text-2)">宏观</span>
+            <span class="${mac.net > 0 ? 'up' : 'down'}" style="font-weight:800">${mac.net > 0 ? '宏观利好' : '宏观风险'} ${RV.fmt.num(mac.net, 1)}</span>
+            <span style="font-size:11px;color:var(--text-2)">利好 ${mac.bulls} · 风险 ${mac.risks}</span>
+          </div>
+          ${(mac.key || []).slice(0, 2).map(k => `<div style="font-size:11px;margin-top:4px;color:var(--text-2);line-height:1.5"><span class="${k.kind === 'bull' ? 'up' : 'down'}" style="font-weight:700">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}</div>`).join('')}
+        </div>` : '';
+
       const trendRow = `<div style="display:flex;gap:8px;margin-bottom:10px">
         ${statCard('', '多头排列', strong + ' 只', '强势+多头')}
         ${statCard('', '减仓/卖出', sells + ' 只', '弱信号')}
@@ -358,7 +379,7 @@
         板块内按信号强弱（强买>买入>观望>减仓>卖出）排序，同级按评分降序；买入信号 = 强买 + 买入
       </div>`;
 
-      return head + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评分分布：' +
+      return head + macroBlock + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评分分布：' +
         `强买${strongBuy} · 买入${buy} · 观望${watch} · 减仓${reduce} · 卖出${sell}` + '</div>' + scoreBar
         + '<div style="font-size:10px;color:var(--text-2);margin:2px 0 10px;display:flex;justify-content:space-between"><span>0</span><span>均分 ' + RV.fmt.num(avgScore, 1) + '</span><span>100</span></div>'
         + trendRow + pickCard(best, '最强') + pickCard(worst, '最弱') + note;

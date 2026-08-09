@@ -270,6 +270,14 @@
         ['60日涨跌', RV.fmt.pct(p.change_60d), '近60个交易日累计涨跌幅'],
         ['买卖点位', '买' + RV.fmt.num(p.ideal_buy) + '/' + RV.fmt.num(p.secondary_buy) + ' · 损' + RV.fmt.num(p.stop_loss) + ' · 盈' + RV.fmt.num(p.take_profit), 'MA5 理想买点、MA10 次优、MA20 止损、20日高点止盈'],
       ];
+      // 宏观因素（2026-08 新增）：宏观页结果反馈到个股详情
+      const m = mIdx && mIdx[p.code];
+      if (m) {
+        rows.push(['宏观因素', (m.score > 0 ? '宏观利好' : '宏观风险') + ' · 净情绪 ' + RV.fmt.num(m.score, 1) + '（利好' + m.bulls + ' / 风险' + m.risks + '）', '宏观页：政策与新闻词典法情绪加权分，正分偏多、负分偏空，与所属板块共享']);
+        const mKeys = (m.key || []).slice(0, 2).map(k =>
+          `<span class="${k.kind === 'bull' ? 'up' : 'down'}">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}`).join('<br>');
+        if (mKeys) rows.push(['关键提醒', mKeys, '所属板块近期命中的政策/新闻标题（详见宏观页）']);
+      }
       return rows.map(([k, v, d]) =>
         `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
          <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');
@@ -291,11 +299,12 @@
       const mobileCards = list.map((p, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${macroBadge(p.code)} ${holdingBadge(p)}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</span>
           <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="mini-tags">
           <span class="sec-chip">${p.sector || '其他'}</span>
+          ${macroBadge(p.code)}
           <span class="date-tag">${p.trend_status || '--'}</span>
           ${RV.ui.ratingBadge(p.rating)}
         </div>
@@ -419,6 +428,18 @@
         ${statCard('', '买入信号', buys + ' 只', '强买 + 买入')}
       </div>`;
 
+      // 宏观因素（2026-08 新增）：板块宏观净情绪 + 关键提醒
+      const mac = mSec && mSec[sec];
+      const macroBlock = mac && mac.net !== 0 ? `
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;color:var(--text-2)">宏观</span>
+            <span class="${mac.net > 0 ? 'up' : 'down'}" style="font-weight:800">${mac.net > 0 ? '宏观利好' : '宏观风险'} ${RV.fmt.num(mac.net, 1)}</span>
+            <span style="font-size:11px;color:var(--text-2)">利好 ${mac.bulls} · 风险 ${mac.risks}</span>
+          </div>
+          ${(mac.key || []).slice(0, 2).map(k => `<div style="font-size:11px;margin-top:4px;color:var(--text-2);line-height:1.5"><span class="${k.kind === 'bull' ? 'up' : 'down'}" style="font-weight:700">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}</div>`).join('')}
+        </div>` : '';
+
       const pickCard = (r, tag) => r ? `
         <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px">
           <span style="font-size:11px;font-weight:700;color:var(--text-2);flex-shrink:0">${tag}</span>
@@ -432,7 +453,7 @@
         板块内按买入强度（强买>买入>观望>减仓>卖出）排序，同级按综合分降序；综合分 = 技术分×50% + 横截面分×50%
       </div>`;
 
-      return head + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评级分布：' + ratings + '</div>' + scoreBar
+      return head + macroBlock + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评级分布：' + ratings + '</div>' + scoreBar
         + '<div style="font-size:10px;color:var(--text-2);margin:2px 0 10px;display:flex;justify-content:space-between"><span>0</span><span>均分 ' + RV.fmt.num(avgScore, 1) + '</span><span>100</span></div>'
         + pickCard(best, '最强') + pickCard(worst, '最弱') + note;
     }
