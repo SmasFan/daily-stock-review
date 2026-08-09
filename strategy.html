@@ -20,8 +20,8 @@
   .hold-compare { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
   @media (max-width:760px) { .hold-compare { grid-template-columns:repeat(2,1fr); } }
   /* 资金表格：与回测/跟踪页一致（滑动 + sticky + 首列50%换行，无序号） */
-  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .tk-table-wrap .ret-table { font-size:14px; }
+  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; min-width:0; }
+  .tk-table-wrap .ret-table { font-size:14px; min-width:560px; }
   .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
   .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
     text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
