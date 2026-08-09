@@ -19,6 +19,18 @@
   .st-verdict b { color:var(--accent); }
   .hold-compare { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
   @media (max-width:760px) { .hold-compare { grid-template-columns:repeat(2,1fr); } }
+  /* 资金表格：与回测/跟踪页一致（滑动 + sticky + 首列50%换行，无序号） */
+  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tk-table-wrap .ret-table { font-size:14px; }
+  .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
+  .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
+    text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
+    font-weight:700; box-shadow:1px 0 0 var(--border);
+    width:50%; max-width:calc(50vw - 46px);
+    white-space:normal; word-break:break-word; line-height:1.5; height:auto;
+  }
+  .tk-table-wrap .ret-table th:first-child { z-index:3; background:var(--surface-2); }
+  .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
 </style>
 </head>
 <body>
@@ -52,8 +64,8 @@
     const overviewHtml = `
       <div class="section" data-nav="策略总览" data-nav-icon="table-list">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>策略回测总览（2021-08 ~ 2026-08 · 5年）</h2></div>
-        <div class="st-card" style="overflow-x:auto">
-          <table class="rank-table" style="min-width:720px">
+        <div class="st-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table">
             <thead><tr><th>策略</th><th>样本数</th><th>胜率</th><th>平均单笔</th><th>中位单笔</th><th>5年组合年化*</th><th>判定</th></tr></thead>
             <tbody>${overviewRows}${E && E.trades ? `
             <tr><td>国家队(社保/汇金/证金/养老)季度增持/新进 → 持有一季度</td><td>${E.trades}</td>
@@ -67,7 +79,7 @@
               <td colspan="2" style="color:var(--text-2)">择时 ${pct1(C.strategy.cum)} vs 满仓 ${pct1(C.benchmark.cum)}</td>
               <td class="down">${pct1(C.strategy.annual)}</td>
               <td><span class="st-tag bad">无效</span></td></tr>` : ''}</tbody>
-          </table>
+          </table></div>
           <div class="st-note">* 年化为「每日等权组合」口径（当日信号组等权、次日轮换），用于横向比较信号强弱；实际年化需扣除资金占用与滑点。
           单笔收益已含双边 0.1% 成本。主力资金流选股策略因历史资金流接口限流无法回测（未列）。</div>
         </div>
@@ -110,10 +122,10 @@
           <div class="st-card"><div class="st-num">${E ? E.trades : '--'}</div><div class="st-label">5年样本数（季度信号）</div></div>
         </div>
         ${E && E.sample ? `
-        <div class="st-card" style="margin-top:12px;overflow-x:auto">
-          <table class="rank-table" style="min-width:640px"><thead><tr><th>股票</th><th>机构</th><th>变动</th><th>信号日</th><th>单季收益</th></tr></thead><tbody>
+        <div class="st-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构</th><th>变动</th><th>信号日</th><th>单季收益</th></tr></thead><tbody>
           ${E.sample.map(t => `<tr><td>${t.code}</td><td>${t.holder}</td><td>${t.chg}</td><td>${t.date}</td>
-            <td class="${cls(t.ret)}">${pct2(t.ret)}</td></tr>`).join('')}</tbody></table>
+            <td class="${cls(t.ret)}">${pct2(t.ret)}</td></tr>`).join('')}</tbody></table></div>
         </div>` : ''}
         <div class="st-verdict">
           <b>结论：国家队（社保/汇金/证金/养老金）增持/新进是有效的中线信号。</b>791 个季度信号平均 +6.98%/季，胜率 51.2%，
@@ -133,11 +145,11 @@
     const overheatHtml = `
       <div class="section" data-nav="普涨过热" data-nav-icon="fire">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('fire')}</span><h2>普涨过热日统计（上证指数大涨后指数表现）</h2></div>
-        <div class="st-card" style="overflow-x:auto">
-          <table class="rank-table" style="min-width:560px">
+        <div class="st-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table">
             <thead><tr><th>上证单日涨幅</th><th>过热日数</th><th>后1日</th><th>后5日</th><th>后10日</th></tr></thead>
             <tbody>${overheatRows}</tbody>
-          </table>
+          </table></div>
           <div class="st-verdict">
             <b>结论：指数层面普涨后惯性向上而非回踩</b>（≥2% 时后5日平均 +1.48%、胜率 64%；≥3% 后1日胜率 86%）。
             但个股层面普涨日买入成本高，普涨次日分歧仍是常态，「普涨降级闸门」保留合理性——不必恐慌减仓，也不宜追高。
@@ -152,12 +164,12 @@
       return (neg ? '-' : '+') + (a >= 1e8 ? (a / 1e8).toFixed(2) + '亿' : (a >= 1e4 ? (a / 1e4).toFixed(1) + '万' : a.toFixed(0))); };
     function rankMini(rows, n, extra) {
       if (!rows || !rows.length) return '<div class="empty">暂无</div>';
-      return `<table class="rank-table"><tbody>${rows.slice(0, n).map((r, i) => `<tr>
-        <td>${i + 1}</td><td>${r.name}</td>
-        <td class="num ${cls(r.main_net)}">${mf(r.main_net)}</td>
-        ${extra ? `<td class="num ${cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
-        <td class="num ${cls(r.main_ratio)}">${r.main_ratio != null ? RV.fmt.pct(r.main_ratio) : ''}</td>
-      </tr>`).join('')}</tbody></table>`;
+      return `<div class="tk-table-wrap"><table class="ret-table"><tbody>${rows.slice(0, n).map(r => `<tr>
+        <td>${r.name}</td>
+        <td class="${cls(r.main_net)}">${mf(r.main_net)}</td>
+        ${extra ? `<td class="${cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
+        <td class="${cls(r.main_ratio)}">${r.main_ratio != null ? RV.fmt.pct(r.main_ratio) : ''}</td>
+      </tr>`).join('')}</tbody></table></div>`;
     }
     const flowHtml = `
       <div class="section" data-nav="今日资金" data-nav-icon="chart-column">

@@ -11,12 +11,18 @@
   .ff-sub { font-size:12px; color:var(--text-2); margin-top:4px; }
   .ff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
   .ff-note { font-size:11px; color:var(--text-2); margin-top:8px; line-height:1.6; }
-  .rank-table { width:100%; border-collapse:collapse; font-size:13px; }
-  .rank-table th { text-align:left; color:var(--text-2); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; white-space:nowrap; }
-  .rank-table td { padding:7px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
-  .rank-table td:first-child, .rank-table th:first-child { color:var(--text-2); width:34px; }
-  .rank-table .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .rank-table tr:hover td { background:var(--surface-2); }
+  /* 表格：与回测/跟踪页一致（横向滑动 + sticky 表头/首列 + 首列50%换行，无序号） */
+  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tk-table-wrap .ret-table { font-size:14px; }
+  .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
+  .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
+    text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
+    font-weight:700; box-shadow:1px 0 0 var(--border);
+    width:50%; max-width:calc(50vw - 46px);
+    white-space:normal; word-break:break-word; line-height:1.5; height:auto;
+  }
+  .tk-table-wrap .ret-table th:first-child { z-index:3; background:var(--surface-2); }
+  .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
   .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .sec-title { margin:6px 0 10px; font-size:13px; font-weight:700; color:var(--text-2); display:flex; align-items:center; gap:6px; }
   .sec-title i { color:var(--accent); }
@@ -72,13 +78,13 @@
     // ===== 板块资金排行 =====
     function rankTable(rows, withPct = true) {
       if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
-      return `<table class="rank-table"><thead><tr><th>#</th><th>名称</th><th class="num">主力净流入</th>${withPct ? '<th class="num">净占比</th><th class="num">涨跌</th>' : ''}</tr></thead><tbody>` +
-        rows.map((r, i) => `<tr>
-          <td>${i + 1}</td><td>${r.name || r.code}</td>
-          <td class="num ${cls(r.main_net)}">${mf(r.main_net)}</td>
-          ${withPct ? `<td class="num ${cls(r.main_ratio)}">${RV.fmt.pct(r.main_ratio)}</td>
-          <td class="num ${RV.fmt.cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
-        </tr>`).join('') + '</tbody></table>';
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>名称</th><th>主力净流入</th>${withPct ? '<th>净占比</th><th>涨跌</th>' : ''}</tr></thead><tbody>` +
+        rows.map(r => `<tr>
+          <td>${r.name || r.code}</td>
+          <td class="${cls(r.main_net)}">${mf(r.main_net)}</td>
+          ${withPct ? `<td class="${cls(r.main_ratio)}">${RV.fmt.pct(r.main_ratio)}</td>
+          <td class="${RV.fmt.cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
+        </tr>`).join('') + '</tbody></table></div>';
     }
     const sector = d.sector || {};
     const sectorHtml = `
@@ -109,13 +115,13 @@
     const bb = d.billboard || {};
     function instTable(rows) {
       if (!rows || !rows.length) return '<div class="empty">当日无机构席位参与</div>';
-      return `<table class="rank-table"><thead><tr><th>#</th><th>股票</th><th class="num">机构买入</th><th class="num">机构卖出</th><th class="num">机构净额</th></tr></thead><tbody>` +
-        rows.map((r, i) => `<tr>
-          <td>${i + 1}</td><td>${r.name || r.code}</td>
-          <td class="num up">${mf(r.inst_buy)}</td>
-          <td class="num down">${mf(r.inst_sell)}</td>
-          <td class="num ${cls(r.inst_net)}"><b>${mf(r.inst_net)}</b></td>
-        </tr>`).join('') + '</tbody></table>';
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构买入</th><th>机构卖出</th><th>机构净额</th></tr></thead><tbody>` +
+        rows.map(r => `<tr>
+          <td>${r.name || r.code}</td>
+          <td class="up">${mf(r.inst_buy)}</td>
+          <td class="down">${mf(r.inst_sell)}</td>
+          <td class="${cls(r.inst_net)}"><b>${mf(r.inst_net)}</b></td>
+        </tr>`).join('') + '</tbody></table></div>';
     }
     const billboardHtml = `
       <div class="section" data-nav="龙虎榜机构" data-nav-icon="landmark">
@@ -148,16 +154,16 @@
     function natTable(rows) {
       if (!rows.length) return '<div class="empty">暂无数据</div>';
       const seen = new Set();
-      return `<table class="rank-table"><thead><tr><th>股票</th><th>机构</th><th>类型</th><th class="num">持股比例</th><th>变动</th></tr></thead><tbody>` +
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构</th><th>类型</th><th>持股比例</th><th>变动</th></tr></thead><tbody>` +
         rows.map(r => {
           const key = r.code + r.holder;
           if (seen.has(key)) return '';
           seen.add(key);
           return `<tr><td>${r.name || r.code}</td><td>${r.holder}</td>
             <td>${RV.ui.icon(CAT_ICON[r.cat] || 'landmark', 'fa-xs')} ${CAT_LABEL[r.cat] || r.cat}</td>
-            <td class="num">${RV.fmt.num(r.hold_ratio, 2)}%</td>
+            <td>${RV.fmt.num(r.hold_ratio, 2)}%</td>
             <td class="${r.change === '增持' ? 'up' : (r.change === '减持' ? 'down' : '')}">${r.change || '--'}</td></tr>`;
-        }).join('') + '</tbody></table>';
+        }).join('') + '</tbody></table></div>';
     }
     const summaryCards = Object.entries(CAT_LABEL).map(([k, label]) => {
       const n = sum[k] || 0;
