@@ -55,6 +55,13 @@ mode: primary
 - 页面章节用 `<div class="section" data-nav="名称" data-nav-icon="图标">` + 渲染后 `RV.ui.initSidebar()`。
 - 图表用 ECharts（CDN 引入），配色沿用现有色板（橙 #c78d5a / 灰 #9ca3af 等）。
 
+## 图像识别规范（必须遵守）
+
+- **需要看图/识别截图/检查页面样式时，一律调用 `qwen3_vision` 工具**（本地 Ollama `qwen3-vl:32b`，插件在 `~/.config/opencode/plugins/qwen3-vision.ts`，全局可用）。
+- 主模型自身不支持图像输入（Read 图片会失败），不要尝试直接"看"图片，直接把图片路径 + 具体问题传给 `qwen3_vision`。
+- 图片通常是用户粘贴的临时截图（如 `C:\Users\z7280\AppData\Local\Temp\wmux-paste-*.png`，WSL 下路径前缀 `/mnt/c/`）。
+- Ollama 未运行时提示用户 `ollama serve` 或 `ollama pull qwen3-vl:32b`。
+
 ## 其他规范
 
 - **AGENTS.md 为项目指令**，与本文冲突时以 AGENTS.md 为准（目前含推送规则）。
