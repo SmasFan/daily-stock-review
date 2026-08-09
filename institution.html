@@ -45,7 +45,7 @@
   /* 策略回测模块样式 */
   .st-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
   .st-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
-  .st-num { font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .st-num { font-size:clamp(18px, 2.4vw, 26px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; overflow-wrap:anywhere; }
   .st-label { font-size:12px; color:var(--text-2); margin-top:3px; }
   .st-tag { display:inline-block; padding:3px 9px; border-radius:6px; font-size:12px; font-weight:700; margin-left:6px; }
   .st-tag.eff { background:var(--buy-bg); color:var(--buy); }
@@ -55,6 +55,8 @@
   .st-verdict { background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.8; margin-top:12px; }
   .st-verdict b { color:var(--accent); }
   .hold-compare { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
+  .hold-compare > * { min-width:0; }
+  .hold-compare .st-grid { grid-template-columns:repeat(auto-fit,minmax(0,1fr)); }
   @media (max-width:760px) { .hold-compare { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
