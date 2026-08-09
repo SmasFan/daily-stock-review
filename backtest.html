@@ -6,6 +6,32 @@
 <title>网格回测 · 复盘</title>
 <link rel="stylesheet" href="assets/css/common.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  /* 选择目标：侧边栏（桌面固定右侧，窄屏转顶部横向滚动） */
+  .bt-sidebar { position:fixed; right:14px; top:50%; transform:translateY(-50%); width:176px; max-height:72vh;
+    display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; box-shadow:var(--shadow); z-index:50; padding:8px; }
+  .bt-sidebar .bt-title { font-size:11px; color:var(--text-2); font-weight:700; padding:4px 8px 8px;
+    display:flex; align-items:center; gap:6px; }
+  .bt-sidebar .bt-list { overflow-y:auto; min-height:0; }
+  .bt-sidebar a { display:block; font-size:12px; padding:6px 8px; border-radius:8px; color:var(--text);
+    text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bt-sidebar a:hover { background:var(--surface-2); }
+  .bt-sidebar a.active { background:var(--accent); color:#fff; }
+  @media (max-width:1180px) {
+    .bt-sidebar { position:static; transform:none; width:auto; max-height:none; display:block; margin-bottom:14px; }
+    .bt-sidebar .bt-list { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:6px; padding-bottom:4px; }
+    .bt-sidebar a { flex-shrink:0; background:var(--surface-2); }
+    .bt-sidebar a.active { background:var(--accent); }
+  }
+  /* 折叠区块 */
+  .bt-collapse-btn { border:1px solid var(--border); background:var(--surface-2); color:var(--accent);
+    border-radius:8px; padding:5px 14px; font-size:12px; font-weight:700; cursor:pointer; margin-top:10px; }
+  .bt-collapse-btn:hover { background:#f1e4d8; }
+  .bt-hidden { display:none; }
+  /* 调仓记录 */
+  .trade-noop td { color:var(--text-2); }
+</style>
 </head>
 <body>
 <div class="container" id="app"><div class="loading">数据加载中…</div></div>
@@ -18,11 +44,26 @@
     const stocks = d.stocks || {};
     const names = Object.keys(stocks);
     let selected = names[0] || null;
+    // 折叠状态：区间收益展开数 / 调仓记录是否全量
+    let retShowAll = false;
+    let tradeShowAll = false;
+    const RET_SHOW = 5;           // 区间收益默认显示前 5 只
+    const TRADE_DEFAULT_DAYS = 5; // 调仓记录默认最近一周（5 个交易日）
 
-    // 区间收益表：左列固定名称，右侧各时间段收益可横向滑动（时间最短在前）
+    // ===== 侧边栏：选择目标 =====
+    function targetSidebar() {
+      const links = names.map(n => `<a href="#" class="${selected === n ? 'active' : ''}" data-k="${n}">${n}</a>`).join('');
+      return `<div class="bt-sidebar">
+        <div class="bt-title">${RV.ui.icon('bullseye', 'fa-xs')} 选择目标（${names.length}）</div>
+        <div class="bt-list">${links}</div>
+      </div>`;
+    }
+
+    // ===== 区间收益：默认显示 5 只，其余折叠 =====
     const WINDOWS = ['1周', '1月', '半年', '1年', '3年', '5年'];
     function returnTable() {
-      const rows = names.map(name => {
+      const visible = retShowAll ? names : names.slice(0, RET_SHOW);
+      const rows = visible.map(name => {
         const s = stocks[name];
         const wr = s.window_returns || {};
         return `<tr>
@@ -35,133 +76,22 @@
           }).join('')}
         </tr>`;
       }).join('');
+      const rest = names.length - RET_SHOW;
+      const btn = names.length > RET_SHOW
+        ? `<button class="bt-collapse-btn" id="bt-ret-toggle">${retShowAll ? RV.ui.icon('chevron-up', 'fa-xs') + ' 收起（显示前' + RET_SHOW + '只）' : RV.ui.icon('chevron-down', 'fa-xs') + ' 展开全部 ' + names.length + ' 只（默认显示前' + RET_SHOW + '只）'}</button>`
+        : '';
       return `<div class="section">
-        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>绩效汇总 · 区间收益</h2><span class="sec-chip">${names.length}只</span></div>
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-column')}</span><h2>绩效汇总 · 区间收益</h2><span class="sec-chip">${names.length}只 · 默认显示${RET_SHOW}只</span></div>
         <div class="ret-table-wrap"><table class="ret-table">
           <thead><tr><th>标的</th>${WINDOWS.map(w => `<th>最近${w}</th>`).join('')}</tr></thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows}${retShowAll ? '' : (rest > 0 ? `<tr class="bt-hidden-marker"><td colspan="${WINDOWS.length + 1}" style="color:var(--text-2);text-align:center;padding:10px">… 还有 ${rest} 只已折叠 …</td></tr>` : '')}</tbody>
         </table></div>
+        ${btn}
         <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('arrows-left-right', 'fa-xs')} 左列固定，可左右滑动查看不同时间段收益；绿色=正收益，红色=负收益。</div>
       </div>`;
     }
 
-    // ECharts 净值曲线 + 买卖点（trades 标记在收盘价轴上）
-    const chartPool = [];
-    function eqChart(stock, id) {
-      const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
-      const close = stock.close || [];
-      const trades = stock.trades || [];
-      if (eq.length < 2) return '';
-      const wrapId = 'eq-' + id + '-' + Math.random().toString(36).slice(2, 7);
-      // 买卖点：仅保留有价格且落在日期序列内的
-      const idxMap = {};
-      dates.forEach((dd, i) => { idxMap[dd] = i; });
-      const marks = trades.filter(t => t.price != null && t.date in idxMap);
-      const buyPts = marks.filter(t => t.side === 'buy').map(t => [dates.indexOf(t.date), t.price, t.date]);
-      const sellPts = marks.filter(t => t.side === 'sell').map(t => [dates.indexOf(t.date), t.price, t.date]);
-
-      const opt = {
-        animation: false,
-        tooltip: {
-          trigger: 'axis',
-          formatter(params) {
-            const i = params[0].dataIndex;
-            const dt = dates[i] || '';
-            const eqV = eq[i] != null ? eq[i].toFixed(3) : '--';
-            const bmV = bench[i] != null ? bench[i].toFixed(3) : '--';
-            const px = close[i] != null ? close[i].toFixed(2) : '--';
-            let lines = [`<b>${dt}</b>`, `净值(网格): <b>${eqV}</b>`, `基准(持有): ${bmV}`, `收盘价: ${px}`];
-            const t = marks.find(x => x.date === dt);
-            if (t) lines.push(t.side === 'buy' ? '🟢 买入 @ ' + t.price : '🔴 卖出 @ ' + t.price);
-            return lines.join('<br/>');
-          }
-        },
-        legend: { data: ['网格策略', '买入持有', '收盘价'], textStyle: { color: '#6b6258' } },
-        grid: { left: 60, right: 70, top: 40, bottom: 40 },
-        dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', height: 16, bottom: 8 }],
-        xAxis: {
-          type: 'category', data: dates, boundaryGap: false,
-          axisLabel: { color: '#6b6258', formatter: v => v.slice(0, 7) },
-          axisLine: { lineStyle: { color: '#d1c9bf' } }
-        },
-        yAxis: [
-          { type: 'value', name: '净值', scale: true, axisLabel: { color: '#6b6258' }, splitLine: { lineStyle: { color: '#efe9df' } } },
-          { type: 'value', name: '价格', scale: true, axisLabel: { color: '#b0a89d' }, splitLine: { show: false } }
-        ],
-        series: [
-          {
-            name: '网格策略', type: 'line', data: eq, showSymbol: false,
-            lineStyle: { width: 2.2, color: '#c78d5a' }, itemStyle: { color: '#c78d5a' }
-          },
-          {
-            name: '买入持有', type: 'line', data: bench, showSymbol: false,
-            lineStyle: { width: 1.6, color: '#9ca3af' }, itemStyle: { color: '#9ca3af' }
-          },
-          {
-            name: '收盘价', type: 'line', data: close, yAxisIndex: 1, showSymbol: false,
-            lineStyle: { width: 1, color: '#d6cbbd', opacity: 0.8 }, itemStyle: { color: '#d6cbbd' },
-            tooltip: { show: false }
-          },
-          {
-            name: '买入', type: 'scatter', data: buyPts, symbol: 'triangle', symbolSize: 9,
-            itemStyle: { color: '#16a34a' }, xAxisIndex: 0, yAxisIndex: 1,
-            markPoint: { symbol: 'triangle', symbolSize: 9, itemStyle: { color: '#16a34a' } }
-          },
-          {
-            name: '卖出', type: 'scatter', data: sellPts, symbol: 'triangle', symbolRotate: 180, symbolSize: 9,
-            itemStyle: { color: '#dc2626' }, xAxisIndex: 0, yAxisIndex: 1,
-            markPoint: { symbol: 'triangle', symbolRotate: 180, symbolSize: 9, itemStyle: { color: '#dc2626' } }
-          }
-        ]
-      };
-      setTimeout(() => {
-        const el = document.getElementById(wrapId);
-        if (el && window.echarts) {
-          const chart = echarts.init(el);
-          chart.setOption(opt);
-          chartPool.push(chart);
-          window.addEventListener('resize', () => chart.resize());
-        }
-      }, 0);
-      return `<div id="${wrapId}" style="width:100%;height:380px"></div>`;
-    }
-
-    function render() {
-      const stock = selected ? stocks[selected] : null;
-      const tabs = [`<a href="#" class="nav-link ${!selected ? 'active' : ''}" data-k="">整体</a>`]
-        .concat(names.map(n => `<a href="#" class="nav-link ${selected === n ? 'active' : ''}" data-k="${n}">${n}</a>`)).join('');
-
-      app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
-        + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-pie')}</span><h2>选择标的</h2></div>
-             <div class="nav" style="justify-content:flex-start;margin-top:0">${tabs}</div></div>`
-        + returnTable()
-        + (stock && stock.equity && stock.equity.length > 1 ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · 买卖点标记</h2></div>${eqChart(stock, 'eq')}</div>` : '')
-        + (stock && stock.trades && stock.trades.length ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>调仓记录 · 完整时间线（最近 ${dailyLog(stock).length} 个交易日，含未调仓日）</h2></div>${tradesTable(stock)}</div>` : '')
-        + strategyExplain()
-        + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
-
-      app.querySelectorAll('.nav-link[data-k]').forEach(a => a.addEventListener('click', ev => {
-        ev.preventDefault();
-        selected = a.getAttribute('data-k') || null;
-        render();
-      }));
-    }
-
-    // 回测说明：买卖触发规则
-    function strategyExplain() {
-      return `<div class="section">
-        <div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>回测说明 · 买卖触发规则</h2></div>
-        <div style="font-size:13px;line-height:2;color:var(--text)">
-          <p>${RV.ui.icon('scale-balanced', 'fa-xs')} <b>均值线（估值锚）</b>：PE40分位 / PB60分位 / ROE60分位 加权几何平均得到"合理估值中枢"；无估值数据时退化为价格均线（<i>价格锚</i>）。偏离度 = 收盘价 ÷ 均值线 − 1。</p>
-          <p>${RV.ui.icon('cart-plus', 'fa-xs')} <b>买入（下跌分批）</b>：每跌 <b>0.5%</b> 一档，按 <b>1.04%</b> 仓位加仓（向下摊低成本）；偏离 ≤ <b>−5%</b> 进入<b>半永久锁仓</b>，继续加仓至最大仓位。</p>
-          <p>${RV.ui.icon('cart-shopping', 'fa-xs')} <b>卖出（上涨分批）</b>：每涨 <b>0.5%</b> 一档，按 <b>1%</b> 仓位减仓（向上兑现收益）；偏离 ≥ <b>+5%</b> 视为<b>超涨清仓</b>。</p>
-          <p>${RV.ui.icon('bullseye', 'fa-xs')} <b>目标仓位</b>：均衡 70% − 斜率 × 偏离度，仓位区间自动收窄在 [最小, 最大]；偏离越大仓位越低。</p>
-          <p>${RV.ui.icon('receipt', 'fa-xs')} <b>成本</b>：单边手续费 0.05%；收益已含日股息；基准 = 满仓买入持有（含分红再投资）。</p>
-        </div>
-      </div>`;
-    }
-
-    // 完整时间线：把调仓事件与每个交易日合并，未调仓日也显示（持有不动）
+    // ===== 调仓记录：默认最近一周，可展开全部 =====
     function dailyLog(stock) {
       const dates = stock.dates || [];
       const positions = stock.position || [];
@@ -179,9 +109,11 @@
       }).filter(r => r && (r.pos_before != null || !r.noop));
     }
 
-    function tradesTable(stock) {
+    function tradesSection(stock) {
+      if (!stock || !stock.trades || !stock.trades.length) return '';
       const log = dailyLog(stock);
-      const rows = log.slice(-50).reverse().map(t => {
+      const shown = tradeShowAll ? log.length : Math.min(TRADE_DEFAULT_DAYS, log.length);
+      const rows = log.slice(-shown).reverse().map(t => {
         if (t.noop) return `
         <tr class="trade-noop">
           <td><span class="date-tag">${t.date}</span></td>
@@ -201,9 +133,149 @@
           <td>档位 ${t.grid_idx}</td>
         </tr>`;
       }).join('');
-      return `<div class="table-wrap"><table class="data-table">
-        <thead><tr><th>日期</th><th>方向</th><th>调仓比例</th><th>仓位变化</th><th>偏离度</th><th>网格档</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`;
+      const btn = log.length > TRADE_DEFAULT_DAYS
+        ? `<button class="bt-collapse-btn" id="bt-trade-toggle">${tradeShowAll ? RV.ui.icon('chevron-up', 'fa-xs') + ' 收起（默认最近一周）' : RV.ui.icon('chevron-down', 'fa-xs') + ' 展开全部 ' + log.length + ' 条记录'}</button>`
+        : '';
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('receipt')}</span><h2>调仓记录 · ${selected}</h2><span class="sec-chip">${tradeShowAll ? log.length + '条（全部）' : '最近一周（' + shown + '条）'}</span></div>
+        <div class="table-wrap"><table class="data-table">
+          <thead><tr><th>日期</th><th>方向</th><th>调仓比例</th><th>仓位变化</th><th>偏离度</th><th>网格档</th></tr></thead>
+          <tbody>${rows}</tbody></table></div>
+        ${btn}
+      </div>`;
+    }
+
+    // ===== 净值图表：网格净值+基准+收盘价+仓位副图+买卖点，默认最近1个月、可拉到3年 =====
+    const chartPool = [];
+    function eqChart(stock, id) {
+      const eq = stock.equity || [], bench = stock.benchmark || [], dates = stock.dates || [];
+      const close = stock.close || [], pos = stock.position || [];
+      const trades = stock.trades || [];
+      if (eq.length < 2) return '';
+      const wrapId = 'eq-' + id + '-' + Math.random().toString(36).slice(2, 7);
+      const idxMap = {};
+      dates.forEach((dd, i) => { idxMap[dd] = i; });
+      const marks = trades.filter(t => t.price != null && t.date in idxMap);
+      const buyPts = marks.filter(t => t.side === 'buy').map(t => [dates.indexOf(t.date), t.price, t.date]);
+      const sellPts = marks.filter(t => t.side === 'sell').map(t => [dates.indexOf(t.date), t.price, t.date]);
+      // 默认时间轴：最近一个月（约 22 个交易日），slider 可回拉 3 年
+      const LOOKBACK = 22;
+      const startPct = Math.max(0, (dates.length - LOOKBACK) / dates.length * 100);
+      const opt = {
+        animation: false,
+        tooltip: {
+          trigger: 'axis', axisPointer: { type: 'cross' },
+          formatter(params) {
+            const i = params[0].dataIndex;
+            const dt = dates[i] || '';
+            const eqV = eq[i] != null ? eq[i].toFixed(3) : '--';
+            const bmV = bench[i] != null ? bench[i].toFixed(3) : '--';
+            const px = close[i] != null ? close[i].toFixed(2) : '--';
+            const pv = pos[i] != null ? (pos[i] * 100).toFixed(1) + '%' : '--';
+            let lines = [`<b>${dt}</b>`, `网格净值: <b>${eqV}</b>`, `基准(持有): ${bmV}`, `收盘价: ${px}`, `仓位: ${pv}`];
+            const t = marks.find(x => x.date === dt);
+            if (t) lines.push(t.side === 'buy' ? '🟢 买入 @ ' + t.price : '🔴 卖出 @ ' + t.price);
+            return lines.join('<br/>');
+          }
+        },
+        legend: { data: ['网格策略', '买入持有'], textStyle: { color: '#6b6258' } },
+        grid: [
+          { left: 70, right: 74, top: 36, height: '52%' },
+          { left: 70, right: 74, top: '72%', height: '14%' }
+        ],
+        dataZoom: [
+          { type: 'inside', xAxisIndex: [0, 1], start: startPct, end: 100 },
+          { type: 'slider', xAxisIndex: [0, 1], height: 16, bottom: 8, start: startPct, end: 100 }
+        ],
+        xAxis: [
+          { type: 'category', data: dates, boundaryGap: false, axisLabel: { color: '#6b6258', formatter: v => v.slice(0, 7) }, axisLine: { lineStyle: { color: '#d1c9bf' } } },
+          { type: 'category', gridIndex: 1, data: dates, axisLabel: { show: false }, axisLine: { show: false } }
+        ],
+        yAxis: [
+          { type: 'value', name: '净值', scale: true, axisLabel: { color: '#6b6258' }, splitLine: { lineStyle: { color: '#efe9df' } } },
+          { type: 'value', name: '价格', scale: true, axisLabel: { color: '#b0a89d' }, splitLine: { show: false } },
+          { gridIndex: 1, name: '仓位', min: 0, max: 1, axisLabel: { color: '#9ca3af', formatter: v => (v * 100).toFixed(0) + '%' }, splitLine: { show: false } }
+        ],
+        series: [
+          {
+            name: '网格策略', type: 'line', data: eq, showSymbol: false,
+            lineStyle: { width: 2.2, color: '#c78d5a' },
+            areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [{ offset: 0, color: 'rgba(199,141,90,0.28)' }, { offset: 1, color: 'rgba(199,141,90,0.02)' }] } }
+          },
+          {
+            name: '买入持有', type: 'line', data: bench, showSymbol: false,
+            lineStyle: { width: 1.6, color: '#9ca3af' }, itemStyle: { color: '#9ca3af' }
+          },
+          {
+            name: '收盘价', type: 'line', data: close, yAxisIndex: 1, showSymbol: false,
+            lineStyle: { width: 1, color: '#d6cbbd', opacity: 0.8 }, itemStyle: { color: '#d6cbbd' },
+            tooltip: { show: false }
+          },
+          {
+            name: '仓位', type: 'line', xAxisIndex: 1, yAxisIndex: 2, data: pos, showSymbol: false,
+            lineStyle: { width: 1.4, color: '#60a5fa' }, itemStyle: { color: '#60a5fa' },
+            areaStyle: { color: 'rgba(96,165,250,0.12)' }
+          },
+          {
+            name: '买入', type: 'scatter', data: buyPts, symbol: 'triangle', symbolSize: 10,
+            itemStyle: { color: '#16a34a' }, xAxisIndex: 0, yAxisIndex: 1
+          },
+          {
+            name: '卖出', type: 'scatter', data: sellPts, symbol: 'triangle', symbolRotate: 180, symbolSize: 10,
+            itemStyle: { color: '#dc2626' }, xAxisIndex: 0, yAxisIndex: 1
+          }
+        ]
+      };
+      setTimeout(() => {
+        const el = document.getElementById(wrapId);
+        if (el && window.echarts) {
+          const chart = echarts.init(el);
+          chart.setOption(opt);
+          chartPool.push(chart);
+          window.addEventListener('resize', () => chart.resize());
+        }
+      }, 0);
+      return `<div id="${wrapId}" style="width:100%;height:440px"></div>`;
+    }
+
+    function strategyExplain() {
+      return `<div class="section">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>回测说明 · 买卖触发规则</h2></div>
+        <div style="font-size:13px;line-height:2;color:var(--text)">
+          <p>${RV.ui.icon('scale-balanced', 'fa-xs')} <b>均值线（估值锚）</b>：PE40分位 / PB60分位 / ROE60分位 加权几何平均得到"合理估值中枢"；无估值数据时退化为价格均线（<i>价格锚</i>）。偏离度 = 收盘价 ÷ 均值线 − 1。</p>
+          <p>${RV.ui.icon('cart-plus', 'fa-xs')} <b>买入（下跌分批）</b>：每跌 <b>0.5%</b> 一档，按 <b>1.04%</b> 仓位加仓（向下摊低成本）；偏离 ≤ <b>−5%</b> 进入<b>半永久锁仓</b>，继续加仓至最大仓位。</p>
+          <p>${RV.ui.icon('cart-shopping', 'fa-xs')} <b>卖出（上涨分批）</b>：每涨 <b>0.5%</b> 一档，按 <b>1%</b> 仓位减仓（向上兑现收益）；偏离 ≥ <b>+5%</b> 视为<b>超涨清仓</b>。</p>
+          <p>${RV.ui.icon('bullseye', 'fa-xs')} <b>目标仓位</b>：均衡 70% − 斜率 × 偏离度，仓位区间自动收窄在 [最小, 最大]；偏离越大仓位越低。</p>
+          <p>${RV.ui.icon('receipt', 'fa-xs')} <b>成本</b>：单边手续费 0.05%；收益已含日股息；基准 = 满仓买入持有（含分红再投资）。</p>
+        </div>
+      </div>`;
+    }
+
+    function render() {
+      const stock = selected ? stocks[selected] : null;
+      app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
+        + targetSidebar()
+        + (stock ? tradesSection(stock) : '')
+        + (stock && stock.equity && stock.equity.length > 1
+            ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · ${selected}</h2><span class="sec-chip">默认最近1个月 · 拖动时间轴可回看3年</span></div>${eqChart(stock, 'eq')}</div>` : '')
+        + returnTable()
+        + strategyExplain()
+        + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';
+
+      // 侧边栏选择目标
+      app.querySelectorAll('.bt-sidebar a[data-k]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        selected = a.getAttribute('data-k') || null;
+        retShowAll = false; tradeShowAll = false;
+        render();
+      }));
+      // 区间收益展开/收起
+      const retToggle = document.getElementById('bt-ret-toggle');
+      if (retToggle) retToggle.addEventListener('click', () => { retShowAll = !retShowAll; render(); });
+      // 调仓记录展开/收起
+      const tradeToggle = document.getElementById('bt-trade-toggle');
+      if (tradeToggle) tradeToggle.addEventListener('click', () => { tradeShowAll = !tradeShowAll; render(); });
     }
 
     render();
