@@ -68,15 +68,9 @@
     </a>`);
   cards.push(`
     <a class="entry-card" href="institution.html">
-      <div class="e-icon">${RV.ui.icon('landmark')}</div><h3>资金与机构动向</h3>
-      <p>全市场主力资金、板块/个股资金排行、龙虎榜机构席位、国家队与机构持股扫描</p>
-      ${inst && inst.overview ? `<div class="e-stat">${RV.ui.icon('arrow-trend-up', 'fa-xs')} 两市主力 ${inst.overview.main_net != null ? RV.fmt.amount(inst.overview.main_net) : '--'} · ${RV.ui.icon('landmark', 'fa-xs')} 机构命中 ${Object.values((inst.institution || {}).summary || {}).reduce((a, b) => a + b, 0)} 条</div>` : ''}
-    </a>`);
-  cards.push(`
-    <a class="entry-card" href="strategy.html">
-      <div class="e-icon">${RV.ui.icon('flask-vial')}</div><h3>策略统计</h3>
-      <p>5年回测：龙虎榜机构/国家队增持/普涨过热等策略成功率与收益 + 今日资金动向</p>
-      ${strat && strat.A_1d ? `<div class="e-stat">${RV.ui.icon('landmark', 'fa-xs')} 龙虎榜T+1胜率 ${(strat.A_1d.win_rate * 100).toFixed(0)}% · ${RV.ui.icon('shield-halved', 'fa-xs')} 国家队季度 ${strat.E_national && strat.E_national.trades ? '+' + (strat.E_national.avg_ret * 100).toFixed(1) + '%/季' : '--'}</div>` : ''}
+      <div class="e-icon">${RV.ui.icon('landmark')}</div><h3>资金</h3>
+      <p>全市场主力资金、板块/个股资金排行、龙虎榜机构席位、国家队与机构持股扫描、5年策略回测</p>
+      ${inst && inst.overview ? `<div class="e-stat">${RV.ui.icon('arrow-trend-up', 'fa-xs')} 两市主力 ${inst.overview.main_net != null ? RV.fmt.amount(inst.overview.main_net) : '--'} · ${RV.ui.icon('landmark', 'fa-xs')} 机构命中 ${Object.values((inst.institution || {}).summary || {}).reduce((a, b) => a + b, 0)} 条${strat && strat.A_1d ? ' · 龙虎榜T+1胜率 ' + (strat.A_1d.win_rate * 100).toFixed(0) + '%' : ''}</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="backtest.html">
