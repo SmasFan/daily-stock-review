@@ -157,7 +157,6 @@
       </div>`;
 
     // ===== 板块影响（反馈：推荐页板块标签） =====
-    const secIndex = idx.sectors || {};
     const sectorRows = (d.sectors || []).map(s => {
       const key = s.key || [];
       const keyTxt = key.map(k => `<span class="chip ${k.kind === 'bull' ? 'sector' : 'sector risk'}">${k.title.length > 18 ? k.title.slice(0, 18) + '…' : k.title}</span>`).join('');
