@@ -11,9 +11,9 @@
   .ff-sub { font-size:12px; color:var(--text-2); margin-top:4px; }
   .ff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
   .ff-note { font-size:11px; color:var(--text-2); margin-top:8px; line-height:1.6; }
-  /* 表格：与回测/跟踪页一致（横向滑动 + sticky 表头/首列，无序号） */
+  /* 表格：与回测/跟踪页一致（横向滑动 + sticky 表头/首列，无序号，宽度=内容防拉伸空白） */
   .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; min-width:0; }
-  .tk-table-wrap .ret-table { font-size:14px; }
+  .tk-table-wrap .ret-table { font-size:14px; width:max-content; }
   .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
   .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
     text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
@@ -25,6 +25,19 @@
   .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
   /* grid 布局下让表格容器正确收缩（否则被内容撑破无法滚动） */
   .two-col > div, .ff-grid > * { min-width:0; }
+  /* 机构持仓类型卡片（可展开明细） */
+  .inst-type { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .inst-type summary { display:flex; align-items:center; gap:10px; padding:13px 16px; cursor:pointer; list-style:none; }
+  .inst-type summary::-webkit-details-marker { display:none; }
+  .inst-type summary .icon { color:var(--accent); width:34px; height:34px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); border-radius:8px; }
+  .inst-type summary .label { font-size:13px; font-weight:700; }
+  .inst-type summary .count { background:var(--surface-2); padding:2px 8px; border-radius:6px; font-size:12px; color:var(--text-2); }
+  .inst-type summary .chev { margin-left:auto; transition:transform .2s; color:var(--text-2); font-size:12px; }
+  .inst-type[open] summary .chev { transform:rotate(90deg); }
+  .inst-type summary:hover { background:var(--surface-2); }
+  .inst-type-body { padding:0 12px 12px; }
+  .inst-type-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }
+  @media (max-width:760px) { .inst-type-grid { grid-template-columns:1fr; } }
   .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .sec-title { margin:6px 0 10px; font-size:13px; font-weight:700; color:var(--text-2); display:flex; align-items:center; gap:6px; }
   .sec-title i { color:var(--accent); }
@@ -153,24 +166,32 @@
                        broker: 'handshake', company: 'flag' };
     const sum = inst.summary || {};
     const nat = inst.national || [];
+    const byType = inst.by_type || {};
     function natTable(rows) {
       if (!rows.length) return '<div class="empty">暂无数据</div>';
       const seen = new Set();
-      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构</th><th>类型</th><th>持股比例</th><th>变动</th></tr></thead><tbody>` +
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构</th><th>持股比例</th><th>变动</th></tr></thead><tbody>` +
         rows.map(r => {
           const key = r.code + r.holder;
           if (seen.has(key)) return '';
           seen.add(key);
           return `<tr><td>${r.name || r.code}</td><td>${r.holder}</td>
-            <td>${RV.ui.icon(CAT_ICON[r.cat] || 'landmark', 'fa-xs')} ${CAT_LABEL[r.cat] || r.cat}</td>
             <td>${RV.fmt.num(r.hold_ratio, 2)}%</td>
             <td class="${r.change === '增持' ? 'up' : (r.change === '减持' ? 'down' : '')}">${r.change || '--'}</td></tr>`;
         }).join('') + '</tbody></table></div>';
     }
+    // 持仓类型卡片：每类可展开明细
     const summaryCards = Object.entries(CAT_LABEL).map(([k, label]) => {
-      const n = sum[k] || 0;
-      return `<div class="summary-card"><div class="icon">${RV.ui.icon(CAT_ICON[k] || 'landmark')}</div>
-        <div class="summary-text"><div class="val">${n}</div><div class="label">${label}持仓</div></div></div>`;
+      const rows = byType[k] || [];
+      if (!rows.length) return '';
+      return `<details class="inst-type">
+        <summary>
+          <span class="icon">${RV.ui.icon(CAT_ICON[k] || 'landmark')}</span>
+          <span class="label">${label}持仓</span><span class="count">${rows.length}条</span>
+          <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+        </summary>
+        <div class="inst-type-body">${natTable(rows)}</div>
+      </details>`;
     }).join('');
     const natDetail = nat.length ? `
       <details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px;color:var(--accent);font-weight:700">
@@ -179,8 +200,8 @@
     const instHtml = `
       <div class="section" data-nav="机构持股" data-nav-icon="landmark">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('landmark')}</span><h2>国家队与机构持股扫描</h2></div>
-        <div class="ff-note" style="margin-bottom:10px">基于股票池（${d.scanned_codes} 只）最新财报十大流通股东扫描；数据按季度披露，反映存量筹码结构，非当日资金。</div>
-        <div class="summary-grid">${summaryCards}</div>
+        <div class="ff-note" style="margin-bottom:10px">基于股票池（${d.scanned_codes} 只）最新财报十大流通股东扫描；数据按季度披露，反映存量筹码结构，非当日资金。点击各类型卡片展开持仓明细。</div>
+        <div class="inst-type-grid">${summaryCards}</div>
         ${natDetail}
       </div>`;
 
