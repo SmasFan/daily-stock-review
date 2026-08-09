@@ -8,6 +8,7 @@
   python run_review.py --mode recommend    # 开盘：推荐 + 当日购买原因
   python run_review.py --mode metals       # 有色金属期货行情 + 分析
   python run_review.py --mode institution  # 资金与机构动向页（主力资金/板块/龙虎榜机构/国家队持股）
+  python run_review.py --mode macro        # 宏观政策与新闻情绪页（利好/风险提醒，反馈个股与板块）
   python run_review.py --mode all          # 全部（默认）
 
   python run_review.py --top 15
@@ -547,10 +548,20 @@ def run_institution(args):
           f"板块扫描 {len(codes)} 只 · 机构持股命中 {sum((data.get('institution') or {}).get('summary', {}).values())} 条")
 
 
+def run_macro(args):
+    """生成宏观政策与新闻情绪页数据：新闻情感 + 政策主题映射 + 利好/风险提醒。"""
+    from src import macro as mc
+    data = mc.build_macro_data(offline=args.offline)
+    p = mc.save_macro_data(data)
+    o = data["overview"]
+    print(f"   {p}  新闻 {o['news_total']} 条 · 利好 {o['bull_count']} / 风险 {o['risk_count']} · "
+          f"情绪温度 {o['temperature']}（{o['temperature_label']}）")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "tracking",
-                                       "institution", "all"], default="all")
+                                       "institution", "macro", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
     ap.add_argument("--no-fundflow", action="store_true")
@@ -568,6 +579,8 @@ def main():
         run_metals()
     if args.mode in ("institution", "all"):
         run_institution(args)
+    if args.mode in ("macro", "all"):
+        run_macro(args)
     if args.mode == "tracking":
         import build_tracking
         build_tracking.main()

@@ -107,6 +107,10 @@ table.data-table { width:100%; border-collapse:collapse; font-size:14px; }
 .signal-badge.s-strong_buy, .signal-badge.s-buy { background:var(--buy-bg); color:var(--buy); }
 .signal-badge.s-watch, .signal-badge.s-hold, .signal-badge.s-wait { background:var(--watch-bg); color:var(--watch); }
 .signal-badge.s-reduce, .signal-badge.s-sell, .signal-badge.s-clear { background:var(--sell-bg); color:var(--sell); }
+/* 宏观反馈徽章（2026-08：宏观页利好/风险结果，反馈到复盘/推荐页个股与板块） */
+.macro-badge { font-size:11px; font-weight:700; padding:1px 7px; border-radius:5px; white-space:nowrap; margin-left:4px; }
+.macro-badge.macro-bull { background:var(--buy-bg); color:var(--buy); }
+.macro-badge.macro-risk { background:var(--sell-bg); color:var(--sell); }
 .rating-badge { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; font-weight:800; font-size:15px; }
 .rating-A { background:#fef2f2; color:#dc2626; }
 .rating-B { background:#fff7ed; color:#ea580c; }

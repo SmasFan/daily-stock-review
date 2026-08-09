@@ -19,6 +19,26 @@
     const gridSignals = d.grid_signals || [];
     if (!picks.length) { app.innerHTML = RV.ui.header('每日推荐', '', 'recommend', d.generatedAt) + RV.ui.empty(); return; }
 
+    // ===== 宏观反馈（2026-08 新增）：宏观页利好/风险 → 个股与板块标签 =====
+    let mIdx = null, mSec = null;
+    try {
+      const mD = await RV.API.fetch('macro_data.json');
+      mIdx = (mD._index || {}).stocks || {};
+      mSec = (mD._index || {}).sectors || {};
+    } catch (e) {}
+    function macroBadge(code) {
+      const m = mIdx && mIdx[code];
+      if (!m) return '';
+      const k = m.score > 0 ? 'bull' : 'risk';
+      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" title="宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+    }
+    function sectorMacroTag(sec) {
+      const m = mSec && mSec[sec];
+      if (!m || m.net === 0) return '';
+      const k = m.net > 0 ? 'bull' : 'risk';
+      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" title="宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+    }
+
     // 推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按综合分降序
     const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
     function buyStrength(r) {
@@ -259,7 +279,7 @@
     function listTable(list) {
       const rows = list.map((p, i) => `
       <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</td>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${macroBadge(p.code)} ${holdingBadge(p)}</td>
         <td><span class="sec-chip">${p.sector || '--'}</span></td>
         <td>${RV.ui.ratingBadge(p.rating)}</td>
         <td style="font-weight:800">${RV.fmt.num(p.total_score, 1)}</td>
@@ -271,7 +291,7 @@
       const mobileCards = list.map((p, i) => `
       <div class="mini-card">
         <div class="mini-head">
-          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</span>
+          <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${macroBadge(p.code)} ${holdingBadge(p)}</span>
           <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="mini-tags">
@@ -330,7 +350,7 @@
       return `<div class="mini-cards">${list.map((p, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${holdingBadge(p)}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${nameBlock(p)} ${macroBadge(p.code)} ${holdingBadge(p)}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
           </div>
           <div class="mini-tags">
@@ -375,6 +395,7 @@
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${sec}</span>
+            ${sectorMacroTag(sec)}
             <span class="sec-chip">${items.length}只</span>
             ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}
             <span class="sector-stat">
@@ -393,7 +414,7 @@
       return list.map(p => `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${nameBlock(p)}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
+          <div><span class="card-title">${nameBlock(p)}</span> ${macroBadge(p.code)} <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.trend_status || '--'}</span> ${holdingBadge(p)}</div>
           <span style="display:inline-flex;align-items:center;gap:8px">${RV.ui.signalBadge(p.signal_key, p.signal)} ${recDot(p)}</span>
         </div>
         <div class="card-summary">
@@ -435,6 +456,7 @@
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${s.name}</span>
+            ${sectorMacroTag(s.name)}
             <span class="sec-chip">${s.category}</span>
             ${s.highlight ? `<span class="signal-badge s-strong_buy">推荐</span>` : ''}
             ${stocks.length ? `<span class="sec-chip">${stocks.length}只</span>` : ''}

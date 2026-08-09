@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宏观 · 政策与新闻情绪</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+  .ff-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .ff-big { font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; }
+  .ff-sub { font-size:12px; color:var(--text-2); margin-top:4px; }
+  .ff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  .ff-note { font-size:11px; color:var(--text-2); margin-top:8px; line-height:1.6; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .two-col > * { min-width:0; }
+  @media (max-width:760px) { .two-col { grid-template-columns:1fr; } }
+  .sec-title { margin:6px 0 10px; font-size:13px; font-weight:700; color:var(--text-2); display:flex; align-items:center; gap:6px; }
+  .sec-title i { color:var(--accent); }
+  /* 提醒卡片（利好/风险） */
+  .alert-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px; border-left:4px solid var(--border); }
+  .alert-card.bull { border-left-color:var(--buy,#dc2626); }
+  .alert-card.risk { border-left-color:var(--sell,#16a34a); }
+  .alert-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .alert-title { font-size:14px; font-weight:700; line-height:1.5; }
+  .alert-meta { font-size:11px; color:var(--text-2); margin-top:4px; }
+  .chip { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; background:var(--surface-2); color:var(--text-2); margin-right:6px; margin-top:4px; }
+  .chip.theme { background:var(--watch-bg); color:var(--watch); }
+  .chip.sector { background:var(--buy-bg); color:var(--buy); }
+  .chip.sector.risk { background:var(--sell-bg); color:var(--sell); }
+  .score-badge { font-size:12px; font-weight:800; padding:2px 8px; border-radius:6px; }
+  .score-badge.bull { background:var(--buy-bg); color:var(--buy); }
+  .score-badge.risk { background:var(--sell-bg); color:var(--sell); }
+  .alert-summary { font-size:12px; color:var(--text-2); margin-top:8px; line-height:1.7; }
+  /* 表格 */
+  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; min-width:0; }
+  .tk-table-wrap .ret-table { font-size:13px; width:max-content; }
+  .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:9px 13px; white-space:nowrap; text-align:right; line-height:1.6; }
+  .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
+    text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
+    font-weight:700; box-shadow:1px 0 0 var(--border);
+    white-space:normal; word-break:break-word; line-height:1.5; height:auto;
+    width:auto; max-width:calc(50vw - 46px); min-width:8em;
+  }
+  .tk-table-wrap .ret-table th:first-child { z-index:3; background:var(--surface-2); }
+  .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
+  .tag-bull { color:var(--buy); font-weight:700; }
+  .tag-risk { color:var(--sell); font-weight:700; }
+  .kind-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; }
+  .kind-badge.bull { background:var(--buy-bg); color:var(--buy); }
+  .kind-badge.risk { background:var(--sell-bg); color:var(--sell); }
+  .kind-badge.info { background:var(--surface-2); color:var(--text-2); }
+  .temp-bar { margin-top:8px; }
+  .news-item { padding:10px 0; border-bottom:1px dashed var(--border); display:flex; gap:10px; align-items:flex-start; }
+  .news-item:last-child { border-bottom:none; }
+  .news-title { font-size:13px; font-weight:600; line-height:1.5; }
+  .news-summary { font-size:12px; color:var(--text-2); margin-top:4px; line-height:1.6; }
+  .news-time { font-size:11px; color:var(--text-2); white-space:nowrap; margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.fetch('macro_data.json');
+    const o = d.overview || {};
+    const cls = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
+    const alertCls = k => k === 'bull' ? 'bull' : (k === 'risk' ? 'risk' : 'info');
+    const kindBadge = k => `<span class="kind-badge ${alertCls(k)}">${k === 'bull' ? '利好' : (k === 'risk' ? '风险' : '中性')}</span>`;
+
+    // ===== 宏观概览 =====
+    const overviewHtml = `
+      <div class="section" data-nav="宏观概览" data-nav-icon="gauge-high">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>宏观情绪概览</h2></div>
+        <div class="ff-grid">
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">新闻情绪温度（50 中性）</div>
+            <div class="ff-big ${o.temperature >= 65 ? 'up' : (o.temperature <= 35 ? 'down' : '')}">${o.temperature ?? '--'}</div>
+            <div class="ff-sub">${o.temperature_label || '--'} · 净情绪 ${RV.fmt.num(o.net_score)}</div>
+            <div class="temp-bar">${RV.ui.progress(o.temperature ?? 50)}</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">利好提醒</div>
+            <div class="ff-big up">${o.bull_count ?? 0}</div>
+            <div class="ff-sub">今日财经新闻中确认的正面信号</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">风险提醒</div>
+            <div class="ff-big down">${o.risk_count ?? 0}</div>
+            <div class="ff-sub">监管/处罚/减持/关税等风险事件</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">政策新闻</div>
+            <div class="ff-big">${o.policy_news ?? 0}</div>
+            <div class="ff-sub">/ ${o.news_total ?? 0} 条新闻（央行/部委/统计局等）</div>
+          </div>
+        </div>
+        <div class="ff-note">方法：金融词典法情感打分 + 政策发布主体加权 + 主题/行业映射（多数机构做法）。新闻源：东方财富财经频道，仅反映已披露信息，非投资建议。</div>
+      </div>`;
+
+    // ===== 利好提醒 / 风险提醒 =====
+    const alerts = d.alerts || { bulls: [], risks: [] };
+    function alertCard(a) {
+      const themes = (a.themes || []).map(t => `<span class="chip theme">${t}</span>`).join('');
+      const sectors = (a.sectors || []).map(s => `<span class="chip sector ${a.kind === 'risk' ? 'risk' : ''}">${s}</span>`).join('');
+      const risks = (a.risks || []).map(r => `<span class="chip" style="background:var(--sell-bg);color:var(--sell)">${r}</span>`).join('');
+      return `<div class="alert-card ${a.kind}">
+        <div class="alert-head">
+          <span class="score-badge ${a.kind}">${a.score > 0 ? '+' : ''}${a.score}</span>
+          <span class="alert-title">${a.title}</span>
+          ${a.source_w > 1 ? '<span class="chip" style="background:var(--accent);color:#fff">政策来源×' + a.source_w + '</span>' : ''}
+        </div>
+        <div class="alert-meta">${a.show_time || '--'}</div>
+        ${a.summary ? `<div class="alert-summary">${a.summary}</div>` : ''}
+        <div style="margin-top:6px">${themes}${sectors}${risks}</div>
+      </div>`;
+    }
+    const alertList = (list, empty) => list.length
+      ? list.map(alertCard).join('')
+      : `<div class="empty">${empty}</div>`;
+    const alertHtml = `
+      <div class="section" data-nav="利好风险" data-nav-icon="triangle-exclamation">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('arrow-trend-up')}</span><h2>利好提醒（${alerts.bulls.length} 条）</h2></div>
+        <div class="two-col">
+          <div>
+            <div class="sec-title">${RV.ui.icon('circle-check')} 政策与新闻利好</div>
+            ${alertList(alerts.bulls, '暂无利好提醒')}
+          </div>
+          <div>
+            <div class="sec-title">${RV.ui.icon('triangle-exclamation')} 风险与利空事件</div>
+            ${alertList(alerts.risks, '暂无风险提醒')}
+          </div>
+        </div>
+      </div>`;
+
+    // ===== 主题情绪榜（注意力热度 + 净情绪） =====
+    const themes = d.themes || [];
+    const themeRows = themes.map(t => `<tr>
+      <td>${t.name}</td>
+      <td>${t.news}</td>
+      <td class="${cls(t.net)}"><b>${RV.fmt.num(t.net, 1)}</b></td>
+      <td><span class="tag-bull">${t.bulls}</span> / <span class="tag-risk">${t.risks}</span></td>
+      <td style="text-align:left;color:var(--text-2)">${(t.sectors || []).join('、')}</td>
+    </tr>`).join('');
+    const themeHtml = `
+      <div class="section" data-nav="主题情绪" data-nav-icon="fire">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('fire')}</span><h2>主题情绪榜（注意力热度 × 净情绪）</h2></div>
+        <div class="ff-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table">
+            <thead><tr><th>主题</th><th>新闻条数</th><th>净情绪分</th><th>利好/风险</th><th>涉及板块</th></tr></thead>
+            <tbody>${themeRows || '<tr><td colspan="5" style="text-align:center;color:var(--text-2)">暂无主题命中</td></tr>'}</tbody>
+          </table></div>
+          <div class="ff-note">净情绪分 = 该主题下利好/风险新闻的情绪加权和；新闻条数反映市场注意力（热度）。</div>
+        </div>
+      </div>`;
+
+    // ===== 板块影响（反馈：推荐页板块标签） =====
+    const secIndex = idx.sectors || {};
+    const sectorRows = (d.sectors || []).map(s => {
+      const key = s.key || [];
+      const keyTxt = key.map(k => `<span class="chip ${k.kind === 'bull' ? 'sector' : 'sector risk'}">${k.title.length > 18 ? k.title.slice(0, 18) + '…' : k.title}</span>`).join('');
+      return `<tr>
+        <td>${s.sector}</td>
+        <td class="${cls(s.net)}"><b>${RV.fmt.num(s.net, 1)}</b></td>
+        <td><span class="tag-bull">${s.bulls}</span> / <span class="tag-risk">${s.risks}</span></td>
+        <td style="text-align:left">${keyTxt || '--'}</td>
+      </tr>`;
+    }).join('');
+    const sectorHtml = `
+      <div class="section" data-nav="板块影响" data-nav-icon="layer-group">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>板块影响（自选板块 · 宏观分）</h2></div>
+        <div class="ff-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table">
+            <thead><tr><th>板块</th><th>宏观净情绪</th><th>利好/风险</th><th>关键提醒</th></tr></thead>
+            <tbody>${sectorRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-2)">暂无板块命中</td></tr>'}</tbody>
+          </table></div>
+          <div class="ff-note">宏观分已反馈到复盘页与推荐页的板块分组（利好=红、风险=绿标签）。</div>
+        </div>
+      </div>`;
+
+    // ===== 个股影响（反馈：复盘/推荐页个股标签） =====
+    const stockRows = (d.stocks || []).slice(0, 60).map(s => `<tr>
+      <td>${s.code} ${s.name || ''}</td>
+      <td>${s.sector}</td>
+      <td class="${cls(s.score)}"><b>${RV.fmt.num(s.score, 1)}</b></td>
+      <td><span class="tag-bull">${s.bulls}</span> / <span class="tag-risk">${s.risks}</span></td>
+    </tr>`).join('');
+    const stockHtml = `
+      <div class="section" data-nav="个股影响" data-nav-icon="chart-line">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>个股影响（自选股 Top ${Math.min((d.stocks || []).length, 60)}）</h2></div>
+        <div class="ff-card" style="padding:6px 14px">
+          <div class="tk-table-wrap"><table class="ret-table">
+            <thead><tr><th>代码</th><th>板块</th><th>宏观分</th><th>利好/风险</th></tr></thead>
+            <tbody>${stockRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-2)">暂无个股命中</td></tr>'}</tbody>
+          </table></div>
+          <div class="ff-note">个股宏观分 = 所属板块的宏观净情绪（同板块内共享），正分偏多、负分偏空。反馈到复盘/推荐页个股卡片。</div>
+        </div>
+      </div>`;
+
+    // ===== 最新财经新闻（带情绪标注） =====
+    const news = d.news || [];
+    const newsHtml = `
+      <div class="section" data-nav="新闻流" data-nav-icon="newspaper">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('newspaper')}</span><h2>最新财经新闻（${news.length} 条 · 情绪标注）</h2></div>
+        <div class="ff-card">
+          ${news.map(n => `<div class="news-item">
+            <span>${kindBadge(n.kind)}</span>
+            <div style="min-width:0">
+              <div class="news-title">${n.title} <span class="news-time">${n.show_time || ''}</span></div>
+              ${n.summary ? `<div class="news-summary">${n.summary}</div>` : ''}
+              ${(n.themes || []).length ? `<div style="margin-top:4px">${n.themes.map(t => `<span class="chip theme">${t}</span>`).join('')}</div>` : ''}
+            </div>
+          </div>`).join('') || '<div class="empty">暂无新闻数据</div>'}
+        </div>
+      </div>`;
+
+    app.innerHTML = RV.ui.header('宏观', '政策 · 新闻 · 情绪 · 利好/风险提醒', 'macro', d.generatedAt)
+      + overviewHtml + alertHtml + themeHtml + sectorHtml + stockHtml + newsHtml
+      + '<footer>新闻源：东方财富财经频道 · 词典法情感 + 政策加权 + 主题映射 · 数据仅供学习研究，不构成投资建议</footer>';
+    RV.ui.initSidebar();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('宏观', '', 'macro') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

@@ -16,6 +16,28 @@
     const d = await RV.API.review();
     const t = d.temperature, s = d.stats;
 
+    // ===== 宏观反馈（2026-08 新增）：读取宏观页结果，给个股/板块打利好/风险标签 =====
+    let mIdx = null, mSec = null;
+    try {
+      const mD = await RV.API.fetch('macro_data.json');
+      mIdx = (mD._index || {}).stocks || {};
+      mSec = (mD._index || {}).sectors || {};
+    } catch (e) {}
+    function macroBadge(code) {
+      const m = mIdx && mIdx[code];
+      if (!m) return '';
+      const k = m.score > 0 ? 'bull' : 'risk';
+      const cls = m.score > 0 ? 'macro-bull' : 'macro-risk';
+      return `<span class="macro-badge ${cls}" title="宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+    }
+    function sectorMacroTag(sec) {
+      const m = mSec && mSec[sec];
+      if (!m || m.net === 0) return '';
+      const k = m.net > 0 ? 'bull' : 'risk';
+      const cls = m.net > 0 ? 'macro-bull' : 'macro-risk';
+      return `<span class="macro-badge ${cls}" title="宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+    }
+
     // 买入推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按评分降序
     const SIG_ORDER = { strong_buy: 0, buy: 1, watch: 2, reduce: 3, sell: 4 };
     function buyStrength(r) {
@@ -232,7 +254,7 @@
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name} ${macroBadge(r.code)}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${fundFlowBadge(r)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
@@ -361,6 +383,7 @@
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${sec}</span>
+            ${sectorMacroTag(sec)}
             ${sectorDot(sec, list)}
             <span class="sec-chip">${list.length}只</span>
             ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}

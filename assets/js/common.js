@@ -53,6 +53,7 @@
         ['review', '复盘', 'clipboard-list', 'review.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
         ['institution', '资金', 'landmark', 'institution.html'],
+        ['macro', '宏观', 'newspaper', 'macro.html'],
         ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
         ['tracking', '跟踪', 'route', 'tracking.html'],
