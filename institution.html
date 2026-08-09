@@ -45,7 +45,8 @@
   /* 策略回测模块样式 */
   .st-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
   .st-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:12px; }
-  .st-num { font-size:clamp(18px, 2.4vw, 26px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; overflow-wrap:anywhere; }
+  .st-num { font-size:clamp(18px, 2.4vw, 26px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1.3; overflow-wrap:anywhere; }
+  .st-num-sub { font-size:0.62em; font-weight:700; display:block; }
   .st-label { font-size:12px; color:var(--text-2); margin-top:3px; }
   .st-tag { display:inline-block; padding:3px 9px; border-radius:6px; font-size:12px; font-weight:700; margin-left:6px; }
   .st-tag.eff { background:var(--buy-bg); color:var(--buy); }
@@ -274,7 +275,7 @@
             <div><div class="st-num ${cls(r.avg_ret)}">${pct2(r.avg_ret)}</div><div class="st-label">平均单笔收益</div></div>
             <div><div class="st-num">${(r.win_rate * 100).toFixed(1)}%</div><div class="st-label">胜率</div></div>
             <div><div class="st-num ${cls(r.day_annual)}">${pct1(r.day_annual)}</div><div class="st-label">组合年化</div></div>
-            <div><div class="st-num ${cls(r.best)}">${pct2(r.best)}</div><div class="st-label">最好 / 最差 ${pct2(r.worst)}</div></div>
+            <div><div class="st-num ${cls(r.best)}">${pct2(r.best)}<br><span class="st-num-sub ${cls(r.worst)}">${pct2(r.worst)}</span></div><div class="st-label">最好 / 最差</div></div>
           </div></div>`;
       };
       const A_1d = s.A_1d;
