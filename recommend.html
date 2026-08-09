@@ -377,6 +377,67 @@
         </div>`).join('')}</div>`;
     }
 
+    // 板块汇总详情（'?' 弹层，与复盘页一致）：结构化卡片布局
+    function sectorDetail(sec, list) {
+      const n = list.length;
+      const up = list.filter(r => r.change_pct > 0).length;
+      const down = n - up;
+      const strongBuy = list.filter(r => r.signal_key === 'strong_buy').length;
+      const buy = list.filter(r => r.signal_key === 'buy').length;
+      const buys = strongBuy + buy;
+      const avgScore = list.reduce((s, r) => s + (r.total_score || 0), 0) / n;
+      const avgChg = list.reduce((s, r) => s + (r.change_pct || 0), 0) / n;
+      const best = list.slice().sort((a, b) => (b.total_score || 0) - (a.total_score || 0))[0];
+      const worst = list.slice().sort((a, b) => (a.total_score || 0) - (b.total_score || 0))[0];
+      const RATING_COLOR = { A: '#dc2626', B: '#ea580c', C: '#d97706', D: '#16a34a', E: '#6b7280' };
+      const ratingCnt = list.reduce((m, r) => { m[r.rating] = (m[r.rating] || 0) + 1; return m; }, {});
+      const ratings = Object.keys(RATING_COLOR).map(k =>
+        ratingCnt[k] ? `<span><i style="background:${RATING_COLOR[k]};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px"></i>${k} ${ratingCnt[k]}</span>` : '').join('');
+
+      const distBar = `<div style="display:flex;height:8px;border-radius:99px;overflow:hidden;margin:4px 0 8px">` +
+        Object.keys(RATING_COLOR).map(k => ratingCnt[k]
+          ? `<span style="display:block;width:${(ratingCnt[k] / n * 100).toFixed(1)}%;background:${RATING_COLOR[k]};height:100%"></span>` : '').join('') + `</div>`;
+
+      const scoreBar = `<div style="display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--surface-2);border:1px solid var(--border);margin:4px 0 6px"><div style="width:${Math.max(0, Math.min(100, avgScore))}%;background:${avgScore >= 70 ? '#dc2626' : (avgScore >= 55 ? '#d97706' : (avgScore >= 40 ? '#2563eb' : '#16a34a'))};height:100%"></div></div>`;
+
+      const statCard = (icon, title, val, sub, cls = '') => `
+        <div style="flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center">
+          <div style="font-size:10px;color:var(--text-2)">${title}</div>
+          <div style="font-size:17px;font-weight:800;font-variant-numeric:tabular-nums" class="${cls}">${val}</div>
+          <div style="font-size:10px;color:var(--text-2)">${sub}</div>
+        </div>`;
+
+      const head = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0 10px">
+          <span style="font-weight:800;font-size:14px">${sec}</span>
+          <span class="${RV.fmt.cls(avgChg)}" style="font-weight:800;font-size:15px;font-variant-numeric:tabular-nums">${RV.fmt.pct(avgChg)}</span>
+        </div>`;
+
+      const statRow = `<div style="display:flex;gap:8px;margin-bottom:10px">
+        ${statCard('', '标的数', n + ' 只', up + ' 涨 / ' + down + ' 跌')}
+        ${statCard('', '平均综合分', RV.fmt.num(avgScore, 1), '技术50% + 截面50%')}
+        ${statCard('', '买入信号', buys + ' 只', '强买 + 买入')}
+      </div>`;
+
+      const pickCard = (r, tag) => r ? `
+        <div style="display:flex;align-items:center;gap:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:6px">
+          <span style="font-size:11px;font-weight:700;color:var(--text-2);flex-shrink:0">${tag}</span>
+          <span style="flex:1;min-width:0;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
+          <span class="${RV.fmt.cls(r.change_pct)}" style="font-weight:700;font-variant-numeric:tabular-nums">${RV.fmt.pct(r.change_pct)}</span>
+          <span style="font-size:12px;font-weight:800;font-variant-numeric:tabular-nums">${RV.fmt.num(r.total_score, 1)}</span>
+          ${RV.ui.ratingBadge(r.rating)}${RV.ui.signalBadge(r.signal_key, r.signal)}
+        </div>` : '';
+
+      const note = `<div style="font-size:10px;color:var(--text-2);line-height:1.6;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border)">
+        板块内按买入强度（强买>买入>观望>减仓>卖出）排序，同级按综合分降序；综合分 = 技术分×50% + 横截面分×50%
+      </div>`;
+
+      return head + statRow + distBar + '<div style="font-size:11px;color:var(--text-2);margin-bottom:2px">评级分布：' + ratings + '</div>' + scoreBar
+        + '<div style="font-size:10px;color:var(--text-2);margin:2px 0 10px;display:flex;justify-content:space-between"><span>0</span><span>均分 ' + RV.fmt.num(avgScore, 1) + '</span><span>100</span></div>'
+        + pickCard(best, '最强') + pickCard(worst, '最弱') + note;
+    }
+    const sectorDot = (sec, list) => RV.ui.infoDot(sectorDetail(sec, list), '');
+
     function sectorSection(list, title) {
       const groups = groupBySector(list);
       // 板块按平均综合分倒序（板块评分），同分按数量、名称
@@ -395,6 +456,7 @@
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
             <span class="sector-name">${sec}</span>
+            ${sectorDot(sec, items)}
             ${sectorMacroTag(sec)}
             <span class="sec-chip">${items.length}只</span>
             ${top ? RV.ui.signalBadge(top.signal_key, top.signal) : ''}
