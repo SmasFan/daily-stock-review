@@ -26,14 +26,15 @@
   .tk-chart-last { margin-left:auto; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
 
   /* 跟踪表格：参考回测页 ret-table（横向滑动 + sticky 表头 + 首列固定），
-     首列改为 名称+代码+板块 三行结构 */
+     首列占 50% 宽度、超出换行（与回测页口径一致），首列内容为 名称+代码+板块 三行 */
   .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .tk-table-wrap .ret-table { font-size:14px; }
   .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
   .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
     text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
     font-weight:700; box-shadow:1px 0 0 var(--border);
-    width:auto; max-width:none; white-space:nowrap;
+    width:50%; max-width:calc(50vw - 46px);
+    white-space:normal; word-break:break-word; line-height:1.5; height:auto;
   }
   .tk-table-wrap .ret-table th:first-child { z-index:3; background:var(--surface-2); }
   .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
