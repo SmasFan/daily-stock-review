@@ -65,8 +65,8 @@
   const sigBadge = (k, l) => RV.ui.signalBadge(k, l || SIG_LABEL[k] || k);
 
   /* ===== 稳定榜：每天推荐 Top10 里上榜最稳的票 ===== */
-  function nameCell(s, i) {
-    return `<span class="tk-name-line"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>
+  function nameCell(s, i, showIndex = true) {
+    return `<span class="tk-name-line">${showIndex ? `<span class="row-num">${String(i + 1).padStart(2, '0')}</span>` : ''}
       <span class="asset-name">${s.name}</span></span><span class="stock-code">${s.code}</span>
       <div class="tk-sector-line">${s.sector || '--'}</div>`;
   }
@@ -75,7 +75,7 @@
     const rows = stable.map((s, i) => {
       const tr = s.latest_track_return;
       return `<tr>
-        <td>${nameCell(s, i)}</td>
+        <td>${nameCell(s, i, false)}</td>
         <td style="font-weight:800">${s.count}<span style="color:var(--text-2);font-weight:500">/${d.total_days}天</span></td>
         <td style="font-weight:800">${s.rate}%</td>
         <td style="font-weight:800">${s.latest_score != null ? s.latest_score : '--'}</td>
@@ -102,7 +102,7 @@
       const up = items.filter(it => (it.track_return ?? -999) > 0).length;
       const rows = items.map((it, i) => `
         <tr>
-          <td>${nameCell(it, i)}</td>
+          <td>${nameCell(it, i, false)}</td>
           <td>${it.rating || '--'}</td>
           <td style="font-weight:800">${it.total_score ?? '--'}</td>
           <td>${sigBadge(it.signal_key, it.signal)}</td>
