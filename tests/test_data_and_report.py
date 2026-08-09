@@ -133,7 +133,8 @@ class TestTracking(unittest.TestCase):
         kline = {"dates": ["2026-01-01", "2026-01-02", "2026-01-03"],
                  "closes": [100.0, 110.0, 121.0]}
         self.assertAlmostEqual(track_return(kline, "2026-01-01"), 21.0)
-        self.assertAlmostEqual(track_return(kline, "2026-01-03"), 0.0)
+        # 推荐日已是最后交易日：无后续行情，返回 None 而非 0%（2026-08-09 语义）
+        self.assertIsNone(track_return(kline, "2026-01-03"))
         self.assertIsNone(track_return({}, "2026-01-01"))
 
 

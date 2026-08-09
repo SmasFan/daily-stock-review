@@ -479,7 +479,12 @@ def snapshot_metal_picks(items: List[Dict], day: str) -> int:
 
 
 def _track_return(kline: Dict, rec_date: str) -> Optional[float]:
-    """推荐日收盘 → 最新收盘 的涨幅%。"""
+    """推荐日收盘 → 最新收盘 的涨幅%。
+
+    2026-08-09 修正：推荐日若已是最后一个交易日（无后续行情，如当天就是
+    最近交易日或周末快照），返回 None —— 前端显示 '--' 而不是 0%，避免
+    把"还没走出的行情"误读成"收益为零"。
+    """
     if not kline:
         return None
     dates, closes = kline["dates"], kline["closes"]
@@ -490,6 +495,8 @@ def _track_return(kline: Dict, rec_date: str) -> Optional[float]:
         else:
             break
     if idx is None or not closes or not closes[idx]:
+        return None
+    if idx >= len(dates) - 1:
         return None
     return round((closes[-1] / closes[idx] - 1) * 100, 2)
 
@@ -525,6 +532,22 @@ def build_metals_tracking(limit_days: int = 120) -> Dict:
             k = None
         if k and len(k.get("dates") or []) > 30:
             kl[c] = k
+
+    # 交易日归一化（与 build_tracking 一致）：周末/节假日快照归并到最近交易日
+    trade_days = sorted({d for k in kl.values() for d in (k.get("dates") or [])})
+    if trade_days:
+        norm = OrderedDict()
+        for d, lst in days.items():
+            nd = d
+            for td in reversed(trade_days):
+                if td <= d:
+                    nd = td
+                    break
+            items = norm.setdefault(nd, [])
+            for it in lst:
+                if not any(x["code"] == it["code"] for x in items):
+                    items.append(it)
+        days = OrderedDict((d, lst) for d, lst in sorted(norm.items()))
 
     for d, lst in days.items():
         for it in lst:
@@ -569,10 +592,25 @@ def extend_metals_data(data: Dict, offline: bool = False) -> Dict:
     stocks = build_metals_stocks_data(offline=offline)
     data["stocks"] = stocks["items"]
     data["stock_macro"] = stocks["macro"]
-    # 当日快照入库（幂等）
-    day = (data.get("generatedAt") or "")[:10]
+    # 当日快照入库（幂等；周末/节假日归一到最近交易日，与 build_tracking 一致）
+    day = _nearest_trade_day((data.get("generatedAt") or "")[:10])
     if stocks["items"] and day:
         snapshot_metal_picks(stocks["items"], day)
         print(f"   有色股票快照 {day} 已入库 {len(stocks['items'])} 只")
     data["stock_tracking"] = build_metals_tracking()
     return data
+
+
+def _nearest_trade_day(day: str) -> Optional[str]:
+    """把日期归一到 <= 它的最近交易日（用任一有色股票 K 线日期判断）。"""
+    if not day:
+        return None
+    try:
+        from . import data_provider as dp
+        k = dp.fetch_daily_kline(METALS_STOCK_CODES[0], count=250)
+        if not k:
+            return day
+        trade_days = sorted(d for d in (k.get("dates") or []) if d <= day)
+        return trade_days[-1] if trade_days else day
+    except Exception:
+        return day

@@ -86,21 +86,30 @@ def load_days(conn):
 
 
 def import_git_history(conn):
-    """首次迁移：用 git 历史导入存量快照（重复导入幂等）。"""
+    """首次迁移：用 git 历史导入存量快照（重复导入幂等）。
+
+    2026-08-09 修正：按数据内 generatedAt 日期归档而非 commit 日期——
+    旧 commit 里可能夹带"重新生成/紧凑化"的旧数据（如 08-09 的 commit 内容
+    仍是 08-07 的推荐），按 commit 日期会误建周末/节假日快照。
+    """
     commits = git_recommend_commits()
-    snaps = pick_daily_snapshots(commits)
     imported = 0
-    for day, h in snaps.items():
+    seen = set()
+    for dt, h in commits:
         try:
             raw = subprocess.check_output(["git", "show", f"{h}:data/recommend_data.json"],
                                           cwd=BASE_DIR)
             data = json.loads(raw.decode("utf-8"))
         except Exception:
             continue
+        day = (data.get("generatedAt") or "")[:10]
+        if not day or day in seen:
+            continue
+        seen.add(day)
         items = top10_buys(data.get("picks") or [])
         upsert_day(conn, day, items)
         imported += 1
-    return imported, len(snaps)
+    return imported, len(seen)
 
 
 def git_recommend_commits():
@@ -151,7 +160,11 @@ def fetch_klines(codes, count=250):
 
 
 def track_return(kline, rec_date):
-    """推荐日收盘(<=rec_date 最近一根) → 最新收盘 的涨幅%。"""
+    """推荐日收盘(<=rec_date 最近一根) → 最新收盘 的涨幅%。
+
+    2026-08-09 修正：推荐日已是最后一个交易日（无后续行情）返回 None，
+    前端显示 '--' 而不是 0%，避免把"还没走出的行情"误读为"收益为零"。
+    """
     if not kline:
         return None
     dates, closes = kline["dates"], kline["closes"]
@@ -162,6 +175,8 @@ def track_return(kline, rec_date):
         else:
             break
     if idx is None or not closes:
+        return None
+    if idx >= len(dates) - 1:
         return None
     base = closes[idx]
     last = closes[-1]
@@ -202,6 +217,25 @@ def main():
 
     print(f"抓取 K 线（{len(pool_codes)} 个代码）…")
     kl_full = fetch_klines(sorted(pool_codes))
+
+    # 交易日归一化（2026-08-09 修正）：周末/节假日被 auto commit 误当交易日
+    # 入库（如 08-09 周日），按 K 线交易日历把它们归并到最近交易日
+    trade_days = sorted({d for k in kl_full.values() for d in (k.get("dates") or [])})
+    if trade_days:
+        norm = {}
+        for day in days:
+            nd = day["date"]
+            for td in reversed(trade_days):
+                if td <= day["date"]:
+                    nd = td
+                    break
+            items = norm.setdefault(nd, [])
+            for it in day["items"]:
+                if not any(x["code"] == it["code"] for x in items):
+                    items.append(it)
+        days = [{"date": d, "items": items} for d, items in sorted(norm.items())]
+        merged = sum(len(d["items"]) for d in days)
+        print(f"   交易日归一化: {len(days)} 天（合并重复快照，共 {merged} 条）")
 
     # 计算跟踪收益 + 精简 K 线
     klines = {}
