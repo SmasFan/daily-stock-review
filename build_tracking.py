@@ -225,19 +225,30 @@ def main():
     cnt = Counter()
     latest = {}
     first_seen = {}
+    last_seen = {}
     for day in days:
         for it in day["items"]:
             c = it["code"]
             cnt[c] += 1
             latest[c] = it
             first_seen.setdefault(c, day["date"])
+            last_seen[c] = day["date"]
+    # 累计跟踪 = 首次上榜日收盘 → 最新收盘；最近跟踪 = 最后一次上榜日收盘 → 最新收盘
+    first_ret, last_ret = {}, {}
+    for day in days:
+        for it in day["items"]:
+            c = it["code"]
+            if day["date"] == first_seen[c]:
+                first_ret[c] = it["track_return"]
+            if day["date"] == last_seen[c]:
+                last_ret[c] = it["track_return"]
     total = len(days)
     stable = sorted(
         ({ "code": c, "name": latest[c]["name"], "sector": latest[c]["sector"],
            "count": n, "rate": round(n / total * 100) if total else 0,
-           "first_day": first_seen[c], "latest_day": latest[c]["name"],
+           "first_day": first_seen[c], "latest_day": last_seen[c],
            "latest_score": latest[c]["total_score"], "latest_signal": latest[c]["signal_key"],
-           "latest_track_return": latest[c]["track_return"] }
+           "cum_track_return": first_ret.get(c), "latest_track_return": last_ret.get(c) }
          for c, n in cnt.items()),
         key=lambda x: (-x["count"], -(x["latest_score"] or 0)))
 
