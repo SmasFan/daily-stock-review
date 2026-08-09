@@ -13,8 +13,11 @@
 """
 import json
 import os
+import re
+import sqlite3
 import time
 import urllib.request
+from collections import OrderedDict
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -22,6 +25,7 @@ from . import indicators as ind
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(BASE_DIR, "data", "cache")
+DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 UA = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
@@ -38,6 +42,33 @@ METALS: List[Dict[str, str]] = [
     {"symbol": "AG0", "name": "沪银", "en": "Silver", "unit": "元/千克", "exchange": "SHFE"},
     {"symbol": "LC0", "name": "碳酸锂", "en": "Lithium Carbonate", "unit": "元/吨", "exchange": "GFEX"},
 ]
+
+# 有色股票池（A股个股/ETF，对应期货品种联动；sector 用于宏观映射）
+# 来自自选 watchlist 的有色相关标的：铜/铝/锌/镍/锡/金/银/锂/稀土
+METALS_STOCKS: List[Dict[str, str]] = [
+    {"code": "601899", "name": "紫金矿业", "link": "沪铜/沪金", "sector": "周期资源"},
+    {"code": "600362", "name": "江西铜业", "link": "沪铜", "sector": "周期资源"},
+    {"code": "000630", "name": "铜陵有色", "link": "沪铜", "sector": "周期资源"},
+    {"code": "000737", "name": "北方铜业", "link": "沪铜", "sector": "周期资源"},
+    {"code": "601600", "name": "中国铝业", "link": "沪铝", "sector": "周期资源"},
+    {"code": "601212", "name": "白银有色", "link": "沪银/沪铜", "sector": "周期资源"},
+    {"code": "600988", "name": "赤峰黄金", "link": "沪金", "sector": "周期资源"},
+    {"code": "600916", "name": "中国黄金", "link": "沪金", "sector": "周期资源"},
+    {"code": "601069", "name": "西部黄金", "link": "沪金", "sector": "周期资源"},
+    {"code": "002155", "name": "湖南黄金", "link": "沪金/沪锑", "sector": "周期资源"},
+    {"code": "600111", "name": "北方稀土", "link": "稀土", "sector": "周期资源"},
+    {"code": "000792", "name": "盐湖股份", "link": "碳酸锂/钾", "sector": "周期资源"},
+    {"code": "000408", "name": "藏格矿业", "link": "碳酸锂", "sector": "周期资源"},
+    {"code": "002466", "name": "天齐锂业", "link": "碳酸锂", "sector": "新能源电力"},
+    {"code": "002240", "name": "盛新锂能", "link": "碳酸锂", "sector": "新能源电力"},
+    {"code": "159934", "name": "黄金ETF易方达", "link": "沪金", "sector": "周期资源"},
+    {"code": "517400", "name": "黄金股ETF国泰", "link": "沪金", "sector": "周期资源"},
+    {"code": "161226", "name": "国投白银LOF", "link": "沪银", "sector": "周期资源"},
+    {"code": "159980", "name": "有色ETF大成", "link": "有色金属指数", "sector": "周期资源"},
+    {"code": "512400", "name": "有色金属ETF南方", "link": "有色金属指数", "sector": "周期资源"},
+]
+
+METALS_STOCK_CODES = [m["code"] for m in METALS_STOCKS]
 
 
 def _cache_path(key: str) -> str:
@@ -265,3 +296,283 @@ def save_metals_data(data: Dict) -> str:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     return path
+
+
+# ---------------- 有色股票推荐 + 宏观影响 + 历史跟踪 ----------------
+
+def _macro_sector_index() -> Dict:
+    """读取 macro_data.json 的板块宏观分索引（无数据时返回空）。"""
+    path = os.path.join(DATA_DIR, "macro_data.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return d.get("_index", {}).get("sectors", {})
+    except Exception:
+        return {}
+
+
+def _metal_name_map() -> Dict[str, str]:
+    """{code: name}（腾讯快照优先，静态表兜底）。"""
+    try:
+        from . import data_provider as dp
+        qs = dp.fetch_quotes(METALS_STOCK_CODES)
+        if qs:
+            return {c: (q.get("name") or n) for c, q in qs.items()
+                    if (q or {}).get("name")}
+    except Exception:
+        pass
+    return {m["code"]: m["name"] for m in METALS_STOCKS}
+
+
+def build_metals_stocks_data(offline: bool = False) -> Dict:
+    """有色股票推荐分析：技术分析 + 资金流 + 宏观板块分 → 排序推荐。
+
+    返回 {generatedAt, macro: {温度/板块净分}, items: [{code,name,sector,link,
+    price,change_pct,trend_status,tech_score,signal_key,signal,macro_net,macro_bulls,
+    macro_risks,macro_key,fund_net,ideal_buy,secondary_buy,stop_loss,take_profit,
+    total_score,rating}]}
+    """
+    from . import analyzer as az
+    from . import data_provider as dp
+    from . import screener as scr
+
+    names = _metal_name_map()
+    if not offline:
+        quotes = dp.fetch_quotes(METALS_STOCK_CODES)
+    else:
+        quotes = {}
+    klines = dp.fetch_daily_kline_batch(METALS_STOCK_CODES, count=320)
+
+    # 资金流（主力=超大单+大单）
+    fflows = {}
+    if not offline:
+        try:
+            from . import fund_flow as ff
+            fflows = ff.fetch_fflow_batch(METALS_STOCK_CODES)
+        except Exception as e:
+            print(f"   [warn] 有色股票资金流失败: {e}")
+
+    # 宏观板块分（"周期资源" 覆盖大部分有色股）
+    sec_idx = _macro_sector_index()
+    macro_sector = sec_idx.get("周期资源") or {}
+    macro_sector2 = sec_idx.get("新能源电力") or {}
+
+    items = []
+    for meta in METALS_STOCKS:
+        code = meta["code"]
+        k = klines.get(code)
+        if not k or len(k["closes"]) < 30:
+            continue
+        try:
+            a = az.analyze_stock(meta["name"], k["dates"], k["opens"], k["closes"],
+                                 k["highs"], k["lows"], k["volumes"], code=code)
+        except Exception:
+            a = None
+        if a is None:
+            continue
+        q = quotes.get(code) or {}
+        # 宏观分：按个股所属板块取（锂电归新能源电力，其余归周期资源）
+        ms = macro_sector if meta["sector"] == "周期资源" else macro_sector2
+        key = (ms.get("key") or [])[:3]
+        items.append({
+            "code": code, "name": meta["name"], "sector": meta["sector"],
+            "link": meta["link"],
+            "price": (q.get("price") or a.close),
+            "change_pct": (q.get("change") or a.change_pct),
+            "trend_status": a.trend_status,
+            "tech_score": a.score,
+            "signal_key": a.signal_key, "signal": a.signal,
+            "macro_net": ms.get("net"),
+            "macro_bulls": ms.get("bulls", 0), "macro_risks": ms.get("risks", 0),
+            "macro_key": key,
+            "fund_net": (fflows.get(code) or {}).get("main_net"),
+            "ideal_buy": a.ideal_buy, "secondary_buy": a.secondary_buy,
+            "stop_loss": a.stop_loss, "take_profit": a.take_profit,
+        })
+
+    # 横截面打分（技术面 50% + 横截面因子 50%，含资金流/宏观加权）
+    if not items:
+        return {"generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "macro": {}, "items": []}
+    screen_items = []
+    for it in items:
+        si = scr.ScreenItem(
+            name=it["name"], code=it["code"], sector=it["sector"],
+            price=it["price"], change_pct=it["change_pct"],
+            amount=0, tech_score=it["tech_score"],
+            signal_key=it["signal_key"], signal=it["signal"],
+            trend_status=it["trend_status"],
+        )
+        # 宏观分映射到 tech_score 调整（±6 封顶）：板块偏多加分，偏空减分
+        mn = it["macro_net"]
+        if mn is not None:
+            si.tech_score = max(0, min(100, si.tech_score + max(-6.0, min(6.0, mn / 3))))
+        screen_items.append(si)
+    ranked = scr.screen(screen_items, tech_weight=0.5, top_n=len(screen_items))
+    rank_map = {r.code: r for r in ranked}
+    for it in items:
+        r = rank_map.get(it["code"])
+        if r:
+            it["total_score"] = r.total_score
+            it["rating"] = r.rating
+        else:
+            it["total_score"] = 50.0
+            it["rating"] = "C"
+    items.sort(key=lambda x: (-x["total_score"], x["code"]))
+
+    macro_temp = None
+    try:
+        with open(os.path.join(DATA_DIR, "macro_data.json"), "r", encoding="utf-8") as f:
+            mraw = json.load(f)
+        macro_temp = mraw.get("overview", {}).get("temperature")
+    except Exception:
+        pass
+
+    return {
+        "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "macro": {
+            "temperature": macro_temp,
+            "sector_net": macro_sector.get("net"),
+            "sector_bulls": macro_sector.get("bulls", 0),
+            "sector_risks": macro_sector.get("risks", 0),
+            "sector_key": (macro_sector.get("key") or [])[:3],
+        },
+        "items": items,
+    }
+
+
+# ---------------- 有色股票历史跟踪（SQLite 快照） ----------------
+
+METAL_DB_PATH = os.path.join(DATA_DIR, "tracking.db")
+
+
+def _metal_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(METAL_DB_PATH)
+    conn.execute("""CREATE TABLE IF NOT EXISTS metal_picks (
+        day TEXT NOT NULL,
+        rank INTEGER NOT NULL,
+        code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        total_score REAL,
+        rating TEXT,
+        signal_key TEXT,
+        price REAL,
+        sector TEXT,
+        PRIMARY KEY (day, code))""")
+    conn.commit()
+    return conn
+
+
+def snapshot_metal_picks(items: List[Dict], day: str) -> int:
+    """把当日有色推荐快照写入 SQLite（day+code 幂等）。"""
+    conn = _metal_db()
+    with conn:
+        conn.executemany(
+            """INSERT OR REPLACE INTO metal_picks
+               (day, rank, code, name, total_score, rating, signal_key, price, sector)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            [(day, i + 1, it["code"], it["name"], it.get("total_score"),
+              it.get("rating", ""), it.get("signal_key", ""),
+              it.get("price"), it.get("sector", ""))
+             for i, it in enumerate(items)])
+    return len(items)
+
+
+def _track_return(kline: Dict, rec_date: str) -> Optional[float]:
+    """推荐日收盘 → 最新收盘 的涨幅%。"""
+    if not kline:
+        return None
+    dates, closes = kline["dates"], kline["closes"]
+    idx = None
+    for i, d in enumerate(dates):
+        if d <= rec_date:
+            idx = i
+        else:
+            break
+    if idx is None or not closes or not closes[idx]:
+        return None
+    return round((closes[-1] / closes[idx] - 1) * 100, 2)
+
+
+def build_metals_tracking(limit_days: int = 120) -> Dict:
+    """读取 SQLite 有色快照历史 → 拉K线 → 跟踪收益，输出 {days, stable}。"""
+    from . import data_provider as dp
+
+    conn = _metal_db()
+    rows = conn.execute(
+        "SELECT day, rank, code, name, total_score, rating, signal_key, price, sector "
+        "FROM metal_picks ORDER BY day, rank").fetchall()
+    conn.close()
+    if not rows:
+        return {"days": [], "stable": []}
+
+    days = OrderedDict()
+    for r in rows:
+        day, rank, code, name, total, rating, sk, price, sector = r
+        days.setdefault(day, []).append({
+            "rank": rank, "code": code, "name": name, "total_score": total,
+            "rating": rating or "", "signal_key": sk or "", "price": price,
+            "sector": sector or ""})
+    day_list = list(days.keys())[-limit_days:]
+    days = OrderedDict((d, days[d]) for d in day_list)
+
+    codes = sorted({it["code"] for lst in days.values() for it in lst})
+    kl = {}
+    for c in codes:
+        try:
+            k = dp.fetch_daily_kline(c, count=250)
+        except Exception:
+            k = None
+        if k and len(k.get("dates") or []) > 30:
+            kl[c] = k
+
+    for d, lst in days.items():
+        for it in lst:
+            it["track_return"] = _track_return(kl.get(it["code"]), d)
+
+    # 稳定榜：上榜天数 + 累计/最近跟踪收益
+    from collections import Counter
+    cnt, latest, first_seen, last_seen = Counter(), {}, {}, {}
+    for d, lst in days.items():
+        for it in lst:
+            c = it["code"]
+            cnt[c] += 1
+            latest[c] = it
+            first_seen.setdefault(c, d)
+            last_seen[c] = d
+    first_ret, last_ret = {}, {}
+    for d, lst in days.items():
+        for it in lst:
+            c = it["code"]
+            if d == first_seen[c]:
+                first_ret[c] = it["track_return"]
+            if d == last_seen[c]:
+                last_ret[c] = it["track_return"]
+    total_days = len(days)
+    stable = sorted(
+        ({"code": c, "name": latest[c]["name"], "sector": latest[c]["sector"],
+          "count": n, "rate": round(n / total_days * 100) if total_days else 0,
+          "first_day": first_seen[c], "latest_day": last_seen[c],
+          "latest_score": latest[c]["total_score"],
+          "latest_signal": latest[c]["signal_key"],
+          "cum_track_return": first_ret.get(c),
+          "latest_track_return": last_ret.get(c)}
+         for c, n in cnt.items()),
+        key=lambda x: (-x["count"], -(x["latest_score"] or 0)))
+
+    return {"days": [{"date": d, "items": lst} for d, lst in days.items()],
+            "stable": stable}
+
+
+def extend_metals_data(data: Dict, offline: bool = False) -> Dict:
+    """给 metals_data.json 附加股票推荐 + 宏观 + 跟踪区块。"""
+    stocks = build_metals_stocks_data(offline=offline)
+    data["stocks"] = stocks["items"]
+    data["stock_macro"] = stocks["macro"]
+    # 当日快照入库（幂等）
+    day = (data.get("generatedAt") or "")[:10]
+    if stocks["items"] and day:
+        snapshot_metal_picks(stocks["items"], day)
+        print(f"   有色股票快照 {day} 已入库 {len(stocks['items'])} 只")
+    data["stock_tracking"] = build_metals_tracking()
+    return data

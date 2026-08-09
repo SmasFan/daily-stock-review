@@ -526,15 +526,27 @@ def run_holdings():
         print(f"   {it['name']}: 现价{it['price']} 涨跌{it['change_pct']:+.2f}% → {g.get('action') or '--'}")
 
 
-def run_metals():
-    """生成有色金属期货页面数据：行情概览 + 各品种技术因子 + K线。"""
+def run_metals(args):
+    """生成有色金属页数据：期货行情 + 有色股票推荐（宏观影响）+ 历史跟踪。"""
     print("== 有色金属期货分析 ==")
     data = fm.build_metals_data()
+    try:
+        fm.extend_metals_data(data, offline=args.offline)
+    except Exception as e:
+        print(f"   [warn] 有色股票推荐失败: {e}")
     p = fm.save_metals_data(data)
     s = data["stats"]
+    stocks = data.get("stocks") or []
     print(f"   {p}  共 {s['total']} 个品种  平均 {s['avg_change']:+.2f}%  "
           f"上涨 {s['up']}/下跌 {s['down']}  领涨 {s['leader']}({s['leader_change']:+.2f}%) "
           f"领跌 {s['laggard']}({s['laggard_change']:+.2f}%)")
+    if stocks:
+        mm = data.get("stock_macro") or {}
+        print(f"   有色股票 {len(stocks)} 只  宏观温度 {mm.get('temperature')} "
+              f"板块净分 {mm.get('sector_net')}")
+        for it in stocks[:5]:
+            print(f"     {it['rating']} {it['total_score']:5.1f}  {it['name']}  "
+                  f"{it['signal']}  宏观{it['macro_net']}")
 
 
 def run_institution(args):
@@ -576,7 +588,7 @@ def main():
     if args.mode in ("holdings", "all"):
         run_holdings()
     if args.mode in ("metals", "all"):
-        run_metals()
+        run_metals(args)
     if args.mode in ("institution", "all"):
         run_institution(args)
     if args.mode in ("macro", "all"):
