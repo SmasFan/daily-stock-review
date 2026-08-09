@@ -7,6 +7,10 @@
 <link rel="stylesheet" href="assets/css/common.css">
 <style>
   .ff-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+  .ff-card.clickable { cursor:pointer; transition:border-color .15s, box-shadow .15s; }
+  .ff-card.clickable:hover { border-color:var(--accent); box-shadow:var(--shadow-hover); }
+  .ff-card.clickable.filter-active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .ff-card.clickable.filter-active .ff-big { color:var(--accent); }
   .ff-big { font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2; }
   .ff-sub { font-size:12px; color:var(--text-2); margin-top:4px; }
   .ff-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
@@ -75,23 +79,23 @@
       <div class="section" data-nav="宏观概览" data-nav-icon="gauge-high">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>宏观情绪概览</h2></div>
         <div class="ff-grid">
-          <div class="ff-card">
+          <div class="ff-card clickable" data-filter="all" title="点击恢复显示全部新闻">
             <div style="font-size:12px;color:var(--text-2)">新闻情绪温度（50 中性）</div>
             <div class="ff-big ${o.temperature >= 65 ? 'up' : (o.temperature <= 35 ? 'down' : '')}">${o.temperature ?? '--'}</div>
             <div class="ff-sub">${o.temperature_label || '--'} · 净情绪 ${RV.fmt.num(o.net_score)}</div>
             <div class="temp-bar">${RV.ui.progress(o.temperature ?? 50)}</div>
           </div>
-          <div class="ff-card">
+          <div class="ff-card clickable" data-filter="bull" title="点击只看利好新闻">
             <div style="font-size:12px;color:var(--text-2)">利好提醒</div>
             <div class="ff-big up">${o.bull_count ?? 0}</div>
             <div class="ff-sub">今日财经新闻中确认的正面信号</div>
           </div>
-          <div class="ff-card">
+          <div class="ff-card clickable" data-filter="risk" title="点击只看风险新闻">
             <div style="font-size:12px;color:var(--text-2)">风险提醒</div>
             <div class="ff-big down">${o.risk_count ?? 0}</div>
             <div class="ff-sub">监管/处罚/减持/关税等风险事件</div>
           </div>
-          <div class="ff-card">
+          <div class="ff-card clickable" data-filter="policy" title="点击只看政策新闻（央行/部委/统计局等）">
             <div style="font-size:12px;color:var(--text-2)">政策新闻</div>
             <div class="ff-big">${o.policy_news ?? 0}</div>
             <div class="ff-sub">/ ${o.news_total ?? 0} 条新闻（央行/部委/统计局等）</div>
@@ -200,18 +204,19 @@
 
     // ===== 最新财经新闻（带情绪标注） =====
     const news = d.news || [];
+    const newsItemsHtml = news.map(n => `<div class="news-item" data-kind="${n.kind}" data-policy="${(n.source_w || 0) > 1 ? 1 : 0}">
+      <span>${kindBadge(n.kind)}</span>
+      <div style="min-width:0">
+        <div class="news-title">${n.title} <span class="news-time">${n.show_time || ''}</span></div>
+        ${n.summary ? `<div class="news-summary">${n.summary}</div>` : ''}
+        ${(n.themes || []).length ? `<div style="margin-top:4px">${n.themes.map(t => `<span class="chip theme">${t}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`).join('') || '<div class="empty">暂无新闻数据</div>';
     const newsHtml = `
       <div class="section" data-nav="新闻流" data-nav-icon="newspaper">
-        <div class="section-title"><span class="title-icon">${RV.ui.icon('newspaper')}</span><h2>最新财经新闻（${news.length} 条 · 情绪标注）</h2></div>
-        <div class="ff-card">
-          ${news.map(n => `<div class="news-item">
-            <span>${kindBadge(n.kind)}</span>
-            <div style="min-width:0">
-              <div class="news-title">${n.title} <span class="news-time">${n.show_time || ''}</span></div>
-              ${n.summary ? `<div class="news-summary">${n.summary}</div>` : ''}
-              ${(n.themes || []).length ? `<div style="margin-top:4px">${n.themes.map(t => `<span class="chip theme">${t}</span>`).join('')}</div>` : ''}
-            </div>
-          </div>`).join('') || '<div class="empty">暂无新闻数据</div>'}
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('newspaper')}</span><h2 id="news-title">最新财经新闻（${news.length} 条 · 情绪标注）</h2></div>
+        <div class="ff-card" id="news-list">
+          ${newsItemsHtml}
         </div>
       </div>`;
 
@@ -219,6 +224,27 @@
       + overviewHtml + alertHtml + themeHtml + sectorHtml + stockHtml + newsHtml
       + '<footer>新闻源：东方财富财经频道 · 词典法情感 + 政策加权 + 主题映射 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
+    // 概览卡片点击 → 过滤下方新闻流（再点同一卡片恢复全部）
+    const FILTER_LABEL = { all: '', bull: ' · 仅利好', risk: ' · 仅风险', policy: ' · 仅政策' };
+    let newsFilter = 'all';
+    const newsEls = Array.from(app.querySelectorAll('#news-list .news-item'));
+    function applyNewsFilter(f) {
+      newsFilter = f;
+      let shown = 0;
+      newsEls.forEach(el => {
+        const hit = f === 'all'
+          || (f === 'policy' ? el.dataset.policy === '1' : el.dataset.kind === f);
+        el.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      app.querySelectorAll('.ff-card.clickable').forEach(c =>
+        c.classList.toggle('filter-active', c.dataset.filter === f));
+      const t = app.querySelector('#news-title');
+      if (t) t.textContent = `最新财经新闻（${shown} / ${news.length} 条${FILTER_LABEL[f]} · 情绪标注）`;
+    }
+    app.querySelectorAll('.ff-card.clickable').forEach(c => c.addEventListener('click', () => {
+      applyNewsFilter(c.dataset.filter === newsFilter ? 'all' : c.dataset.filter);
+    }));
   } catch (e) {
     app.innerHTML = RV.ui.header('宏观', '', 'macro') + `<div class="empty">${RV.ui.icon('triangle-exclamation')} ${e.message || e}<br><small>请运行 <code>python run_review.py --mode macro</code> 生成宏观数据（已纳入每日定时任务与 <code>--mode all</code>）；若本地仓库较旧请先 <code>git pull</code> 同步 <code>data/macro_data.json</code></small></div>`;
   }
