@@ -24,6 +24,23 @@
   .tk-chart-head { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
   .tk-chart-name { font-weight:800; font-size:16px; }
   .tk-chart-last { margin-left:auto; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+
+  /* 跟踪表格：参考回测页 ret-table（横向滑动 + sticky 表头 + 首列固定），
+     首列改为 名称+代码+板块 三行结构 */
+  .tk-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tk-table-wrap .ret-table { font-size:14px; }
+  .tk-table-wrap .ret-table th, .tk-table-wrap .ret-table td { padding:10px 14px; white-space:nowrap; text-align:right; line-height:1.6; }
+  .tk-table-wrap .ret-table th:first-child, .tk-table-wrap .ret-table td:first-child {
+    text-align:left; position:sticky; left:0; z-index:1; background:var(--surface);
+    font-weight:700; box-shadow:1px 0 0 var(--border);
+    width:auto; max-width:none; white-space:nowrap;
+  }
+  .tk-table-wrap .ret-table th:first-child { z-index:3; background:var(--surface-2); }
+  .tk-table-wrap .ret-table tbody tr:hover td:first-child { background:var(--surface-2); }
+  .tk-name-line { display:flex; align-items:baseline; gap:8px; }
+  .tk-name-line .asset-name { font-weight:600; }
+  .tk-sector-line { font-size:12px; color:var(--text-2); font-weight:400; margin-top:2px; }
+  .tk-kline-cell { text-align:center !important; }
 </style>
 </head>
 <body>
@@ -47,28 +64,32 @@
   const sigBadge = (k, l) => RV.ui.signalBadge(k, l || SIG_LABEL[k] || k);
 
   /* ===== 稳定榜：每天推荐 Top10 里上榜最稳的票 ===== */
+  function nameCell(s, i) {
+    return `<span class="tk-name-line"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="asset-name">${s.name}</span></span><span class="stock-code">${s.code}</span>
+      <div class="tk-sector-line">${s.sector || '--'}</div>`;
+  }
   function stableTable() {
     if (!stable.length) return '';
     const rows = stable.map((s, i) => {
       const tr = s.latest_track_return;
       return `<tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${s.name}<span class="stock-code">${s.code}</span></td>
-        <td>${s.sector || '--'}</td>
+        <td>${nameCell(s, i)}</td>
         <td style="font-weight:800">${s.count}<span style="color:var(--text-2);font-weight:500">/${d.total_days}天</span></td>
         <td style="font-weight:800">${s.rate}%</td>
         <td style="font-weight:800">${s.latest_score != null ? s.latest_score : '--'}</td>
         <td>${sigBadge(s.latest_signal)}</td>
         <td class="${cls(tr)}" style="font-weight:800">${tr != null ? RV.fmt.pct(tr) : '--'}</td>
-        <td><button class="tk-btn" data-code="${s.code}">K线</button></td>
+        <td class="tk-kline-cell"><button class="tk-btn" data-code="${s.code}">K线</button></td>
       </tr>`;
     }).join('');
     return `<div class="section" data-nav="稳定榜" data-nav-icon="shield-halved">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('shield-halved')}</span><h2>前10跟踪 · 稳定榜</h2><span class="sec-chip">${stable.length}只</span></div>
-      <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>标的</th><th>板块</th><th>上榜天数</th><th>上榜率</th><th>最近评分</th><th>最近信号</th><th>累计跟踪</th><th></th></tr></thead>
+      <div class="tk-table-wrap"><table class="ret-table">
+        <thead><tr><th>标的（板块）</th><th>上榜天数</th><th>上榜率</th><th>最近评分</th><th>最近信号</th><th>累计跟踪</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 上榜率 = 该股出现在每日推荐 Top10 的天数占比；累计跟踪 = 最近一次上榜日后首根K线收盘 → 最新收盘 涨幅。点击「K线」看日K。</div>
+      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 上榜率 = 该股出现在每日推荐 Top10 的天数占比；累计跟踪 = 最近一次上榜日后首根K线收盘 → 最新收盘 涨幅。左列固定，可左右滑动；点击「K线」看日K。</div>
     </div>`;
   }
 
@@ -80,14 +101,13 @@
       const up = items.filter(it => (it.track_return ?? -999) > 0).length;
       const rows = items.map((it, i) => `
         <tr>
-          <td><span class="row-num">${String(i + 1).padStart(2, '0')}</span><span class="asset-name">${it.name}</span><span class="stock-code">${it.code}</span></td>
-          <td>${it.sector || '--'}</td>
+          <td>${nameCell(it, i)}</td>
           <td>${it.rating || '--'}</td>
           <td style="font-weight:800">${it.total_score ?? '--'}</td>
           <td>${sigBadge(it.signal_key, it.signal)}</td>
           <td style="font-variant-numeric:tabular-nums">${it.price != null ? RV.fmt.num(it.price) : '--'}</td>
           <td class="${cls(it.track_return)}" style="font-weight:800">${it.track_return != null ? RV.fmt.pct(it.track_return) : '--'}</td>
-          <td><button class="tk-btn" data-code="${it.code}">K线</button></td>
+          <td class="tk-kline-cell"><button class="tk-btn" data-code="${it.code}">K线</button></td>
         </tr>`).join('');
       return `<div class="tk-day" data-date="${day.date}">
         <div class="tk-day-head">
@@ -98,8 +118,8 @@
           <span class="sec-chip up">${RV.ui.icon('arrow-trend-up', 'fa-xs')} ${up} 涨</span>
         </div>
         <div class="tk-day-body">
-          <div class="table-wrap"><table class="data-table">
-            <thead><tr><th>#</th><th>标的</th><th>板块</th><th>评级</th><th>综合分</th><th>信号</th><th>当时价</th><th>跟踪收益</th><th></th></tr></thead>
+          <div class="tk-table-wrap"><table class="ret-table">
+            <thead><tr><th>标的（板块）</th><th>评级</th><th>综合分</th><th>信号</th><th>当时价</th><th>跟踪收益</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table></div>
         </div>
