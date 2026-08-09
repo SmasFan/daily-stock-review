@@ -20,6 +20,12 @@ python3 run_review.py --mode "$MODE" --top 10 >> "$LOG" 2>&1 || {
   exit 1
 }
 
+# 宏观政策与新闻情绪（利好/风险提醒，反馈到复盘/推荐页；失败不阻断主流程）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; then
+  python3 run_review.py --mode macro >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 宏观数据生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then
