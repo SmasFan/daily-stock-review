@@ -97,10 +97,13 @@
 
   /* ===== 历史按日：每天一个可折叠分组 ===== */
   function dayGroups() {
+    const lastDate = days.length ? days[days.length - 1].date : null;
     return days.map(day => {
+      const isLatest = day.date === lastDate;
       const items = day.items;
       const avg = items.reduce((s, it) => s + (it.total_score || 0), 0) / Math.max(items.length, 1);
-      const up = items.filter(it => (it.track_return ?? -999) > 0).length;
+      const val = it => isLatest ? it.change_pct : it.track_return;
+      const up = items.filter(it => (val(it) ?? -999) > 0).length;
       const rows = items.map((it, i) => `
         <tr>
           <td>${nameCell(it, i, false)}</td>
@@ -108,22 +111,23 @@
           <td style="font-weight:800">${it.total_score ?? '--'}</td>
           <td>${sigBadge(it.signal_key, it.signal)}</td>
           <td style="font-variant-numeric:tabular-nums">${it.price != null ? RV.fmt.num(it.price) : '--'}</td>
-          <td class="${cls(it.track_return)}" style="font-weight:800">${it.track_return != null ? RV.fmt.pct(it.track_return) : '--'}</td>
+          <td class="${cls(val(it))}" style="font-weight:800">${val(it) != null ? RV.fmt.pct(val(it)) : '--'}</td>
           <td class="tk-kline-cell"><button class="tk-btn" data-code="${it.code}">K线</button></td>
         </tr>`).join('');
       return `<div class="tk-day" data-date="${day.date}">
         <div class="tk-day-head">
           <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
-          <span class="tk-day-date">${RV.ui.icon('calendar-day', 'fa-xs')} ${day.date}</span>
+          <span class="tk-day-date">${RV.ui.icon('calendar-day', 'fa-xs')} ${day.date}${isLatest ? '（今日）' : ''}</span>
           <span class="sec-chip">${items.length}只</span>
           <span class="sec-chip">均分 ${RV.fmt.num(avg, 1)}</span>
           <span class="sec-chip up">${RV.ui.icon('arrow-trend-up', 'fa-xs')} ${up} 涨</span>
         </div>
         <div class="tk-day-body">
           <div class="tk-table-wrap"><table class="ret-table">
-            <thead><tr><th>标的（板块）</th><th>评级</th><th>综合分</th><th>信号</th><th>当时价</th><th>跟踪收益</th><th></th></tr></thead>
+            <thead><tr><th>标的（板块）</th><th>评级</th><th>综合分</th><th>信号</th><th>当时价</th><th>${isLatest ? '今日涨跌' : '跟踪收益'}</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table></div>
+          ${isLatest ? '<div class="tk-stable-hint" style="margin-top:8px">' + RV.ui.icon('circle-info', 'fa-xs') + ' 今日为最新推荐日，尚无后续行情，「今日涨跌」为该股当日涨跌幅；明天盘后自动更新为跟踪收益。</div>' : ''}
         </div>
       </div>`;
     }).join('');

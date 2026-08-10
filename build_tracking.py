@@ -51,6 +51,10 @@ def init_db():
         price REAL,
         sector TEXT,
         PRIMARY KEY (day, code))""")
+    # 2026-08-10：新增当日涨跌列（最新一天展示"今日涨跌"，老库兼容升级）
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(daily_picks)")}
+    if "change_pct" not in cols:
+        conn.execute("ALTER TABLE daily_picks ADD COLUMN change_pct REAL")
     conn.commit()
     return conn
 
@@ -60,28 +64,29 @@ def upsert_day(conn, day, items):
     with conn:
         conn.executemany(
             """INSERT OR REPLACE INTO daily_picks
-               (day, rank, name, code, total_score, rating, signal_key, signal, price, sector)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+               (day, rank, name, code, total_score, rating, signal_key, signal, price, sector, change_pct)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             [(day, i + 1, it.get("name", ""), it.get("code", ""),
               it.get("total_score"), it.get("rating", ""),
               it.get("signal_key", ""), it.get("signal", ""),
-              it.get("price"), it.get("sector", ""))
+              it.get("price"), it.get("sector", ""),
+              it.get("change_pct"))
              for i, it in enumerate(items)])
 
 
 def load_days(conn):
     """从 SQLite 读全部快照，按日期升序返回 [{date, items}]。"""
     rows = conn.execute(
-        "SELECT day, rank, name, code, total_score, rating, signal_key, signal, price, sector "
+        "SELECT day, rank, name, code, total_score, rating, signal_key, signal, price, sector, change_pct "
         "FROM daily_picks ORDER BY day, rank").fetchall()
     days = OrderedDict()
     for r in rows:
-        day, rank, name, code, total, rating, sk, signal, price, sector = r
+        day, rank, name, code, total, rating, sk, signal, price, sector, change_pct = r
         days.setdefault(day, []).append({
             "rank": rank, "name": name, "code": code,
             "total_score": total, "rating": rating or "",
             "signal_key": sk or "", "signal": signal or "",
-            "price": price, "sector": sector or ""})
+            "price": price, "sector": sector or "", "change_pct": change_pct})
     return [{"date": d, "items": items} for d, items in days.items()]
 
 
@@ -147,11 +152,15 @@ def top10_buys(picks):
 
 
 def fetch_klines(codes, count=250):
-    """抓取并缓存日K，返回 {code: kline_dict}。失败跳过。"""
+    """抓取并缓存日K，返回 {code: kline_dict}。失败跳过。
+
+    2026-08-10 修正：强制不走缓存（跟踪收益依赖最新收盘价——
+    早盘缓存可能缺当日 K 线，导致当日快照被并入前一交易日、涨跌幅为 None）。
+    """
     out = {}
     for c in codes:
         try:
-            k = dp.fetch_daily_kline(c, count=count)
+            k = dp.fetch_daily_kline(c, count=count, use_cache=False)
         except Exception:
             k = None
         if k and len(k.get("dates") or []) > 30:
