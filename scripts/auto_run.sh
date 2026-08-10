@@ -26,6 +26,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; t
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 宏观数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 股票跟踪（推荐 Top10 持久化 + 收益/稳定榜，依赖当日 recommend 快照；盘后跑，失败不阻断主流程）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 run_review.py --mode tracking >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 跟踪数据生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

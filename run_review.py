@@ -593,9 +593,12 @@ def main():
         run_institution(args)
     if args.mode in ("macro", "all"):
         run_macro(args)
-    if args.mode == "tracking":
-        import build_tracking
-        build_tracking.main()
+    if args.mode in ("tracking", "all"):
+        try:
+            import build_tracking
+            build_tracking.main()
+        except Exception as e:
+            print(f"[warn] 跟踪数据生成失败（--mode all 不阻断）：{e}")
     print("完成。")
 
 
