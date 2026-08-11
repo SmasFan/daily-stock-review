@@ -45,7 +45,10 @@ def _market_temperature(results: List[az.AnalysisResult],
     index_score = max(0, min(100, 50 + avg_chg * 12))
     bull = sum(1 for r in results if r.signal_key in ("strong_buy", "buy"))
     bear = sum(1 for r in results if r.signal_key in ("sell", "reduce"))
-    sig = bull / max(bull + bear, 1) * 100
+    # 2026-08-11 修正：买入信号占比改为"买入占全池比例"而非 买/(买+卖)。
+    # 旧式 买/(买+卖) 在自选池里卖出信号极少（如 121买 vs 4卖），恒在 90%+，
+    # 会掩盖弱广度（上涨占比 36.7% 时仍算出 55 偏暖）。
+    sig = bull / len(results) * 100
     score = round(breadth_pct * 0.45 + index_score * 0.35 + sig * 0.20)
     if score >= 70:
         label = "强势"

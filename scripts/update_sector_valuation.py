@@ -37,8 +37,10 @@ SECTORS = [
     {"name": "中证新能", "code": "399808", "symbol": "sz399808", "category": "科技制造", "secid": "0.399808"},
     {"name": "中证军工", "code": "399967", "symbol": "sz399967", "category": "科技制造", "secid": "0.399967"},
     {"name": "CSSW电子", "code": "399811", "symbol": "sz399811", "category": "科技制造", "secid": "0.399811"},
-    {"name": "内地地产", "code": "399948", "symbol": "sz399948", "category": "金融地产", "secid": "0.399948"},
-    {"name": "300基建", "code": "399950", "symbol": "sz399950", "category": "周期基建", "secid": "0.399950"},
+    # 2026-08-11：300基建(399950)/内地地产(399948) 数据源已冻结（腾讯恒返回 09:00 开盘前快照、无 PE），
+    # 替换为活跃指数：基建工程(399995)、国证地产(399393)
+    {"name": "国证地产", "code": "399393", "symbol": "sz399393", "category": "金融地产", "secid": "0.399393"},
+    {"name": "基建工程", "code": "399995", "symbol": "sz399995", "category": "周期基建", "secid": "0.399995"},
     {"name": "养老产业", "code": "399812", "symbol": "sz399812", "category": "医药消费", "secid": "0.399812"},
     {"name": "一带一路", "code": "399991", "symbol": "sz399991", "category": "周期基建", "secid": "0.399991"},
 ]
@@ -62,8 +64,8 @@ FALLBACK_VALUATION = {
     "399808": {"pe": 34.0, "pb": 2.50},
     "399967": {"pe": 61.0, "pb": 3.00},
     "399811": {"pe": 64.0, "pb": 3.50},
-    "399948": {"pe": 15.0, "pb": 0.90},
-    "399950": {"pe": 10.0, "pb": 1.00},
+    "399393": {"pe": 20.0, "pb": 1.00},
+    "399995": {"pe": 10.0, "pb": 1.20},
     "399812": {"pe": 11.5, "pb": 1.30},
     "399991": {"pe": 17.5, "pb": 1.20},
 }
@@ -117,16 +119,29 @@ def parse_tencent(raw):
     return records
 
 
+# 东财实时接口域名（push2delay 优先防 WAF 限流，与 src/fund_flow.py 同策略）
+EM_HOSTS = ["push2delay.eastmoney.com", "push2.eastmoney.com", "push2his.eastmoney.com"]
+
+
 def fetch_eastmoney_valuation(secid):
-    """从东方财富接口取 PE/PB。f162=动态PE, f163=PB, f167=TTM PE。"""
-    url = (
+    """从东方财富接口取 PE/PB。f162=动态PE, f163=PB, f167=TTM PE。
+
+    2026-08-11 修正：push2 主域名被 WAF 限流（Remote end closed connection），
+    依次换 push2delay/push2his 重试（与 src/fund_flow.py 同策略）。
+    """
+    base = (
         "https://push2.eastmoney.com/api/qt/stock/get"
         "?ut=bd1d9ddb04089700cf9c27f6f7426281"
         "&fltt=2&invt=2&volt=2"
         "&fields=f43,f162,f163,f167"
         f"&secid={secid}"
     )
-    text = fetch_url(url, timeout=10)
+    text = ""
+    for host in EM_HOSTS:
+        u = base.replace("https://push2.eastmoney.com", f"https://{host}")
+        text = fetch_url(u, timeout=10)
+        if text:
+            break
     if not text:
         return None, None
     try:
@@ -146,7 +161,8 @@ def fetch_eastmoney_valuation(secid):
 
 def valuation_level(pe):
     """根据 PE 给出简单估值分档。"""
-    if pe is None:
+    if pe is None or pe <= 0:
+        # PE<=0：亏损行业（如地产），PE 无意义，不参与估值分档
         return "—"
     if pe < 15:
         return "低估"
