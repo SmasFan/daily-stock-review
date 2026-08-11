@@ -299,6 +299,11 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     # 比固定 MA20 更贴合个股波动（低波红利股和高波科技股不再用同一止损口径）。
     atr14 = atr14s[idx]
     atr_stop = close - 2 * atr14 if (atr14 and atr14 > 0) else None
+    # 2026-08-11 新增：现价已超过止盈位（前高压力位）时不追高，
+    # 买入信号降为观望，避免"现价已越过止盈仍推荐买入"的自相矛盾（如涨停日追入）。
+    if final in ("strong_buy", "buy") and take_profit and close > take_profit:
+        final = "watch"
+        signal_label = signal_label_for_key(final)
 
     return AnalysisResult(
         name=name, code=code, date=dates[idx], open=round(opens[idx], 3), close=round(close, 3),

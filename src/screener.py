@@ -201,19 +201,22 @@ def screen(items: List[ScreenItem], tech_weight: float = 0.5, top_n: int = 10) -
         it.total_score = round(it.tech_score * tech_weight + it.cross_score * (1 - tech_weight), 1)
         it.rating = rating_of(it.total_score)
 
-        # 推荐理由
-        reasons = []
-        if it.signal_key in ("strong_buy", "buy"):
-            reasons.append(f"技术信号「{it.signal}」({it.tech_score:.0f}分)")
-        if it.trend_status in ("强势多头", "多头排列"):
-            reasons.append(it.trend_status)
-        if it.momentum_score >= 70:
-            reasons.append("动量强")
-        if it.value_score >= 70:
-            reasons.append("估值低")
-        if it.stability_score >= 70:
-            reasons.append("波动低")
-        it.reasons = "、".join(reasons) if reasons else "综合排名靠前"
+        # 推荐理由（2026-08-11 修正：卖出/减仓信号只展示卖出依据，不再罗列利好因素）
+        if it.signal_key in ("sell", "reduce"):
+            it.reasons = f"{it.signal}：{it.trend_status or '趋势走弱'}"
+        else:
+            reasons = []
+            if it.signal_key in ("strong_buy", "buy"):
+                reasons.append(f"技术信号「{it.signal}」({it.tech_score:.0f}分)")
+            if it.trend_status in ("强势多头", "多头排列"):
+                reasons.append(it.trend_status)
+            if it.momentum_score >= 70:
+                reasons.append("动量强")
+            if it.value_score >= 70:
+                reasons.append("估值低")
+            if it.stability_score >= 70:
+                reasons.append("波动低")
+            it.reasons = "、".join(reasons) if reasons else "综合排名靠前"
 
     pool.sort(key=lambda x: x.total_score, reverse=True)
     return pool[:top_n]
@@ -264,6 +267,9 @@ def build_buy_reason(it: "ScreenItem") -> str:
     - 买点：MA5/MA10 附近最佳，MA20 止损
     - 动量/估值/波动
     """
+    # 2026-08-11 新增：卖出/减仓信号只展示卖出依据，不再罗列利好
+    if it.signal_key in ("sell", "reduce"):
+        return f"{it.signal}：{it.trend_status or '趋势走弱'}，建议逢高减仓/离场"
     parts = []
     if it.trend_status in ("强势多头", "多头排列"):
         parts.append(f"均线{it.trend_status}，趋势向上")

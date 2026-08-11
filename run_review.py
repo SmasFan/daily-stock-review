@@ -436,6 +436,21 @@ def run_recommend(args):
     # 板块推荐对应个股：按推荐板块分组，每板块挑综合分 Top10
     sector_stocks = pick_sector_stocks(sector_recs, screen_items, top_n=10)
 
+    # 2026-08-11：现价已超止盈位不追高。盘内推荐的分析基于缓存K线（截至昨日收盘），
+    # 而 price 是实时快照——用实时价校验，若已越过止盈位（前高），买入信号降为观望，
+    # 避免"止盈已破仍推荐买入"（如涨停追高）。
+    def _cap_over_target(it):
+        if (it.signal_key in ("strong_buy", "buy") and it.take_profit
+                and it.price and it.price > it.take_profit):
+            it.signal_key = "watch"
+            it.signal = az.signal_label_for_key("watch")
+    for it in picks:
+        _cap_over_target(it)
+    for it in market_picks:
+        _cap_over_target(it)
+    for it in [x for lst in sector_stocks.values() for x in lst]:
+        _cap_over_target(it)
+
     # 生成当日购买原因
     for it in picks:
         it.reasons = scr.build_buy_reason(it)
