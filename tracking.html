@@ -70,16 +70,28 @@
       <span class="asset-name">${s.name}</span></span><span class="stock-code">${s.code}</span>
       <div class="tk-sector-line">${s.sector || '--'}${s.first_day ? ' · 首榜 ' + s.first_day : ''}</div>`;
   }
+  // 当日涨幅：K线最后一根（最新交易日）收盘较前一交易日
+  function latestDayChange(code) {
+    const k = klines[code];
+    if (!k) return null;
+    const n = (k.dates || []).length;
+    if (n < 2) return null;
+    const prev = k.c[n - 2], cur = k.c[n - 1];
+    if (!prev || !cur) return null;
+    return (cur - prev) / prev * 100;
+  }
   function stableTable() {
     if (!stable.length) return '';
     const rows = stable.map((s, i) => {
       const tr = s.cum_track_return != null ? s.cum_track_return : s.latest_track_return;
+      const chg = latestDayChange(s.code);
       return `<tr>
         <td>${nameCell(s, i, false)}</td>
         <td style="font-weight:800">${s.count}<span style="color:var(--text-2);font-weight:500">/${d.total_days}天</span></td>
         <td style="font-weight:800">${s.rate}%</td>
         <td style="font-weight:800">${s.latest_score != null ? s.latest_score : '--'}</td>
         <td>${sigBadge(s.latest_signal)}</td>
+        <td class="${cls(chg)}" style="font-weight:800">${chg != null ? RV.fmt.pct(chg) : '--'}</td>
         <td class="${cls(tr)}" style="font-weight:800">${tr != null ? RV.fmt.pct(tr) : '--'}</td>
         <td>${s.latest_day || '--'}</td>
         <td class="tk-kline-cell"><button class="tk-btn" data-code="${s.code}">K线</button></td>
@@ -88,10 +100,10 @@
     return `<div class="section" data-nav="稳定榜" data-nav-icon="shield-halved">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('shield-halved')}</span><h2>前10跟踪 · 稳定榜</h2><span class="sec-chip">${stable.length}只</span></div>
       <div class="tk-table-wrap"><table class="ret-table">
-        <thead><tr><th>标的（板块 · 首榜日）</th><th>上榜天数</th><th>上榜率</th><th>最近评分</th><th>最近信号</th><th>累计跟踪</th><th>最近上榜</th><th></th></tr></thead>
+        <thead><tr><th>标的（板块 · 首榜日）</th><th>上榜天数</th><th>上榜率</th><th>最近评分</th><th>最近信号</th><th>当日涨幅</th><th>累计跟踪</th><th>最近上榜</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 上榜率 = 该股出现在每日推荐 Top10 的天数占比；累计跟踪 = <b>首次上榜日收盘 → 最新收盘</b> 涨幅（持有一路到今天的口径），最近上榜 = 最后一次进入 Top10 的日期。左列固定，可左右滑动；点击「K线」看日K。</div>
+      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 上榜率 = 该股出现在每日推荐 Top10 的天数占比；当日涨幅 = 最新交易日收盘较前一交易日；累计跟踪 = <b>首次上榜日收盘 → 最新收盘</b> 涨幅（持有一路到今天的口径），最近上榜 = 最后一次进入 Top10 的日期。左列固定，可左右滑动；点击「K线」看日K。</div>
     </div>`;
   }
 
