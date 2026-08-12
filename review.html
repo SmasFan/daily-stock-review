@@ -262,7 +262,7 @@
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}${RV.ui.heatBtn(r.code, r.name, 'stock')}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${fundFlowBadge(r)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
@@ -403,7 +403,7 @@
         <div class="sector-group" data-sec="${sec}">
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
-            <span class="sector-name">${sec}</span>
+            <span class="sector-name">${sec}${RV.ui.heatBtn(sec, sec, 'sector')}</span>
             ${sectorMacroTag(sec)}
             ${sectorDot(sec, list)}
             <span class="sec-chip">${list.length}只</span>

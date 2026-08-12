@@ -430,3 +430,13 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
     .idx-factor-grid { grid-template-columns:1fr; }
     .idx-f-grid { grid-template-columns:1fr 1fr; }
 }
+
+/* 市场温度 & 走势按钮（各页面板块/个股名旁） */
+.heat-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin-left: 5px; vertical-align: middle;
+  border-radius: 6px; cursor: pointer; color: #b0864a;
+  background: rgba(232, 163, 61, 0.12); border: 1px solid rgba(232, 163, 61, 0.35);
+  font-size: 10px; transition: all .15s;
+}
+.heat-btn:hover { background: rgba(232, 163, 61, 0.25); transform: scale(1.1); }

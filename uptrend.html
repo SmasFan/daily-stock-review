@@ -81,7 +81,7 @@
     function table(list) {
       const rows = list.map((p, i) => `
       <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}<span class="stock-code">${p.code}</span><span class="sec-chip">${p.sector || '--'}</span></td>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span><span class="sec-chip">${p.sector || '--'}</span></td>
         <td>${trendChip(p)} ${hotBadge(p)}</td>
         <td style="font-weight:800">${RV.fmt.num(p.score, 0)}</td>
         <td>${RV.ui.signalBadge(p.signal_key, p.signal)}</td>
@@ -103,7 +103,7 @@
       return `<div class="cards-mobile"><div class="mini-cards">${list.map((p, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}<span class="stock-code">${p.code}</span></span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span></span>
             <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
           </div>
           <div class="mini-tags">

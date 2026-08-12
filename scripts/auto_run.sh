@@ -38,6 +38,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 上升趋势数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 市场温度 & 走势联动数据（温度历史 + 个股/板块走势）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 build_heatmap.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 市场温度数据生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

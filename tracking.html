@@ -67,7 +67,7 @@
   /* ===== 稳定榜：每天推荐 Top10 里上榜最稳的票 ===== */
   function nameCell(s, i, showIndex = true) {
     return `<span class="tk-name-line">${showIndex ? `<span class="row-num">${String(i + 1).padStart(2, '0')}</span>` : ''}
-      <span class="asset-name">${s.name}</span></span><span class="stock-code">${s.code}</span>
+      <span class="asset-name">${s.name}</span></span><span class="stock-code">${s.code}</span>${RV.ui.heatBtn(s.code, s.name, 'stock')}
       <div class="tk-sector-line">${s.sector || '--'}${s.first_day ? ' · 首榜 ' + s.first_day : ''}</div>`;
   }
   // 当日涨幅：K线最后一根（最新交易日）收盘较前一交易日

@@ -69,7 +69,7 @@
       const dev = g.dev;
       return `
       <tr>
-        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</td>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}</td>
         <td>${actionBadge(p.grid)}</td>
         <td style="font-weight:800">${dev !== null && dev !== undefined ? RV.fmt.pct(dev * 100, 1) : '--'}</td>
         <td>${g.target_pos != null ? RV.fmt.num(g.target_pos * 100, 0) + '%' : '--'}</td>
@@ -92,7 +92,7 @@
           return `
           <div class="mini-card">
             <div class="mini-head">
-              <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}</span>
+              <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}</span>
               <span class="mini-head-right">${actionBadge(p.grid)}</span>
             </div>
             <div class="mini-kv">

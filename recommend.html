@@ -249,9 +249,9 @@
       return p.is_holding ? `<span class="signal-badge s-buy">${RV.ui.icon('briefcase', 'fa-xs')} 持仓</span>` : '';
     }
 
-    // 股票名称 + 代码小字
+    // 股票名称 + 代码小字（附温度&走势按钮）
     function nameBlock(p, suffix) {
-      return `${p.name}${suffix || ''}<span class="stock-code">${p.code}</span>`;
+      return `${p.name}${suffix || ''}${p.code ? RV.ui.heatBtn(p.code, p.name, 'stock') : ''}<span class="stock-code">${p.code}</span>`;
     }
 
     // 个股推荐评分原因（'?' 弹层，与复盘页一致）
@@ -538,7 +538,7 @@
         <div class="sector-group sector-reco" data-sec="${s.name}">
           <div class="sector-header">
             <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
-            <span class="sector-name">${s.name}</span>
+            <span class="sector-name">${s.name}${RV.ui.heatBtn(s.name, s.name, 'sector')}</span>
             ${sectorMacroTag(s.name)}
             <span class="sec-chip">${s.category}</span>
             ${s.highlight ? `<span class="signal-badge s-strong_buy">推荐</span>` : ''}
