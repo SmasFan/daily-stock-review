@@ -32,6 +32,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 跟踪数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 上升趋势页面数据（扫描自选池多头/强势多头；复用当日缓存，秒出）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 build_uptrend.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 上升趋势数据生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

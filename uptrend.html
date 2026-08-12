@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上升趋势 · 选股</title>
+<link rel="stylesheet" href="assets/css/common.css">
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.uptrend();
+    const items = d.items || [];
+    if (!items.length) { app.innerHTML = RV.ui.header('上升趋势', '', 'uptrend', d.generatedAt) + RV.ui.empty('暂无上升趋势股票，请先运行 python3 build_uptrend.py'); return; }
+
+    let filter = 'all';     // all / strong / high / healthy
+    let sort = 'score';     // score / change / rsi
+    let query = '';
+
+    const HOT_RSI = 75, HOT_BOLL = 0.9;   // 短期过热阈值
+
+    function hotBadge(it) {
+      if (it.rsi6 > HOT_RSI && it.boll_pos > HOT_BOLL) return `<span class="signal-badge s-reduce">${RV.ui.icon('fire', 'fa-xs')} 过热</span>`;
+      if (it.rsi6 > HOT_RSI) return `<span class="signal-badge s-reduce">${RV.ui.icon('fire', 'fa-xs')} RSI热</span>`;
+      if (it.boll_pos > HOT_BOLL) return `<span class="signal-badge s-watch">${RV.ui.icon('arrow-trend-up', 'fa-xs')} 贴上轨</span>`;
+      return '';
+    }
+    function trendChip(it) {
+      return it.trend_status === '强势多头'
+        ? `<span class="signal-badge s-strong_buy">${RV.ui.icon('arrow-trend-up', 'fa-xs')} 强势多头</span>`
+        : `<span class="signal-badge s-buy">多头排列</span>`;
+    }
+
+    function filtered() {
+      let list = items.slice();
+      if (filter === 'strong') list = list.filter(x => x.trend_status === '强势多头');
+      if (filter === 'high') list = list.filter(x => x.score >= 75);
+      if (filter === 'healthy') list = list.filter(x => !(x.rsi6 > HOT_RSI || x.boll_pos > HOT_BOLL));
+      if (query) {
+        const q = query.trim();
+        list = list.filter(x => (x.name || '').includes(q) || (x.code || '').includes(q) || ((x.sector || '') + '').includes(q));
+      }
+      const cmp = { score: (a, b) => b.score - a.score, change: (a, b) => b.change_pct - a.change_pct, rsi: (a, b) => b.rsi6 - a.rsi6 };
+      list.sort(cmp[sort]);
+      return list;
+    }
+
+    function statCards() {
+      const best = items[0];
+      return `<div class="summary-grid">
+        ${RV.ui.summaryCard('arrow-trend-up', items.length, '上升趋势')}
+        ${RV.ui.summaryCard('bolt', d.strong ?? 0, '强势多头')}
+        ${RV.ui.summaryCard('temperature-high', d.hot ?? 0, '短期过热', 'down')}
+        ${RV.ui.summaryCard('crown', best ? best.name + '（' + best.score + '分）' : '--', '最强趋势', 'up')}
+      </div>`;
+    }
+
+    function filterBar() {
+      const F = { all: '全部', strong: '强势多头', high: '评分≥75', healthy: '位置健康' };
+      const btns = Object.keys(F).map(k =>
+        `<a href="#" class="nav-link ${filter === k ? 'active' : ''}" data-filter="${k}">${F[k]}</a>`).join('');
+      const S = { score: '评分', change: '涨跌', rsi: 'RSI6' };
+      const sortBtns = Object.keys(S).map(k =>
+        `<a href="#" class="nav-link ${sort === k ? 'active' : ''}" data-sort="${k}">按${S[k]}</a>`).join('');
+      return `<div class="section" data-nav="筛选" data-nav-icon="filter">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('filter')}</span><h2>筛选与排序</h2></div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px">
+          <input id="up-search" type="text" placeholder="搜索名称 / 代码 / 板块…" value="${query}" style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:13px">
+        </div>
+        <div class="nav" style="justify-content:flex-start;margin-top:0">${btns}</div>
+        <div class="nav" style="justify-content:flex-start;margin-top:8px">${sortBtns}
+          <span style="font-size:11px;color:var(--text-2);margin-left:auto;align-self:center">${RV.ui.icon('circle-info', 'fa-xs')} 过热=RSI6&gt;75 或 布林位&gt;0.9 · 买点=MA5 / 止损=MA20</span>
+        </div>
+      </div>`;
+    }
+
+    function table(list) {
+      const rows = list.map((p, i) => `
+      <tr>
+        <td class="asset-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}<span class="stock-code">${p.code}</span><span class="sec-chip">${p.sector || '--'}</span></td>
+        <td>${trendChip(p)} ${hotBadge(p)}</td>
+        <td style="font-weight:800">${RV.fmt.num(p.score, 0)}</td>
+        <td>${RV.ui.signalBadge(p.signal_key, p.signal)}</td>
+        <td style="font-weight:700">${RV.fmt.num(p.close)}</td>
+        <td>${RV.ui.pctBadge(p.change_pct)}</td>
+        <td class="${p.rsi6 > HOT_RSI ? 'down' : ''}" style="font-weight:700">${RV.fmt.num(p.rsi6, 1)}</td>
+        <td>${RV.fmt.num(p.boll_pos, 2)}</td>
+        <td>${RV.fmt.num(p.volume_ratio, 2)}</td>
+        <td class="${RV.fmt.cls(p.change_60d)}">${RV.fmt.pct(p.change_60d)}</td>
+        <td>${RV.fmt.num(p.ideal_buy)}</td>
+        <td style="color:var(--text-2)">${RV.fmt.num(p.stop_loss)}</td>
+      </tr>`).join('');
+      return `<div class="table-desktop"><div class="table-wrap"><table class="data-table">
+        <thead><tr><th>标的</th><th>趋势</th><th>评分</th><th>信号</th><th>收盘</th><th>涨跌</th><th>RSI6</th><th>布林</th><th>量比</th><th>60日</th><th>买点</th><th>止损</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>`;
+    }
+
+    function mobileCards(list) {
+      return `<div class="cards-mobile"><div class="mini-cards">${list.map((p, i) => `
+        <div class="mini-card">
+          <div class="mini-head">
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${p.name}<span class="stock-code">${p.code}</span></span>
+            <span class="mini-head-right">${RV.ui.pctBadge(p.change_pct)} ${RV.ui.signalBadge(p.signal_key, p.signal)}</span>
+          </div>
+          <div class="mini-tags">
+            <span class="sec-chip">${p.sector || '其他'}</span>
+            ${trendChip(p)} ${hotBadge(p)}
+          </div>
+          <div class="mini-price">
+            <span>收盘 <b>${RV.fmt.num(p.close)}</b></span>
+            <span>评分 <b class="${p.score >= 75 ? 'up' : ''}">${RV.fmt.num(p.score, 0)}</b></span>
+          </div>
+          <div class="mini-score">
+            <span class="score-num ${p.score >= 60 ? 'up' : ''}">${RV.fmt.num(p.score, 1)}</span>
+            <div class="mini-score-bar">${RV.ui.progress(p.score)}</div>
+          </div>
+          <div class="mini-kv">
+            <span class="k">RSI6 / 布林</span><span class="v">${RV.fmt.num(p.rsi6, 1)} / ${RV.fmt.num(p.boll_pos, 2)}</span>
+            <span class="k">量比 / 60日</span><span class="v">${RV.fmt.num(p.volume_ratio, 2)} / ${RV.fmt.pct(p.change_60d)}</span>
+            <span class="k">买点 / 止损</span><span class="v">${RV.fmt.num(p.ideal_buy)} / ${RV.fmt.num(p.stop_loss)}</span>
+            <span class="k">MACD</span><span class="v">${p.macd_status || '--'}</span>
+          </div>
+        </div>`).join('')}</div></div>`;
+    }
+
+    function render() {
+      const list = filtered();
+      app.innerHTML = RV.ui.header('上升趋势', '自选池扫描：强势多头 + 多头排列，按技术评分排序', 'uptrend', d.generatedAt)
+        + statCards()
+        + filterBar()
+        + `<div class="section" data-nav="趋势榜单" data-nav-icon="table-list">
+            <div class="section-title"><span class="title-icon">${RV.ui.icon('table-list')}</span><h2>趋势榜单</h2><span class="sec-chip">${list.length}只</span></div>
+            ${table(list)}
+            ${mobileCards(list)}
+            ${list.length ? '' : '<div class="empty">没有符合当前筛选的股票</div>'}
+          </div>`
+        + '<footer>口径：趋势=MA5/MA10/MA20 排列（强势多头=完整多头+强度90）· 评分=趋势/乖离/量能/支撑/MACD/RSI 六维 · 过热=RSI6>75 或 布林>0.9 · 买点=MA5、止损=MA20 · 数据由 python3 build_uptrend.py 生成 · 不构成投资建议</footer>';
+      RV.ui.initSidebar();
+      app.querySelectorAll('.nav-link[data-filter]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        filter = a.getAttribute('data-filter');
+        render();
+      }));
+      app.querySelectorAll('.nav-link[data-sort]').forEach(a => a.addEventListener('click', ev => {
+        ev.preventDefault();
+        sort = a.getAttribute('data-sort');
+        render();
+      }));
+      const input = document.getElementById('up-search');
+      if (input) input.addEventListener('input', () => { query = input.value; render(); });
+    }
+    render();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('上升趋势', '', 'uptrend') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>
