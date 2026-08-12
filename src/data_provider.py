@@ -24,6 +24,8 @@ CACHE_MAX_AGE_HOURS = float(os.environ.get("CACHE_MAX_AGE_HOURS", "20"))
 
 def tencent_symbol(code: str) -> str:
     """腾讯行情前缀：sh=沪市/沪基金/可转债, sz=深市, bj=北交所。"""
+    if code.startswith(("sh", "sz", "bj")):
+        return code
     if code.startswith(("8", "4", "920", "921")):
         return f"bj{code}"
     if code.startswith(("6", "5", "9", "11", "12", "58", "118")):
