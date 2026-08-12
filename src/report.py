@@ -149,6 +149,9 @@ def build_backtest(per_stock: Dict[str, Dict]) -> Dict:
 def save(name: str, data: Dict) -> str:
     path = os.path.join(DATA_DIR, name)
     # 紧凑序列化（indent=None）：线上 GitHub Pages 加载大文件更快更稳
-    with open(path, "w", encoding="utf-8") as f:
+    # 先写临时文件再原子替换：避免页面 fetch 到写入一半的损坏 JSON
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False)
+    os.replace(tmp, path)
     return path

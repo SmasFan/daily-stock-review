@@ -5,10 +5,24 @@
   /* ---------- API 层：统一数据获取（对齐 axios 单例思路） ---------- */
   const API = {
     base: 'data/',
-    async fetch(name) {
-      const res = await fetch(this.base + name + '?t=' + Date.now());
-      if (!res.ok) throw new Error('加载失败: ' + name + ' (' + res.status + ')');
-      return res.json();
+    async fetch(name, retries = 2) {
+      // 超时 + 重试：GitHub Pages 在国内网络下偶发 10s+ 延迟/断连
+      let lastErr;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 20000);
+        try {
+          const res = await fetch(this.base + name + '?t=' + Date.now(), { signal: ctrl.signal });
+          clearTimeout(timer);
+          if (!res.ok) throw new Error('加载失败: ' + name + ' (' + res.status + ')');
+          return await res.json();
+        } catch (e) {
+          clearTimeout(timer);
+          lastErr = e;
+          if (attempt < retries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+      throw lastErr;
     },
     review() { return this.fetch('review_data.json'); },
     recommend() { return this.fetch('recommend_data.json'); },
