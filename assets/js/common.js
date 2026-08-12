@@ -345,23 +345,32 @@
       if (!heatCache) heatCache = await window.RV.API.heat();
       const d = heatCache;
       const x = d.tempDates || [];
-      const temp = d.temps || [];
-      let series2 = null;
+      let tempSeries = null;      // 温度序列（板块自己的温度）
+      let series2 = null;         // 走势序列
       if (kind === 'sector') {
         const s = (d.sectors || {})[code];
-        series2 = s ? { name: name || code, data: s.nav, navBase: s.nav && s.nav.find(v => v != null) } : null;
+        if (s) {
+          tempSeries = { label: name + '温度', data: s.temps };
+          series2 = { name: name + '走势', data: s.nav };
+        }
       } else {
         const s = (d.stocks || {})[code];
-        series2 = s ? { name: s.name || name || code, data: s.close } : null;
+        if (s) {
+          const sec = (d.sectors || {})[s.sector];
+          tempSeries = sec && sec.temps
+            ? { label: s.sector + '温度', data: sec.temps }
+            : { label: '市场温度', data: d.globalTemps };
+          series2 = { name: s.name || name || code, data: s.close };
+        }
       }
-      if (!series2 || !series2.data) { alert('暂无该标的的走势数据'); return; }
+      if (!tempSeries || !series2 || !series2.data) { alert('暂无该标的的走势数据'); return; }
 
       overlayEl = document.createElement('div');
       overlayEl.className = 'heat-overlay';
       overlayEl.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
       overlayEl.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(860px,96vw);padding:18px 20px;position:relative">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <span style="font-weight:800;font-size:15px">市场温度 & ${series2.name} 走势</span>
+          <span style="font-weight:800;font-size:15px">${tempSeries.label} & ${series2.name} 走势</span>
           <span style="font-size:11px;color:var(--text-2)">${d.tempNote || ''} · ${d.generatedAt || ''}</span>
           <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">${window.RV.ui.icon('xmark')} 关闭</button>
         </div>
@@ -377,17 +386,17 @@
       chart.setOption({
         animation: false,
         tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-        legend: { data: ['市场温度', series2.name], textStyle: { color: '#6b6258' } },
+        legend: { data: [tempSeries.label, series2.name], textStyle: { color: '#6b6258' } },
         grid: { left: 64, right: 70, top: 40, bottom: 56 },
         dataZoom: [{ type: 'inside', xAxisIndex: 0 }],
         xAxis: { type: 'category', data: x, boundaryGap: false,
           axisLabel: { color: '#6b6258', formatter: v => v.slice(5) }, axisLine: { lineStyle: { color: '#d1c9bf' } } },
         yAxis: [
-          { type: 'value', name: '温度', min: 0, max: 100, axisLabel: { color: '#b0864a' }, splitLine: { lineStyle: { color: '#efe9df' } } },
+          { type: 'value', name: tempSeries.label, min: 0, max: 100, axisLabel: { color: '#b0864a' }, splitLine: { lineStyle: { color: '#efe9df' } } },
           { type: 'value', name: kind === 'sector' ? '板块净值' : '价格', scale: true, axisLabel: { color: '#4a7db0' }, splitLine: { show: false } }
         ],
         series: [
-          { name: '市场温度', type: 'line', data: temp, yAxisIndex: 0, showSymbol: false,
+          { name: tempSeries.label, type: 'line', data: tempSeries.data, yAxisIndex: 0, showSymbol: false,
             lineStyle: { width: 2.2, color: '#e8a33d' }, itemStyle: { color: '#e8a33d' },
             areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
               colorStops: [{ offset: 0, color: 'rgba(232,163,61,0.25)' }, { offset: 1, color: 'rgba(232,163,61,0.02)' }] } } },
