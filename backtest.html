@@ -48,10 +48,15 @@
 (async function () {
   const app = document.getElementById('app');
   try {
-    const d = await RV.API.backtest();
-    const stocks = d.stocks || {};
-    const names = Object.keys(stocks);
+    const d = await RV.API.backtest();            // 索引：summary + window_returns + overall（小文件，秒开）
+    const meta = d.stocks || {};                   // name -> {summary, window_returns, price_only}
+    const names = Object.keys(meta);
     let selected = names[0] || null;
+    const detailCache = {};                        // name -> 完整单只数据（图表/调仓，按需加载）
+    async function loadDetail(name) {
+      if (!detailCache[name]) detailCache[name] = await RV.API.backtestStock(name);
+      return detailCache[name];
+    }
     // 折叠状态：区间收益展开数 / 调仓记录是否全量
     let retShowAll = false;
     let tradeShowAll = false;
@@ -72,7 +77,7 @@
     function returnTable() {
       const visible = retShowAll ? names : names.slice(0, RET_SHOW);
       const rows = visible.map(name => {
-        const s = stocks[name];
+        const s = meta[name];
         const wr = s.window_returns || {};
         return `<tr>
           <td>${name}${s.price_only ? '<span class="sec-chip" style="margin-left:6px">价格锚</span>' : ''}</td>
@@ -306,14 +311,15 @@
       </div>`;
     }
 
-    function render() {
-      const stock = selected ? stocks[selected] : null;
+    async function render() {
+      const st = selected ? meta[selected] : null;   // 摘要（索引）
+      const stock = selected ? await loadDetail(selected) : null;  // 完整数据（按需）
       app.innerHTML = RV.ui.header('网格回测', '均衡偏低均值线 + 不对称网格（移植自 dividend_grid_strategy）', 'backtest', d.generatedAt)
         + targetSidebar()
         + (stock ? tradesSection(stock) : '')
         + (stock && stock.equity && stock.equity.length > 1
             ? `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>净值曲线 · ${selected}</h2><span class="sec-chip">默认近1月 · 可切换近1年/全部</span></div>${eqChart(stock, 'eq')}<div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('location-crosshairs', 'fa-xs')} 橙色虚线=估值锚（均值线），收盘价偏离锚点越远，网格买卖档位越密集。</div></div>` : '')
-        + perfCards(stock)
+        + perfCards(st)
         + returnTable()
         + strategyExplain()
         + '<footer>口径：均值线=PE40分位/PB60分位/ROE60分位加权几何平均（缺因子自动归一，无估值用价格锚）· 网格每0.5%一档，涨抛1%跌买1.04% · 半永久锁仓(偏离≤-5%锁定,≥+5%清仓) · 单边成本0.05% · 收益含日股息 · 基准=满仓买入持有 · 不构成投资建议</footer>';

@@ -726,36 +726,64 @@ def _window_returns(res: BacktestResult) -> Dict[str, float]:
     return out
 
 
-def build_backtest_data(per_stock: Dict[str, BacktestResult], rf: float = 0.0) -> Dict:
-    """生成前端可消费的回测 JSON（对齐 report.build_backtest 输出结构）。"""
-    stocks = {}
-    for name, res in per_stock.items():
-        # trades 附上当日收盘价，供前端图表标记买卖点
-        date_close = {d: c for d, c in zip(res.dates, res.close)}
-        trades = []
-        for t in res.trades:
-            td = t.to_dict()
-            td["price"] = round(date_close[t.date], 3) if t.date in date_close else None
-            trades.append(td)
-        stocks[name] = {
-            "summary": summary_metrics(res, rf),
-            "equity": [round(x, 6) for x in res.equity],
-            "benchmark": [round(x, 6) for x in res.benchmark],
-            "close": [round(x, 4) if x is not None else None for x in res.close],
-            "dates": res.dates,
-            "position": [round(x, 4) if x == x else None for x in res.position],
-            "dev": [round(x, 4) if x is not None else None for x in res.dev],
-            "anchor": [round(x, 4) if x is not None else None for x in res.anchor],
-            "trades": trades,
-            "window_returns": _window_returns(res),
-            "price_only": res.price_only,
-        }
-    # 整体：各标的汇总并集
+def build_backtest_stock(res: "BacktestResult", rf: float = 0.0) -> Dict:
+    """单只股票完整回测数据。浮点 round 压缩，控制前端传输体积。"""
+    date_close = {d: c for d, c in zip(res.dates, res.close)}
+    trades = []
+    for t in res.trades:
+        td = t.to_dict()
+        for key in ("pos_before", "pos_after", "amount"):
+            if isinstance(td.get(key), float):
+                td[key] = round(td[key], 4)
+        td["price"] = round(date_close[t.date], 3) if t.date in date_close else None
+        trades.append(td)
     return {
-        "generatedAt": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "summary": summary_metrics(res, rf),
+        "equity": [round(x, 4) for x in res.equity],
+        "benchmark": [round(x, 4) for x in res.benchmark],
+        "close": [round(x, 2) if x is not None else None for x in res.close],
+        "dates": res.dates,
+        "position": [round(x, 4) if x == x else None for x in res.position],
+        "dev": [round(x, 4) if x is not None else None for x in res.dev],
+        "anchor": [round(x, 4) if x is not None else None for x in res.anchor],
+        "trades": trades,
+        "window_returns": _window_returns(res),
+        "price_only": res.price_only,
+    }
+
+
+def build_backtest_data(per_stock: Dict[str, "BacktestResult"], rf: float = 0.0) -> Dict:
+    """兼容旧接口：单文件完整回测 JSON。"""
+    import datetime as _dt
+    stocks = {name: build_backtest_stock(res, rf) for name, res in per_stock.items()}
+    return {
+        "generatedAt": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "overall": _overall(per_stock, rf),
         "stocks": stocks,
     }
+
+
+def build_backtest_split(per_stock: Dict[str, "BacktestResult"], rf: float = 0.0):
+    """拆分回测数据：小索引（摘要/区间收益）+ 每只股票独立文件，供前端按需加载。
+
+    返回 (index_dict, {name: 单只完整数据})。
+    """
+    import datetime as _dt
+    index = {
+        "generatedAt": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "overall": _overall(per_stock, rf),
+        "stocks": {},
+    }
+    per_stock_files = {}
+    for name, res in per_stock.items():
+        full = build_backtest_stock(res, rf)
+        per_stock_files[name] = full
+        index["stocks"][name] = {
+            "summary": full["summary"],
+            "window_returns": full["window_returns"],
+            "price_only": full["price_only"],
+        }
+    return index, per_stock_files
 
 
 def _overall(per_stock: Dict[str, BacktestResult], rf: float = 0.0) -> Dict:

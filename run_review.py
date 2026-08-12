@@ -249,9 +249,15 @@ def run_review(args):
             print(f"   {name}: 年化{s['annual_return']*100:.1f}% 回撤{s['max_drawdown']*100:.1f}% "
                   f"夏普{s['sharpe']} 交易{s['trade_count']}次 基准年化{s['benchmark_annual']*100:.1f}%")
 
-        bt_data = gbt.build_backtest_data(per_stock)
-        p = rp.save("backtest_data.json", bt_data)
-        print(f"   {p}  共 {len(per_stock)} 只 / {bt_data['overall'].get('total', 0)}")
+        bt_index, bt_stocks = gbt.build_backtest_split(per_stock)
+        p = rp.save("backtest_index.json", bt_index)
+        # 每只股票独立文件（按需加载，避免单文件过大导致线上加载超时）
+        bt_dir = os.path.join(os.path.dirname(p), "backtest")
+        os.makedirs(bt_dir, exist_ok=True)
+        for name, data in bt_stocks.items():
+            with open(os.path.join(bt_dir, name + ".json"), "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+        print(f"   {p}  共 {len(per_stock)} 只 / {bt_index['overall'].get('total', 0)}")
 
     return pool, indices, market_analyses
 
