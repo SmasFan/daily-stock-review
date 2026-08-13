@@ -45,15 +45,17 @@ header.top .gen-time { color: var(--text-2); font-size:13px; margin-top:8px; }
 .nav-link.active { background: var(--primary); color:#fff; border-color: var(--primary); }
 
 /* 汇总卡片 */
-.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:24px; }
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin-bottom:24px; }
 .summary-card {
     background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
     padding:18px 16px; display:flex; align-items:center; gap:12px; box-shadow: var(--shadow);
+    min-width:0;   /* 允许 grid 轨道内收缩，防止内容撑破容器（手机端溢出） */
 }
-.summary-card .icon { font-size:22px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); border-radius:10px; color:var(--accent); }
-.summary-card .val { font-size:20px; font-weight:800; }
+.summary-card .icon { font-size:22px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); border-radius:10px; color:var(--accent); flex-shrink:0; }
+.summary-card .summary-text { min-width:0; }
+.summary-card .val { font-size:20px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .summary-card .val .unit { font-size:13px; color:var(--text-2); font-weight:500; }
-.summary-card .label { font-size:12px; color:var(--text-2); margin-top:2px; }
+.summary-card .label { font-size:12px; color:var(--text-2); margin-top:2px; overflow-wrap:anywhere; }
 .up { color: var(--up); } .down { color: var(--down); } .neutral { color: var(--neutral); }
 
 /* 温度计（扁平化：单一实色，由 JS 按分数设置） */
@@ -420,6 +422,10 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 @media (max-width:640px) {
     .container { padding:14px; }
     header.top h1 { font-size:22px; }
+    .summary-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+    .summary-card { padding:12px 10px; gap:8px; }
+    .summary-card .icon { width:32px; height:32px; font-size:18px; }
+    .summary-card .val { font-size:16px; }
     .card-kv { grid-template-columns:1fr 1fr; }
     .sector-header { flex-wrap:wrap; gap:8px; padding:12px 14px; }
     .sector-header .sector-stat { margin-left:0; width:100%; justify-content:space-between; gap:8px; }
