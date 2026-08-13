@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>有色金属期货 · 复盘</title>
+<title>期货 · 有色 & 面板周期</title>
 <link rel="stylesheet" href="assets/css/common.css">
 <style>
   /* 金属子项可折叠卡 */
@@ -59,11 +59,11 @@
 (async function () {
   const app = document.getElementById('app');
   let d = null;
-  try { d = await RV.API.metals(); } catch (e) { app.innerHTML = RV.ui.header('有色金属期货', '', 'metals') + RV.ui.error(e); return; }
+  try { d = await RV.API.metals(); } catch (e) { app.innerHTML = RV.ui.header('期货', '', 'metals') + RV.ui.error(e); return; }
 
   const items = d.items || [];
   if (!items.length) {
-    app.innerHTML = RV.ui.header('有色金属期货', '', 'metals', d.generatedAt) + RV.ui.empty('暂无期货数据，请先运行 python run_review.py --mode metals');
+    app.innerHTML = RV.ui.header('期货', '', 'metals', d.generatedAt) + RV.ui.empty('暂无期货数据，请先运行 python run_review.py --mode metals');
     return;
   }
   const stats = d.stats || {};
@@ -129,6 +129,97 @@
         <span style="color:#d1d5db">柱=成交量</span> ·
         <span style="color:var(--text-2)">鼠标悬浮查看数值</span>
       </div>
+    </div>`;
+  }
+
+  /* ===== 面板周期区块（LCD 景气度代理：面板厂股价） ===== */
+  function panelChart(idx) {
+    const dates = idx.dates || [], nav = idx.nav || [];
+    const n = nav.length;
+    if (n < 2) return RV.ui.empty('面板指数数据不足');
+    const W = 860, H = 180, padL = 54, padR = 14, padT = 10, padB = 24;
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    let max = -Infinity, min = Infinity;
+    nav.forEach(v => { if (v == null) return; if (v > max) max = v; if (v < min) min = v; });
+    max *= 1.02; min *= 0.98;
+    const range = max - min || 1;
+    const x = i => padL + innerW * i / (n - 1);
+    const y = p => padT + innerH * (max - p) / range;
+    let dpath = '', started = false;
+    nav.forEach((v, i) => {
+      if (v == null) { started = false; return; }
+      dpath += (started ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(v).toFixed(1);
+      started = true;
+    });
+    const yTicks = [];
+    for (let i = 0; i <= 4; i++) yTicks.push(min + range * i / 4);
+    const years = dates.map(s => Number(s.slice(0, 4)));
+    const y0 = years[0], y1 = years[years.length - 1];
+    const xTicks = [];
+    for (let yr = y0; yr <= y1; yr++) { const idx2 = years.indexOf(yr); if (idx2 >= 0) xTicks.push({ x: x(idx2), label: yr }); }
+    return `<div class="chart-wrap" style="position:relative">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">
+        <rect width="${W}" height="${H}" fill="#f9fafb"/>
+        ${yTicks.map(val => `<line x1="${padL}" y1="${y(val).toFixed(1)}" x2="${W - padR}" y2="${y(val).toFixed(1)}" stroke="#eef0f3"/>
+          <text x="${padL - 8}" y="${(y(val) + 4).toFixed(1)}" fill="#6b7280" font-size="11" text-anchor="end">${val.toFixed(2)}</text>`).join('')}
+        ${xTicks.map(t => `<text x="${t.x.toFixed(1)}" y="${H - 8}" fill="#6b7280" font-size="11" text-anchor="middle">${t.label}</text>`).join('')}
+        <path d="${dpath}" fill="none" stroke="#e8a33d" stroke-width="2.2"/>
+        <path d="${dpath}" fill="rgba(232,163,61,0.12)" stroke="none" transform="translate(0,${H})" transform-origin="0 0" transform-box="view-box"/>
+      </svg>
+      <div style="font-size:12px;color:var(--text-2);margin-top:6px"><span style="color:#e8a33d;font-weight:700">面板板块等权净值</span>（京东方A/TCL科技/彩虹股份/深天马A/维信诺） · 归一化基准=250日前 · 周期位置：净值低于长期均线=底部区，冲高回落=顶部风险</div>
+    </div>`;
+  }
+
+  function panelPosBar(pos) {
+    const color = pos >= 70 ? '#dc2626' : (pos >= 40 ? '#d97706' : '#16a34a');
+    const label = pos >= 70 ? '高位·顶部风险' : (pos >= 40 ? '中位' : '低位·机会区');
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1;min-width:60px;height:8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden">
+        <div style="width:${pos}%;height:100%;background:${color}"></div>
+      </div>
+      <span style="font-size:11px;color:${color};font-weight:700;white-space:nowrap">${pos}% ${label}</span>
+    </div>`;
+  }
+
+  function panelSection() {
+    const p = d.panel;
+    if (!p || !p.stocks || !p.stocks.length) return '';
+    const st = p.stats || {};
+    const cards = [
+      RV.ui.summaryCard('layer-group', `${st.count ?? 0} 只`, '面板龙头'),
+      RV.ui.summaryCard('arrow-trend-up', st.index_60d != null ? RV.fmt.pct(st.index_60d) : '--', '板块60日', st.index_60d > 0 ? 'up' : 'down'),
+      RV.ui.summaryCard('gauge-high', `${st.avg_pos52 ?? '--'}%`, '平均52周位置', st.avg_pos52 >= 70 ? 'down' : 'up'),
+      RV.ui.summaryCard('crown', `${st.best || '--'}（${st.best_score ?? '--'}分）`, '技术最强', 'up'),
+    ].join('');
+    const rows = p.stocks.map(s => `
+      <tr>
+        <td class="asset-name">${s.name}${RV.ui.heatBtn(s.code, s.name, 'stock')}<span class="stock-code">${s.code}</span></td>
+        <td style="font-weight:700">${RV.fmt.num(s.close)}</td>
+        <td>${RV.ui.pctBadge(s.change_pct)}</td>
+        <td style="font-weight:800">${s.score}</td>
+        <td>${RV.ui.signalBadge(s.signal_key, s.signal)}</td>
+        <td class="${RV.fmt.cls(s.change_60d)}">${RV.fmt.pct(s.change_60d)}</td>
+        <td>${panelPosBar(s.pos52)}</td>
+      </tr>`).join('');
+    return `<div class="section" data-nav="面板周期" data-nav-icon="layer-group">
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>面板周期（LCD 景气度代理）</h2><span class="sec-chip">${st.count ?? 0}只 · 52周位置</span></div>
+      <div class="summary-grid" style="margin-bottom:14px">${cards}</div>
+      ${panelChart(p.index || {})}
+      <div class="table-desktop" style="margin-top:12px"><div class="table-wrap"><table class="data-table">
+        <thead><tr><th>面板厂</th><th>现价</th><th>涨跌</th><th>评分</th><th>信号</th><th>60日</th><th>52周位置</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>
+      <div class="cards-mobile" style="margin-top:12px"><div class="mini-cards">${p.stocks.map(s => `
+        <div class="mini-card"><div class="mini-head">
+          <span class="mini-name">${s.name}${RV.ui.heatBtn(s.code, s.name, 'stock')}<span class="stock-code">${s.code}</span></span>
+          <span class="mini-head-right">${RV.ui.pctBadge(s.change_pct)} ${RV.ui.signalBadge(s.signal_key, s.signal)}</span>
+        </div>
+        <div class="mini-kv">
+          <span class="k">现价 / 评分</span><span class="v">${RV.fmt.num(s.close)} / ${s.score}</span>
+          <span class="k">60日 / 距52周高</span><span class="v">${RV.fmt.pct(s.change_60d)} / ${RV.fmt.pct(s.dist_high)}</span>
+        </div>
+        <div style="padding:4px 12px 10px">${panelPosBar(s.pos52)}</div>
+        </div>`).join('')}</div></div>
+      <div style="font-size:11px;color:var(--text-2);margin-top:10px">${RV.ui.icon('circle-info', 'fa-xs')} ${p.note || ''}</div>
     </div>`;
   }
 
@@ -286,13 +377,14 @@
       <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('circle-info', 'fa-xs')} 每天运行 metals 模式自动记录推荐快照；累计跟踪 = 首次上榜日收盘→最新，最近跟踪 = 最近上榜日收盘→最新。</div>
     </div>`;
 
-  app.innerHTML = RV.ui.header('有色金属', '期货 + 有色股票推荐 · 宏观影响 · 历史跟踪', 'metals', d.generatedAt)
+  app.innerHTML = RV.ui.header('期货', '有色期货 + 面板周期 · 股票推荐 · 历史跟踪', 'metals', d.generatedAt)
     + `<div class="section" data-nav="今日概览" data-nav-icon="gauge-high"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
+    + panelSection()
     + `<div class="section" data-nav="品种速览" data-nav-icon="coins"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>品种速览（点击直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
     + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>分品种分析 · 点击展开看走势与技术因子</h2></div>${items.map((m, i) => metalGroup(m, i)).join('')}</div>`
     + stockHtml
     + trackingHtml
-    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN/AU/AG · 碳酸锂 LC 广期所） · 有色股票：腾讯行情/东财资金流 + 宏观新闻映射 · 技术指标口径同股票分析 · 不构成投资建议</footer>';
+    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN/AU/AG · 碳酸锂 LC 广期所） · 面板周期=面板厂股价代理（面板价格见顶信号以月度 TV 面板报价为准） · 不构成投资建议</footer>';
 
   /* 折叠交互 */
   app.querySelectorAll('.metal-head[data-toggle]').forEach(h => {

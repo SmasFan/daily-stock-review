@@ -548,13 +548,18 @@ def run_holdings():
 
 
 def run_metals(args):
-    """生成有色金属页数据：期货行情 + 有色股票推荐（宏观影响）+ 历史跟踪。"""
-    print("== 有色金属期货分析 ==")
+    """生成期货页数据：有色期货行情 + 面板周期 + 有色股票推荐（宏观影响）+ 历史跟踪。"""
+    print("== 期货分析（有色 + 面板周期）==")
     data = fm.build_metals_data()
     try:
         fm.extend_metals_data(data, offline=args.offline)
     except Exception as e:
         print(f"   [warn] 有色股票推荐失败: {e}")
+    try:
+        data["panel"] = fm.build_panel_data()
+        print(f"   面板周期: {len(data['panel']['stocks'])} 只龙头")
+    except Exception as e:
+        print(f"   [warn] 面板周期数据失败: {e}")
     p = fm.save_metals_data(data)
     s = data["stats"]
     stocks = data.get("stocks") or []

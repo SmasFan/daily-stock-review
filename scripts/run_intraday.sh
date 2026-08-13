@@ -20,12 +20,14 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
   python3 build_uptrend.py >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中趋势数据生成失败" >> data/auto_run.log
 
-  # 每 30 分钟：资金数据 + 回测（含当天 K 线）
+  # 每 30 分钟：资金数据 + 回测 + 期货（含当天 K 线）
   if [ $((MM % 30)) -eq 0 ]; then
     python3 run_review.py --mode institution >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中资金数据生成失败" >> data/auto_run.log
     python3 scripts/build_backtest.py >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中回测生成失败" >> data/auto_run.log
+    python3 run_review.py --mode metals >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中期货数据生成失败" >> data/auto_run.log
   fi
 
   # 每 10 分钟推送一次（推送前先更新跟踪数据：当天快照+走势）

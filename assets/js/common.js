@@ -75,7 +75,7 @@
         ['holdings', '持仓', 'briefcase', 'holdings.html'],
         ['backtest', '回测', 'flask', 'backtest.html'],
         ['tracking', '跟踪', 'route', 'tracking.html'],
-        ['metals', '有色', 'coins', 'metals.html'],
+        ['metals', '期货', 'coins', 'metals.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];
       const navHtml = navs.map(([k, label, icon, href]) =>

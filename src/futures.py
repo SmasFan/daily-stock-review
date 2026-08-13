@@ -614,3 +614,104 @@ def _nearest_trade_day(day: str) -> Optional[str]:
         return trade_days[-1] if trade_days else day
     except Exception:
         return day
+
+# ================= 面板周期（LCD 景气度代理） =================
+PANEL_STOCKS = [
+    ("000725", "京东方A"),
+    ("000100", "TCL科技"),
+    ("600707", "彩虹股份"),
+    ("000050", "深天马A"),
+    ("002387", "维信诺"),
+]
+PANEL_DAYS = 250  # 52 周观察窗口
+
+
+def build_panel_data() -> Dict:
+    """面板周期数据：龙头股技术面 + 52 周位置 + 板块等权净值指数。
+
+    面板价格（WitsView/群智）无免费 API，用面板厂股价作为景气度代理：
+    - 每只：现价/涨跌/技术评分/趋势/60日涨幅/52周高低/位置
+    - 板块等权净值：反映面板板块整体周期位置
+    """
+    from . import analyzer as az
+    from . import data_provider as dp
+
+    klines = {}
+    for code, name in PANEL_STOCKS:
+        k = dp.fetch_daily_kline_long(code, count=550, min_days=500, use_cache=True)
+        if k is None:
+            k = dp.fetch_daily_kline_long(code, count=550, min_days=500, use_cache=False)
+        if k and len(k["closes"]) >= PANEL_DAYS + 30:
+            klines[code] = k
+
+    stocks = []
+    for code, name in PANEL_STOCKS:
+        k = klines.get(code)
+        if not k:
+            continue
+        r = az.analyze_stock(name, k["dates"], k["opens"], k["closes"],
+                             k["highs"], k["lows"], k["volumes"], code=code)
+        if not r:
+            continue
+        closes = k["closes"]
+        seg = closes[-PANEL_DAYS:]
+        high52, low52 = max(seg), min(seg)
+        pos52 = round((closes[-1] - low52) / (high52 - low52) * 100, 1) if high52 > low52 else 50.0
+        stocks.append({
+            "name": name, "code": code,
+            "close": closes[-1],
+            "change_pct": r.change_pct,
+            "score": r.score,
+            "signal_key": r.signal_key,
+            "signal": r.signal,
+            "trend_status": r.trend_status,
+            "change_60d": r.change_60d,
+            "high52": high52, "low52": low52,
+            "dist_high": round((closes[-1] / high52 - 1) * 100, 1),
+            "dist_low": round((closes[-1] / low52 - 1) * 100, 1),
+            "pos52": pos52,
+        })
+
+    # 板块等权净值指数（以第一只股票的日期为轴，其余按日期映射，缺失前值填充）
+    axis_code = next(iter(klines)) if klines else None
+    index = {"dates": [], "nav": []}
+    if axis_code:
+        axis = klines[axis_code]
+        dates = axis["dates"][-PANEL_DAYS:]
+        d2i = {c: {d: i for i, d in enumerate(k["dates"])} for c, k in klines.items()}
+        base = {c: klines[c]["closes"][-PANEL_DAYS] for c in klines}
+        navs = []
+        for d in dates:
+            vals = []
+            for c, k in klines.items():
+                i = d2i[c].get(d)
+                if i is not None:
+                    vals.append(k["closes"][i] / base[c])
+            navs.append(sum(vals) / len(vals) if vals else None)
+        # 前值填充
+        last = None
+        nav_clean = []
+        for v in navs:
+            if v is not None:
+                last = v
+            nav_clean.append(round(last, 4) if last else None)
+        index = {"dates": dates, "nav": nav_clean}
+
+    n = len(stocks)
+    up = sum(1 for s in stocks if s["change_pct"] > 0)
+    avg_pos = round(sum(s["pos52"] for s in stocks) / n, 1) if n else 0
+    best = max(stocks, key=lambda s: s["score"]) if stocks else None
+    return {
+        "stocks": stocks,
+        "index": index,
+        "stats": {
+            "count": n, "up": up, "down": n - up,
+            "avg_pos52": avg_pos,
+            "best": best["name"] if best else "--",
+            "best_score": best["score"] if best else 0,
+            "index_60d": round((index["nav"][-1] / index["nav"][-61] - 1) * 100, 1)
+            if len(index["nav"]) > 61 and index["nav"][-61] else None,
+        },
+        "note": "面板价格（WitsView/群智）无公开免费接口，用面板厂股价作为景气代理："
+                "股价周期位置≈面板价格周期位置；真正的价格见顶信号以月度 TV 面板报价为准。",
+    }
