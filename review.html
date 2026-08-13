@@ -494,6 +494,8 @@
     };
 
     function render() {
+      const prevScroll = window.scrollY;
+      const wasSearching = document.activeElement && document.activeElement.id === 'rv-search';
       const tabs = `
         <div class="section">
           <div class="section-title"><span class="title-icon">${RV.ui.icon('table-columns')}</span><h2>模块</h2></div>
@@ -572,6 +574,12 @@
         page = 0;
         render();
       });
+      // 搜索框焦点/滚动恢复（render 重建 DOM 后保持输入体验）
+      window.scrollTo(0, prevScroll);
+      if (wasSearching) {
+        const el = document.getElementById('rv-search');
+        if (el) { const len = el.value.length; el.focus(); el.setSelectionRange(len, len); }
+      }
     }
     render();
   } catch (e) {

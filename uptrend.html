@@ -128,6 +128,8 @@
     }
 
     function render() {
+      const prevScroll = window.scrollY;
+      const wasSearching = document.activeElement && document.activeElement.id === 'up-search';
       const list = filtered();
       app.innerHTML = RV.ui.header('上升趋势', '自选池扫描：强势多头 + 多头排列，按技术评分排序', 'uptrend', d.generatedAt)
         + statCards()
@@ -152,6 +154,12 @@
       }));
       const input = document.getElementById('up-search');
       if (input) input.addEventListener('input', () => { query = input.value; render(); });
+      // 搜索框焦点/滚动恢复（render 重建 DOM 后保持输入体验）
+      window.scrollTo(0, prevScroll);
+      if (wasSearching) {
+        const el = document.getElementById('up-search');
+        if (el) { const len = el.value.length; el.focus(); el.setSelectionRange(len, len); }
+      }
     }
     render();
   } catch (e) {

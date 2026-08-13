@@ -570,6 +570,8 @@
     let query = '';         // 搜索关键词
     const matches = (p, q) => (p.name || '').includes(q) || (p.code || '').includes(q) || ((p.sector || '') + '').includes(q);
     function render() {
+      const prevScroll = window.scrollY;
+      const wasSearching = document.activeElement && document.activeElement.id === 'rc-search';
       const base = tab === 'watch' ? picks : mpicks;
       const list = query ? base.filter(p => matches(p, query)) : base;
       const modTabs = `
@@ -649,6 +651,12 @@
         query = '';
         render();
       });
+      // 搜索框焦点/滚动恢复（render 重建 DOM 后保持输入体验）
+      window.scrollTo(0, prevScroll);
+      if (wasSearching) {
+        const el = document.getElementById('rc-search');
+        if (el) { const len = el.value.length; el.focus(); el.setSelectionRange(len, len); }
+      }
       app.querySelectorAll('.nav-link[data-mod]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         mod = a.getAttribute('data-mod');
