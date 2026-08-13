@@ -185,6 +185,14 @@
     const p = d.panel;
     if (!p || !p.stocks || !p.stocks.length) return '';
     const st = p.stats || {};
+    const w = p.warning || {};
+    const wlvl = w.level || 'normal';
+    const sigList = (w.signals || []).map(s => `<span style="display:block;margin-top:3px">${RV.ui.icon('triangle-exclamation', 'fa-xs')} ${s}</span>`).join('');
+    const banner = wlvl === 'alert'
+      ? `<div class="regime-banner" style="background:#fef2f2;border-color:#fecaca;color:#991b1b">${RV.ui.icon('triangle-exclamation', 'fa-xs')} <b>面板周期接近顶部！</b><span>${sigList}</span></div>`
+      : wlvl === 'watch'
+        ? `<div class="regime-banner" style="background:#fffbeb;border-color:#fde68a;color:#92400e">${RV.ui.icon('triangle-exclamation', 'fa-xs')} <b>面板周期需关注</b><span>${sigList}</span></div>`
+        : `<div class="regime-banner" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534">${RV.ui.icon('circle-check', 'fa-xs')} <b>面板周期位置正常</b><span>滞涨/过热/高位信号均未触发</span></div>`;
     const cards = [
       RV.ui.summaryCard('layer-group', `${st.count ?? 0} 只`, '面板龙头'),
       RV.ui.summaryCard('arrow-trend-up', st.index_60d != null ? RV.fmt.pct(st.index_60d) : '--', '板块60日', st.index_60d > 0 ? 'up' : 'down'),
@@ -203,6 +211,7 @@
       </tr>`).join('');
     return `<div class="section" data-nav="面板周期" data-nav-icon="layer-group">
       <div class="section-title"><span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>面板周期（LCD 景气度代理）</h2><span class="sec-chip">${st.count ?? 0}只 · 52周位置</span></div>
+      ${banner}
       <div class="summary-grid" style="margin-bottom:14px">${cards}</div>
       ${panelChart(p.index || {})}
       <div class="table-desktop" style="margin-top:12px"><div class="table-wrap"><table class="data-table">

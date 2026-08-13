@@ -666,6 +666,7 @@ def build_panel_data() -> Dict:
             "signal": r.signal,
             "trend_status": r.trend_status,
             "change_60d": r.change_60d,
+            "rsi6": r.rsi6,
             "high52": high52, "low52": low52,
             "dist_high": round((closes[-1] / high52 - 1) * 100, 1),
             "dist_low": round((closes[-1] / low52 - 1) * 100, 1),
@@ -701,6 +702,27 @@ def build_panel_data() -> Dict:
     up = sum(1 for s in stocks if s["change_pct"] > 0)
     avg_pos = round(sum(s["pos52"] for s in stocks) / n, 1) if n else 0
     best = max(stocks, key=lambda s: s["score"]) if stocks else None
+
+    # ===== 见顶预警：滞涨 / 过热 / 高位 多信号综合 =====
+    idx60 = round((index["nav"][-1] / index["nav"][-61] - 1) * 100, 1) \
+        if len(index["nav"]) > 61 and index["nav"][-61] else None
+    idx20 = round((index["nav"][-1] / index["nav"][-21] - 1) * 100, 1) \
+        if len(index["nav"]) > 21 and index["nav"][-21] else None
+    hot_rsi = sum(1 for s in stocks if (s.get("rsi6") or 0) > 75)
+    near_high = sum(1 for s in stocks if (s.get("dist_high") or 0) > -5)
+    signals = []
+    if idx20 is not None and idx20 <= 2 and (idx60 or 0) >= 20:
+        signals.append(f"板块20日滞涨(+{idx20:.1f}%)——此前60日涨{idx60:.0f}%，价格滞涨是见顶第一信号")
+    if (idx60 or 0) >= 30:
+        signals.append(f"板块60日涨幅过热(+{idx60:.1f}%)")
+    if avg_pos >= 70:
+        signals.append(f"平均52周位置高位({avg_pos}%)")
+    if n and hot_rsi >= max(1, round(n * 0.5)):
+        signals.append(f"{hot_rsi}/{n}只龙头RSI过热(>75)")
+    if n and near_high >= max(1, round(n * 0.4)):
+        signals.append(f"{near_high}/{n}只龙头距52周高不足5%")
+    level = "alert" if len(signals) >= 2 else ("watch" if signals else "normal")
+
     return {
         "stocks": stocks,
         "index": index,
@@ -709,8 +731,13 @@ def build_panel_data() -> Dict:
             "avg_pos52": avg_pos,
             "best": best["name"] if best else "--",
             "best_score": best["score"] if best else 0,
-            "index_60d": round((index["nav"][-1] / index["nav"][-61] - 1) * 100, 1)
-            if len(index["nav"]) > 61 and index["nav"][-61] else None,
+            "index_60d": idx60,
+            "index_20d": idx20,
+        },
+        "warning": {
+            "level": level,
+            "signals": signals,
+            "hot_rsi": hot_rsi, "near_high": near_high,
         },
         "note": "面板价格（WitsView/群智）无公开免费接口，用面板厂股价作为景气代理："
                 "股价周期位置≈面板价格周期位置；真正的价格见顶信号以月度 TV 面板报价为准。",
