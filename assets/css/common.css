@@ -446,3 +446,7 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
   font-size: 10px; transition: all .15s;
 }
 .heat-btn:hover { background: rgba(232, 163, 61, 0.25); transform: scale(1.1); }
+
+/* 资金速览（资金页：钱去哪了） */
+.fund-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media (max-width:640px) { .fund-quick-grid { grid-template-columns:1fr; } }

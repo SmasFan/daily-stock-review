@@ -109,6 +109,41 @@
         <div class="ff-note">数据源：东方财富资金流向（主力=超大单+大单）。全市场净流入以行业板块主力净流入求和近似。</div>
       </div>`;
 
+    // ===== 板块资金速览：一眼看清资金去向（卡片式） =====
+    function fundQuick() {
+      const ind = (d.sector || {}).industry || {};
+      const inn = (ind.inflow || []).slice(0, 6);
+      const out = (ind.outflow || []).slice(0, 6);
+      if (!inn.length && !out.length) return '';
+      const maxAbs = Math.max(1, ...inn.concat(out).map(x => Math.abs(x.main_net || 0)));
+      const bar = (x, color) => {
+        const w = Math.min(100, Math.abs(x.main_net || 0) / maxAbs * 100);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <span style="flex:0 0 74px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x.name || ''}</span>
+          <div style="flex:1;height:14px;border-radius:4px;background:var(--surface-2);overflow:hidden;position:relative">
+            <div style="width:${w}%;height:100%;background:${color};opacity:.85"></div>
+            <span style="position:absolute;left:${Math.min(w + 3, 92)}%;top:50%;transform:translateY(-50%);font-size:10px;white-space:nowrap;color:var(--text-2)">${RV.fmt.pct(x.change_pct)}</span>
+          </div>
+          <span style="flex:0 0 64px;text-align:right;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:${color}">${mf(x.main_net)}</span>
+        </div>`;
+      };
+      return `<div class="section" data-nav="资金速览" data-nav-icon="gauge-high">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>板块资金速览 · 钱去哪了</h2>
+          <span class="sec-chip">主力净额 <b class="${cls(mainNet)}">${mf(mainNet)}</b></span></div>
+        <div class="fund-quick-grid">
+          <div>
+            <div class="sec-title">${RV.ui.icon('arrow-trend-up')} 净流入 Top6 <span style="font-size:11px;color:var(--text-2)">（条=流入规模，右侧=板块涨跌）</span></div>
+            ${inn.map(x => bar(x, 'var(--up,#dc2626)')).join('') || '<div class="empty">暂无</div>'}
+          </div>
+          <div>
+            <div class="sec-title">${RV.ui.icon('arrow-trend-down')} 净流出 Top6 <span style="font-size:11px;color:var(--text-2)">（条=流出规模，右侧=板块涨跌）</span></div>
+            ${out.map(x => bar(x, 'var(--down,#16a34a)')).join('') || '<div class="empty">暂无</div>'}
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:10px">${RV.ui.icon('circle-info', 'fa-xs')} 资金速览是市场风格切换的第一信号：流出板块（高位）→ 流入板块（低位/防御）的高低切，通常领先指数方向。</div>
+      </div>`;
+    }
+
     // ===== 板块资金排行 =====
     function rankTable(rows, withPct = true) {
       if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
@@ -336,7 +371,7 @@
     }
 
     app.innerHTML = RV.ui.header('资金', '主力资金 · 龙虎榜机构 · 策略回测 · 国家队持股', 'institution', d.generatedAt)
-      + overviewHtml + sectorHtml + stockRankHtml + billboardHtml + stratHtml + instHtml
+      + overviewHtml + fundQuick() + sectorHtml + stockRankHtml + billboardHtml + stratHtml + instHtml
       + '<footer>主力=超大单+大单 · 龙虎榜/股东数据来自交易所披露 · 回测含双边0.1%成本 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
   } catch (e) {
