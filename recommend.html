@@ -641,10 +641,20 @@
         render();
       }));
       const search = document.getElementById('rc-search');
-      if (search) search.addEventListener('input', () => {
-        query = search.value.trim();
-        render();
-      });
+      if (search) {
+        let composing = false;   // 中文输入法组合中：不重建 DOM（否则 IME 被打断）
+        search.addEventListener('compositionstart', () => { composing = true; });
+        search.addEventListener('compositionend', () => {
+          composing = false;
+          query = search.value.trim();
+          render();
+        });
+        search.addEventListener('input', () => {
+          query = search.value.trim();
+          if (composing) return;
+          render();
+        });
+      }
       const clearBtn = document.getElementById('rc-search-clear');
       if (clearBtn) clearBtn.addEventListener('click', ev => {
         ev.preventDefault();

@@ -153,7 +153,20 @@
         render();
       }));
       const input = document.getElementById('up-search');
-      if (input) input.addEventListener('input', () => { query = input.value; render(); });
+      if (input) {
+        let composing = false;   // 中文输入法组合中：不重建 DOM（否则 IME 被打断）
+        input.addEventListener('compositionstart', () => { composing = true; });
+        input.addEventListener('compositionend', () => {
+          composing = false;
+          query = input.value.trim();
+          render();
+        });
+        input.addEventListener('input', () => {
+          query = input.value.trim();
+          if (composing) return;
+          render();
+        });
+      }
       // 搜索框焦点/滚动恢复（render 重建 DOM 后保持输入体验）
       window.scrollTo(0, prevScroll);
       if (wasSearching) {

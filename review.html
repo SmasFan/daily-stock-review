@@ -562,11 +562,22 @@
         render();
       }));
       const search = document.getElementById('rv-search');
-      if (search) search.addEventListener('input', () => {
-        query = search.value.trim();
-        page = 0;
-        render();
-      });
+      if (search) {
+        let composing = false;   // 中文输入法组合中：不重建 DOM（否则 IME 被打断）
+        search.addEventListener('compositionstart', () => { composing = true; });
+        search.addEventListener('compositionend', () => {
+          composing = false;
+          query = search.value.trim();
+          page = 0;
+          render();
+        });
+        search.addEventListener('input', () => {
+          query = search.value.trim();
+          if (composing) return;
+          page = 0;
+          render();
+        });
+      }
       const clearBtn = document.getElementById('rv-search-clear');
       if (clearBtn) clearBtn.addEventListener('click', ev => {
         ev.preventDefault();
