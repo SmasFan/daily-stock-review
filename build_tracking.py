@@ -34,6 +34,7 @@ from src import data_provider as dp  # noqa: E402
 
 BUY_KEYS = ("strong_buy", "buy")
 TOPN = 10
+TREND_TOPN = 20   # 趋势快照：上升趋势页评分前 20
 KLINE_BARS = 150
 
 
@@ -51,6 +52,20 @@ def init_db():
         price REAL,
         sector TEXT,
         PRIMARY KEY (day, code))""")
+    # 趋势快照表（上升趋势页推荐的股票，独立于每日推荐 Top10）
+    conn.execute("""CREATE TABLE IF NOT EXISTS trend_picks (
+        day TEXT NOT NULL,
+        rank INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        total_score REAL,
+        rating TEXT,
+        signal_key TEXT,
+        signal TEXT,
+        price REAL,
+        sector TEXT,
+        change_pct REAL,
+        PRIMARY KEY (day, code))""")
     # 2026-08-10：新增当日涨跌列（最新一天展示"今日涨跌"，老库兼容升级）
     cols = {r[1] for r in conn.execute("PRAGMA table_info(daily_picks)")}
     if "change_pct" not in cols:
@@ -59,11 +74,11 @@ def init_db():
     return conn
 
 
-def upsert_day(conn, day, items):
-    """写入一天快照（day+code 主键，重复运行幂等）。"""
+def upsert_day(conn, day, items, table="daily_picks"):
+    """写入一天快照（day+code 主键，重复运行幂等）。table: daily_picks / trend_picks"""
     with conn:
         conn.executemany(
-            """INSERT OR REPLACE INTO daily_picks
+            f"""INSERT OR REPLACE INTO {table}
                (day, rank, name, code, total_score, rating, signal_key, signal, price, sector, change_pct)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             [(day, i + 1, it.get("name", ""), it.get("code", ""),
@@ -75,18 +90,23 @@ def upsert_day(conn, day, items):
 
 
 def load_days(conn):
-    """从 SQLite 读全部快照，按日期升序返回 [{date, items}]。"""
-    rows = conn.execute(
-        "SELECT day, rank, name, code, total_score, rating, signal_key, signal, price, sector, change_pct "
-        "FROM daily_picks ORDER BY day, rank").fetchall()
+    """从 SQLite 读全部快照（每日推荐 + 趋势推荐合并），按日期升序返回 [{date, items}]。"""
     days = OrderedDict()
-    for r in rows:
-        day, rank, name, code, total, rating, sk, signal, price, sector, change_pct = r
-        days.setdefault(day, []).append({
-            "rank": rank, "name": name, "code": code,
-            "total_score": total, "rating": rating or "",
-            "signal_key": sk or "", "signal": signal or "",
-            "price": price, "sector": sector or "", "change_pct": change_pct})
+    for table, source in (("daily_picks", "recommend"), ("trend_picks", "uptrend")):
+        rows = conn.execute(
+            f"SELECT day, rank, name, code, total_score, rating, signal_key, signal, price, sector, change_pct "
+            f"FROM {table} ORDER BY day, rank").fetchall()
+        for r in rows:
+            day, rank, name, code, total, rating, sk, signal, price, sector, change_pct = r
+            days.setdefault(day, []).append({
+                "rank": rank, "name": name, "code": code,
+                "total_score": total, "rating": rating or "",
+                "signal_key": sk or "", "signal": signal or "",
+                "price": price, "sector": sector or "", "change_pct": change_pct,
+                "source": source})
+    # 每天内部排序：recommend 在前，按 rank
+    for d, items in days.items():
+        items.sort(key=lambda it: (0 if it["source"] == "recommend" else 1, it["rank"]))
     return [{"date": d, "items": items} for d, items in days.items()]
 
 
@@ -208,9 +228,23 @@ def main():
             today = (rec.get("generatedAt") or "")[:10]
             if today:
                 upsert_day(conn, today, top10_buys(rec.get("picks") or []))
-                print(f"  追加当日快照 {today}")
+                print(f"  追加当日推荐快照 {today}")
         except Exception as e:
             print(f"  [skip] 当日快照追加失败: {e}")
+
+    # 追加趋势推荐快照（上升趋势页评分 TopN，随趋势数据同日覆盖）
+    trend_path = os.path.join(DATA_DIR, "uptrend_data.json")
+    if os.path.exists(trend_path):
+        try:
+            with open(trend_path, "r", encoding="utf-8") as f:
+                tr = json.load(f)
+            tday = (tr.get("generatedAt") or "")[:10]
+            items = tr.get("items") or []
+            if tday and items:
+                upsert_day(conn, tday, items[:TREND_TOPN], table="trend_picks")
+                print(f"  追加趋势快照 {tday}（{min(len(items), TREND_TOPN)} 只）")
+        except Exception as e:
+            print(f"  [skip] 趋势快照追加失败: {e}")
 
     days = load_days(conn)
     if not days:

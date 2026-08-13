@@ -118,7 +118,7 @@
       const up = items.filter(it => (val(it) ?? -999) > 0).length;
       const rows = items.map((it, i) => `
         <tr>
-          <td>${nameCell(it, i, false)}</td>
+          <td>${nameCell(it, i, false)}${it.source === 'uptrend' ? `<span class="sec-chip" style="margin-left:6px">趋势</span>` : ''}</td>
           <td>${it.rating || '--'}</td>
           <td style="font-weight:800">${it.total_score ?? '--'}</td>
           <td>${sigBadge(it.signal_key, it.signal)}</td>
