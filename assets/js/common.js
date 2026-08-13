@@ -320,23 +320,52 @@
 /* ===== 市场温度 & 走势弹窗：双Y轴折线图（温度橙 + 走势蓝） ===== */
 (function () {
   if (!document || typeof window === 'undefined') return;
-  const CDN = 'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js';
+  // CDN 多源回退：bootcdn（国内快）→ jsdelivr → unpkg
+  const CDNS = [
+    'https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js',
+    'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
+    'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
+  ];
   let heatCache = null;
   let echartsPromise = null;
   let chart = null;
   let overlayEl = null;
+  let preloaded = false;
 
   function loadEcharts() {
     if (window.echarts) return Promise.resolve();
     if (echartsPromise) return echartsPromise;
     echartsPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = CDN;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('ECharts 加载失败，请检查网络'));
-      document.head.appendChild(s);
+      let i = 0;
+      const tryNext = () => {
+        if (i >= CDNS.length) { reject(new Error('ECharts 加载失败，请检查网络')); return; }
+        const s = document.createElement('script');
+        s.src = CDNS[i++];
+        s.onload = () => resolve();
+        s.onerror = () => { s.remove(); tryNext(); };
+        document.head.appendChild(s);
+      };
+      tryNext();
     });
     return echartsPromise;
+  }
+
+  /* 页面空闲时预加载 echarts + 预取温度数据，点击弹窗秒开 */
+  function preload() {
+    if (preloaded) return;
+    preloaded = true;
+    const idle = window.requestIdleCallback || (cb => setTimeout(cb, 600));
+    idle(() => {
+      loadEcharts().catch(() => {});
+      if (!heatCache) {
+        window.RV.API.heat().then(d => { heatCache = d; }).catch(() => {});
+      }
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', preload);
+  } else {
+    preload();
   }
 
   async function openHeat(code, name, kind) {

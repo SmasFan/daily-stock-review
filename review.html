@@ -470,8 +470,13 @@
     let tab = 'watch';
     let page = 0;
     const PAGE_SIZE = 10;
-    const pageItems = () => tab === 'watch' ? d.items : (d.market_items || []);
+    const pageItems = () => {
+      const base = tab === 'watch' ? d.items : (d.market_items || []);
+      return query ? base.filter(m => matches(m, query)) : base;
+    };
     const pageCount = () => Math.max(1, Math.ceil(pageItems().length / PAGE_SIZE));
+    const matches = (r, q) => (r.name || '').includes(q) || (r.code || '').includes(q) || ((r.sector || '') + '').includes(q);
+    let query = '';
 
     const cardSec = () => {
       const all = pageItems();
@@ -495,6 +500,10 @@
           <div class="nav" style="justify-content:flex-start;margin-top:0">
             <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">${RV.ui.icon('list-check')} 自选（${d.items.length}只）</a>
             <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘（${(d.market_items||[]).length}只）</a>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+            <input id="rv-search" type="text" placeholder="搜索名称 / 代码 / 板块…" value="${query}" style="flex:1;min-width:0;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:13px">
+            ${query ? `<button id="rv-search-clear" style="border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer">清除</button>` : ''}
           </div>
         </div>`;
       const items = pageItems();
@@ -550,6 +559,19 @@
         page = 0;
         render();
       }));
+      const search = document.getElementById('rv-search');
+      if (search) search.addEventListener('input', () => {
+        query = search.value.trim();
+        page = 0;
+        render();
+      });
+      const clearBtn = document.getElementById('rv-search-clear');
+      if (clearBtn) clearBtn.addEventListener('click', ev => {
+        ev.preventDefault();
+        query = '';
+        page = 0;
+        render();
+      });
     }
     render();
   } catch (e) {

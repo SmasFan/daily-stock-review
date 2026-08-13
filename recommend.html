@@ -241,7 +241,7 @@
         ${RV.ui.summaryCard('bullseye', list.length, '推荐标的')}
         ${RV.ui.summaryCard('medal', a, 'A 级')}
         ${RV.ui.summaryCard('award', b, 'B 级')}
-        ${RV.ui.summaryCard('crown', list[0].name, title || '首推', 'up')}
+        ${RV.ui.summaryCard('crown', list[0] ? list[0].name : '--', title || '首推', 'up')}
       </div>`;
     }
 
@@ -331,7 +331,7 @@
             <span class="sector-stat">
               <span>${RV.ui.icon('bullseye', 'fa-xs')} A${list.filter(p => p.rating === 'A').length}</span>
               <span>${RV.ui.icon('award', 'fa-xs')} B${list.filter(p => p.rating === 'B').length}</span>
-              <span>最高分 <b>${RV.fmt.num(Math.max(...list.map(p => p.total_score)), 1)}</b></span>
+              <span>最高分 <b>${list.length ? RV.fmt.num(Math.max(...list.map(p => p.total_score)), 1) : '--'}</b></span>
             </span>
           </div>
           <div class="sector-body">
@@ -567,8 +567,11 @@
 
     let mod = 'stock';      // 顶层模块: sector 板块 / stock 个股
     let tab = 'watch';      // 二级: watch 自选 / market 大盘
+    let query = '';         // 搜索关键词
+    const matches = (p, q) => (p.name || '').includes(q) || (p.code || '').includes(q) || ((p.sector || '') + '').includes(q);
     function render() {
-      const list = tab === 'watch' ? picks : mpicks;
+      const base = tab === 'watch' ? picks : mpicks;
+      const list = query ? base.filter(p => matches(p, query)) : base;
       const modTabs = `
         <div class="section">
           <div class="section-title"><span class="title-icon">${RV.ui.icon('table-columns')}</span><h2>模块</h2></div>
@@ -583,6 +586,10 @@
           <div class="nav" style="justify-content:flex-start;margin-top:0">
             <a href="#" class="nav-link ${tab === 'watch' ? 'active' : ''}" data-tab="watch">${RV.ui.icon('list-check')} 自选推荐（${picks.length}）</a>
             <a href="#" class="nav-link ${tab === 'market' ? 'active' : ''}" data-tab="market">${RV.ui.icon('globe')} 大盘推荐（${mpicks.length}）</a>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+            <input id="rc-search" type="text" placeholder="搜索名称 / 代码 / 板块…" value="${query}" style="flex:1;min-width:0;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);font-size:13px">
+            ${query ? `<button id="rc-search-clear" style="border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer">清除</button>` : ''}
           </div>
         </div>`;
       const sectorHtml = `<div data-nav="板块推荐" data-nav-icon="layer-group">${sectorRecSection()}</div>`;
@@ -631,6 +638,17 @@
         tab = a.getAttribute('data-tab');
         render();
       }));
+      const search = document.getElementById('rc-search');
+      if (search) search.addEventListener('input', () => {
+        query = search.value.trim();
+        render();
+      });
+      const clearBtn = document.getElementById('rc-search-clear');
+      if (clearBtn) clearBtn.addEventListener('click', ev => {
+        ev.preventDefault();
+        query = '';
+        render();
+      });
       app.querySelectorAll('.nav-link[data-mod]').forEach(a => a.addEventListener('click', ev => {
         ev.preventDefault();
         mod = a.getAttribute('data-mod');
