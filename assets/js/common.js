@@ -364,18 +364,27 @@
         }
       }
       if (!tempSeries || !series2 || !series2.data) { alert('暂无该标的的走势数据'); return; }
+      const isMobile = window.innerWidth <= 640;
+      const pad = isMobile ? '12px 10px' : '18px 20px';
+      const chartH = isMobile ? 300 : 420;
+      const title = kind === 'sector'
+        ? `${name} · 温度 & 走势`                                    // 板块：红利金融 · 温度 & 走势
+        : `${tempSeries.label} & ${series2.name} 走势`;              // 个股：新能源电力温度 & 盛新锂能 走势
+      const note = isMobile
+        ? `温度=板块等权净值250日收益百分位 · ${(d.generatedAt || '').slice(0, 10)}`
+        : `${d.tempNote || ''} · ${d.generatedAt || ''}`;
 
       overlayEl = document.createElement('div');
       overlayEl.className = 'heat-overlay';
-      overlayEl.style.cssText = 'position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
-      overlayEl.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(860px,96vw);padding:18px 20px;position:relative">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <span style="font-weight:800;font-size:15px">${tempSeries.label} & ${series2.name} 走势</span>
-          <span style="font-size:11px;color:var(--text-2)">${d.tempNote || ''} · ${d.generatedAt || ''}</span>
-          <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:4px 12px;font-size:12px;cursor:pointer">${window.RV.ui.icon('xmark')} 关闭</button>
+      overlayEl.style.cssText = `position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '8px' : '16px'};`;
+      overlayEl.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:${isMobile ? '16px 16px 0 0' : '14px'};box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(860px,${isMobile ? '100vw' : '96vw'});padding:${pad};position:relative;max-height:${isMobile ? '88vh' : 'none'};overflow:auto">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <span style="font-weight:800;font-size:${isMobile ? '14px' : '15px'};min-width:0">${title}</span>
+          <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:${isMobile ? '6px 12px' : '4px 10px'};font-size:12px;cursor:pointer">${window.RV.ui.icon('xmark')} 关闭</button>
         </div>
-        <div class="heat-chart" style="width:100%;height:420px"></div>
-        <div style="font-size:11px;color:var(--text-2);margin-top:8px">${window.RV.ui.icon('hand-pointer', 'fa-xs')} 悬停查看每日数值 · 拖拽平移 · 滚轮缩放</div>
+        <div style="font-size:10px;color:var(--text-2);margin-bottom:6px;overflow-wrap:anywhere">${note}</div>
+        <div class="heat-chart" style="width:100%;height:${chartH}px;touch-action:none"></div>
+        <div style="font-size:10px;color:var(--text-2);margin-top:6px">${window.RV.ui.icon('hand-pointer', 'fa-xs')} ${isMobile ? '拖动/双指缩放查看' : '悬停查看每日数值 · 拖拽平移 · 滚轮缩放'}</div>
       </div>`;
       document.body.appendChild(overlayEl);
       overlayEl.addEventListener('click', e => { if (e.target === overlayEl) close(); });
@@ -383,25 +392,32 @@
       document.addEventListener('keydown', escClose);
 
       chart = window.echarts.init(overlayEl.querySelector('.heat-chart'));
+      const fs = isMobile ? 11 : 12;          // 轴文字字号
+      const lfs = isMobile ? 11 : 13;         // 图例字号
+      const xInterval = isMobile ? Math.max(0, Math.ceil(x.length / 7) - 1) : 'auto';
       chart.setOption({
         animation: false,
         tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-        legend: { data: [tempSeries.label, series2.name], textStyle: { color: '#6b6258' } },
-        grid: { left: 64, right: 70, top: 40, bottom: 56 },
+        legend: { data: [tempSeries.label, series2.name], top: 0, textStyle: { color: '#6b6258', fontSize: lfs } },
+        grid: isMobile
+          ? { left: 6, right: 8, top: 30, bottom: 34, containLabel: true }
+          : { left: 64, right: 70, top: 40, bottom: 56 },
         dataZoom: [{ type: 'inside', xAxisIndex: 0 }],
         xAxis: { type: 'category', data: x, boundaryGap: false,
-          axisLabel: { color: '#6b6258', formatter: v => v.slice(5) }, axisLine: { lineStyle: { color: '#d1c9bf' } } },
+          axisLabel: { color: '#6b6258', fontSize: fs, interval: xInterval, formatter: v => v.slice(5) }, axisLine: { lineStyle: { color: '#d1c9bf' } } },
         yAxis: [
-          { type: 'value', name: tempSeries.label, min: 0, max: 100, axisLabel: { color: '#b0864a' }, splitLine: { lineStyle: { color: '#efe9df' } } },
-          { type: 'value', name: kind === 'sector' ? '板块净值' : '价格', scale: true, axisLabel: { color: '#4a7db0' }, splitLine: { show: false } }
+          { type: 'value', name: tempSeries.label, min: 0, max: 100,
+            nameTextStyle: { fontSize: fs }, axisLabel: { color: '#b0864a', fontSize: fs }, splitLine: { lineStyle: { color: '#efe9df' } } },
+          { type: 'value', name: kind === 'sector' ? '板块净值' : '价格', scale: true,
+            nameTextStyle: { fontSize: fs }, axisLabel: { color: '#4a7db0', fontSize: fs }, splitLine: { show: false } }
         ],
         series: [
           { name: tempSeries.label, type: 'line', data: tempSeries.data, yAxisIndex: 0, showSymbol: false,
-            lineStyle: { width: 2.2, color: '#e8a33d' }, itemStyle: { color: '#e8a33d' },
+            lineStyle: { width: isMobile ? 2 : 2.2, color: '#e8a33d' }, itemStyle: { color: '#e8a33d' },
             areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
               colorStops: [{ offset: 0, color: 'rgba(232,163,61,0.25)' }, { offset: 1, color: 'rgba(232,163,61,0.02)' }] } } },
           { name: series2.name, type: 'line', data: series2.data, yAxisIndex: 1, showSymbol: false,
-            lineStyle: { width: 1.8, color: '#5b8fd6' }, itemStyle: { color: '#5b8fd6' } }
+            lineStyle: { width: isMobile ? 1.6 : 1.8, color: '#5b8fd6' }, itemStyle: { color: '#5b8fd6' } }
         ]
       });
       const resize = () => chart && chart.resize();
