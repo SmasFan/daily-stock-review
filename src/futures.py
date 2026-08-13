@@ -32,16 +32,45 @@ UA = {"User-Agent": "Mozilla/5.0", "Referer": "https://finance.sina.com.cn/"}
 
 # 有色金属主力连续合约（主力合约0；沪=上海期货交易所 SHFE）
 METALS: List[Dict[str, str]] = [
-    {"symbol": "CU0", "name": "沪铜", "en": "Copper", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "AL0", "name": "沪铝", "en": "Aluminum", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "ZN0", "name": "沪锌", "en": "Zinc", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "PB0", "name": "沪铅", "en": "Lead", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "NI0", "name": "沪镍", "en": "Nickel", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "SN0", "name": "沪锡", "en": "Tin", "unit": "元/吨", "exchange": "SHFE"},
-    {"symbol": "AU0", "name": "沪金", "en": "Gold", "unit": "元/克", "exchange": "SHFE"},
-    {"symbol": "AG0", "name": "沪银", "en": "Silver", "unit": "元/千克", "exchange": "SHFE"},
-    {"symbol": "LC0", "name": "碳酸锂", "en": "Lithium Carbonate", "unit": "元/吨", "exchange": "GFEX"},
+    # ---- 有色（基本金属）----
+    {"symbol": "CU0", "name": "沪铜", "en": "Copper", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    {"symbol": "AL0", "name": "沪铝", "en": "Aluminum", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    {"symbol": "ZN0", "name": "沪锌", "en": "Zinc", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    {"symbol": "PB0", "name": "沪铅", "en": "Lead", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    {"symbol": "NI0", "name": "沪镍", "en": "Nickel", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    {"symbol": "SN0", "name": "沪锡", "en": "Tin", "unit": "元/吨", "exchange": "SHFE", "category": "有色"},
+    # ---- 贵金属 ----
+    {"symbol": "AU0", "name": "沪金", "en": "Gold", "unit": "元/克", "exchange": "SHFE", "category": "贵金属"},
+    {"symbol": "AG0", "name": "沪银", "en": "Silver", "unit": "元/千克", "exchange": "SHFE", "category": "贵金属"},
+    # ---- 锂电 ----
+    {"symbol": "LC0", "name": "碳酸锂", "en": "Lithium Carbonate", "unit": "元/吨", "exchange": "GFEX", "category": "锂电"},
+    # ---- 黑色（钢铁/煤炭）----
+    {"symbol": "RB0", "name": "螺纹钢", "en": "Rebar", "unit": "元/吨", "exchange": "SHFE", "category": "黑色"},
+    {"symbol": "HC0", "name": "热卷", "en": "Hot Coil", "unit": "元/吨", "exchange": "SHFE", "category": "黑色"},
+    {"symbol": "I0", "name": "铁矿石", "en": "Iron Ore", "unit": "元/吨", "exchange": "DCE", "category": "黑色"},
+    {"symbol": "J0", "name": "焦炭", "en": "Coke", "unit": "元/吨", "exchange": "DCE", "category": "黑色"},
+    {"symbol": "JM0", "name": "焦煤", "en": "Coking Coal", "unit": "元/吨", "exchange": "DCE", "category": "黑色"},
+    {"symbol": "ZC0", "name": "动力煤", "en": "Thermal Coal", "unit": "元/吨", "exchange": "CZCE", "category": "黑色"},
+    # ---- 能化 ----
+    {"symbol": "SC0", "name": "原油", "en": "Crude Oil", "unit": "元/桶", "exchange": "INE", "category": "能化"},
+    {"symbol": "TA0", "name": "PTA", "en": "PTA", "unit": "元/吨", "exchange": "CZCE", "category": "能化"},
+    {"symbol": "MA0", "name": "甲醇", "en": "Methanol", "unit": "元/吨", "exchange": "CZCE", "category": "能化"},
+    {"symbol": "V0", "name": "PVC", "en": "PVC", "unit": "元/吨", "exchange": "DCE", "category": "能化"},
+    {"symbol": "SA0", "name": "纯碱", "en": "Soda Ash", "unit": "元/吨", "exchange": "CZCE", "category": "能化"},
+    {"symbol": "FG0", "name": "玻璃", "en": "Glass", "unit": "元/吨", "exchange": "CZCE", "category": "能化"},
+    {"symbol": "RU0", "name": "橡胶", "en": "Rubber", "unit": "元/吨", "exchange": "SHFE", "category": "能化"},
+    {"symbol": "EG0", "name": "乙二醇", "en": "MEG", "unit": "元/吨", "exchange": "DCE", "category": "能化"},
+    # ---- 农产品 ----
+    {"symbol": "M0", "name": "豆粕", "en": "Soybean Meal", "unit": "元/吨", "exchange": "DCE", "category": "农产品"},
+    {"symbol": "Y0", "name": "豆油", "en": "Soybean Oil", "unit": "元/吨", "exchange": "DCE", "category": "农产品"},
+    {"symbol": "P0", "name": "棕榈油", "en": "Palm Oil", "unit": "元/吨", "exchange": "DCE", "category": "农产品"},
+    {"symbol": "OI0", "name": "菜油", "en": "Rapeseed Oil", "unit": "元/吨", "exchange": "CZCE", "category": "农产品"},
+    {"symbol": "C0", "name": "玉米", "en": "Corn", "unit": "元/吨", "exchange": "DCE", "category": "农产品"},
+    {"symbol": "SR0", "name": "白糖", "en": "Sugar", "unit": "元/吨", "exchange": "CZCE", "category": "农产品"},
+    {"symbol": "CF0", "name": "棉花", "en": "Cotton", "unit": "元/吨", "exchange": "CZCE", "category": "农产品"},
 ]
+
+CATEGORY_ORDER = ["有色", "贵金属", "锂电", "黑色", "能化", "农产品"]
 
 # 有色股票池（A股个股/ETF，对应期货品种联动；sector 用于宏观映射）
 # 来自自选 watchlist 的有色相关标的：铜/铝/锌/镍/锡/金/银/锂/稀土
@@ -219,6 +248,7 @@ def analyze_metal(meta: Dict[str, str], kline_days: int = 600, chart_points: int
     return {
         "symbol": sym, "name": name, "en": meta.get("en", ""),
         "unit": meta.get("unit", "元/吨"), "exchange": meta.get("exchange", "SHFE"),
+        "category": meta.get("category", "有色"),
         "date": dates[i],
         "price": round(price, 2),
         "prevClose": round(prev_close, 2),
@@ -274,9 +304,26 @@ def build_metals_data() -> Dict:
     leader = max(items, key=lambda x: x["change"]) if items else None
     laggard = min(items, key=lambda x: x["change"]) if items else None
 
+    # 板块细分统计（按 category 分组）
+    cats = OrderedDict()
+    for cat in CATEGORY_ORDER:
+        group = [m for m in items if m.get("category") == cat]
+        if not group:
+            continue
+        g_up = sum(1 for m in group if m["change"] > 0)
+        g_leader = max(group, key=lambda x: x["change"])
+        cats[cat] = {
+            "count": len(group),
+            "up": g_up, "down": len(group) - g_up,
+            "avg_change": round(sum(m["change"] for m in group) / len(group), 2),
+            "leader": g_leader["name"],
+            "leader_change": g_leader["change"],
+        }
+
     return {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "title": "有色金属期货",
+        "title": "周期期货",
+        "categories": cats,
         "stats": {
             "total": len(items),
             "up": len(up),

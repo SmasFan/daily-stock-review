@@ -181,6 +181,32 @@
     </div>`;
   }
 
+  /* 周期板块细分：按 category 分组渲染（有色/贵金属/锂电/黑色/能化/农产品） */
+  const CATS = d.categories || {};
+  const catQuick = Object.keys(CATS).map(cat => {
+    const g = CATS[cat];
+    const c = g.avg_change >= 0 ? 'up' : 'down';
+    return `<div class="mq-card ${c}" data-jump-cat="${cat}">
+      <div class="mq-name">${RV.ui.icon('layer-group', 'fa-xs')} ${cat}</div>
+      <div class="mq-pct ${c}">${RV.fmt.pct(g.avg_change)}</div>
+      <div class="mq-meta" style="font-size:10px;color:var(--text-2)">${g.count}品种 · ${g.up}涨${g.down}跌 · 领涨${g.leader}</div>
+    </div>`;
+  }).join('');
+
+  /* 每个板块分组：组头统计 + 品种卡片（点击展开详情） */
+  const catSections = Object.keys(CATS).map((cat, ci) => {
+    const g = CATS[cat];
+    const members = items.filter(m => m.category === cat);
+    return `<div class="section" data-nav="${cat}" data-nav-icon="coins">
+      <div class="section-title">
+        <span class="title-icon">${RV.ui.icon('layer-group')}</span><h2>${cat}</h2>
+        <span class="sec-chip">${g.count}品种 · ${g.up}涨${g.down}跌 · 均${RV.fmt.pct(g.avg_change)}</span>
+        <span class="sec-chip ${cls(g.avg_change)}">领涨 ${g.leader} ${RV.fmt.pct(g.leader_change)}</span>
+      </div>
+      ${members.map((m, i) => metalGroup(m, ci * 100 + i)).join('')}
+    </div>`;
+  }).join('');
+
   function panelSection() {
     const p = d.panel;
     if (!p || !p.stocks || !p.stocks.length) return '';
@@ -386,14 +412,14 @@
       <div style="font-size:12px;color:var(--text-2);margin-top:8px">${RV.ui.icon('circle-info', 'fa-xs')} 每天运行 metals 模式自动记录推荐快照；累计跟踪 = 首次上榜日收盘→最新，最近跟踪 = 最近上榜日收盘→最新。</div>
     </div>`;
 
-  app.innerHTML = RV.ui.header('期货', '有色期货 + 面板周期 · 股票推荐 · 历史跟踪', 'metals', d.generatedAt)
+  app.innerHTML = RV.ui.header('期货', '周期板块细分 · 有色/黑色/能化/农产品 · 面板周期', 'metals', d.generatedAt)
     + `<div class="section" data-nav="今日概览" data-nav-icon="gauge-high"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>今日概览</h2></div><div class="summary-grid">${headCards}</div></div>`
     + panelSection()
-    + `<div class="section" data-nav="品种速览" data-nav-icon="coins"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>品种速览（点击直达下方详情）</h2></div><div class="idx-metal-quick">${quick}</div></div>`
-    + `<div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>分品种分析 · 点击展开看走势与技术因子</h2></div>${items.map((m, i) => metalGroup(m, i)).join('')}</div>`
+    + `<div class="section" data-nav="板块速览" data-nav-icon="coins"><div class="section-title"><span class="title-icon">${RV.ui.icon('coins')}</span><h2>周期板块速览（点击直达下方分组）</h2></div><div class="idx-metal-quick">${catQuick}</div></div>`
+    + catSections
     + stockHtml
     + trackingHtml
-    + '<footer>数据来源：新浪财经期货日线（沪市主力连续合约 CU/AL/ZN/PB/NI/SN/AU/AG · 碳酸锂 LC 广期所） · 面板周期=面板厂股价代理（面板价格见顶信号以月度 TV 面板报价为准） · 不构成投资建议</footer>';
+    + '<footer>数据来源：新浪财经期货日线（主力连续合约，覆盖 SHFE/DCE/CZCE/INE/GFEX 五交易所） · 面板周期=面板厂股价代理（面板价格见顶信号以月度 TV 面板报价为准） · 不构成投资建议</footer>';
 
   /* 折叠交互 */
   app.querySelectorAll('.metal-head[data-toggle]').forEach(h => {
@@ -411,6 +437,14 @@
       g.classList.add('open');
       initChart(g);
       g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  /* 周期板块速览：点击滚动到对应分组 */
+  app.querySelectorAll('.mq-card[data-jump-cat]').forEach(c => {
+    c.addEventListener('click', () => {
+      const cat = c.getAttribute('data-jump-cat');
+      const sec = app.querySelector(`.section[data-nav="${cat}"]`);
+      if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
   /* 数据更新于今日则默认展开第一个 */
