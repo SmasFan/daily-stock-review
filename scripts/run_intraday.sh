@@ -15,10 +15,13 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
   python3 build_uptrend.py >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中趋势数据生成失败" >> data/auto_run.log
 
-  # 每 10 分钟推送一次
+  # 每 10 分钟推送一次（推送前先更新跟踪数据：当天快照+走势）
   MM=$((10#$(date +%M)))
   if [ $((MM % 10)) -eq 0 ]; then
-    git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
+    python3 run_review.py --mode tracking >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中跟踪数据生成失败" >> data/auto_run.log
+    # 盘中不提交 tracking.db（二进制状态库，避免仓库膨胀；盘后 auto_run 统一提交）
+    git add -A . ':!data/cache' ':!*.log' ':!data/tracking.db' 2>/dev/null || true
     if git diff --cached --quiet; then
       echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中无数据变更，跳过推送" >> data/auto_run.log
     else
