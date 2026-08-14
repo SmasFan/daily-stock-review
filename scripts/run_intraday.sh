@@ -30,6 +30,12 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中期货数据生成失败" >> data/auto_run.log
   fi
 
+  # 每 60 分钟（整点）：复盘分析（含当天盘中数据；回测由 build_backtest.py 单独跑）
+  if [ $((MM % 60)) -eq 0 ]; then
+    python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+  fi
+
   # 每 10 分钟推送一次（推送前先更新跟踪数据：当天快照+走势）
   if [ $((MM % 10)) -eq 0 ]; then
     python3 run_review.py --mode tracking >> data/auto_run.log 2>&1 \
