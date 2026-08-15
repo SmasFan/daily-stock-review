@@ -450,3 +450,8 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 /* 资金速览（资金页：钱去哪了） */
 .fund-quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 @media (max-width:640px) { .fund-quick-grid { grid-template-columns:1fr; } }
+
+/* 表格表头点击排序 */
+th { cursor: pointer; user-select: none; }
+th.sort-asc::after { content: " ▲"; font-size: 10px; color: var(--accent, #c78d5a); }
+th.sort-desc::after { content: " ▼"; font-size: 10px; color: var(--accent, #c78d5a); }

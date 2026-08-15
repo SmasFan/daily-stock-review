@@ -477,3 +477,58 @@
     openHeat(btn.getAttribute('data-heat'), btn.getAttribute('data-heat-name'), btn.getAttribute('data-heat-kind') || 'stock');
   });
 })();
+
+/* ===== 表格点击排序：通用（所有页面 .data-table / .ret-table） =====
+   点击表头排序，再点反向；自动识别数字/百分比/亿万元/日期/文本列。 */
+(function () {
+  if (!document || typeof window === 'undefined') return;
+
+  function cellVal(td) {
+    const txt = (td.textContent || '').trim().replace(/\s+/g, ' ');
+    if (!txt || txt === '--' || txt === '—' || txt === '-') return txt;
+    // 日期列
+    if (/^\d{4}[-/]\d{1,2}[-/]/.test(txt)) return txt;
+    // 数字列：去掉 +,% , 空格；识别 亿/万 单位
+    const clean = txt.replace(/[+%,\s]/g, '');
+    const n = parseFloat(clean);
+    if (!isNaN(n) && /[0-9]/.test(clean)) {
+      let v = n;
+      if (/亿/.test(txt)) v *= 1e8;
+      else if (/万/.test(txt)) v *= 1e4;
+      return v;
+    }
+    return txt;
+  }
+
+  document.addEventListener('click', e => {
+    const th = e.target.closest('th');
+    if (!th || e.target.closest('a, button, .info-dot')) return;
+    const table = th.closest('table');
+    const tbody = table && table.querySelector('tbody');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    if (!rows.length) return;
+    const col = Array.prototype.indexOf.call(th.parentElement.children, th);
+    // 全部行该列值相同则跳过（如 K线按钮列/空列）
+    const firstVal = cellVal(rows[0].children[col]);
+    if (!firstVal || rows.every(r => cellVal(r.children[col]) === firstVal)) return;
+
+    const state = table._sortState || {};
+    const dir = (state.col === col && state.dir === 1) ? -1 : 1;
+    table._sortState = { col, dir };
+    th.parentElement.querySelectorAll('th').forEach(h => {
+      h.classList.remove('sort-asc', 'sort-desc');
+    });
+    th.classList.add(dir === 1 ? 'sort-asc' : 'sort-desc');
+
+    rows.sort((a, b) => {
+      const va = cellVal(a.children[col]), vb = cellVal(b.children[col]);
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      const sa = String(va), sb = String(vb);
+      if (!sa && sb) return 1;
+      if (sa && !sb) return -1;
+      return sa.localeCompare(sb, 'zh') * dir;
+    });
+    rows.forEach(r => tbody.appendChild(r));
+  });
+})();
