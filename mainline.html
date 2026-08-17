@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主线 · 龙头 · 升浪</title>
+<link rel="stylesheet" href="assets/css/common.css">
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.mainline();
+    if (!d.mainline || !d.mainline.length) {
+      app.innerHTML = RV.ui.header('主线', '', 'mainline', d.generatedAt) + RV.ui.empty('暂无数据，请先运行 python3 build_mainline.py');
+      return;
+    }
+    const cls = RV.fmt.cls;
+    const mf = v => { if (v == null) return '--'; const a = Math.abs(v); return (v < 0 ? '-' : '') + (a >= 1e8 ? (a/1e8).toFixed(1)+'亿' : (a/1e4).toFixed(0)+'万'); };
+
+    // ===== 主线板块 =====
+    function mainlineCards() {
+      const maxNet = Math.max(...d.mainline.map(m => Math.abs(m.main_net || 0)), 1);
+      const cards = d.mainline.map((m, i) => {
+        const pct = Math.min(100, Math.abs(m.main_net || 0) / maxNet * 100);
+        const pos = m.main_net >= 0;
+        return `
+        <div class="sector-group mainline-card" data-sec="${m.name}">
+          <div class="sector-header">
+            <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+            <span class="sector-name">${m.name}</span>
+            <span class="rank-chip">${String(i+1).padStart(2,'0')}</span>
+            <span class="sec-chip">评分 <b>${m.score}</b></span>
+            <span class="sec-chip ${pos ? 'up' : 'down'}">${mf(m.main_net)}</span>
+            <span class="sec-chip ${cls(m.change_pct)}">${RV.fmt.pct(m.change_pct)}</span>
+            <span class="sector-stat" style="flex:1">
+              <div style="height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;flex:1">
+                <div style="width:${pct}%;height:100%;background:${pos ? 'var(--up,#dc2626)' : 'var(--down,#16a34a)'}"></div>
+              </div>
+            </span>
+          </div>
+          <div class="sector-body" style="font-size:12px;color:var(--text-2);padding:6px 14px">
+            ${RV.ui.icon('circle-info','fa-xs')} 净占比 ${RV.fmt.pct(m.main_ratio)} · 资金分 ${m.net_score} · 主线评分=资金40%+涨幅20%+占比20%+效应20%
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="section" data-nav="主线板块" data-nav-icon="crown">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('crown')}</span><h2>主线板块（今日资金+涨幅）</h2><span class="sec-chip">Top${d.mainline.length}</span></div>
+        ${cards}
+      </div>`;
+    }
+
+    // ===== 资金龙头 =====
+    function leaderTable() {
+      const rows = d.leaders.map((l, i) => `
+        <tr>
+          <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${l.name}${RV.ui.heatBtn(l.code, l.name, 'stock')}<span class="stock-code">${l.code}</span></td>
+          <td style="font-weight:700">${RV.fmt.num(l.price)}</td>
+          <td>${RV.ui.pctBadge(l.change_pct)}</td>
+          <td class="${l.main_net >= 0 ? 'up' : 'down'}" style="font-weight:800">${mf(l.main_net)}</td>
+          <td class="${cls(l.main_ratio)}">${RV.fmt.pct(l.main_ratio)}</td>
+        </tr>`).join('');
+      return `<div class="section" data-nav="资金龙头" data-nav-icon="ranking-star">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('ranking-star')}</span><h2>资金龙头（主力净流入 Top10）</h2></div>
+        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>个股</th><th>现价</th><th>涨跌</th><th>主力净流入</th><th>净占比</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>
+        <div class="cards-mobile"><div class="mini-cards">${d.leaders.map((l, i) => `
+          <div class="mini-card"><div class="mini-head">
+            <span class="mini-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${l.name}${RV.ui.heatBtn(l.code, l.name, 'stock')}<span class="stock-code">${l.code}</span></span>
+            <span class="mini-head-right">${RV.ui.pctBadge(l.change_pct)}</span>
+          </div>
+          <div class="mini-kv">
+            <span class="k">主力净流入</span><span class="v ${l.main_net >= 0 ? 'up' : 'down'}" style="font-weight:800">${mf(l.main_net)}</span>
+            <span class="k">净占比 / 现价</span><span class="v">${RV.fmt.pct(l.main_ratio)} / ${RV.fmt.num(l.price)}</span>
+          </div></div>`).join('')}</div></div>
+      </div>`;
+    }
+
+    // ===== 升浪 =====
+    const WAVE_META = {
+      '加速浪': { icon: 'rocket', cls: 's-strong_buy' },
+      '主升浪': { icon: 'arrow-trend-up', cls: 's-buy' },
+      '启动浪': { icon: 'seedling', cls: 's-watch' },
+      '滞涨': { icon: 'triangle-exclamation', cls: 's-reduce' },
+    };
+    function waveSection() {
+      if (!d.waves || !d.waves.length) return '';
+      const group = {};
+      d.waves.forEach(w => (group[w.wave] = group[w.wave] || []).push(w));
+      const order = ['加速浪', '主升浪', '启动浪', '滞涨'];
+      const html = order.filter(k => group[k]).map(k => {
+        const meta = WAVE_META[k] || {};
+        const rows = group[k].map((w, i) => `
+          <tr>
+            <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${w.name}${RV.ui.heatBtn(w.code, w.name, 'stock')}<span class="stock-code">${w.code}</span><span class="sec-chip">${w.sector || ''}</span></td>
+            <td><span class="signal-badge ${meta.cls}">${RV.ui.icon(meta.icon, 'fa-xs')} ${w.wave}</span></td>
+            <td style="font-weight:800">${w.score ?? '--'}</td>
+            <td class="${RV.fmt.cls(w.change_pct)}">${RV.fmt.pct(w.change_pct)}</td>
+            <td class="${RV.fmt.cls(w.change_20d)}">${w.change_20d != null ? RV.fmt.pct(w.change_20d) : '--'}</td>
+            <td class="${RV.fmt.cls(w.change_60d)}">${RV.fmt.pct(w.change_60d)}</td>
+            <td>${w.volume_ratio ? RV.fmt.num(w.volume_ratio, 2) : '--'}</td>
+          </tr>`).join('');
+        return `<div class="section" data-nav="升浪 · ${k}" data-nav-icon="${meta.icon}">
+          <div class="section-title"><span class="title-icon">${RV.ui.icon(meta.icon)}</span><h2>${k}</h2><span class="sec-chip">${group[k].length}只</span>
+          ${k === '加速浪' ? '<span class="signal-badge s-strong_buy">强势加速，注意追高风险</span>' : ''}
+          ${k === '滞涨' ? '<span class="signal-badge s-reduce">高位钝化，警惕见顶</span>' : ''}
+          </div>
+          <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+            <thead><tr><th>个股</th><th>浪型</th><th>评分</th><th>今日</th><th>20日</th><th>60日</th><th>量比</th></tr></thead>
+            <tbody>${rows}</tbody></table></div></div>
+        </div>`;
+      }).join('');
+      return html;
+    }
+
+    // ===== 异动 =====
+    function abnormalSection() {
+      const ab = d.abnormal || {};
+      const blocks = [];
+      if (ab.volume_surge && ab.volume_surge.length) {
+        blocks.push(`<div>
+          <div class="sec-title">${RV.ui.icon('bolt')} 放量拉升（量比≥2 且涨幅≥3%）</div>
+          <div class="mini-cards">${ab.volume_surge.map(x => `
+            <div class="mini-card"><div class="mini-head">
+              <span class="mini-name">${x.name}${RV.ui.heatBtn(x.code, x.name, 'stock')}<span class="stock-code">${x.code}</span></span>
+              <span class="mini-head-right">${RV.ui.pctBadge(x.change_pct)}</span>
+            </div>
+            <div class="mini-kv"><span class="k">量比</span><span class="v" style="font-weight:800">${RV.fmt.num(x.volume_ratio, 2)}</span>
+            <span class="k">板块</span><span class="v">${x.sector || '--'}</span></div></div>`).join('')}</div>
+        </div>`);
+      }
+      if (ab.money_surge && ab.money_surge.length) {
+        blocks.push(`<div>
+          <div class="sec-title">${RV.ui.icon('hand-holding-dollar')} 资金异动（主力净流入榜）</div>
+          <div class="mini-cards">${ab.money_surge.map(x => `
+            <div class="mini-card"><div class="mini-head">
+              <span class="mini-name">${x.name}${RV.ui.heatBtn(x.code, x.name, 'stock')}<span class="stock-code">${x.code}</span></span>
+              <span class="mini-head-right">${RV.ui.pctBadge(x.change_pct)}</span>
+            </div>
+            <div class="mini-kv"><span class="k">主力净流入</span><span class="v up" style="font-weight:800">${mf(x.main_net)}</span>
+            <span class="k">净占比</span><span class="v">${RV.fmt.pct(x.main_ratio)}</span></div></div>`).join('')}</div>
+        </div>`);
+      }
+      if (ab.drop && ab.drop.length) {
+        blocks.push(`<div>
+          <div class="sec-title">${RV.ui.icon('arrow-trend-down')} 大跌异动（≤-4%）</div>
+          <div class="mini-cards">${ab.drop.map(x => `
+            <div class="mini-card"><div class="mini-head">
+              <span class="mini-name">${x.name}${RV.ui.heatBtn(x.code, x.name, 'stock')}<span class="stock-code">${x.code}</span></span>
+              <span class="mini-head-right">${RV.ui.pctBadge(x.change_pct)}</span>
+            </div>
+            <div class="mini-kv"><span class="k">板块</span><span class="v">${x.sector || '--'}</span></div></div>`).join('')}</div>
+        </div>`);
+      }
+      if (!blocks.length) return '';
+      return `<div class="section" data-nav="异动分析" data-nav-icon="bolt">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('bolt')}</span><h2>异动分析</h2></div>
+        ${blocks.join('')}
+      </div>`;
+    }
+
+    // ===== 自选池板块龙头 =====
+    function poolLeaderSection() {
+      const pl = d.pool_leaders || {};
+      const keys = Object.keys(pl);
+      if (!keys.length) return '';
+      const rows = keys.map((sec, i) => {
+        const p = pl[sec];
+        return `<tr>
+          <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${sec}</td>
+          <td class="sec-chip">${p.total}只 · ${p.up_count}涨</td>
+          <td>${p.change_leader.name}<span class="stock-code">${p.change_leader.code}</span></td>
+          <td class="${RV.fmt.cls(p.change_leader.change_pct)}">${RV.fmt.pct(p.change_leader.change_pct)}</td>
+          <td>${p.score_leader.name}<span class="stock-code">${p.score_leader.code}</span></td>
+          <td style="font-weight:800">${p.score_leader.score}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="section" data-nav="板块龙头" data-nav-icon="medal">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('medal')}</span><h2>自选池 · 板块龙头</h2><span class="sec-chip">涨幅第一 / 评分第一</span></div>
+        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>板块</th><th>分布</th><th>涨幅龙头</th><th>涨跌</th><th>评分龙头</th><th>评分</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>
+      </div>`;
+    }
+
+    // ===== 渲染 =====
+    const mainlineCardsHtml = mainlineCards();
+    app.innerHTML = RV.ui.header('主线 · 龙头 · 升浪', '今日主线板块 + 资金龙头 + 浪型 + 异动', 'mainline', d.generatedAt)
+      + mainlineCardsHtml
+      + leaderTable()
+      + poolLeaderSection()
+      + abnormalSection()
+      + waveSection()
+      + '<footer>口径：主线评分=主力净流入40%+涨幅20%+净占比20%+强势股效应20% · 升浪=20/60日涨幅+趋势+量能 · 数据由 python3 build_mainline.py 生成 · 不构成投资建议</footer>';
+    RV.ui.initSidebar();
+    // 主线卡展开/收起（复用 sector-group 交互）
+    app.querySelectorAll('.mainline-card .sector-header').forEach(h => {
+      h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+    });
+  } catch (e) {
+    app.innerHTML = RV.ui.header('主线', '', 'mainline') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

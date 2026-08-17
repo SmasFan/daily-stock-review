@@ -28,6 +28,8 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中回测生成失败" >> data/auto_run.log
     python3 run_review.py --mode metals >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中期货数据生成失败" >> data/auto_run.log
+    python3 build_mainline.py >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中主线数据生成失败" >> data/auto_run.log
   fi
 
   # 每 60 分钟（整点）：复盘分析（含当天盘中数据；回测由 build_backtest.py 单独跑）

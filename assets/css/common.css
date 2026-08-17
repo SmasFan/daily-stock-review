@@ -455,3 +455,11 @@ footer { text-align:center; color:var(--text-2); font-size:12px; padding:24px; }
 th { cursor: pointer; user-select: none; }
 th.sort-asc::after { content: " ▲"; font-size: 10px; color: var(--accent, #c78d5a); }
 th.sort-desc::after { content: " ▼"; font-size: 10px; color: var(--accent, #c78d5a); }
+
+/* 主线页排名徽章 */
+.rank-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 22px; padding: 0 6px; border-radius: 6px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: 11px; font-weight: 800; color: var(--accent, #c78d5a);
+}

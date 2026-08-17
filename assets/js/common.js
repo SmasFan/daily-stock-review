@@ -29,6 +29,7 @@
     backtest() { return this.fetch('backtest_index.json'); },
     backtestStock(name) { return this.fetch('backtest/' + encodeURIComponent(name) + '.json'); },
     uptrend() { return this.fetch('uptrend_data.json'); },
+    mainline() { return this.fetch('mainline_data.json'); },
     heat() { return this.fetch('market_heat.json'); },
     holdings() { return this.fetch('holdings_data.json'); },
     metals() { return this.fetch('metals_data.json'); },
@@ -69,6 +70,7 @@
       const navs = [
         ['review', '复盘', 'clipboard-list', 'review.html'],
         ['uptrend', '趋势', 'arrow-trend-up', 'uptrend.html'],
+        ['mainline', '主线', 'crown', 'mainline.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
         ['institution', '资金', 'landmark', 'institution.html'],
         ['macro', '宏观', 'newspaper', 'macro.html'],
