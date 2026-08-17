@@ -118,6 +118,52 @@ def build_abnormal(review_items, stock_rank):
     return ab
 
 
+def build_periods(review_items):
+    """板块周期涨幅：自选池板块成分股等权合成指数，算 5/10/20 日涨幅。"""
+    from collections import defaultdict
+    sec_groups = defaultdict(list)
+    for it in review_items:
+        sec_groups[it.get("sector", "其他")].append(it)
+    periods = []
+    for sec, lst in sec_groups.items():
+        if len(lst) < 2:
+            continue
+        codes = [it["code"] for it in lst[:10]]
+        nav = None
+        cnt = 0
+        n_min = 999
+        for code in codes:
+            k = dp.fetch_daily_kline(code, count=30, use_cache=True)
+            if not k or len(k["closes"]) < 25:
+                continue
+            c = k["closes"]
+            n_min = min(n_min, len(c))
+            if nav is None:
+                nav = [0.0] * len(c)
+            base = c[0]
+            for i, v in enumerate(c):
+                if i < len(nav):
+                    nav[i] += v / base
+            cnt += 1
+        if not cnt or nav is None:
+            continue
+        nav = [v / cnt for v in nav[:n_min]]
+        n = len(nav)
+        chg = lambda span: round((nav[-1] / nav[-span - 1] - 1) * 100, 2) if n > span else None
+        today = round((nav[-1] / nav[-2] - 1) * 100, 2) if n > 1 else None
+        strong = sum(1 for it in lst if (it.get("score") or 0) >= 60 or (it.get("change_pct") or 0) >= 5)
+        periods.append({
+            "sector": sec,
+            "count": len(lst),
+            "strong": strong,
+            "chg_today": today,
+            "chg_5d": chg(5),
+            "chg_10d": chg(10),
+            "chg_20d": chg(20),
+        })
+    return periods
+
+
 def main():
     inst = load_json("institution_data.json")
     ind = (inst.get("sector") or {}).get("industry") or {}
@@ -169,6 +215,16 @@ def main():
     waves = build_waves()
     abnormal = build_abnormal(review_items, sr)
 
+    # 6. 板块周期主线（5/10/20 日涨幅）
+    periods = build_periods(review_items)
+    period_rank = {}
+    for span, key in (("5d", "chg_5d"), ("10d", "chg_10d"), ("20d", "chg_20d")):
+        ranked = [p for p in periods if p.get(key) is not None]
+        ranked.sort(key=lambda p: -p[key])
+        period_rank[span] = [{"sector": p["sector"], "chg": p[key],
+                              "chg_today": p["chg_today"], "count": p["count"],
+                              "strong": p["strong"]} for p in ranked[:10]]
+
     out = {
         "generatedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "note": "主线评分 = 主力净流入40% + 涨幅20% + 净占比20% + 强势股效应20%；升浪基于自选池强势股 20/60 日涨幅",
@@ -177,6 +233,8 @@ def main():
         "pool_leaders": pool_leaders,
         "waves": waves,
         "abnormal": abnormal,
+        "periods": periods,
+        "period_rank": period_rank,
     }
     tmp = OUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:

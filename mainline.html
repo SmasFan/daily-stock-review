@@ -187,16 +187,92 @@
       </div>`;
     }
 
+    // ===== 周期主线（一周/半月/一个月） =====
+    function periodSection() {
+      const pr = d.period_rank || {};
+      if (!pr['5d'] || !pr['5d'].length) return '';
+      // 多周期共振：同时出现在 5/10/20 日榜的板块 = 持续主线
+      const inRank = {};
+      ['5d','10d','20d'].forEach(span => (pr[span] || []).forEach(p => { inRank[p.sector] = (inRank[p.sector] || 0) + 1; }));
+      const persistent = Object.keys(inRank).filter(k => inRank[k] >= 3).sort((a, b) => inRank[b] - inRank[a]);
+      const tabs = [
+        ['5d', '近一周'], ['10d', '近半月'], ['20d', '近一月'],
+      ];
+      let periodTab = '5d';
+      const P_LABEL = { '5d': '5日', '10d': '10日', '20d': '20日' };
+      function periodTable(span) {
+        const rows = (pr[span] || []).map((p, i) => `
+          <tr>
+            <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${p.sector}</td>
+            <td class="${RV.fmt.cls(p.chg)}" style="font-weight:800">${RV.fmt.pct(p.chg)}</td>
+            <td class="${RV.fmt.cls(p.chg_today)}">${RV.fmt.pct(p.chg_today)}</td>
+            <td>${p.count}只 · ${p.strong}强势</td>
+          </tr>`).join('');
+        return `<div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>板块</th><th>${P_LABEL[span]}涨幅</th><th>今日</th><th>成分/强势</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>`;
+      }
+      function renderPeriod() {
+        const nav = `
+          <div class="nav" style="justify-content:flex-start;margin-top:0">
+            ${tabs.map(([k, lb]) => `<a href="#" class="nav-link ${periodTab === k ? 'active' : ''}" data-pk="${k}">${lb}</a>`).join('')}
+          </div>`;
+        const body = document.getElementById('period-body');
+        if (body) body.innerHTML = periodTable(periodTab);
+        document.querySelectorAll('#period-nav .nav-link[data-pk]').forEach(a => {
+          a.addEventListener('click', ev => {
+            ev.preventDefault();
+            periodTab = a.getAttribute('data-pk');
+            document.querySelectorAll('#period-nav .nav-link[data-pk]').forEach(x => x.classList.remove('active'));
+            a.classList.add('active');
+            renderPeriod();
+          });
+        });
+      }
+      const persistChips = persistent.map(s => `<span class="sec-chip" style="border-color:var(--accent,#c78d5a);color:var(--accent,#c78d5a)">${RV.ui.icon('crown','fa-xs')} ${s}</span>`).join('');
+      return `<div class="section" data-nav="周期主线" data-nav-icon="calendar-week">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('calendar-week')}</span><h2>周期主线 · 一周 / 半月 / 一月</h2></div>
+        ${persistChips ? `<div style="margin-bottom:10px">${RV.ui.icon('crown','fa-xs')} <b>多周期共振（持续主线）</b>：${persistChips}</div>` : ''}
+        <div id="period-nav" class="nav" style="justify-content:flex-start;margin-top:0">
+          ${tabs.map(([k, lb]) => `<a href="#" class="nav-link ${periodTab === k ? 'active' : ''}" data-pk="${k}">${lb}</a>`).join('')}
+        </div>
+        <div id="period-body" style="margin-top:10px">${periodTable('5d')}</div>
+      </div>`;
+    }
+
     // ===== 渲染 =====
     const mainlineCardsHtml = mainlineCards();
-    app.innerHTML = RV.ui.header('主线 · 龙头 · 升浪', '今日主线板块 + 资金龙头 + 浪型 + 异动', 'mainline', d.generatedAt)
+    app.innerHTML = RV.ui.header('主线 · 龙头 · 升浪', '今日主线板块 + 周期主线 + 资金龙头 + 浪型 + 异动', 'mainline', d.generatedAt)
       + mainlineCardsHtml
+      + periodSection()
       + leaderTable()
       + poolLeaderSection()
       + abnormalSection()
       + waveSection()
       + '<footer>口径：主线评分=主力净流入40%+涨幅20%+净占比20%+强势股效应20% · 升浪=20/60日涨幅+趋势+量能 · 数据由 python3 build_mainline.py 生成 · 不构成投资建议</footer>';
     RV.ui.initSidebar();
+    // 周期主线 tab 切换
+    const pNav = document.getElementById('period-nav');
+    const pBody = document.getElementById('period-body');
+    if (pNav && pBody) {
+      const T = { '5d': '5日', '10d': '10日', '20d': '20日' };
+      const pr = d.period_rank || {};
+      pNav.querySelectorAll('.nav-link[data-pk]').forEach(a => {
+        a.addEventListener('click', ev => {
+          ev.preventDefault();
+          pNav.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
+          a.classList.add('active');
+          const span = a.getAttribute('data-pk');
+          const rows = (pr[span] || []).map((p, i) => `<tr>
+            <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${p.sector}</td>
+            <td class="${RV.fmt.cls(p.chg)}" style="font-weight:800">${RV.fmt.pct(p.chg)}</td>
+            <td class="${RV.fmt.cls(p.chg_today)}">${RV.fmt.pct(p.chg_today)}</td>
+            <td>${p.count}只 · ${p.strong}强势</td>
+          </tr>`).join('');
+          pBody.innerHTML = `<div class="table-desktop"><div class="table-wrap"><table class="data-table"><thead><tr><th>板块</th><th>${T[span]}涨幅</th><th>今日</th><th>成分/强势</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+        });
+      });
+    }
     // 主线卡展开/收起（复用 sector-group 交互）
     app.querySelectorAll('.mainline-card .sector-header').forEach(h => {
       h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
