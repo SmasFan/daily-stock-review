@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-18 13:07:37",
+  "generatedAt": "2026-08-18 13:33:56",
   "title": "周期期货",
   "categories": {
     "有色": {
@@ -69429,12 +69429,12 @@
       "name": "黄金ETF易方达",
       "sector": "周期资源",
       "link": "沪金",
-      "price": 9.47,
-      "change_pct": -0.04,
+      "price": 9.461,
+      "change_pct": -0.14,
       "trend_status": "多头排列",
-      "tech_score": 87,
-      "signal_key": "strong_buy",
-      "signal": "强烈买入",
+      "tech_score": 78,
+      "signal_key": "buy",
+      "signal": "买入",
       "macro_net": 50.0,
       "macro_bulls": 5,
       "macro_risks": 0,
@@ -69460,7 +69460,7 @@
       "secondary_buy": 9.36,
       "stop_loss": 9.09,
       "take_profit": 9.57,
-      "total_score": 72.1,
+      "total_score": 67.6,
       "rating": "B"
     },
     {
@@ -69468,8 +69468,8 @@
       "name": "盛新锂能",
       "sector": "新能源电力",
       "link": "碳酸锂",
-      "price": 33.06,
-      "change_pct": -1.75,
+      "price": 33.08,
+      "change_pct": -1.69,
       "trend_status": "强势多头",
       "tech_score": 78,
       "signal_key": "buy",
@@ -69490,9 +69490,9 @@
         }
       ],
       "fund_net": -2710416.0,
-      "ideal_buy": 33.3,
-      "secondary_buy": 32.52,
-      "stop_loss": 30.63,
+      "ideal_buy": 33.32,
+      "secondary_buy": 32.53,
+      "stop_loss": 30.64,
       "take_profit": 34.71,
       "total_score": 66.7,
       "rating": "B"
@@ -69541,8 +69541,8 @@
       "name": "天齐锂业",
       "sector": "新能源电力",
       "link": "碳酸锂",
-      "price": 47.76,
-      "change_pct": -2.17,
+      "price": 47.78,
+      "change_pct": -2.13,
       "trend_status": "多头排列",
       "tech_score": 69,
       "signal_key": "buy",
@@ -69563,61 +69563,22 @@
         }
       ],
       "fund_net": -14717064.0,
-      "ideal_buy": 48.33,
+      "ideal_buy": 48.32,
       "secondary_buy": 48.14,
-      "stop_loss": 46.74,
+      "stop_loss": 46.73,
       "take_profit": 49.8,
       "total_score": 62.0,
       "rating": "B"
-    },
-    {
-      "code": "601069",
-      "name": "西部黄金",
-      "sector": "周期资源",
-      "link": "沪金",
-      "price": 28.23,
-      "change_pct": -0.6,
-      "trend_status": "弱势空头",
-      "tech_score": 60,
-      "signal_key": "watch",
-      "signal": "观望",
-      "macro_net": 50.0,
-      "macro_bulls": 5,
-      "macro_risks": 0,
-      "macro_key": [
-        {
-          "title": "盘前速递丨8月18日（周二）谷歌首发澳元债券拟募资36亿美元；宇树科技将于8月19日科创板上市",
-          "kind": "bull",
-          "score": 10.0
-        },
-        {
-          "title": "影响市场重大事件：我国使用长征二号丙运载火箭，成功将SEO卫星发射升空；我国在稀土检测关键技术领域取得重要进展；国家发展改革委：部署加快2026年新型政策性金融工具投放工作",
-          "kind": "bull",
-          "score": 10.0
-        },
-        {
-          "title": "《石油天然气发展“十五五”规划》印发 构建“全国一张网” 推动油气与多能融合发展",
-          "kind": "bull",
-          "score": 10.0
-        }
-      ],
-      "fund_net": 10422384.0,
-      "ideal_buy": 28.23,
-      "secondary_buy": 28.42,
-      "stop_loss": 26.29,
-      "take_profit": 30.8,
-      "total_score": 58.3,
-      "rating": "C"
     },
     {
       "code": "517400",
       "name": "黄金股ETF国泰",
       "sector": "周期资源",
       "link": "沪金",
-      "price": 1.621,
-      "change_pct": -0.86,
+      "price": 1.617,
+      "change_pct": -1.1,
       "trend_status": "弱势空头",
-      "tech_score": 60,
+      "tech_score": 65,
       "signal_key": "watch",
       "signal": "观望",
       "macro_net": 50.0,
@@ -69645,7 +69606,46 @@
       "secondary_buy": 1.62,
       "stop_loss": 1.54,
       "take_profit": 1.75,
-      "total_score": 58.2,
+      "total_score": 60.6,
+      "rating": "B"
+    },
+    {
+      "code": "601069",
+      "name": "西部黄金",
+      "sector": "周期资源",
+      "link": "沪金",
+      "price": 28.2,
+      "change_pct": -0.7,
+      "trend_status": "弱势空头",
+      "tech_score": 60,
+      "signal_key": "watch",
+      "signal": "观望",
+      "macro_net": 50.0,
+      "macro_bulls": 5,
+      "macro_risks": 0,
+      "macro_key": [
+        {
+          "title": "盘前速递丨8月18日（周二）谷歌首发澳元债券拟募资36亿美元；宇树科技将于8月19日科创板上市",
+          "kind": "bull",
+          "score": 10.0
+        },
+        {
+          "title": "影响市场重大事件：我国使用长征二号丙运载火箭，成功将SEO卫星发射升空；我国在稀土检测关键技术领域取得重要进展；国家发展改革委：部署加快2026年新型政策性金融工具投放工作",
+          "kind": "bull",
+          "score": 10.0
+        },
+        {
+          "title": "《石油天然气发展“十五五”规划》印发 构建“全国一张网” 推动油气与多能融合发展",
+          "kind": "bull",
+          "score": 10.0
+        }
+      ],
+      "fund_net": 10422384.0,
+      "ideal_buy": 28.22,
+      "secondary_buy": 28.42,
+      "stop_loss": 26.28,
+      "take_profit": 30.8,
+      "total_score": 58.3,
       "rating": "C"
     },
     {
@@ -69653,8 +69653,8 @@
       "name": "紫金矿业",
       "sector": "周期资源",
       "link": "沪铜/沪金",
-      "price": 33.02,
-      "change_pct": -1.02,
+      "price": 33.03,
+      "change_pct": -0.99,
       "trend_status": "弱势空头",
       "tech_score": 60,
       "signal_key": "watch",
@@ -69680,8 +69680,8 @@
         }
       ],
       "fund_net": -20791430.0,
-      "ideal_buy": 32.92,
-      "secondary_buy": 33.7,
+      "ideal_buy": 32.96,
+      "secondary_buy": 33.72,
       "stop_loss": 32.99,
       "take_profit": 35.8,
       "total_score": 58.1,
@@ -69692,8 +69692,8 @@
       "name": "有色金属ETF南方",
       "sector": "周期资源",
       "link": "有色金属指数",
-      "price": 1.915,
-      "change_pct": -1.69,
+      "price": 1.914,
+      "change_pct": -1.75,
       "trend_status": "弱势空头",
       "tech_score": 60,
       "signal_key": "watch",
@@ -69809,8 +69809,8 @@
       "name": "湖南黄金",
       "sector": "周期资源",
       "link": "沪金/沪锑",
-      "price": 24.86,
-      "change_pct": -0.96,
+      "price": 24.8,
+      "change_pct": -1.2,
       "trend_status": "弱势空头",
       "tech_score": 57,
       "signal_key": "watch",
@@ -69836,11 +69836,11 @@
         }
       ],
       "fund_net": 10024562.0,
-      "ideal_buy": 25.03,
+      "ideal_buy": 25.04,
       "secondary_buy": 25.36,
       "stop_loss": 24.07,
       "take_profit": 27.55,
-      "total_score": 56.6,
+      "total_score": 56.5,
       "rating": "C"
     },
     {
@@ -69848,8 +69848,8 @@
       "name": "江西铜业",
       "sector": "周期资源",
       "link": "沪铜",
-      "price": 46.02,
-      "change_pct": -3.56,
+      "price": 45.99,
+      "change_pct": -3.63,
       "trend_status": "弱势空头",
       "tech_score": 60,
       "signal_key": "watch",
@@ -69875,11 +69875,11 @@
         }
       ],
       "fund_net": -83510369.0,
-      "ideal_buy": 45.86,
-      "secondary_buy": 46.67,
-      "stop_loss": 44.92,
+      "ideal_buy": 45.83,
+      "secondary_buy": 46.66,
+      "stop_loss": 44.91,
       "take_profit": 49.98,
-      "total_score": 56.6,
+      "total_score": 56.5,
       "rating": "C"
     },
     {
@@ -69926,8 +69926,8 @@
       "name": "藏格矿业",
       "sector": "周期资源",
       "link": "碳酸锂",
-      "price": 77.85,
-      "change_pct": -1.96,
+      "price": 78.06,
+      "change_pct": -1.7,
       "trend_status": "弱势空头",
       "tech_score": 57,
       "signal_key": "watch",
@@ -69953,11 +69953,11 @@
         }
       ],
       "fund_net": -12206757.0,
-      "ideal_buy": 78.85,
-      "secondary_buy": 82.92,
+      "ideal_buy": 78.88,
+      "secondary_buy": 82.93,
       "stop_loss": 81.13,
       "take_profit": 91.0,
-      "total_score": 56.1,
+      "total_score": 56.2,
       "rating": "C"
     },
     {
@@ -69965,8 +69965,8 @@
       "name": "盐湖股份",
       "sector": "周期资源",
       "link": "碳酸锂/钾",
-      "price": 28.21,
-      "change_pct": 0.61,
+      "price": 28.26,
+      "change_pct": 0.78,
       "trend_status": "弱势空头",
       "tech_score": 55,
       "signal_key": "watch",
@@ -70031,7 +70031,7 @@
         }
       ],
       "fund_net": -1333933.0,
-      "ideal_buy": 5.59,
+      "ideal_buy": 5.58,
       "secondary_buy": 5.62,
       "stop_loss": 5.26,
       "take_profit": 6.48,
@@ -70043,8 +70043,8 @@
       "name": "北方铜业",
       "sector": "周期资源",
       "link": "沪铜",
-      "price": 14.23,
-      "change_pct": -4.82,
+      "price": 14.25,
+      "change_pct": -4.68,
       "trend_status": "弱势空头",
       "tech_score": 60,
       "signal_key": "watch",
@@ -70082,8 +70082,8 @@
       "name": "国投白银LOF",
       "sector": "周期资源",
       "link": "沪银",
-      "price": 1.874,
-      "change_pct": -0.85,
+      "price": 1.869,
+      "change_pct": -1.11,
       "trend_status": "弱势空头",
       "tech_score": 51,
       "signal_key": "watch",
@@ -70113,7 +70113,7 @@
       "secondary_buy": 1.96,
       "stop_loss": 1.92,
       "take_profit": 2.2,
-      "total_score": 53.7,
+      "total_score": 53.6,
       "rating": "C"
     },
     {
@@ -70121,8 +70121,8 @@
       "name": "北方稀土",
       "sector": "周期资源",
       "link": "稀土",
-      "price": 41.97,
-      "change_pct": -1.89,
+      "price": 41.89,
+      "change_pct": -2.08,
       "trend_status": "弱势空头",
       "tech_score": 51,
       "signal_key": "watch",
@@ -70148,11 +70148,11 @@
         }
       ],
       "fund_net": -37280298.0,
-      "ideal_buy": 42.09,
+      "ideal_buy": 42.08,
       "secondary_buy": 42.37,
       "stop_loss": 40.96,
       "take_profit": 45.1,
-      "total_score": 53.1,
+      "total_score": 53.0,
       "rating": "C"
     },
     {
@@ -70160,8 +70160,8 @@
       "name": "赤峰黄金",
       "sector": "周期资源",
       "link": "沪金",
-      "price": 41.43,
-      "change_pct": 1.59,
+      "price": 41.26,
+      "change_pct": 1.18,
       "trend_status": "弱势空头",
       "tech_score": 47,
       "signal_key": "watch",
@@ -70187,11 +70187,11 @@
         }
       ],
       "fund_net": 18460221.0,
-      "ideal_buy": 40.32,
-      "secondary_buy": 40.98,
-      "stop_loss": 39.5,
+      "ideal_buy": 40.34,
+      "secondary_buy": 40.99,
+      "stop_loss": 39.51,
       "take_profit": 45.99,
-      "total_score": 51.8,
+      "total_score": 51.9,
       "rating": "C"
     }
   ],
@@ -70265,7 +70265,7 @@
             "signal_key": "buy",
             "price": 25.78,
             "sector": "周期资源",
-            "track_return": -3.72
+            "track_return": -3.57
           },
           {
             "rank": 5,
@@ -70287,7 +70287,7 @@
             "signal_key": "buy",
             "price": 5.63,
             "sector": "周期资源",
-            "track_return": -1.24
+            "track_return": -1.6
           },
           {
             "rank": 7,
@@ -70298,7 +70298,7 @@
             "signal_key": "buy",
             "price": 9.285,
             "sector": "周期资源",
-            "track_return": 1.99
+            "track_return": 2.1
           },
           {
             "rank": 8,
@@ -70309,7 +70309,7 @@
             "signal_key": "buy",
             "price": 42.09,
             "sector": "周期资源",
-            "track_return": -1.66
+            "track_return": -1.45
           },
           {
             "rank": 9,
@@ -70320,7 +70320,7 @@
             "signal_key": "buy",
             "price": 49.58,
             "sector": "周期资源",
-            "track_return": -6.96
+            "track_return": -7.2
           },
           {
             "rank": 10,
@@ -70331,7 +70331,7 @@
             "signal_key": "buy",
             "price": 28.51,
             "sector": "周期资源",
-            "track_return": -0.77
+            "track_return": -0.91
           },
           {
             "rank": 11,
@@ -70342,7 +70342,7 @@
             "signal_key": "buy",
             "price": 47.87,
             "sector": "新能源电力",
-            "track_return": -0.17
+            "track_return": -0.27
           },
           {
             "rank": 12,
@@ -70353,7 +70353,7 @@
             "signal_key": "buy",
             "price": 28.8,
             "sector": "周期资源",
-            "track_return": -1.87
+            "track_return": -1.81
           },
           {
             "rank": 13,
@@ -70364,7 +70364,7 @@
             "signal_key": "buy",
             "price": 6.96,
             "sector": "周期资源",
-            "track_return": -4.74
+            "track_return": -5.03
           },
           {
             "rank": 14,
@@ -70375,7 +70375,7 @@
             "signal_key": "buy",
             "price": 1.658,
             "sector": "周期资源",
-            "track_return": -2.35
+            "track_return": -2.11
           },
           {
             "rank": 15,
@@ -70386,7 +70386,7 @@
             "signal_key": "buy",
             "price": 90.0,
             "sector": "周期资源",
-            "track_return": -13.32
+            "track_return": -13.2
           },
           {
             "rank": 16,
@@ -70408,7 +70408,7 @@
             "signal_key": "buy",
             "price": 35.15,
             "sector": "周期资源",
-            "track_return": -6.29
+            "track_return": -5.8
           },
           {
             "rank": 18,
@@ -70419,7 +70419,7 @@
             "signal_key": "watch",
             "price": 2.185,
             "sector": "周期资源",
-            "track_return": -14.14
+            "track_return": -14.46
           },
           {
             "rank": 19,
@@ -70430,7 +70430,7 @@
             "signal_key": "watch",
             "price": 44.06,
             "sector": "周期资源",
-            "track_return": -4.77
+            "track_return": -4.9
           },
           {
             "rank": 20,
@@ -70441,7 +70441,7 @@
             "signal_key": "watch",
             "price": 32.05,
             "sector": "新能源电力",
-            "track_return": 2.93
+            "track_return": 3.31
           }
         ]
       },
@@ -70457,7 +70457,7 @@
             "signal_key": "buy",
             "price": 48.05,
             "sector": "新能源电力",
-            "track_return": 0.06
+            "track_return": -0.04
           },
           {
             "rank": 2,
@@ -70468,7 +70468,7 @@
             "signal_key": "buy",
             "price": 9.428,
             "sector": "周期资源",
-            "track_return": 0.26
+            "track_return": 0.37
           },
           {
             "rank": 3,
@@ -70479,7 +70479,7 @@
             "signal_key": "strong_buy",
             "price": 24.86,
             "sector": "周期资源",
-            "track_return": 0.36
+            "track_return": 0.53
           },
           {
             "rank": 4,
@@ -70490,7 +70490,7 @@
             "signal_key": "strong_buy",
             "price": 27.68,
             "sector": "周期资源",
-            "track_return": 2.72
+            "track_return": 2.58
           },
           {
             "rank": 5,
@@ -70501,7 +70501,7 @@
             "signal_key": "strong_buy",
             "price": 5.53,
             "sector": "周期资源",
-            "track_return": 1.28
+            "track_return": 0.91
           },
           {
             "rank": 6,
@@ -70523,7 +70523,7 @@
             "signal_key": "buy",
             "price": 6.44,
             "sector": "周期资源",
-            "track_return": 3.27
+            "track_return": 2.96
           },
           {
             "rank": 8,
@@ -70534,7 +70534,7 @@
             "signal_key": "buy",
             "price": 41.26,
             "sector": "周期资源",
-            "track_return": 2.29
+            "track_return": 2.15
           },
           {
             "rank": 9,
@@ -70545,7 +70545,7 @@
             "signal_key": "buy",
             "price": 1.571,
             "sector": "周期资源",
-            "track_return": 3.32
+            "track_return": 3.57
           },
           {
             "rank": 10,
@@ -70567,7 +70567,7 @@
             "signal_key": "watch",
             "price": 33.25,
             "sector": "新能源电力",
-            "track_return": 0.06
+            "track_return": 0.42
           },
           {
             "rank": 12,
@@ -70600,7 +70600,7 @@
             "signal_key": "buy",
             "price": 1.875,
             "sector": "周期资源",
-            "track_return": 0.7
+            "track_return": 0.32
           },
           {
             "rank": 15,
@@ -70622,7 +70622,7 @@
             "signal_key": "buy",
             "price": 27.79,
             "sector": "周期资源",
-            "track_return": 2.21
+            "track_return": 2.28
           },
           {
             "rank": 17,
@@ -70633,7 +70633,7 @@
             "signal_key": "buy",
             "price": 44.5,
             "sector": "周期资源",
-            "track_return": 3.99
+            "track_return": 3.72
           },
           {
             "rank": 18,
@@ -70644,7 +70644,7 @@
             "signal_key": "watch",
             "price": 32.26,
             "sector": "周期资源",
-            "track_return": 2.27
+            "track_return": 2.79
           },
           {
             "rank": 19,
@@ -70655,7 +70655,7 @@
             "signal_key": "watch",
             "price": 78.21,
             "sector": "周期资源",
-            "track_return": -0.04
+            "track_return": 0.1
           },
           {
             "rank": 20,
@@ -70666,7 +70666,7 @@
             "signal_key": "watch",
             "price": 38.99,
             "sector": "周期资源",
-            "track_return": 7.06
+            "track_return": 7.29
           }
         ]
       },
@@ -70682,7 +70682,7 @@
             "signal_key": "buy",
             "price": 9.475,
             "sector": "周期资源",
-            "track_return": 1.36
+            "track_return": 1.47
           },
           {
             "rank": 2,
@@ -70693,7 +70693,7 @@
             "signal_key": "buy",
             "price": 48.24,
             "sector": "新能源电力",
-            "track_return": -1.93
+            "track_return": -2.03
           },
           {
             "rank": 3,
@@ -70704,7 +70704,7 @@
             "signal_key": "buy",
             "price": 24.96,
             "sector": "周期资源",
-            "track_return": 0.69
+            "track_return": 0.85
           },
           {
             "rank": 4,
@@ -70715,7 +70715,7 @@
             "signal_key": "buy",
             "price": 28.52,
             "sector": "周期资源",
-            "track_return": 1.04
+            "track_return": 0.89
           },
           {
             "rank": 5,
@@ -70726,7 +70726,7 @@
             "signal_key": "buy",
             "price": 5.56,
             "sector": "周期资源",
-            "track_return": 2.21
+            "track_return": 1.84
           },
           {
             "rank": 6,
@@ -70737,7 +70737,7 @@
             "signal_key": "buy",
             "price": 33.3,
             "sector": "新能源电力",
-            "track_return": -2.66
+            "track_return": -2.3
           },
           {
             "rank": 7,
@@ -70748,7 +70748,7 @@
             "signal_key": "buy",
             "price": 42.0,
             "sector": "周期资源",
-            "track_return": -1.64
+            "track_return": -1.78
           },
           {
             "rank": 8,
@@ -70781,7 +70781,7 @@
             "signal_key": "buy",
             "price": 6.65,
             "sector": "周期资源",
-            "track_return": 2.0
+            "track_return": 1.69
           },
           {
             "rank": 11,
@@ -70792,7 +70792,7 @@
             "signal_key": "buy",
             "price": 1.613,
             "sector": "周期资源",
-            "track_return": 2.53
+            "track_return": 2.79
           },
           {
             "rank": 12,
@@ -70803,7 +70803,7 @@
             "signal_key": "buy",
             "price": 40.66,
             "sector": "周期资源",
-            "track_return": 4.05
+            "track_return": 4.27
           },
           {
             "rank": 13,
@@ -70814,7 +70814,7 @@
             "signal_key": "buy",
             "price": 28.1,
             "sector": "周期资源",
-            "track_return": -0.04
+            "track_return": 0.04
           },
           {
             "rank": 14,
@@ -70847,7 +70847,7 @@
             "signal_key": "buy",
             "price": 46.07,
             "sector": "周期资源",
-            "track_return": 3.41
+            "track_return": 3.14
           },
           {
             "rank": 17,
@@ -70869,7 +70869,7 @@
             "signal_key": "watch",
             "price": 78.5,
             "sector": "周期资源",
-            "track_return": 0.45
+            "track_return": 0.59
           },
           {
             "rank": 19,
@@ -70880,7 +70880,7 @@
             "signal_key": "watch",
             "price": 33.19,
             "sector": "周期资源",
-            "track_return": 1.26
+            "track_return": 1.78
           },
           {
             "rank": 20,
@@ -70891,7 +70891,7 @@
             "signal_key": "watch",
             "price": 1.885,
             "sector": "周期资源",
-            "track_return": 1.35
+            "track_return": 0.97
           }
         ]
       },
@@ -70907,7 +70907,7 @@
             "signal_key": "buy",
             "price": 48.62,
             "sector": "新能源电力",
-            "track_return": -2.11
+            "track_return": -2.21
           },
           {
             "rank": 2,
@@ -70918,7 +70918,7 @@
             "signal_key": "buy",
             "price": 33.49,
             "sector": "新能源电力",
-            "track_return": -1.96
+            "track_return": -1.6
           },
           {
             "rank": 3,
@@ -70929,7 +70929,7 @@
             "signal_key": "buy",
             "price": 9.462,
             "sector": "周期资源",
-            "track_return": -0.04
+            "track_return": 0.06
           },
           {
             "rank": 4,
@@ -70951,7 +70951,7 @@
             "signal_key": "buy",
             "price": 28.44,
             "sector": "周期资源",
-            "track_return": -0.39
+            "track_return": -0.53
           },
           {
             "rank": 6,
@@ -70962,7 +70962,7 @@
             "signal_key": "buy",
             "price": 1.622,
             "sector": "周期资源",
-            "track_return": -0.98
+            "track_return": -0.73
           },
           {
             "rank": 7,
@@ -70973,7 +70973,7 @@
             "signal_key": "buy",
             "price": 5.65,
             "sector": "周期资源",
-            "track_return": -1.94
+            "track_return": -2.29
           },
           {
             "rank": 8,
@@ -70984,7 +70984,7 @@
             "signal_key": "buy",
             "price": 25.01,
             "sector": "周期资源",
-            "track_return": -1.12
+            "track_return": -0.96
           },
           {
             "rank": 9,
@@ -70995,7 +70995,7 @@
             "signal_key": "watch",
             "price": 42.37,
             "sector": "周期资源",
-            "track_return": -1.92
+            "track_return": -2.06
           },
           {
             "rank": 10,
@@ -71006,7 +71006,7 @@
             "signal_key": "watch",
             "price": 27.96,
             "sector": "周期资源",
-            "track_return": 0.78
+            "track_return": 0.86
           },
           {
             "rank": 11,
@@ -71017,7 +71017,7 @@
             "signal_key": "watch",
             "price": 40.63,
             "sector": "周期资源",
-            "track_return": 1.5
+            "track_return": 1.72
           },
           {
             "rank": 12,
@@ -71039,7 +71039,7 @@
             "signal_key": "watch",
             "price": 33.18,
             "sector": "周期资源",
-            "track_return": -1.26
+            "track_return": -0.75
           },
           {
             "rank": 14,
@@ -71050,7 +71050,7 @@
             "signal_key": "watch",
             "price": 47.39,
             "sector": "周期资源",
-            "track_return": -3.33
+            "track_return": -3.58
           },
           {
             "rank": 15,
@@ -71061,7 +71061,7 @@
             "signal_key": "watch",
             "price": 78.84,
             "sector": "周期资源",
-            "track_return": -1.76
+            "track_return": -1.62
           },
           {
             "rank": 16,
@@ -71083,7 +71083,7 @@
             "signal_key": "watch",
             "price": 6.75,
             "sector": "周期资源",
-            "track_return": -2.36
+            "track_return": -2.65
           },
           {
             "rank": 18,
@@ -71105,7 +71105,7 @@
             "signal_key": "watch",
             "price": 1.889,
             "sector": "周期资源",
-            "track_return": -0.74
+            "track_return": -1.11
           },
           {
             "rank": 20,
@@ -71127,10 +71127,10 @@
             "rank": 1,
             "code": "159934",
             "name": "黄金ETF易方达",
-            "total_score": 72.1,
+            "total_score": 67.6,
             "rating": "B",
-            "signal_key": "strong_buy",
-            "price": 9.47,
+            "signal_key": "buy",
+            "price": 9.461,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71141,7 +71141,7 @@
             "total_score": 66.7,
             "rating": "B",
             "signal_key": "buy",
-            "price": 33.06,
+            "price": 33.08,
             "sector": "新能源电力",
             "track_return": null
           },
@@ -71163,29 +71163,29 @@
             "total_score": 62.0,
             "rating": "B",
             "signal_key": "buy",
-            "price": 47.76,
+            "price": 47.78,
             "sector": "新能源电力",
             "track_return": null
           },
           {
             "rank": 5,
-            "code": "601069",
-            "name": "西部黄金",
-            "total_score": 58.3,
-            "rating": "C",
+            "code": "517400",
+            "name": "黄金股ETF国泰",
+            "total_score": 60.6,
+            "rating": "B",
             "signal_key": "watch",
-            "price": 28.23,
+            "price": 1.617,
             "sector": "周期资源",
             "track_return": null
           },
           {
             "rank": 6,
-            "code": "517400",
-            "name": "黄金股ETF国泰",
-            "total_score": 58.2,
+            "code": "601069",
+            "name": "西部黄金",
+            "total_score": 58.3,
             "rating": "C",
             "signal_key": "watch",
-            "price": 1.621,
+            "price": 28.2,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71196,7 +71196,7 @@
             "total_score": 58.1,
             "rating": "C",
             "signal_key": "watch",
-            "price": 33.02,
+            "price": 33.03,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71207,7 +71207,7 @@
             "total_score": 57.7,
             "rating": "C",
             "signal_key": "watch",
-            "price": 1.915,
+            "price": 1.914,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71237,10 +71237,10 @@
             "rank": 11,
             "code": "002155",
             "name": "湖南黄金",
-            "total_score": 56.6,
+            "total_score": 56.5,
             "rating": "C",
             "signal_key": "watch",
-            "price": 24.86,
+            "price": 24.8,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71248,10 +71248,10 @@
             "rank": 12,
             "code": "600362",
             "name": "江西铜业",
-            "total_score": 56.6,
+            "total_score": 56.5,
             "rating": "C",
             "signal_key": "watch",
-            "price": 46.02,
+            "price": 45.99,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71270,10 +71270,10 @@
             "rank": 14,
             "code": "000408",
             "name": "藏格矿业",
-            "total_score": 56.1,
+            "total_score": 56.2,
             "rating": "C",
             "signal_key": "watch",
-            "price": 77.85,
+            "price": 78.06,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71284,7 +71284,7 @@
             "total_score": 56.0,
             "rating": "C",
             "signal_key": "watch",
-            "price": 28.21,
+            "price": 28.26,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71306,7 +71306,7 @@
             "total_score": 55.8,
             "rating": "C",
             "signal_key": "watch",
-            "price": 14.23,
+            "price": 14.25,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71314,10 +71314,10 @@
             "rank": 18,
             "code": "161226",
             "name": "国投白银LOF",
-            "total_score": 53.7,
+            "total_score": 53.6,
             "rating": "C",
             "signal_key": "watch",
-            "price": 1.874,
+            "price": 1.869,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71325,10 +71325,10 @@
             "rank": 19,
             "code": "600111",
             "name": "北方稀土",
-            "total_score": 53.1,
+            "total_score": 53.0,
             "rating": "C",
             "signal_key": "watch",
-            "price": 41.97,
+            "price": 41.89,
             "sector": "周期资源",
             "track_return": null
           },
@@ -71336,10 +71336,10 @@
             "rank": 20,
             "code": "600988",
             "name": "赤峰黄金",
-            "total_score": 51.8,
+            "total_score": 51.9,
             "rating": "C",
             "signal_key": "watch",
-            "price": 41.43,
+            "price": 41.26,
             "sector": "周期资源",
             "track_return": null
           }
@@ -71355,9 +71355,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 72.1,
-        "latest_signal": "strong_buy",
-        "cum_track_return": 1.99,
+        "latest_score": 67.6,
+        "latest_signal": "buy",
+        "cum_track_return": 2.1,
         "latest_track_return": null
       },
       {
@@ -71370,7 +71370,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 66.7,
         "latest_signal": "buy",
-        "cum_track_return": 2.93,
+        "cum_track_return": 3.31,
         "latest_track_return": null
       },
       {
@@ -71396,7 +71396,20 @@
         "latest_day": "2026-08-18",
         "latest_score": 62.0,
         "latest_signal": "buy",
-        "cum_track_return": -0.17,
+        "cum_track_return": -0.27,
+        "latest_track_return": null
+      },
+      {
+        "code": "517400",
+        "name": "黄金股ETF国泰",
+        "sector": "周期资源",
+        "count": 5,
+        "rate": 100,
+        "first_day": "2026-08-07",
+        "latest_day": "2026-08-18",
+        "latest_score": 60.6,
+        "latest_signal": "watch",
+        "cum_track_return": -2.11,
         "latest_track_return": null
       },
       {
@@ -71409,20 +71422,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 58.3,
         "latest_signal": "watch",
-        "cum_track_return": -0.77,
-        "latest_track_return": null
-      },
-      {
-        "code": "517400",
-        "name": "黄金股ETF国泰",
-        "sector": "周期资源",
-        "count": 5,
-        "rate": 100,
-        "first_day": "2026-08-07",
-        "latest_day": "2026-08-18",
-        "latest_score": 58.2,
-        "latest_signal": "watch",
-        "cum_track_return": -2.35,
+        "cum_track_return": -0.91,
         "latest_track_return": null
       },
       {
@@ -71435,7 +71435,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 58.1,
         "latest_signal": "watch",
-        "cum_track_return": -6.29,
+        "cum_track_return": -5.8,
         "latest_track_return": null
       },
       {
@@ -71461,7 +71461,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 57.1,
         "latest_signal": "watch",
-        "cum_track_return": -4.74,
+        "cum_track_return": -5.03,
         "latest_track_return": null
       },
       {
@@ -71485,9 +71485,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 56.6,
+        "latest_score": 56.5,
         "latest_signal": "watch",
-        "cum_track_return": -3.72,
+        "cum_track_return": -3.57,
         "latest_track_return": null
       },
       {
@@ -71498,9 +71498,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 56.6,
+        "latest_score": 56.5,
         "latest_signal": "watch",
-        "cum_track_return": -6.96,
+        "cum_track_return": -7.2,
         "latest_track_return": null
       },
       {
@@ -71524,9 +71524,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 56.1,
+        "latest_score": 56.2,
         "latest_signal": "watch",
-        "cum_track_return": -13.32,
+        "cum_track_return": -13.2,
         "latest_track_return": null
       },
       {
@@ -71539,7 +71539,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 56.0,
         "latest_signal": "watch",
-        "cum_track_return": -1.87,
+        "cum_track_return": -1.81,
         "latest_track_return": null
       },
       {
@@ -71552,7 +71552,7 @@
         "latest_day": "2026-08-18",
         "latest_score": 55.9,
         "latest_signal": "watch",
-        "cum_track_return": -1.24,
+        "cum_track_return": -1.6,
         "latest_track_return": null
       },
       {
@@ -71576,9 +71576,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 53.7,
+        "latest_score": 53.6,
         "latest_signal": "watch",
-        "cum_track_return": -14.14,
+        "cum_track_return": -14.46,
         "latest_track_return": null
       },
       {
@@ -71589,9 +71589,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 53.1,
+        "latest_score": 53.0,
         "latest_signal": "watch",
-        "cum_track_return": -4.77,
+        "cum_track_return": -4.9,
         "latest_track_return": null
       },
       {
@@ -71602,9 +71602,9 @@
         "rate": 100,
         "first_day": "2026-08-07",
         "latest_day": "2026-08-18",
-        "latest_score": 51.8,
+        "latest_score": 51.9,
         "latest_signal": "watch",
-        "cum_track_return": -1.66,
+        "cum_track_return": -1.45,
         "latest_track_return": null
       }
     ]
