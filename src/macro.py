@@ -28,6 +28,7 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36"}
 
 NEWS_URL = "https://np-listapi.eastmoney.com/comm/web/getNewsByColumns"
+SINA_NEWS_URL = "https://feed.mix.sina.com.cn/api/roll/get"
 NEWS_PAGES = 2        # 每页 50 条，共拉 ~100 条财经新闻
 NEWS_CACHE_MAX_HOURS = 2.0
 
@@ -102,6 +103,22 @@ THEMES: Dict[str, Dict] = {
         "kws": ["电力", "电网", "特高压", "虚拟电厂", "电价", "火电", "水电", "核电",
                 "用电量", "绿证"],
         "sectors": ["新能源电力", "基建交通"],
+    },
+    "航运/物流/大宗运输": {
+        "kws": ["航运", "断航", "运河", "港口", "集装箱", "运费", "干散货", "波罗的海",
+                "罢工", "干旱", "水位", "物流", "快递", "油运", "航空货运", "欧线", "红海"],
+        "sectors": ["交通运输", "周期资源"],
+    },
+    "大宗商品/资源价格": {
+        "kws": ["油价", "原油", "天然气", "铜价", "铝价", "锌价", "铁矿石", "煤价",
+                "粮价", "化肥", "尿素", "纸浆", "碳酸锂价格", "硅料价格", "黄金价格",
+                "锡价", "镍价"],
+        "sectors": ["周期资源"],
+    },
+    "海外宏观/地缘": {
+        "kws": ["美联储", "欧央行", "美联储议息", "非农", "加息", "降息", "关税", "制裁",
+                "地缘", "冲突", "战争", "供应链", "海外", "全球市场", "欧洲", "断供"],
+        "sectors": ["宽基跨境"],
     },
     "汽车": {
         "kws": ["汽车", "新能源汽车", "智能驾驶", "自动驾驶", "车企", "车市", "以旧换新",
@@ -399,11 +416,57 @@ def build_stock_impact(sector_impact: List[Dict]) -> List[Dict]:
 
 # ---------------- 组装 / 保存 ----------------
 
+def fetch_news_international(page_size: int = 50) -> List[Dict]:
+    """新浪聚合/国际新闻源（lid=2511），覆盖航运/地缘/海外宏观等国际事件。
+
+    返回与 fetch_news 相同结构 [{code, title, summary, show_time, url}]。
+    """
+    items: List[Dict] = []
+    params = {"pageid": "153", "lid": "2511", "num": str(page_size), "page": "1"}
+    url = SINA_NEWS_URL + "?" + urllib.parse.urlencode(params)
+    try:
+        raw = _get(url)
+        d = json.loads(raw)
+        rows = ((d.get("result") or {}).get("data") or [])
+    except Exception as e:
+        print(f"   [warn] 国际新闻拉取失败: {e}")
+        return []
+    for r in rows:
+        title = (r.get("title") or "").strip()
+        if not title:
+            continue
+        ct = r.get("ctime") or r.get("intime") or ""
+        show_time = ""
+        try:
+            if ct:
+                show_time = datetime.fromtimestamp(int(ct)).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
+        items.append({
+            "code": str(r.get("id") or ""),
+            "title": title,
+            "summary": ((r.get("intro") or r.get("summary") or "")[:80]).strip(),
+            "show_time": show_time,
+            "url": r.get("url") or "",
+        })
+    return items
+
+
 def build_macro_data(offline: bool = False) -> Dict:
     """组装宏观页数据（含给其他页面的反馈索引 stocks/sectors）。"""
     print("== 宏观政策与新闻情绪 ==")
     news = fetch_news(use_cache=not offline)
-    print(f"   新闻 {len(news)} 条（东财财经频道）")
+    intl = [] if offline else fetch_news_international()
+    news = news + intl
+    # 合并去重（同标题只留最早）+ 按时间倒序
+    seen, out = set(), []
+    for it in sorted(news, key=lambda x: x.get("show_time") or "", reverse=True):
+        if it["title"] in seen:
+            continue
+        seen.add(it["title"])
+        out.append(it)
+    news = out
+    print(f"   新闻 {len(news)} 条（东财财经 {len(news) - len(intl)} + 新浪国际 {len(intl)}）")
     analyzed = [analyze_news(n) for n in news]
     alerts = build_alerts(analyzed)
     themes = build_theme_scores(analyzed)
