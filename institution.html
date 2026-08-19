@@ -192,6 +192,71 @@
           <td class="${cls(r.inst_net)}"><b>${mf(r.inst_net)}</b></td>
         </tr>`).join('') + '</tbody></table></div>';
     }
+
+    // ===== 机构资金明确标的（龙虎榜机构净买 + 国家队增持 + 机构增持） =====
+    function instPicks() {
+      const picks = [];
+      (d.billboard.net_list || [])
+        .filter(x => (x.inst_net || 0) > 0)
+        .sort((a, b) => b.inst_net - a.inst_net)
+        .slice(0, 8)
+        .forEach(x => picks.push({ code: x.code, name: x.name, type: '龙虎榜机构净买', value: x.inst_net, unit: '元' }));
+      const nat = (d.institution && d.institution.national) || [];
+      const seen = {};
+      nat
+        .filter(x => {
+          const r = x.change_ratio || 0;
+          const c = String(x.change || '');
+          return r > 0.5 || c.includes('增') || c.includes('新进') || c.includes('增加');
+        })
+        .sort((a, b) => (b.change_ratio || 0) - (a.change_ratio || 0))
+        .slice(0, 8)
+        .forEach(x => {
+          if (seen[x.code]) return;
+          seen[x.code] = 1;
+          picks.push({ code: x.code, name: x.name, type: '国家队·' + (x.holder_type || '机构'), value: x.change_ratio || 0, unit: '%', detail: (x.holder || '') + ' ' + (x.report || '') });
+        });
+      const bt = (d.institution && d.institution.by_type) || {};
+      const best = {};
+      Object.values(bt).forEach(list => {
+        (list || []).forEach(x => {
+          const r = x.change_ratio || 0;
+          if (r <= 0.5) return;
+          if (!best[x.code] || r > best[x.code].r) best[x.code] = { code: x.code, name: x.name, r, holder: x.holder_type || '', report: x.report || '' };
+        });
+      });
+      Object.values(best).sort((a, b) => b.r - a.r).slice(0, 8).forEach(x => {
+        if (seen[x.code]) return;
+        seen[x.code] = 1;
+        picks.push({ code: x.code, name: x.name, type: '机构增持·' + (x.holder || ''), value: x.r, unit: '%', detail: x.report });
+      });
+      if (!picks.length) return '';
+      const rows = picks.map((p, i) => `
+        <tr>
+          <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span></td>
+          <td><span class="signal-badge s-buy">${RV.ui.icon('building-columns','fa-xs')} ${p.type}</span></td>
+          <td class="up" style="font-weight:800">${p.unit === '%' ? RV.fmt.pct(p.value) : RV.fmt.amount(p.value)}</td>
+          <td style="font-size:11px;color:var(--text-2)">${p.detail || '--'}</td>
+        </tr>`).join('');
+      return `<div class="section" data-nav="机构明确标的" data-nav-icon="bullseye">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('bullseye')}</span><h2>机构资金 · 明确标的</h2>
+          <span class="sec-chip">龙虎榜机构净买 + 国家队/机构增持</span></div>
+        <div class="table-desktop"><div class="table-wrap"><table class="data-table">
+          <thead><tr><th>个股</th><th>信号</th><th>金额/增持</th><th>明细</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>
+        <div class="cards-mobile" style="margin-top:10px"><div class="mini-cards">${picks.map((p, i) => `
+          <div class="mini-card"><div class="mini-head">
+            <span class="mini-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span></span>
+            <span class="mini-head-right"><span class="signal-badge s-buy">${RV.ui.icon('building-columns','fa-xs')} ${p.type}</span></span>
+          </div>
+          <div class="mini-kv">
+            <span class="k">金额/增持</span><span class="v up" style="font-weight:800">${p.unit === '%' ? RV.fmt.pct(p.value) : RV.fmt.amount(p.value)}</span>
+            <span class="k">明细</span><span class="v" style="font-size:11px">${p.detail || '--'}</span>
+          </div></div>`).join('')}</div></div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:8px">${RV.ui.icon('circle-info','fa-xs')} 龙虎榜=机构专用席位净买入；国家队/机构增持按持股比例变化（季报口径）；不构成投资建议</div>
+      </div>`;
+    }
+
     const billboardHtml = `
       <div class="section" data-nav="龙虎榜机构" data-nav-icon="landmark">
         <div class="section-title"><span class="title-icon">${RV.ui.icon('landmark')}</span><h2>龙虎榜 · 机构专用席位动向</h2></div>
@@ -371,7 +436,7 @@
     }
 
     app.innerHTML = RV.ui.header('资金', '主力资金 · 龙虎榜机构 · 策略回测 · 国家队持股', 'institution', d.generatedAt)
-      + overviewHtml + fundQuick() + sectorHtml + stockRankHtml + billboardHtml + stratHtml + instHtml
+      + overviewHtml + fundQuick() + instPicks() + sectorHtml + stockRankHtml + billboardHtml + stratHtml + instHtml
       + '<footer>主力=超大单+大单 · 龙虎榜/股东数据来自交易所披露 · 回测含双边0.1%成本 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
   } catch (e) {
