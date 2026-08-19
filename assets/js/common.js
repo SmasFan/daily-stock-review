@@ -322,8 +322,9 @@
 /* ===== 市场温度 & 走势弹窗：双Y轴折线图（温度橙 + 走势蓝） ===== */
 (function () {
   if (!document || typeof window === 'undefined') return;
-  // CDN 多源回退：bootcdn（国内快）→ jsdelivr → unpkg
+  // ECharts 加载顺序：本地文件（同站，快）→ bootcdn → jsdelivr → unpkg
   const CDNS = [
+    'assets/js/echarts.min.js',
     'https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js',
     'https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js',
     'https://unpkg.com/echarts@5.4.3/dist/echarts.min.js',
@@ -352,17 +353,15 @@
     return echartsPromise;
   }
 
-  /* 页面空闲时预加载 echarts + 预取温度数据，点击弹窗秒开 */
+  /* 预加载：数据立即预取（快），echarts 空闲加载（1MB 脚本不阻塞首屏） */
   function preload() {
     if (preloaded) return;
     preloaded = true;
+    if (!heatCache) {
+      window.RV.API.heat().then(d => { heatCache = d; }).catch(() => {});
+    }
     const idle = window.requestIdleCallback || (cb => setTimeout(cb, 600));
-    idle(() => {
-      loadEcharts().catch(() => {});
-      if (!heatCache) {
-        window.RV.API.heat().then(d => { heatCache = d; }).catch(() => {});
-      }
-    });
+    idle(() => { loadEcharts().catch(() => {}); });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', preload);
@@ -372,12 +371,34 @@
 
   async function openHeat(code, name, kind) {
     try {
-      await loadEcharts();
-      if (!heatCache) heatCache = await window.RV.API.heat();
-      const d = heatCache;
+      const isMobile = window.innerWidth <= 640;
+      const pad = isMobile ? '12px 10px' : '18px 20px';
+      const chartH = isMobile ? 300 : 420;
+      // ---- 第一步：立即显示弹窗骨架（不等 echarts/数据） ----
+      overlayEl = document.createElement('div');
+      overlayEl.className = 'heat-overlay';
+      overlayEl.style.cssText = `position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '8px' : '16px'};`;
+      overlayEl.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:${isMobile ? '16px 16px 0 0' : '14px'};box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(860px,${isMobile ? '100vw' : '96vw'});padding:${pad};position:relative;max-height:${isMobile ? '88vh' : 'none'};overflow:auto">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+          <span class="heat-modal-title" style="font-weight:800;font-size:${isMobile ? '14px' : '15px'};min-width:0">${name || ''} · 温度 & 走势</span>
+          <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:${isMobile ? '6px 12px' : '4px 10px'};font-size:12px;cursor:pointer">${window.RV.ui.icon('xmark')} 关闭</button>
+        </div>
+        <div class="heat-modal-note" style="font-size:10px;color:var(--text-2);margin-bottom:6px;overflow-wrap:anywhere"></div>
+        <div class="heat-loading" style="display:flex;align-items:center;justify-content:center;height:${chartH}px;color:var(--text-2);font-size:13px">${window.RV.ui.icon('spinner', 'fa-spin')} 图表加载中…</div>
+      </div>`;
+      document.body.appendChild(overlayEl);
+      overlayEl.addEventListener('click', e => { if (e.target === overlayEl) close(); });
+      overlayEl.querySelector('.heat-close').addEventListener('click', close);
+      document.addEventListener('keydown', escClose);
+
+      // ---- 第二步：后台并行加载 echarts + 数据 ----
+      const [d] = await Promise.all([
+        heatCache ? Promise.resolve(heatCache) : window.RV.API.heat().then(dd => { heatCache = dd; return dd; }),
+        loadEcharts(),
+      ]);
       const x = d.tempDates || [];
-      let tempSeries = null;      // 温度序列（板块自己的温度）
-      let series2 = null;         // 走势序列
+      let tempSeries = null;
+      let series2 = null;
       if (kind === 'sector') {
         const s = (d.sectors || {})[code];
         if (s) {
@@ -394,10 +415,7 @@
           series2 = { name: s.name || name || code, data: s.close };
         }
       }
-      if (!tempSeries || !series2 || !series2.data) { alert('暂无该标的的走势数据'); return; }
-      const isMobile = window.innerWidth <= 640;
-      const pad = isMobile ? '12px 10px' : '18px 20px';
-      const chartH = isMobile ? 300 : 420;
+      if (!tempSeries || !series2 || !series2.data) { close(); alert('暂无该标的的走势数据'); return; }
       const title = kind === 'sector'
         ? `${name} · 温度 & 走势`                                    // 板块：红利金融 · 温度 & 走势
         : `${tempSeries.label} & ${series2.name} 走势`;              // 个股：新能源电力温度 & 盛新锂能 走势
@@ -405,24 +423,17 @@
         ? `温度=板块等权净值250日收益百分位 · ${(d.generatedAt || '').slice(0, 10)}`
         : `${d.tempNote || ''} · ${d.generatedAt || ''}`;
 
-      overlayEl = document.createElement('div');
-      overlayEl.className = 'heat-overlay';
-      overlayEl.style.cssText = `position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '8px' : '16px'};`;
-      overlayEl.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:${isMobile ? '16px 16px 0 0' : '14px'};box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(860px,${isMobile ? '100vw' : '96vw'});padding:${pad};position:relative;max-height:${isMobile ? '88vh' : 'none'};overflow:auto">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-          <span style="font-weight:800;font-size:${isMobile ? '14px' : '15px'};min-width:0">${title}</span>
-          <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:${isMobile ? '6px 12px' : '4px 10px'};font-size:12px;cursor:pointer">${window.RV.ui.icon('xmark')} 关闭</button>
-        </div>
-        <div style="font-size:10px;color:var(--text-2);margin-bottom:6px;overflow-wrap:anywhere">${note}</div>
-        <div class="heat-chart" style="width:100%;height:${chartH}px;touch-action:none"></div>
-        <div style="font-size:10px;color:var(--text-2);margin-top:6px">${window.RV.ui.icon('hand-pointer', 'fa-xs')} ${isMobile ? '拖动/双指缩放查看' : '悬停查看每日数值 · 拖拽平移 · 滚轮缩放'}</div>
-      </div>`;
-      document.body.appendChild(overlayEl);
-      overlayEl.addEventListener('click', e => { if (e.target === overlayEl) close(); });
-      overlayEl.querySelector('.heat-close').addEventListener('click', close);
-      document.addEventListener('keydown', escClose);
+      // ---- 第三步：更新骨架（标题/说明 + loading → 图表容器） ----
+      const modal = overlayEl.querySelector('.heat-modal');
+      modal.querySelector('.heat-modal-title').textContent = title;
+      const noteEl = modal.querySelector('.heat-modal-note');
+      if (noteEl) noteEl.textContent = note;
+      modal.querySelector('.heat-loading').outerHTML =
+        `<div class="heat-chart" style="width:100%;height:${chartH}px;touch-action:none"></div>`;
+      modal.insertAdjacentHTML('beforeend',
+        `<div style="font-size:10px;color:var(--text-2);margin-top:6px">${window.RV.ui.icon('hand-pointer', 'fa-xs')} ${isMobile ? '拖动/双指缩放查看' : '悬停查看每日数值 · 拖拽平移 · 滚轮缩放'}</div>`);
 
-      chart = window.echarts.init(overlayEl.querySelector('.heat-chart'));
+      chart = window.echarts.init(modal.querySelector('.heat-chart'));
       const fs = isMobile ? 11 : 12;          // 轴文字字号
       const lfs = isMobile ? 11 : 13;         // 图例字号
       const xInterval = isMobile ? Math.max(0, Math.ceil(x.length / 7) - 1) : 'auto';
@@ -464,10 +475,18 @@
   }
   function close() {
     document.removeEventListener('keydown', escClose);
-    if (chart) { chart.dispose(); chart = null; }
+    // 先隐藏（视觉立即消失），清理异步做（dispose 大对象不阻塞）
     if (overlayEl) {
-      if (overlayEl._resize) window.removeEventListener('resize', overlayEl._resize);
-      overlayEl.remove(); overlayEl = null;
+      overlayEl.style.display = 'none';
+      const el = overlayEl;
+      const ch = chart;
+      overlayEl = null;
+      chart = null;
+      setTimeout(() => {
+        if (el._resize) window.removeEventListener('resize', el._resize);
+        if (ch) { try { ch.dispose(); } catch (e) {} }
+        el.remove();
+      }, 30);
     }
     document.body.style.overflow = '';
   }
