@@ -241,6 +241,42 @@
       }, { passive: true });
       update();
     },
+
+    /* 宏观新闻弹窗：点击「宏观利好/宏观风险」标签查看相关新闻列表
+       data = { title, score, bulls, risks, key: [{title, kind, score}] } */
+    macroNewsModal(data) {
+      const keys = (data && data.key) || [];
+      const rows = keys.length
+        ? keys.map(k => {
+            const bull = k.kind !== 'risk';
+            const score = k.score != null ? ` <span style="font-size:11px;opacity:.7">+${k.score}</span>` : '';
+            return `<div style="display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)">
+              <span style="flex-shrink:0;font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;margin-top:1px;background:${bull ? 'var(--buy-bg)' : 'var(--sell-bg)'};color:${bull ? 'var(--buy)' : 'var(--sell)'}">${bull ? '利好' : '风险'}</span>
+              <span style="font-size:13px;line-height:1.5;color:var(--text)">${k.title || ''}${score}</span>
+            </div>`;
+          }).join('')
+        : `<div style="padding:18px 0;color:var(--text-2);font-size:13px;text-align:center">该对象暂无命中的宏观新闻</div>`;
+      const overlay = document.createElement('div');
+      overlay.className = 'idx-modal-overlay';
+      overlay.innerHTML = `<div class="idx-modal" style="max-width:620px">
+        <div class="idx-modal-head">
+          <span class="idx-m-name">${ui.icon('newspaper', 'fa-xs')} ${(data && data.title) || '宏观新闻'}</span>
+          <span style="font-size:12px;color:var(--text-2)">
+            ${data && data.score != null ? `净情绪 <b class="${data.score > 0 ? 'up' : 'down'}">${RV.fmt.num(data.score, 1)}</b> · ` : ''}
+            <span class="up">利好 ${data && data.bulls != null ? data.bulls : 0}</span> / <span class="down">风险 ${data && data.risks != null ? data.risks : 0}</span>
+          </span>
+          <button class="idx-modal-close" aria-label="关闭">${ui.icon('xmark')}</button>
+        </div>
+        <div class="idx-modal-body" style="max-height:60vh;overflow-y:auto">${rows}</div>
+      </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+      const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+      document.addEventListener('keydown', esc);
+    },
   };
 
   global.RV = { API, fmt, ui };

@@ -28,14 +28,14 @@
       if (!m) return '';
       const k = m.score > 0 ? 'bull' : 'risk';
       const cls = m.score > 0 ? 'macro-bull' : 'macro-risk';
-      return `<span class="macro-badge ${cls}" title="宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+      return `<span class="macro-badge ${cls}" data-macro-code="${code}" title="点击查看相关新闻 · 宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）" style="cursor:pointer">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
     }
     function sectorMacroTag(sec) {
       const m = mSec && mSec[sec];
       if (!m || m.net === 0) return '';
       const k = m.net > 0 ? 'bull' : 'risk';
       const cls = m.net > 0 ? 'macro-bull' : 'macro-risk';
-      return `<span class="macro-badge ${cls}" title="宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+      return `<span class="macro-badge ${cls}" data-macro-sector="${sec}" title="点击查看相关新闻 · 宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）" style="cursor:pointer">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
     }
 
     // 买入推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按评分降序
@@ -546,6 +546,21 @@
         g.querySelector('.sector-header').addEventListener('click', ev => {
           if (ev.target.closest('.info-dot')) return;
           g.classList.toggle('open');
+        });
+      });
+      // 宏观利好/风险标签：点击弹出相关新闻（2026-08）
+      app.addEventListener('click', ev => {
+        const el = ev.target.closest('.macro-badge[data-macro-code], .macro-badge[data-macro-sector]');
+        if (!el) return;
+        ev.stopPropagation();
+        const info = el.getAttribute('data-macro-code')
+          ? (mIdx || {})[el.getAttribute('data-macro-code')]
+          : (mSec || {})[el.getAttribute('data-macro-sector')];
+        if (!info) return;
+        RV.ui.macroNewsModal({
+          title: (info.name ? info.name + ' · ' : '') + (info.sector || '') || (info.sector || '宏观'),
+          score: info.score != null ? info.score : info.net,
+          bulls: info.bulls, risks: info.risks, key: info.key,
         });
       });
       app.querySelectorAll('.pg-btn').forEach(b => b.addEventListener('click', ev => {

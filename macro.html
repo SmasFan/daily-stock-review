@@ -163,7 +163,7 @@
     // ===== 板块影响（反馈：推荐页板块标签） =====
     const sectorRows = (d.sectors || []).map(s => {
       const key = s.key || [];
-      const keyTxt = key.map(k => `<span class="chip ${k.kind === 'bull' ? 'sector' : 'sector risk'}">${k.title.length > 18 ? k.title.slice(0, 18) + '…' : k.title}</span>`).join('');
+      const keyTxt = key.map(k => `<span class="chip ${k.kind === 'bull' ? 'sector' : 'sector risk'} news-chip" data-sector="${s.sector}" data-kind="${k.kind}" data-title="${k.title.replace(/"/g, '&quot;')}" data-score="${k.score}" style="cursor:pointer" title="点击查看新闻详情">${k.title.length > 18 ? k.title.slice(0, 18) + '…' : k.title}</span>`).join('');
       return `<tr>
         <td>${s.sector}</td>
         <td class="${cls(s.net)}"><b>${RV.fmt.num(s.net, 1)}</b></td>
@@ -224,6 +224,41 @@
       + overviewHtml + alertHtml + themeHtml + sectorHtml + stockHtml + newsHtml
       + '<footer>新闻源：东方财富财经频道 · 词典法情感 + 政策加权 + 主题映射 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
+    // 板块关键提醒 chip：点击弹出该板块全部宏观新闻（2026-08）
+    app.addEventListener('click', ev => {
+      const chip = ev.target.closest('.news-chip');
+      if (!chip) return;
+      const secName = chip.getAttribute('data-sector');
+      const sec = (d.sectors || []).find(s => s.sector === secName);
+      if (!sec) return;
+      RV.ui.macroNewsModal({
+        title: sec.sector + ' · 板块宏观新闻',
+        score: sec.net,
+        bulls: sec.bulls, risks: sec.risks, key: sec.key,
+      });
+    });
+    // 板块行：点击行标题弹板块新闻
+    app.querySelectorAll('.ret-table tbody tr').forEach(tr => {
+      const td = tr.querySelector('td:first-child');
+      if (td) td.style.cursor = 'pointer';
+    });
+    // 个股影响行：点击弹所属板块新闻
+    app.addEventListener('click', ev => {
+      const td = ev.target.closest('tbody td:first-child');
+      if (!td) return;
+      const tr = td.parentElement;
+      const cells = tr.querySelectorAll('td');
+      if (cells.length < 2) return;
+      const secName = cells[1] ? cells[1].textContent.trim() : '';
+      if (!secName) return;
+      const sec = (d.sectors || []).find(s => s.sector === secName);
+      if (!sec) return;
+      RV.ui.macroNewsModal({
+        title: (cells[0] ? cells[0].textContent.trim() : '') + ' · 所属板块宏观新闻',
+        score: sec.net,
+        bulls: sec.bulls, risks: sec.risks, key: sec.key,
+      });
+    });
     // 概览卡片点击 → 过滤下方新闻流（再点同一卡片恢复全部）
     const FILTER_LABEL = { all: '', bull: ' · 仅利好', risk: ' · 仅风险', policy: ' · 仅政策' };
     let newsFilter = 'all';

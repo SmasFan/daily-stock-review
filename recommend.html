@@ -30,13 +30,13 @@
       const m = mIdx && mIdx[code];
       if (!m) return '';
       const k = m.score > 0 ? 'bull' : 'risk';
-      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" title="宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" data-macro-code="${code}" title="点击查看相关新闻 · 宏观情绪 ${RV.fmt.num(m.score, 1)}（利好${m.bulls}/风险${m.risks}）" style="cursor:pointer">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
     }
     function sectorMacroTag(sec) {
       const m = mSec && mSec[sec];
       if (!m || m.net === 0) return '';
       const k = m.net > 0 ? 'bull' : 'risk';
-      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" title="宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
+      return `<span class="macro-badge ${k === 'bull' ? 'macro-bull' : 'macro-risk'}" data-macro-sector="${sec}" title="点击查看相关新闻 · 宏观情绪 ${RV.fmt.num(m.net, 1)}（利好${m.bulls}/风险${m.risks}）" style="cursor:pointer">${k === 'bull' ? '宏观利好' : '宏观风险'}</span>`;
     }
 
     // 推荐强度排序：strong_buy > buy > watch > reduce > sell，同级按综合分降序
@@ -605,6 +605,21 @@
         + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
       RV.ui.initSidebar();
+      // 宏观利好/风险标签：点击弹出相关新闻（2026-08）
+      app.addEventListener('click', ev => {
+        const el = ev.target.closest('.macro-badge[data-macro-code], .macro-badge[data-macro-sector]');
+        if (!el) return;
+        ev.stopPropagation();
+        const info = el.getAttribute('data-macro-code')
+          ? (mIdx || {})[el.getAttribute('data-macro-code')]
+          : (mSec || {})[el.getAttribute('data-macro-sector')];
+        if (!info) return;
+        RV.ui.macroNewsModal({
+          title: (info.name ? info.name + ' · ' : '') + (info.sector || '') || (info.sector || '宏观'),
+          score: info.score != null ? info.score : info.net,
+          bulls: info.bulls, risks: info.risks, key: info.key,
+        });
+      });
       // 大盘指数卡点击：弹出技术详情弹窗
       function openIdxModal(idx) {
         const src = app.querySelector(`.idx-factor-card[data-i="${idx}"]`);
