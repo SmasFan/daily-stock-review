@@ -282,6 +282,23 @@ def main():
 
     # 计算跟踪收益 + 精简 K 线
     klines = {}
+    # 2026-08-21 修正：当日快照的 price/change_pct 用实时行情刷新，
+    # 避免盘中 tracking 生成时读到的还是旧 recommend 快照（用户反馈"今日块数据是旧值"）。
+    latest_day = days[-1]["date"] if days else ""
+    today_codes = [it["code"] for it in days[-1]["items"]] if days else []
+    if latest_day and today_codes:
+        try:
+            quotes = dp.fetch_quotes(today_codes)
+            for it in days[-1]["items"]:
+                q = quotes.get(it["code"])
+                if q:
+                    if q.get("price") is not None:
+                        it["price"] = q["price"]
+                    if q.get("change") is not None:
+                        it["change_pct"] = q["change"]
+            print(f"  当日快照行情刷新: {len(quotes)}/{len(today_codes)} 只")
+        except Exception as e:
+            print(f"  [skip] 当日快照行情刷新失败: {e}")
     for day in days:
         for it in day["items"]:
             k = kl_full.get(it["code"])
