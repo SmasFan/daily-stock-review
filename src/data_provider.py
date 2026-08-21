@@ -1,8 +1,8 @@
 """
-数据源模块：腾讯行情快照 + 腾讯日K线，带本地 JSON 缓存。
+数据源模块：同花顺官方 API（优先）+ 腾讯行情快照/日K线（回退），带本地 JSON 缓存。
 
-- 实时快照: qt.gtimg.cn（量比/换手/PE/PB/成交额等）
-- 日K线: web.ifzq.gtimg.cn（前复权日线，含 OHLCV）
+- 实时快照: 同花顺 fuyao.aicubes.cn（官方，需 API Key）→ 失败回退 qt.gtimg.cn
+- 日K线: 同花顺官方 → 失败回退 web.ifzq.gtimg.cn（前复权日线，含 OHLCV）
 - 缓存: data/cache/ 下按日期缓存，避免重复请求
 """
 import json
@@ -11,6 +11,8 @@ import re
 import time
 import urllib.request
 from datetime import datetime
+
+from src import ths_api
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE_DIR = os.path.join(BASE_DIR, "data", "cache")
@@ -42,7 +44,11 @@ def _get(url: str, timeout: int = 20, encoding: str = "utf-8") -> str:
 # ---------------- 实时快照 ----------------
 
 def fetch_quotes(codes):
-    """批量拉取实时快照，返回 {code: quote_dict}。"""
+    """批量拉取实时快照，返回 {code: quote_dict}。同花顺优先，失败回退腾讯。"""
+    if ths_api.available():
+        qs = ths_api.fetch_snapshot(codes)
+        if qs:
+            return qs
     symbols = [tencent_symbol(c) for c in codes]
     url = "https://qt.gtimg.cn/q=" + ",".join(symbols)
     try:
@@ -140,6 +146,17 @@ def fetch_daily_kline(code: str, count: int = 320, use_cache: bool = True,
             except Exception:
                 pass
     sym = tencent_symbol(code)
+    # 同花顺官方优先（需 API Key）；仅 A 股 6 位代码适用，指数/基金/港股走腾讯
+    if ths_api.available() and code.isdigit() and len(code) == 6:
+        k = ths_api.fetch_daily_kline(code, days=max(count, 60))
+        if k and len(k.get("dates") or []) >= 30:
+            out = k
+            try:
+                with open(cp, "w", encoding="utf-8") as fp:
+                    json.dump(out, fp)
+            except Exception:
+                pass
+            return out
     url = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
            f"?param={sym},day,,,{count},qfq")
     try:

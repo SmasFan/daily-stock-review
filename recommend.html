@@ -278,6 +278,14 @@
           `<span class="${k.kind === 'bull' ? 'up' : 'down'}">${k.kind === 'bull' ? '[利好]' : '[风险]'}</span> ${k.title.length > 24 ? k.title.slice(0, 24) + '…' : k.title}`).join('<br>');
         if (mKeys) rows.push(['关键提醒', mKeys, '所属板块近期命中的政策/新闻标题（详见宏观页）']);
       }
+      // 同花顺财务指标（2026-08 新增）
+      const fin = (d.financials || {})[p.code];
+      if (fin) {
+        const pf = (v, suf = '%') => v != null && v !== '' ? RV.fmt.num(parseFloat(v), 2) + suf : '--';
+        rows.push(['财务指标（同花顺）',
+          `ROE ${pf(fin.roe)} · 毛利率 ${pf(fin.gross_margin)} · 净利率 ${pf(fin.net_margin)}`,
+          `营收YoY ${pf(fin.revenue_yoy)} · 净利YoY ${pf(fin.profit_yoy)} · 资产负债率 ${pf(fin.debt_ratio)}`]);
+      }
       return rows.map(([k, v, d]) =>
         `<div class="it-row"><span class="k">${k}</span><span class="v">${v}</span></div>
          <div style="color:var(--text-2);font-size:11px;line-height:1.5;padding-bottom:4px">${d}</div>`).join('<hr>');

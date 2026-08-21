@@ -530,6 +530,51 @@ def build_institution_data(codes: List[str]) -> Dict:
         "institution": inst,
         "scanned_codes": len(codes),
     }
+    # 同花顺官方特色数据（需 API Key，失败静默跳过；2026-08 新增）
+    try:
+        from . import ths_api
+        if ths_api.available():
+            ths_part = {}
+            try:
+                dt = ths_api.fetch_dragon_tiger_list("all")
+                ths_part["dragon_tiger"] = {
+                    "date": dt.get("trade_date"), "count": dt.get("count"),
+                    "items": (dt.get("stock_items") or [])[:20],
+                }
+                print(f"   同花顺龙虎榜({dt.get('trade_date')}): {dt.get('count')} 条")
+            except Exception as e:
+                print(f"   [warn] 同花顺龙虎榜失败: {e}")
+            time.sleep(0.3)
+            try:
+                lu = ths_api.fetch_limit_up_pool()
+                ths_part["limit_up"] = {
+                    "date": (lu[0].get("trade_date") if lu else None),
+                    "items": lu[:30],
+                }
+                print(f"   同花顺涨停池: {len(lu)} 只")
+            except Exception as e:
+                print(f"   [warn] 同花顺涨停池失败: {e}")
+            time.sleep(0.3)
+            try:
+                ths_part["hot_list"] = ths_api.fetch_hot_stock_list()
+                print(f"   同花顺热股榜: {len(ths_part['hot_list'])} 只")
+            except Exception as e:
+                print(f"   [warn] 同花顺热榜失败: {e}")
+            time.sleep(0.3)
+            try:
+                ths_part["skyrocket"] = ths_api.fetch_skyrocket_list()
+                print(f"   同花顺飙升榜: {len(ths_part['skyrocket'])} 只")
+            except Exception as e:
+                print(f"   [warn] 同花顺飙升榜失败: {e}")
+            time.sleep(0.3)
+            try:
+                ths_part["anomaly"] = ths_api.fetch_anomaly_list()[:30]
+                print(f"   同花顺个股异动: {len(ths_part['anomaly'])} 条")
+            except Exception as e:
+                print(f"   [warn] 同花顺异动失败: {e}")
+            data["ths"] = ths_part
+    except Exception as e:
+        print(f"   [warn] 同花顺特色数据整体失败: {e}")
     return data
 
 

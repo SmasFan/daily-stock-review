@@ -89,6 +89,19 @@ def fetch_index_rows():
 def analyze_codes(codes, names, offline):
     """对一组代码做技术分析。names: {code: name}。返回 {code: (name, kline, analysis, quote)}。"""
     quotes = {} if offline else dp.fetch_quotes([c for c in codes])
+    # 同花顺估值 API 补强 PE/PB（腾讯快照的 pe/pb 常缺失；2026-08 新增）
+    try:
+        from src import ths_api
+        if ths_api.available():
+            vals = ths_api.fetch_valuations([c for c in codes])
+            for code, v in vals.items():
+                q = quotes.setdefault(code, {})
+                if v.get("pe_ttm"):
+                    q["pe"] = v["pe_ttm"]
+                if v.get("pb_mrq"):
+                    q["pb"] = v["pb_mrq"]
+    except Exception:
+        pass
     klines = dp.fetch_daily_kline_batch(codes, count=320)
     out = {}
     for code, k in klines.items():
@@ -501,10 +514,38 @@ def run_recommend(args):
         _pos_s = "" if _pos is None else f"{_pos*100:.0f}%"
         print(f"   {s['name']}: dev={_dev_s} 仓位{_pos_s} → {s.get('action')}")
 
+    # 同花顺财务指标（2026-08 新增）：为推荐股票拉 ROE/毛利率/营收增速等，写入 rec.financials
+    financials = {}
+    try:
+        from src import ths_api
+        if ths_api.available():
+            fin_codes = [it.code for it in picks] + [it.code for it in market_picks]
+            fin_codes = list(dict.fromkeys([c for c in fin_codes if len(str(c)) == 6]))
+            import time as _t
+            for c in fin_codes:
+                fi = ths_api.fetch_financial_indicators(c)
+                if fi:
+                    g = fi.get("growth", {})
+                    p = fi.get("profitability", {})
+                    s = fi.get("solvency", {})
+                    financials[c] = {
+                        "revenue_yoy": g.get("calculate_operating_income_yoy_growth_ratio"),
+                        "profit_yoy": g.get("calculate_parent_holder_net_profit_yoy_growth_ratio"),
+                        "roe": p.get("index_weighted_avg_roe"),
+                        "gross_margin": p.get("sale_gross_margin"),
+                        "net_margin": p.get("sale_net_interest_ratio"),
+                        "debt_ratio": s.get("asset_liability_ratio"),
+                    }
+                _t.sleep(0.15)
+            print(f"   同花顺财务指标: {len(financials)}/{len(fin_codes)} 只")
+    except Exception as e:
+        print(f"   [warn] 同花顺财务指标失败: {e}")
+
     rec = rp.build_recommend(picks, market_items=market_picks, indices=indices,
                              sectors=sector_recs, sector_stocks=sector_stocks,
                              grid_signals=grid_signals,
                              temperature=rp._market_temperature(screen_items, breadth))
+    rec["financials"] = financials
     rec["market_regime"] = {
         "overheat": regime["overheat"],
         "threshold": regime["threshold"],

@@ -435,8 +435,90 @@
       stratHtml = stratOverview + bbStrategy + natStrategy + overheat;
     }
 
+    // ===== 同花顺官方特色数据（龙虎榜/热股榜/飙升榜/异动，2026-08 新增） =====
+    function thsSection() {
+      const ths = d.ths || {};
+      const dt = ths.dragon_tiger || {};
+      const dtRows = (dt.items || []).map(x => `<tr>
+        <td>${x.name || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td class="${cls((x.change || 0) * 100)}">${x.change != null ? RV.fmt.pct(x.change * 100) : '--'}</td>
+        <td class="${cls(x.net_value || 0)}" style="font-weight:700">${x.net_value != null ? mf(x.net_value) : '--'}</td>
+        <td>${x.hot_rank ?? '--'}</td>
+      </tr>`).join('');
+      const hotRows = (ths.hot_list || []).map((x, i) => `<tr>
+        <td>${i + 1}</td><td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
+        <td class="${cls(x.change_pct || 0)}">${x.change_pct != null ? RV.fmt.pct(x.change_pct) : '--'}</td>
+        ${x.rank != null ? `<td>${x.rank}</td>` : ''}
+      </tr>`).join('');
+      const skyRows = (ths.skyrocket || []).map((x, i) => `<tr>
+        <td>${i + 1}</td><td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
+        <td class="${cls(x.change_pct || 0)}">${x.change_pct != null ? RV.fmt.pct(x.change_pct) : '--'}</td>
+      </tr>`).join('');
+      const anomRows = (ths.anomaly || []).map(x => `<tr>
+        <td>${x.stock_name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td style="text-align:left;font-size:12px;color:var(--text-2);max-width:480px">${(x.analysis_content || x.reason || '').slice(0, 120)}${(x.analysis_content || '').length > 120 ? '…' : ''}</td>
+      </tr>`).join('');
+      const lu = ths.limit_up || {};
+      const luRows = (lu.items || []).slice(0, 20).map(x => `<tr>
+        <td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${x.limit_up_times ?? (x.board ?? '--')}</td>
+        <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
+      </tr>`).join('');
+      const hasAny = dtRows || hotRows || skyRows || anomRows || luRows;
+      if (!hasAny) return '';
+      return `<div class="section" data-nav="同花顺特色" data-nav-icon="fire">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('fire')}</span><h2>同花顺特色数据（官方）</h2><span class="sec-chip">龙虎榜 ${dt.count ?? '--'}</span></div>
+        <div class="ff-grid">
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">龙虎榜日期</div>
+            <div class="ff-big">${dt.date || '--'}</div>
+            <div class="ff-sub">龙虎榜榜单 · 净买入额</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">热股榜</div>
+            <div class="ff-big">${(ths.hot_list || []).length}</div>
+            <div class="ff-sub">A股热股榜单 Top30</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">飙升榜</div>
+            <div class="ff-big">${(ths.skyrocket || []).length}</div>
+            <div class="ff-sub">热度飙升 Top30</div>
+          </div>
+          <div class="ff-card">
+            <div style="font-size:12px;color:var(--text-2)">涨停池</div>
+            <div class="ff-big">${(lu.items || []).length}</div>
+            <div class="ff-sub">${lu.date || '当日'} 涨停/连板</div>
+          </div>
+        </div>
+        ${dtRows ? `<div class="st-card" style="padding:6px 14px;margin-top:12px">
+          <div class="sec-title">${RV.ui.icon('landmark')} 龙虎榜 · 净买入（${dt.date || ''}）</div>
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>涨跌幅</th><th>净买入</th><th>热度</th></tr></thead><tbody>${dtRows}</tbody></table></div>
+        </div>` : ''}
+        ${hotRows ? `<div class="st-card" style="padding:6px 14px;margin-top:12px">
+          <div class="sec-title">${RV.ui.icon('fire')} A股热股榜 Top30</div>
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>#</th><th>股票</th><th>现价</th><th>涨跌幅</th></tr></thead><tbody>${hotRows}</tbody></table></div>
+        </div>` : ''}
+        ${skyRows ? `<div class="st-card" style="padding:6px 14px;margin-top:12px">
+          <div class="sec-title">${RV.ui.icon('rocket')} 飙升榜 Top30</div>
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>#</th><th>股票</th><th>现价</th><th>涨跌幅</th></tr></thead><tbody>${skyRows}</tbody></table></div>
+        </div>` : ''}
+        ${luRows ? `<div class="st-card" style="padding:6px 14px;margin-top:12px">
+          <div class="sec-title">${RV.ui.icon('bolt')} 涨停池（${lu.date || ''}）</div>
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>连板</th><th>现价</th></tr></thead><tbody>${luRows}</tbody></table></div>
+        </div>` : ''}
+        ${anomRows ? `<div class="st-card" style="padding:6px 14px;margin-top:12px">
+          <div class="sec-title">${RV.ui.icon('triangle-exclamation')} 当日个股异动（${(ths.anomaly || []).length} 条）</div>
+          <div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>异动原因</th></tr></thead><tbody>${anomRows}</tbody></table></div>
+        </div>` : ''}
+        <div class="ff-note">数据源：同花顺官方金融数据服务（fuyao.aicubes.cn）。</div>
+      </div>`;
+    }
+
     app.innerHTML = RV.ui.header('资金', '主力资金 · 龙虎榜机构 · 策略回测 · 国家队持股', 'institution', d.generatedAt)
       + overviewHtml + fundQuick() + instPicks() + sectorHtml + stockRankHtml + billboardHtml + stratHtml + instHtml
+      + thsSection()
       + '<footer>主力=超大单+大单 · 龙虎榜/股东数据来自交易所披露 · 回测含双边0.1%成本 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
   } catch (e) {
