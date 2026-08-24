@@ -44,6 +44,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 市场温度数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 微信推送（Server酱）：收盘播报（复盘+资金+回测合并为 1 条，盘后；失败不阻断）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 scripts/push_alerts.py close >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 收盘播报推送失败" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

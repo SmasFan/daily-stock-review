@@ -36,6 +36,13 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
   if [ $((MM % 60)) -eq 0 ]; then
     python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+    # 微信推送（Server酱）：盘中播报（推荐+资金合并 1 条；避开 9:00 开盘瞬间与 11:00 午前收尾，
+    # 每天 10:00/13:00/14:00 共 3 条，加盘后 1 条 = 4 条，控制在免费版每日 5 条限额内）
+    HOUR=$((10#$(date +%H)))
+    if [ "$HOUR" = "10" ] || [ "$HOUR" = "13" ] || [ "$HOUR" = "14" ]; then
+      python3 scripts/push_alerts.py intraday >> data/auto_run.log 2>&1 \
+        || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中播报推送失败" >> data/auto_run.log
+    fi
   fi
 
   # 每 10 分钟推送一次（推送前先更新跟踪数据：当天快照+走势）
