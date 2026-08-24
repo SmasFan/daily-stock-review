@@ -62,9 +62,63 @@ def load(name):
 
 
 def pct(v, nd=2):
+    """格式化小数比例（0.118 → +11.80%）。"""
     if v is None:
         return "--"
-    return ("%+." + str(nd) + "f%%") % (v * 100) if isinstance(v, float) else str(v)
+    try:
+        return ("%+." + str(nd) + "f%%") % (float(v) * 100)
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def pct_num(v, nd=2):
+    """格式化已是百分比的数值（-1.78 → -1.78%），recommend/institution 的 change_pct 用这个。"""
+    if v is None:
+        return "--"
+    try:
+        return ("%+." + str(nd) + "f%%") % float(v)
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def money(v):
+    """格式化金额：亿/万。"""
+    if v is None:
+        return "--"
+    try:
+        a = abs(float(v))
+        neg = float(v) < 0
+        s = (a / 1e8 if a >= 1e8 else a / 1e4)
+        u = "亿" if a >= 1e8 else "万"
+        return ("-" if neg else "") + ("%.1f" % s) + u
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def red(t):
+    return '<font color="#e1251b">%s</font>' % t
+
+
+def green(t):
+    return '<font color="#16a34a">%s</font>' % t
+
+
+def dark(t):
+    return '<font color="#333333">%s</font>' % t
+
+
+def updown(v, text=None):
+    """涨跌着色：正红负绿（A股习惯），非数值返回灰。"""
+    if v is None:
+        return dark("--")
+    try:
+        if float(v) > 0:
+            return red(text if text is not None else str(v))
+        if float(v) < 0:
+            return green(text if text is not None else str(v))
+        return dark(text if text is not None else str(v))
+    except (TypeError, ValueError):
+        return dark(text if text is not None else str(v))
 
 
 def push_backtest():
@@ -218,28 +272,63 @@ def _summary_lines(*parts):
 
 
 def push_intraday():
-    """盘中合并推送（1 条）：推荐 Top + 资金跟踪。"""
+    """盘中合并推送（1 条）：回测操作提醒 + 推荐 Top + 资金跟踪（10:00/12:00/14:00）。"""
+    parts = []
+    # 回测操作提醒（长江电力/中远海控/中证红利）
+    bi = load("backtest_index.json")
+    if bi:
+        stocks = bi.get("stocks", {})
+        targets = ["长江电力", "中远海控", "中证红利ETF招商"]
+        lines = [dark("**回测操作提醒**"), ""]
+        for name in targets:
+            s = stocks.get(name)
+            if not s:
+                lines.append("**%s**：回测无数据" % name)
+                continue
+            sm = s.get("summary", {})
+            lines.append("**%s**" % name)
+            lines.append("年化 %s · 夏普 %s · 回撤 %s" % (
+                red(pct(sm.get("annual_return"))) if (sm.get("annual_return") or 0) >= 0 else green(pct(sm.get("annual_return"))),
+                sm.get("sharpe"), pct(sm.get("max_drawdown"))))
+            lines.append("卡玛 %s · 超额 %s · 交易 %s 笔" % (
+                sm.get("calmar"), pct(sm.get("excess_return")), sm.get("trade_count")))
+            lines.append("")
+        hd = load("holdings_data.json")
+        if hd:
+            lines.append("**持仓网格信号**")
+            for h in hd.get("items", []):
+                g = h.get("grid", {})
+                if not g:
+                    continue
+                dev = g.get("dev")
+                pos = g.get("position")
+                dev_s = updown(dev, ("%+.1f%%" % (dev * 100)) if dev is not None else "--")
+                lines.append("%s：**%s** · 偏离 %s · 仓位 %s" % (
+                    h.get("name"), g.get("action", "--"), dev_s,
+                    ("%.0f%%" % (pos * 100)) if pos is not None else "--"))
+        parts.append(("回测", "\n".join(lines)))
+    # 推荐 Top
     d = load("recommend_data.json")
     picks = (d.get("picks") or [])[:6] if d else []
-    parts = []
     if picks:
-        lines = ["## 盘中推荐 Top%d" % len(picks), ""]
+        lines = [dark("**盘中推荐 Top%d**" % len(picks)), ""]
         for i, p in enumerate(picks, 1):
+            chg = pct_num(p.get("change_pct")) if p.get("change_pct") is not None else "--"
             lines.append("%d. **%s**（%s）%s → %s · %s分" % (
                 i, p.get("name"), p.get("sector", "--"),
                 p.get("signal", "--"), p.get("rating", "--"), p.get("total_score", "--")))
-            if p.get("change_pct") is not None:
-                lines.append("   现价 %s · %s" % (p.get("price"), pct(p.get("change_pct"))))
+            lines.append("   现价 %s · %s" % (p.get("price"), updown(p.get("change_pct"), chg)))
             if p.get("reasons"):
                 lines.append("   %s" % p["reasons"][:60])
         parts.append(("推荐", "\n".join(lines)))
+    # 资金跟踪
     fi = load("institution_data.json")
     if fi:
         o = fi.get("overview", {})
         main_net = o.get("main_net")
-        lines = ["## 资金跟踪", ""]
+        lines = [dark("**资金跟踪**"), ""]
         lines.append("两市主力净流入：**%s**" % (
-            "%.0f亿" % (main_net / 1e8) if isinstance(main_net, (int, float)) else "--"))
+            updown(main_net, money(main_net)) if isinstance(main_net, (int, float)) else "--"))
         lines.append("净流入板块 %s / 净流出板块 %s" % (
             o.get("inflow_sectors", "--"), o.get("outflow_sectors", "--")))
         ths = fi.get("ths", {})
@@ -254,79 +343,39 @@ def push_intraday():
 
 
 def push_close():
-    """盘后合并推送（1 条）：复盘总结 + 资金动向 + 回测操作提醒。"""
+    """盘后合并推送（1 条）：复盘总结。"""
     parts = []
     d = load("review_data.json")
     if d:
         t = d.get("temperature", {})
         st = d.get("stats", {})
-        lines = ["## 每日复盘总结", ""]
-        lines.append("**市场温度：%s（%s）**" % (t.get("score", "--"), t.get("label", "--")))
+        lines = [dark("**每日复盘总结**"), ""]
+        tmp = t.get("score", "--")
+        tmp_s = red(str(tmp)) if isinstance(tmp, (int, float)) and tmp >= 60 else (
+            green(str(tmp)) if isinstance(tmp, (int, float)) and tmp <= 40 else dark(str(tmp)))
+        lines.append("**市场温度：%s（%s）**" % (tmp_s, t.get("label", "--")))
+        breadth = t.get("breadth")
+        avg = t.get("avg_change")
         lines.append("市场广度：%s%% 上涨 · 平均涨跌 %s" % (
-            t.get("breadth", "--"),
-            pct(t.get("avg_change")) if isinstance(t.get("avg_change"), (int, float)) else "--"))
+            breadth if breadth is not None else "--",
+            updown(avg, pct_num(avg)) if isinstance(avg, (int, float)) else "--"))
         if t.get("market_total"):
             lines.append("全市场：涨 %s / 跌 %s / 平 %s" % (
-                t.get("market_up", "--"), t.get("market_down", "--"), t.get("market_flat", "--")))
+                red(t.get("market_up", "--")), green(t.get("market_down", "--")), t.get("market_flat", "--")))
         lines.append("自选池：涨 %s / 跌 %s（共 %s）" % (
-            st.get("up", "--"), st.get("down", "--"), st.get("total", "--")))
+            red(st.get("up", "--")), green(st.get("down", "--")), st.get("total", "--")))
         if st.get("strongest"):
             lines.append("- 最强：**%s**" % st["strongest"])
         if st.get("weakest"):
             lines.append("- 最弱：**%s**" % st["weakest"])
         for ix in (d.get("indices") or [])[:5]:
             if ix.get("name") and ix.get("change_pct") is not None:
-                lines.append("- %s：%s" % (ix["name"], pct(ix["change_pct"])))
+                lines.append("- %s：%s" % (ix["name"], updown(ix["change_pct"], pct_num(ix["change_pct"]))))
         parts.append(("复盘", "\n".join(lines)))
-    fi = load("institution_data.json")
-    if fi:
-        o = fi.get("overview", {})
-        main_net = o.get("main_net")
-        lines = ["## 资金动向总结", ""]
-        lines.append("**两市主力净流入：%s**" % (
-            "%.0f亿" % (main_net / 1e8) if isinstance(main_net, (int, float)) else "--"))
-        lines.append("净流入板块 %s / 净流出板块 %s" % (
-            o.get("inflow_sectors", "--"), o.get("outflow_sectors", "--")))
-        ths = fi.get("ths", {})
-        if ths.get("hot_list"):
-            lines.append("")
-            lines.append("热股榜：" + "、".join(x.get("name", "") for x in ths["hot_list"][:5]))
-        parts.append(("资金", "\n".join(lines)))
-    bi = load("backtest_index.json")
-    if bi:
-        stocks = bi.get("stocks", {})
-        targets = ["长江电力", "中远海控", "中证红利ETF招商"]
-        lines = ["## 回测操作提醒", ""]
-        for name in targets:
-            s = stocks.get(name)
-            if not s:
-                lines.append("**%s**：回测无数据" % name)
-                continue
-            sm = s.get("summary", {})
-            lines.append("### %s" % name)
-            lines.append("- 年化 **%s** · 夏普 %s · 最大回撤 %s" % (
-                pct(sm.get("annual_return")), sm.get("sharpe"), pct(sm.get("max_drawdown"))))
-            lines.append("- 卡玛 %s · 超额 %s · 交易 %s 笔" % (
-                sm.get("calmar"), pct(sm.get("excess_return")), sm.get("trade_count")))
-            lines.append("")
-        hd = load("holdings_data.json")
-        if hd:
-            lines.append("### 持仓网格信号")
-            for h in hd.get("items", []):
-                g = h.get("grid", {})
-                if not g:
-                    continue
-                dev = g.get("dev")
-                pos = g.get("position")
-                lines.append("- %s：**%s** · 偏离 %s · 仓位 %s" % (
-                    h.get("name"), g.get("action", "--"),
-                    ("%+.1f%%" % (dev * 100)) if dev is not None else "--",
-                    ("%.0f%%" % (pos * 100)) if pos is not None else "--"))
-        parts.append(("回测", "\n".join(lines)))
     if not parts:
         print("[close] 无数据")
         return
-    send("收盘播报 · 复盘/资金/回测", _summary_lines(*parts))
+    send("收盘复盘 · %s" % ((d or {}).get("generatedAt", "") or ""), _summary_lines(*parts))
 
 
 def main():
