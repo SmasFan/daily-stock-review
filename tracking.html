@@ -64,6 +64,63 @@
   const SIG_LABEL = { strong_buy: '强烈买入', buy: '买入', watch: '观望', reduce: '减仓', sell: '卖出' };
   const sigBadge = (k, l) => RV.ui.signalBadge(k, l || SIG_LABEL[k] || k);
 
+  /* ===== 重点跟踪：每日推荐 Top10 结果合计 + 累计成功率（2026-08） ===== */
+  function focusSection() {
+    const focus = d.focus || [], fs = d.focus_summary || {};
+    if (!focus.length) return '';
+    const pct2 = v => v != null ? RV.fmt.pct(v) : '--';
+    const winCls = v => v != null && v > 0 ? 'up' : (v != null && v < 0 ? 'down' : 'neutral');
+    const card = (label, val, sub, c = '') => `<div class="ff-card">
+      <div style="font-size:12px;color:var(--text-2)">${label}</div>
+      <div class="ff-big ${c}">${val}</div>
+      <div class="ff-sub">${sub}</div>
+    </div>`;
+    const summaryHtml = `<div class="ff-grid">
+      ${card('累计成功率（上涨样本占比）', fs.cum_win_rate != null ? fs.cum_win_rate + '%' : '--',
+        fs.win_count + ' / ' + fs.total_samples + ' 个已结算样本', fs.cum_win_rate != null && fs.cum_win_rate >= 50 ? 'up' : (fs.cum_win_rate != null ? 'down' : ''))}
+      ${card('样本平均收益', pct2(fs.avg_daily_return), '全部已结算推荐日 Top10 的累计跟踪收益均值', winCls(fs.avg_daily_return))}
+      ${card('交易日胜率', fs.settled_win_rate != null ? fs.settled_win_rate + '%' : '--',
+        fs.settled_days + ' 个已结算交易日中当日胜率>50% 的占比', fs.settled_win_rate != null && fs.settled_win_rate >= 50 ? 'up' : (fs.settled_win_rate != null ? 'down' : ''))}
+      ${card('跟踪天数', fs.settled_days != null ? fs.settled_days + ' 天' : '--', '已结算的历史交易日', '')}
+    </div>`;
+    // 每日明细：倒序（最新在前），点击展开当日 10 只
+    const rows = [...focus].reverse().map(f => {
+      const val = f.win_rate;
+      const chg = pct2(f.avg_return);
+      const itemRows = (f.items || []).map((it, i) => {
+        const tr = it.track_return;
+        return `<tr>
+          <td><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${it.name}<span class="stock-code">${it.code}</span><span class="sec-chip" style="margin-left:6px">${it.sector || '--'}</span></td>
+          <td style="font-weight:800">${it.total_score ?? '--'}</td>
+          <td>${sigBadge(it.signal)}</td>
+          <td class="${cls(tr)}" style="font-weight:800">${tr != null ? RV.fmt.pct(tr) : '--'}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="tk-day focus-day" data-date="${f.date}">
+        <div class="tk-day-head">
+          <span class="chev">${RV.ui.icon('chevron-right', 'fa-xs')}</span>
+          <span class="tk-day-date">${RV.ui.icon('calendar-day', 'fa-xs')} ${f.date}</span>
+          <span class="sec-chip">${f.count}只</span>
+          <span class="sec-chip">合计 ${chg}</span>
+          <span class="sec-chip ${winCls(f.avg_return)}">${f.win_count}胜</span>
+          <span class="sec-chip ${f.win_rate != null && f.win_rate >= 50 ? 'up' : 'down'}">胜率 ${f.win_rate != null ? f.win_rate + '%' : '--'}</span>
+        </div>
+        <div class="tk-day-body">
+          <div class="tk-table-wrap"><table class="ret-table">
+            <thead><tr><th>标的（板块）</th><th>综合分</th><th>信号</th><th>跟踪收益</th></tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table></div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="section" data-nav="重点跟踪" data-nav-icon="star">
+      <div class="section-title"><span class="title-icon">${RV.ui.icon('star')}</span><h2>重点跟踪 · 每日推荐 Top10 结果合计</h2><span class="sec-chip">${focus.length}天</span></div>
+      ${summaryHtml}
+      <div class="tk-stable-hint">${RV.ui.icon('circle-info', 'fa-xs')} 每日取推荐 Top10（买入/强烈买入）做跟踪：跟踪收益 = 推荐日收盘 → 最新收盘；「累计成功率」= 全部已结算样本中上涨占比，「交易日胜率」= 当日 10 只中多数上涨的天数占比。点击日期展开当日个股明细。</div>
+      ${rows}
+    </div>`;
+  }
+
   /* ===== 稳定榜：每天推荐 Top10 里上榜最稳的票 ===== */
   function nameCell(s, i, showIndex = true) {
     return `<span class="tk-name-line">${showIndex ? `<span class="row-num">${String(i + 1).padStart(2, '0')}</span>` : ''}
@@ -243,7 +300,8 @@
   }
 
   /* ===== 渲染 ===== */
-  app.innerHTML = RV.ui.header('历史跟踪', '每日推荐 Top10 · 日K跟踪 · 稳定榜', 'tracking', d.generatedAt)
+  app.innerHTML = RV.ui.header('历史跟踪', '重点跟踪 · 每日推荐 Top10 · 稳定榜 · 日K跟踪', 'tracking', d.generatedAt)
+    + focusSection()
     + stableTable()
     + `<div class="section" data-nav="历史按日" data-nav-icon="calendar-days">
          <div class="section-title"><span class="title-icon">${RV.ui.icon('calendar-days')}</span><h2>历史按日 · 每日推荐 Top10</h2><span class="sec-chip">${days.length}天</span></div>

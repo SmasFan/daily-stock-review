@@ -346,11 +346,53 @@ def main():
          for c, n in cnt.items()),
         key=lambda x: (-x["count"], -(x["latest_score"] or 0)))
 
+    # ===== 重点跟踪：每日推荐 Top10 结果合计 + 累计成功率（2026-08） =====
+    focus = []
+    for day in days:
+        # 只统计 recommend 源（每日推荐 Top10）；trend 源（趋势榜）不计入重点跟踪
+        items = [it for it in day["items"] if it.get("source") == "recommend"][:10]
+        returns = [it.get("track_return") for it in items if it.get("track_return") is not None]
+        win = sum(1 for r in returns if r > 0)
+        day_stat = {
+            "date": day["date"],
+            "count": len(returns),
+            "avg_return": round(sum(returns) / len(returns), 2) if returns else None,
+            "total_return": round(sum(returns), 2) if returns else None,
+            "win_count": win,
+            "win_rate": round(win / len(returns) * 100, 1) if returns else None,
+            "items": [
+                {"code": it["code"], "name": it["name"], "sector": it.get("sector", ""),
+                 "total_score": it.get("total_score"), "signal": it.get("signal"),
+                 "track_return": it.get("track_return")}
+                for it in items
+            ],
+        }
+        focus.append(day_stat)
+    # 累计成功率 = 全部已结算历史样本（排除最新交易日）上涨占比；合计 = 样本平均收益
+    settled = [ds for ds in focus if ds["win_rate"] is not None]
+    if days:
+        settled = [ds for ds in settled if ds["date"] != days[-1]["date"]]
+    all_rets = [r for ds in settled for r in
+                [it["track_return"] for it in ds["items"] if it.get("track_return") is not None]]
+    total_win = sum(1 for r in all_rets if r > 0)
+    focus_summary = {
+        "total_samples": len(all_rets),
+        "win_count": total_win,
+        "cum_win_rate": round(total_win / len(all_rets) * 100, 1) if all_rets else None,
+        "avg_daily_return": round(sum(r for r in all_rets) / len(all_rets), 2) if all_rets else None,
+        "settled_days": len(settled),
+        "settled_win_rate": round(
+            sum(1 for ds in settled if ds["win_rate"] and ds["win_rate"] > 50) / len(settled) * 100, 1)
+            if settled else None,
+    }
+
     out = {
         "generatedAt": __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_days": total,
         "days": days,
         "stable": stable,
+        "focus": focus,
+        "focus_summary": focus_summary,
         "klines": klines,
     }
     path = os.path.join(DATA_DIR, "tracking_data.json")
