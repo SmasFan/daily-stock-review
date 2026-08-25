@@ -50,6 +50,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 收盘播报推送失败" >> "$LOG"
 fi
 
+# 低估值选股（好公司+低估值+横盘，全市场；约 5-10 分钟；失败不阻断主流程）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 run_review.py --mode lowval >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 低估值选股生成失败" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

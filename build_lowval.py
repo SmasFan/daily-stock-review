@@ -27,6 +27,19 @@ sys.path.insert(0, BASE_DIR)
 
 from src import data_provider as dp
 from src import ths_api
+try:
+    from src import stock_pool as sp
+except Exception:
+    sp = None
+
+
+def code_sector(code):
+    try:
+        if sp is not None:
+            return sp.get_code_sector().get(code, "")
+    except Exception:
+        pass
+    return ""
 
 
 def pct_rank(values, higher_is_better=True):
@@ -199,7 +212,7 @@ def main():
             "code": c, "name": names.get(c, c),
             "price": q.get("price"), "change_pct": q.get("change"),
             "amount": amount, "pe_ttm": pe, "pb_mrq": pb,
-            "val_score": val_score,
+            "val_score": val_score, "sector": code_sector(c),
         })
     print(f"   剔除停牌/低流动性后 {len(pool)} 只")
 
@@ -266,6 +279,7 @@ def main():
         "items": [
             {
                 "code": it["code"], "name": it["name"],
+                "sector": it.get("sector", ""),
                 "price": it["price"], "change_pct": it["change_pct"],
                 "pe_ttm": it["pe_ttm"], "pb_mrq": it["pb_mrq"],
                 "quality_score": it["quality_score"],

@@ -72,6 +72,7 @@
         ['uptrend', '趋势', 'arrow-trend-up', 'uptrend.html'],
         ['mainline', '主线', 'crown', 'mainline.html'],
         ['recommend', '推荐', 'bullseye', 'recommend.html'],
+        ['lowval', '低估值', 'magnifying-glass-chart', 'lowval.html'],
         ['institution', '资金', 'landmark', 'institution.html'],
         ['macro', '宏观', 'newspaper', 'macro.html'],
         ['holdings', '持仓', 'briefcase', 'holdings.html'],

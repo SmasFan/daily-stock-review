@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>低估值选股 · 好公司 + 低估值 + 横盘</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  .lv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  .lv-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .lv-name { font-size: 15px; font-weight: 800; }
+  .lv-price { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .lv-score { font-size: 20px; font-weight: 900; color: var(--accent); }
+  .lv-bars { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+  .lv-bar { flex: 1; min-width: 120px; }
+  .lv-bar .lb-label { font-size: 11px; color: var(--text-2); margin-bottom: 3px; }
+  .lv-bar .lb-track { height: 6px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+  .lv-bar .lb-fill { height: 100%; border-radius: 99px; }
+  .lv-meta { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; color: var(--text-2); flex-wrap: wrap; }
+  .lv-fin { margin-top: 8px; font-size: 12px; color: var(--text-2); }
+  .lv-fin b { color: var(--text); }
+  .lv-note { font-size: 12px; color: var(--text-2); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  try {
+    const d = await RV.API.fetch('lowval_data.json');
+    const items = d.items || [];
+    const cls = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
+    const bar = (label, score, color) => `<div class="lv-bar">
+      <div class="lb-label">${label} ${RV.fmt.num(score, 1)}</div>
+      <div class="lb-track"><div class="lb-fill" style="width:${Math.max(2, score)}%;background:${color}"></div></div>
+    </div>`;
+
+    const listHtml = items.map(it => {
+      const f = it.fin || {};
+      const pf = (v, suf = '%') => v != null && v !== '' ? RV.fmt.num(parseFloat(v), 2) + suf : '--';
+      const finRow = f.roe != null || f.gross_margin != null
+        ? `<div class="lv-fin">ROE(年化约) <b>${pf(f.roe ? f.roe * 4 : null)}</b> · 毛利率 <b>${pf(f.gross_margin)}</b> · 净利率 <b>${pf(f.net_margin)}</b> · 营收YoY <b>${pf(f.revenue_yoy)}</b> · 净利YoY <b>${pf(f.profit_yoy)}</b></div>`
+        : '';
+      return `<div class="lv-card" data-code="${it.code}">
+        <div class="lv-head">
+          <span class="lv-name">${it.name} <span class="row-num">${it.code}</span></span>
+          ${it.sector ? `<span class="sec-chip">${it.sector}</span>` : ''}
+          <span class="lv-price ${cls(it.change_pct)}">${RV.fmt.num(it.price, 2)} ${RV.fmt.pct(it.change_pct)}</span>
+          <span class="lv-score">${RV.fmt.num(it.total_score, 1)}分</span>
+        </div>
+        <div class="lv-bars">
+          ${bar('质量', it.quality_score, '#16a34a')}
+          ${bar('估值', it.val_score, '#e1251b')}
+          ${bar('横盘', it.sideways_score, '#2563eb')}
+        </div>
+        <div class="lv-meta">
+          <span>PE <b>${it.pe_ttm != null ? RV.fmt.num(it.pe_ttm, 1) : '--'}</b></span>
+          <span>PB <b>${it.pb_mrq != null ? RV.fmt.num(it.pb_mrq, 2) : '--'}</b></span>
+          <span>成交额 <b>${RV.fmt.amount(it.amount)}</b></span>
+        </div>
+        ${finRow}
+      </div>`;
+    }).join('');
+
+    app.innerHTML = RV.ui.header('低估值选股', '好公司 · 低估值 · 横盘蓄势', 'lowval', d.generatedAt)
+      + `<div class="section" data-nav="低估值选股" data-nav-icon="magnifying-glass-chart">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('magnifying-glass-chart')}</span><h2>低估值选股 · 好公司 + 低估值 + 横盘（${items.length} 只）</h2></div>
+        <div class="ff-note">${RV.ui.icon('circle-info', 'fa-xs')} ${d.method || ''}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-top:12px">${listHtml || RV.ui.empty()}</div>
+      </div>`
+      + '<footer>数据源：同花顺官方（估值/财务指标）+ 日K线技术形态 · 三维评分：质量35% + 估值35% + 横盘30% · 仅供研究，不构成投资建议</footer>';
+    RV.ui.initSidebar();
+  } catch (e) {
+    app.innerHTML = RV.ui.header('低估值选股', '', 'lowval') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

@@ -640,7 +640,7 @@ def run_macro(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["review", "recommend", "holdings", "metals", "tracking",
-                                       "institution", "macro", "all"], default="all")
+                                       "institution", "macro", "lowval", "all"], default="all")
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--no-backtest", action="store_true")
     ap.add_argument("--no-fundflow", action="store_true")
@@ -666,6 +666,12 @@ def main():
             build_tracking.main()
         except Exception as e:
             print(f"[warn] 跟踪数据生成失败（--mode all 不阻断）：{e}")
+    if args.mode in ("lowval", "all"):
+        try:
+            import build_lowval
+            build_lowval.main()
+        except Exception as e:
+            print(f"[warn] 低估值选股生成失败（--mode all 不阻断）：{e}")
     print("完成。")
 
 

@@ -42,7 +42,7 @@
   document.getElementById('app').innerHTML = RV.ui.header('每日复盘工作台', '', '');
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null;
+  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null, lowval = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
@@ -52,6 +52,7 @@
   try { inst = await RV.API.institution(); } catch (e) {}
   try { strat = await RV.API.fetch('strategy_results.json'); } catch (e) {}
   try { macro = await RV.API.fetch('macro_data.json'); } catch (e) {}
+  try { lowval = await RV.API.fetch('lowval_data.json'); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -66,6 +67,12 @@
       <div class="e-icon">${RV.ui.icon('bullseye')}</div><h3>每日推荐</h3>
       <p>多因子横截面打分 + 板块轮动，输出 Top 推荐与买卖点位</p>
       ${rec && rec.picks && rec.picks[0] ? `<div class="e-stat">${RV.ui.icon('crown', 'fa-xs')} 首推 ${rec.picks[0].name}（${rec.picks[0].rating} · ${rec.picks[0].total_score}分）</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="lowval.html">
+      <div class="e-icon">${RV.ui.icon('magnifying-glass-chart')}</div><h3>低估值选股</h3>
+      <p>全市场扫描：好公司（ROE/毛利）+ 低估值（PE/PB低分位）+ 横盘蓄势（振幅/波动/均线粘合/缩量）</p>
+      ${lowval && lowval.items && lowval.items[0] ? `<div class="e-stat">${RV.ui.icon('crown', 'fa-xs')} 首选 ${lowval.items[0].name}（${lowval.items[0].total_score}分 · PE ${lowval.items[0].pe_ttm != null ? RV.fmt.num(lowval.items[0].pe_ttm, 1) : '--'}） · 共 ${lowval.items.length} 只</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="institution.html">
