@@ -96,29 +96,31 @@ def money(v):
 
 
 def red(t):
-    return '<font color="#e1251b">%s</font>' % t
+    # 微信 Server酱 不渲染 HTML，红涨用 emoji 标注
+    return "🔴 " + str(t)
 
 
 def green(t):
-    return '<font color="#16a34a">%s</font>' % t
+    return "🟢 " + str(t)
 
 
 def dark(t):
-    return '<font color="#333333">%s</font>' % t
+    # Markdown 加粗（Server酱/微信支持），不用 HTML 颜色
+    return "**" + str(t) + "**"
 
 
 def updown(v, text=None):
-    """涨跌着色：正红负绿（A股习惯），非数值返回灰。"""
+    """涨跌标注：正红负绿（A股习惯，emoji），非数值返回 --。"""
     if v is None:
-        return dark("--")
+        return "--"
     try:
         if float(v) > 0:
             return red(text if text is not None else str(v))
         if float(v) < 0:
             return green(text if text is not None else str(v))
-        return dark(text if text is not None else str(v))
+        return text if text is not None else "0"
     except (TypeError, ValueError):
-        return dark(text if text is not None else str(v))
+        return text if text is not None else str(v)
 
 
 def push_backtest():
@@ -279,7 +281,7 @@ def push_intraday():
     if bi:
         stocks = bi.get("stocks", {})
         targets = ["长江电力", "中远海控", "中证红利ETF招商"]
-        lines = [dark("**回测操作提醒**"), ""]
+        lines = [dark("回测操作提醒"), ""]
         for name in targets:
             s = stocks.get(name)
             if not s:
@@ -311,7 +313,7 @@ def push_intraday():
     d = load("recommend_data.json")
     picks = (d.get("picks") or [])[:6] if d else []
     if picks:
-        lines = [dark("**盘中推荐 Top%d**" % len(picks)), ""]
+        lines = [dark("盘中推荐 Top%d" % len(picks)), ""]
         for i, p in enumerate(picks, 1):
             chg = pct_num(p.get("change_pct")) if p.get("change_pct") is not None else "--"
             lines.append("%d. **%s**（%s）%s → %s · %s分" % (
@@ -326,7 +328,7 @@ def push_intraday():
     if fi:
         o = fi.get("overview", {})
         main_net = o.get("main_net")
-        lines = [dark("**资金跟踪**"), ""]
+        lines = [dark("资金跟踪"), ""]
         lines.append("两市主力净流入：**%s**" % (
             updown(main_net, money(main_net)) if isinstance(main_net, (int, float)) else "--"))
         lines.append("净流入板块 %s / 净流出板块 %s" % (
@@ -349,16 +351,16 @@ def push_close():
     if d:
         t = d.get("temperature", {})
         st = d.get("stats", {})
-        lines = [dark("**每日复盘总结**"), ""]
+        lines = [dark("每日复盘总结"), ""]
         tmp = t.get("score", "--")
+        # 温度：高温红/低温绿（emoji），不加粗（避免嵌套 Markdown 错乱）
         tmp_s = red(str(tmp)) if isinstance(tmp, (int, float)) and tmp >= 60 else (
-            green(str(tmp)) if isinstance(tmp, (int, float)) and tmp <= 40 else dark(str(tmp)))
-        lines.append("**市场温度：%s（%s）**" % (tmp_s, t.get("label", "--")))
+            green(str(tmp)) if isinstance(tmp, (int, float)) and tmp <= 40 else str(tmp))
+        lines.append("市场温度：**%s（%s）**" % (tmp_s, t.get("label", "--")))
         breadth = t.get("breadth")
         avg = t.get("avg_change")
-        lines.append("市场广度：%s%% 上涨 · 平均涨跌 %s" % (
-            breadth if breadth is not None else "--",
-            updown(avg, pct_num(avg)) if isinstance(avg, (int, float)) else "--"))
+        avg_s = updown(avg, pct_num(avg)) if isinstance(avg, (int, float)) else "--"
+        lines.append("市场广度：%s%% 上涨 · 平均涨跌 %s" % (breadth if breadth is not None else "--", avg_s))
         if t.get("market_total"):
             lines.append("全市场：涨 %s / 跌 %s / 平 %s" % (
                 red(t.get("market_up", "--")), green(t.get("market_down", "--")), t.get("market_flat", "--")))
