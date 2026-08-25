@@ -102,6 +102,35 @@ def fetch_snapshot(codes):
     return out
 
 
+def fetch_ticker_list(asset_type="a-share", limit=10000):
+    """拉取标的代码表。返回 [{thscode, ticker, name, exchange, asset_type}]。"""
+    data = _get("/api/meta/tickers/list", {"asset_type": asset_type, "limit": limit, "offset": 0})
+    if not data:
+        return []
+    return data.get("item") or []
+
+
+def fetch_snapshot_paged(limit=100, offset=0):
+    """全市场行情快照分页。返回 {code6: quote_dict} + total。"""
+    data = _get("/api/a-share/prices/snapshot", {"limit": limit, "offset": offset})
+    if not data:
+        return {}, 0
+    total = data.get("total", 0)
+    out = {}
+    for it in data.get("item") or []:
+        code6 = (it.get("thscode") or "")[:6]
+        out[code6] = {
+            "name": it.get("name", ""),
+            "code": code6,
+            "price": it.get("last_price"),
+            "change": it.get("price_change_ratio_pct"),
+            "amount": it.get("turnover"),
+            "volume": it.get("volume"),
+            "source": "ths",
+        }
+    return out, total
+
+
 def fetch_daily_kline(code, days=320):
     """历史日 K（前复权），返回 {dates, opens, highs, lows, closes, volumes} 升序。
     days 超过 10 年会被截断，按 320 默认即可。"""
@@ -138,17 +167,20 @@ def fetch_valuations(codes):
     ths = [t for t in ths if t]
     if not ths:
         return {}
-    data = _get("/api/a-share/valuations/snapshot", {"thscodes": ",".join(ths)})
-    if not data:
-        return {}
     out = {}
-    for it in data.get("item") or []:
-        code6 = (it.get("thscode") or "")[:6]
-        out[code6] = {
-            "pe_ttm": it.get("pe_ttm"), "pe_mrq": it.get("pe_mrq"),
-            "pb_mrq": it.get("pb_mrq"), "ps_ttm": it.get("ps_ttm"),
-            "pcf_ttm": it.get("pcf_ttm"),
-        }
+    # 大批量分批（单次 100 只以内，避免 URL 过长）
+    for i in range(0, len(ths), 100):
+        chunk = ths[i:i + 100]
+        data = _get("/api/a-share/valuations/snapshot", {"thscodes": ",".join(chunk)})
+        if not data:
+            continue
+        for it in data.get("item") or []:
+            code6 = (it.get("thscode") or "")[:6]
+            out[code6] = {
+                "pe_ttm": it.get("pe_ttm"), "pe_mrq": it.get("pe_mrq"),
+                "pb_mrq": it.get("pb_mrq"), "ps_ttm": it.get("ps_ttm"),
+                "pcf_ttm": it.get("pcf_ttm"),
+            }
     return out
 
 
