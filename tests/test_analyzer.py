@@ -67,7 +67,8 @@ class TestAnalyzer(unittest.TestCase):
 
     def test_signal_scale(self):
         self.assertEqual(az.signal_key_for_score(85), "strong_buy")
-        self.assertEqual(az.signal_key_for_score(60), "buy")
+        self.assertEqual(az.signal_key_for_score(68), "buy")
+        self.assertEqual(az.signal_key_for_score(60), "watch")
         self.assertEqual(az.signal_key_for_score(40), "watch")
         self.assertEqual(az.signal_key_for_score(25), "reduce")
         self.assertEqual(az.signal_key_for_score(10), "sell")

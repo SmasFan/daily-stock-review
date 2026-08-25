@@ -208,12 +208,16 @@ def run_review(args):
         b_up_ratio, src_ratio = mkt_ratio, "全市场"
     elif pool_ratio is not None:
         b_up_ratio, src_ratio = pool_ratio, "自选池"
-    regime = scr.apply_market_regime(analyses, b_up_ratio, idx_chg)
-    regime_m = scr.apply_market_regime(market_analyses, b_up_ratio, idx_chg)
+    market_temp = rp._market_temperature(analyses, breadth).get("score")
+    regime = scr.apply_market_regime(analyses, b_up_ratio, idx_chg, cold_temp=market_temp)
+    regime_m = scr.apply_market_regime(market_analyses, b_up_ratio, idx_chg, cold_temp=market_temp)
     if regime["overheat"]:
         print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
               f"{len(regime['downgraded']) + len(regime_m['downgraded'])} 只"
               f"未跑赢沪深300({idx_chg:+.2f}%)降为观望")
+    if regime["cold"]:
+        print(f"   ⚠ 急跌低温日（市场温度 {market_temp} < 20）："
+              f"buy 信号 {len(regime['downgraded']) + len(regime_m['downgraded'])} 只降为观望")
 
     print("== 生成复盘数据 ==")
     review = rp.build_review("A股", analyses, "post",
@@ -443,11 +447,15 @@ def run_recommend(args):
         b_up_ratio, src_ratio = mkt_ratio, "全市场"
     elif pool_ratio is not None:
         b_up_ratio, src_ratio = pool_ratio, "自选池"
-    regime = scr.apply_market_regime(screen_items, b_up_ratio, idx_chg)
-    regime_m = scr.apply_market_regime(market_items, b_up_ratio, idx_chg)
+    rec_temp = rp._market_temperature(screen_items, breadth).get("score")
+    regime = scr.apply_market_regime(screen_items, b_up_ratio, idx_chg, cold_temp=rec_temp)
+    regime_m = scr.apply_market_regime(market_items, b_up_ratio, idx_chg, cold_temp=rec_temp)
     if regime["overheat"]:
         print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
               f"{len(regime['downgraded'])} 只未跑赢沪深300({idx_chg:+.2f}%)降为观望")
+    if regime["cold"]:
+        print(f"   ⚠ 急跌低温日（市场温度 {rec_temp} < 20）："
+              f"{len(regime['downgraded']) + len(regime_m['downgraded'])} 只 buy 信号降为观望")
 
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())

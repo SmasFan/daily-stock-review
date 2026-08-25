@@ -140,6 +140,26 @@ class TestScreener(unittest.TestCase):
         self.assertFalse(r["overheat"])
         self.assertEqual(items[0].signal_key, "buy")
 
+    def test_market_regime_cold_downgrades_buy(self):
+        items = [
+            make_item("强买", "1", 10.0, change_pct=-1.0, signal_key="strong_buy"),
+            make_item("买", "2", 10.0, change_pct=-0.5, signal_key="buy"),
+            make_item("观望者", "3", 10.0, change_pct=1.0, signal_key="watch"),
+        ]
+        r = scr.apply_market_regime(items, 0.20, -1.0, cold_temp=15)  # 温度15<20 急跌低温
+        self.assertTrue(r["cold"])
+        self.assertEqual(items[0].signal_key, "strong_buy")  # 强买保留
+        self.assertEqual(items[1].signal_key, "watch")       # buy 降观望
+        self.assertTrue(items[1].overheat_downgraded)
+        self.assertEqual(items[2].signal_key, "watch")
+        self.assertEqual(r["downgraded"], ["买"])
+
+    def test_market_regime_warm_day_no_downgrade(self):
+        items = [make_item("A", "1", 10.0, change_pct=1.0, signal_key="buy")]
+        r = scr.apply_market_regime(items, 0.50, 0.5, cold_temp=55)  # 温度正常 → 不干预
+        self.assertFalse(r["cold"])
+        self.assertEqual(items[0].signal_key, "buy")
+
     def test_buy_reason_overheat_suffix(self):
         it = make_item("A", "1", 10.0, signal_key="buy", signal="买入",
                        tech_score=70, trend_status="多头排列")

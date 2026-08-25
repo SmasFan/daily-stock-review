@@ -22,9 +22,11 @@ BIAS_THRESHOLD = 5.0
 MA_SUPPORT_TOLERANCE = 0.02
 
 # 五档信号口径（canonical decision scale）
+# 2026-08 调优：buy 阈值 60→68（跟踪回测显示 60-79 段买入胜率仅 33.9%，
+# 失败样本评分中位 70，提高门槛剔除低分追涨）
 DECISION_SCALE = [
     (80, "strong_buy", "强烈买入"),
-    (60, "buy", "买入"),
+    (68, "buy", "买入"),
     (40, "watch", "观望"),
     (20, "reduce", "减仓"),
     (0, "sell", "卖出"),
@@ -275,12 +277,15 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     # ============ 信号映射（含趋势过滤） ============
     score_signal = signal_key_for_score(score)
     bull_trends = {"强势多头", "多头排列", "弱势多头"}
+    # 2026-08 调优：buy 信号要求更强的趋势确认（去掉弱势多头），
+    # 跟踪回测显示 buy 信号胜率仅 33.9%，多为弱势多头+中低分追涨
+    buy_trends = {"强势多头", "多头排列"}
     bear_trends = {"空头排列", "强势空头"}
     if score_signal == "strong_buy" and trend_status in {"强势多头", "多头排列"}:
         final = "strong_buy"
-    elif score_signal in ("strong_buy", "buy") and trend_status in bull_trends:
+    elif score_signal in ("strong_buy", "buy") and trend_status in buy_trends:
         final = "buy"
-    elif score_signal in ("strong_buy", "buy") and trend_status in {"盘整", "弱势空头"}:
+    elif score_signal in ("strong_buy", "buy") and trend_status in {"盘整", "弱势空头", "弱势多头"}:
         final = "watch"
     elif score_signal == "watch":
         final = "watch"
