@@ -2,11 +2,12 @@
 """微信推送（Server酱）：回测操作提醒 / 复盘总结 / 资金动向 / 盘中推荐。
 
 用法：
-    python3 scripts/push_alerts.py backtest   # 回测操作提醒（长江电力/中远海控/中证红利）
-    python3 scripts/push_alerts.py review     # 复盘总结
-    python3 scripts/push_alerts.py fund       # 资金动向总结
-    python3 scripts/push_alerts.py recommend  # 盘中推荐 Top
-    python3 scripts/push_alerts.py all        # 全部
+    python3 scripts/push_alerts.py intraday   # 盘中播报（回测+推荐+资金，10/12/14点）
+    python3 scripts/push_alerts.py close      # 收盘复盘
+    python3 scripts/push_alerts.py backtest / review / fund / recommend / all
+
+格式说明：微信 Server酱 会把 Markdown `**加粗**` 渲染成蓝色链接样式（看不清），
+因此全部改用纯文本 + Unicode 符号分隔（◇ ▍▶ · 等），颜色只用 emoji（🔴红涨 🟢绿跌）。
 
 Server酱 Key 从 .env 的 SERVERCHAN_KEY 读取（不写入代码/git）。
 """
@@ -72,7 +73,7 @@ def pct(v, nd=2):
 
 
 def pct_num(v, nd=2):
-    """格式化已是百分比的数值（-1.78 → -1.78%），recommend/institution 的 change_pct 用这个。"""
+    """格式化已是百分比的数值（-1.78 → -1.78%）。"""
     if v is None:
         return "--"
     try:
@@ -96,7 +97,6 @@ def money(v):
 
 
 def red(t):
-    # 微信 Server酱 不渲染 HTML，红涨用 emoji 标注
     return "🔴 " + str(t)
 
 
@@ -104,13 +104,18 @@ def green(t):
     return "🟢 " + str(t)
 
 
-def dark(t):
-    # Markdown 加粗（Server酱/微信支持），不用 HTML 颜色
-    return "**" + str(t) + "**"
+def head(t):
+    """区块标题：纯文本符号前缀（不用 Markdown 加粗，避免微信渲染成蓝色）。"""
+    return "▍" + str(t)
+
+
+def name(t):
+    """股票名：用 ◇ 前缀区分（纯文本）。"""
+    return "◇ " + str(t)
 
 
 def updown(v, text=None):
-    """涨跌标注：正红负绿（A股习惯，emoji），非数值返回 --。"""
+    """涨跌标注：正红负绿（A股习惯，emoji）。"""
     if v is None:
         return "--"
     try:
@@ -131,23 +136,23 @@ def push_backtest():
         return
     stocks = bi.get("stocks", {})
     targets = ["长江电力", "中远海控", "中证红利ETF招商"]
-    lines = ["## 网格回测 · 操作提醒", ""]
+    lines = [head("回测操作提醒"), ""]
     for name in targets:
         s = stocks.get(name)
         if not s:
-            lines.append("**%s**：回测无数据" % name)
+            lines.append("%s：回测无数据" % name)
             continue
         sm = s.get("summary", {})
-        lines.append("### %s" % name)
-        lines.append("- 年化 **%s** · 夏普 %s · 最大回撤 %s" % (
+        lines.append(name)
+        lines.append("年化 %s · 夏普 %s · 最大回撤 %s" % (
             pct(sm.get("annual_return")), sm.get("sharpe"), pct(sm.get("max_drawdown"))))
-        lines.append("- 卡玛 %s · 超额 %s · 交易 %s 笔" % (
+        lines.append("卡玛 %s · 超额 %s · 交易 %s 笔" % (
             sm.get("calmar"), pct(sm.get("excess_return")), sm.get("trade_count")))
         lines.append("")
     # 持仓网格信号
     hd = load("holdings_data.json")
     if hd:
-        lines.append("### 持仓网格信号")
+        lines.append("持仓网格信号")
         for h in hd.get("items", []):
             g = h.get("grid", {})
             if not g:
@@ -155,7 +160,7 @@ def push_backtest():
             act = g.get("action", "--")
             dev = g.get("dev")
             pos = g.get("position")
-            lines.append("- %s：**%s** · 偏离均值线 %s · 目标仓位 %s" % (
+            lines.append("%s：%s · 偏离均值线 %s · 目标仓位 %s" % (
                 h.get("name"), act,
                 ("%+.1f%%" % (dev * 100)) if dev is not None else "--",
                 ("%.0f%%" % (pos * 100)) if pos is not None else "--"))
@@ -172,8 +177,8 @@ def push_review():
         return
     t = d.get("temperature", {})
     st = d.get("stats", {})
-    lines = ["## 每日复盘总结", ""]
-    lines.append("**市场温度：%s（%s）**" % (t.get("score", "--"), t.get("label", "--")))
+    lines = [head("每日复盘总结"), ""]
+    lines.append("市场温度：%s（%s）" % (t.get("score", "--"), t.get("label", "--")))
     lines.append("市场广度：%s%% 上涨 · 平均涨跌 %s" % (
         t.get("breadth", "--"), pct(t.get("avg_change")) if isinstance(t.get("avg_change"), (int, float)) else "--"))
     if t.get("market_total"):
@@ -183,13 +188,13 @@ def push_review():
         st.get("up", "--"), st.get("down", "--"), st.get("total", "--")))
     lines.append("")
     if st.get("strongest"):
-        lines.append("- 最强：**%s**" % st["strongest"])
+        lines.append("最强：%s" % st["strongest"])
     if st.get("weakest"):
-        lines.append("- 最弱：**%s**" % st["weakest"])
+        lines.append("最弱：%s" % st["weakest"])
     # 大盘指数
     for ix in (d.get("indices") or [])[:5]:
         if ix.get("name") and ix.get("change_pct") is not None:
-            lines.append("- %s：%s" % (ix["name"], pct(ix["change_pct"])))
+            lines.append("%s：%s" % (ix["name"], pct(ix["change_pct"])))
     lines.append("")
     lines.append("完整复盘见页面 review.html")
     send("每日复盘总结 · %s" % t.get("label", ""), "\n".join(lines))
@@ -202,9 +207,9 @@ def push_fund():
         print("[fund] 无数据")
         return
     o = d.get("overview", {})
-    lines = ["## 资金动向总结", ""]
+    lines = [head("资金动向总结"), ""]
     main_net = o.get("main_net")
-    lines.append("**两市主力净流入：%s**" % (
+    lines.append("两市主力净流入：%s" % (
         "%.0f亿" % (main_net / 1e8) if isinstance(main_net, (int, float)) else "--"))
     lines.append("净流入板块 %s / 净流出板块 %s" % (
         o.get("inflow_sectors", "--"), o.get("outflow_sectors", "--")))
@@ -215,14 +220,14 @@ def push_fund():
     outf = (ind.get("outflow") or [])[:3]
     if inf:
         lines.append("")
-        lines.append("### 主力净流入板块")
+        lines.append("主力净流入板块")
         for x in inf:
-            lines.append("- %s：%s" % (x.get("sector") or x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ("%.1f亿" % (x.get("main_net", 0) / 1e8))))
+            lines.append("%s：%s" % (x.get("sector") or x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ("%.1f亿" % (x.get("main_net", 0) / 1e8))))
     if outf:
         lines.append("")
-        lines.append("### 主力净流出板块")
+        lines.append("主力净流出板块")
         for x in outf:
-            lines.append("- %s：%s" % (x.get("sector") or x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ("%.1f亿" % (x.get("main_net", 0) / 1e8))))
+            lines.append("%s：%s" % (x.get("sector") or x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ("%.1f亿" % (x.get("main_net", 0) / 1e8))))
     # 同花顺特色
     ths = d.get("ths", {})
     if ths:
@@ -230,14 +235,14 @@ def push_fund():
         hot = ths.get("hot_list", [])
         if dt.get("items"):
             lines.append("")
-            lines.append("### 龙虎榜（%s）" % (dt.get("date") or ""))
+            lines.append("龙虎榜（%s）" % (dt.get("date") or ""))
             for x in (dt["items"][:5]):
-                lines.append("- %s：净买 %s" % (x.get("name"), ("%.1f亿" % (x.get("net_value", 0) / 1e8)) if isinstance(x.get("net_value"), (int, float)) else "--"))
+                lines.append("%s：净买 %s" % (x.get("name"), ("%.1f亿" % (x.get("net_value", 0) / 1e8)) if isinstance(x.get("net_value"), (int, float)) else "--"))
         if hot:
             lines.append("")
-            lines.append("### 热股榜 Top5")
+            lines.append("热股榜 Top5")
             for x in hot[:5]:
-                lines.append("- %s：%s" % (x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ""))
+                lines.append("%s：%s" % (x.get("name"), pct(x.get("change_pct")) if x.get("change_pct") else ""))
     lines.append("")
     lines.append("完整资金页见 institution.html")
     send("资金动向总结", "\n".join(lines))
@@ -250,15 +255,15 @@ def push_recommend():
         print("[recommend] 无数据")
         return
     picks = d.get("picks", [])[:8]
-    lines = ["## 盘中推荐 Top%d" % len(picks), ""]
+    lines = [head("盘中推荐 Top%d" % len(picks)), ""]
     for i, p in enumerate(picks, 1):
-        lines.append("%d. **%s**（%s）%s → %s · %s分" % (
+        lines.append("%d. %s（%s）%s → %s · %s分" % (
             i, p.get("name"), p.get("sector", "--"),
             p.get("signal", "--"), p.get("rating", "--"), p.get("total_score", "--")))
         if p.get("change_pct") is not None:
             lines.append("   现价 %s · %s" % (p.get("price"), pct(p.get("change_pct"))))
         if p.get("reasons"):
-            lines.append("   %s" % p["reasons"][:80])
+            lines.append("   %s" % p["reasons"])
     lines.append("")
     lines.append("完整推荐页见 recommend.html")
     send("盘中推荐 · %s" % (d.get("generatedAt") or ""), "\n".join(lines))
@@ -281,14 +286,14 @@ def push_intraday():
     if bi:
         stocks = bi.get("stocks", {})
         targets = ["长江电力", "中远海控", "中证红利ETF招商"]
-        lines = [dark("回测操作提醒"), ""]
+        lines = [head("回测操作提醒"), ""]
         for name in targets:
             s = stocks.get(name)
             if not s:
-                lines.append("**%s**：回测无数据" % name)
+                lines.append("%s：回测无数据" % name)
                 continue
             sm = s.get("summary", {})
-            lines.append("**%s**" % name)
+            lines.append(name)
             lines.append("年化 %s · 夏普 %s · 回撤 %s" % (
                 red(pct(sm.get("annual_return"))) if (sm.get("annual_return") or 0) >= 0 else green(pct(sm.get("annual_return"))),
                 sm.get("sharpe"), pct(sm.get("max_drawdown"))))
@@ -297,7 +302,7 @@ def push_intraday():
             lines.append("")
         hd = load("holdings_data.json")
         if hd:
-            lines.append("**持仓网格信号**")
+            lines.append("持仓网格信号")
             for h in hd.get("items", []):
                 g = h.get("grid", {})
                 if not g:
@@ -305,7 +310,7 @@ def push_intraday():
                 dev = g.get("dev")
                 pos = g.get("position")
                 dev_s = updown(dev, ("%+.1f%%" % (dev * 100)) if dev is not None else "--")
-                lines.append("%s：**%s** · 偏离 %s · 仓位 %s" % (
+                lines.append("%s：%s · 偏离 %s · 仓位 %s" % (
                     h.get("name"), g.get("action", "--"), dev_s,
                     ("%.0f%%" % (pos * 100)) if pos is not None else "--"))
         parts.append(("回测", "\n".join(lines)))
@@ -313,23 +318,23 @@ def push_intraday():
     d = load("recommend_data.json")
     picks = (d.get("picks") or [])[:6] if d else []
     if picks:
-        lines = [dark("盘中推荐 Top%d" % len(picks)), ""]
+        lines = [head("盘中推荐 Top%d" % len(picks)), ""]
         for i, p in enumerate(picks, 1):
             chg = pct_num(p.get("change_pct")) if p.get("change_pct") is not None else "--"
-            lines.append("%d. **%s**（%s）%s → %s · %s分" % (
+            lines.append("%d. %s（%s）%s → %s · %s分" % (
                 i, p.get("name"), p.get("sector", "--"),
                 p.get("signal", "--"), p.get("rating", "--"), p.get("total_score", "--")))
             lines.append("   现价 %s · %s" % (p.get("price"), updown(p.get("change_pct"), chg)))
             if p.get("reasons"):
-                lines.append("   %s" % p["reasons"][:60])
+                lines.append("   %s" % p["reasons"])
         parts.append(("推荐", "\n".join(lines)))
     # 资金跟踪
     fi = load("institution_data.json")
     if fi:
         o = fi.get("overview", {})
         main_net = o.get("main_net")
-        lines = [dark("资金跟踪"), ""]
-        lines.append("两市主力净流入：**%s**" % (
+        lines = [head("资金跟踪"), ""]
+        lines.append("两市主力净流入：%s" % (
             updown(main_net, money(main_net)) if isinstance(main_net, (int, float)) else "--"))
         lines.append("净流入板块 %s / 净流出板块 %s" % (
             o.get("inflow_sectors", "--"), o.get("outflow_sectors", "--")))
@@ -351,12 +356,12 @@ def push_close():
     if d:
         t = d.get("temperature", {})
         st = d.get("stats", {})
-        lines = [dark("每日复盘总结"), ""]
+        lines = [head("每日复盘总结"), ""]
         tmp = t.get("score", "--")
-        # 温度：高温红/低温绿（emoji），不加粗（避免嵌套 Markdown 错乱）
+        # 温度：高温红/低温绿（emoji）
         tmp_s = red(str(tmp)) if isinstance(tmp, (int, float)) and tmp >= 60 else (
             green(str(tmp)) if isinstance(tmp, (int, float)) and tmp <= 40 else str(tmp))
-        lines.append("市场温度：**%s（%s）**" % (tmp_s, t.get("label", "--")))
+        lines.append("市场温度：%s（%s）" % (tmp_s, t.get("label", "--")))
         breadth = t.get("breadth")
         avg = t.get("avg_change")
         avg_s = updown(avg, pct_num(avg)) if isinstance(avg, (int, float)) else "--"
@@ -367,12 +372,12 @@ def push_close():
         lines.append("自选池：涨 %s / 跌 %s（共 %s）" % (
             red(st.get("up", "--")), green(st.get("down", "--")), st.get("total", "--")))
         if st.get("strongest"):
-            lines.append("- 最强：**%s**" % st["strongest"])
+            lines.append("最强：%s" % st["strongest"])
         if st.get("weakest"):
-            lines.append("- 最弱：**%s**" % st["weakest"])
+            lines.append("最弱：%s" % st["weakest"])
         for ix in (d.get("indices") or [])[:5]:
             if ix.get("name") and ix.get("change_pct") is not None:
-                lines.append("- %s：%s" % (ix["name"], updown(ix["change_pct"], pct_num(ix["change_pct"]))))
+                lines.append("%s：%s" % (ix["name"], updown(ix["change_pct"], pct_num(ix["change_pct"]))))
         parts.append(("复盘", "\n".join(lines)))
     if not parts:
         print("[close] 无数据")
