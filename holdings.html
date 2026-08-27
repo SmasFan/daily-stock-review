@@ -32,11 +32,96 @@
     }
 
     // 汇总卡片
+    const dayPnlCls = RV.fmt.cls(d.total_day_pnl || 0);
+    const totalPnlCls = RV.fmt.cls(d.total_pnl || 0);
+    const pnlMoney = (v) => {
+      if (v === null || v === undefined || isNaN(v)) return '--';
+      return (v > 0 ? '+' : '') + RV.fmt.money(v);
+    };
     const summary = `
       <div class="summary-grid">
         ${RV.ui.summaryCard('wallet', RV.fmt.money(d.total_market), '总市值')}
         ${RV.ui.summaryCard('chart-line', items.length + ' 只', '持仓标的')}
+        ${RV.ui.summaryCard('calendar-day', `<span class="${dayPnlCls}">${pnlMoney(d.total_day_pnl)}</span>`, '今日盈亏')}
+        ${RV.ui.summaryCard('piggy-bank', `<span class="${totalPnlCls}">${pnlMoney(d.total_pnl)}</span>`, '累计盈亏')}
       </div>`;
+
+    // 持仓详情弹窗：点击股票名查看完整信息 + 迷你K线
+    function stockDetailModal(p) {
+      const g = p.grid || {};
+      const money = v => (v > 0 ? '+' : '') + RV.fmt.money(v);
+      const kv = (k, v, cls = '') => `<div class="it-row"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`;
+      const rows = [
+        kv('代码', p.code),
+        kv('现价', RV.fmt.num(p.price, p.price < 5 ? 3 : 2), RV.fmt.cls(p.change_pct)),
+        kv('当日涨跌', RV.fmt.pct(p.change_pct), RV.fmt.cls(p.change_pct)),
+        kv('持仓份额', RV.fmt.num(p.shares, 0)),
+        kv('成本均价', p.cost ? RV.fmt.num(p.cost, 3) : '--'),
+        kv('当日盈亏', money(p.day_pnl), RV.fmt.cls(p.day_pnl)),
+        kv('持仓市值', RV.fmt.money(p.market_value)),
+        kv('累计盈亏', money(p.total_pnl) + (p.total_pnl_pct != null ? ' (' + RV.fmt.pct(p.total_pnl_pct) + ')' : ''), totalPnlCls),
+      ];
+      if (g.action || g.reason) {
+        rows.push(kv('网格建议', g.action || '--'));
+        rows.push(`<div style="color:var(--text-2);font-size:11px;line-height:1.5;padding:4px 0">${RV.ui.icon('grid-2', 'fa-xs')} ${g.reason || '--'}</div>`);
+      }
+      const overlay = document.createElement('div');
+      overlay.className = 'idx-modal-overlay';
+      overlay.innerHTML = `<div class="idx-modal">
+        <div class="idx-modal-head">
+          <span class="idx-m-name">${p.name} <span style="font-size:12px;color:var(--text-2)">${p.code}</span></span>
+          <span class="idx-m-price ${RV.fmt.cls(p.change_pct)}">${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)} ${RV.fmt.pct(p.change_pct)}</span>
+          <button class="idx-modal-close" aria-label="关闭">${RV.ui.icon('xmark')}</button>
+        </div>
+        <div class="idx-modal-body">
+          <div class="card-kv" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;font-size:13px">${rows.join('')}</div>
+          <div id="hd-kline-${p.code}" style="width:100%;height:220px;margin-top:12px"></div>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+      const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+      document.addEventListener('keydown', esc);
+      // 迷你K线（复用 echarts 加载器）
+      const loadEcharts = window.RV.loadEcharts || (() => Promise.reject(new Error('echarts 未就绪')));
+      loadEcharts().then(() => {
+        fetch('data/cache/kline_' + p.code + '.json')
+          .then(r => r.ok ? r.json() : null)
+          .then(k => { if (!k || !k.closes || !k.closes.length) return; renderKline(p.code, k); })
+          .catch(() => {});
+      }).catch(() => {});
+      function renderKline(code, k) {
+        const el = document.getElementById('hd-kline-' + code);
+        if (!el || !window.echarts) return;
+        const ch = window.echarts.init(el);
+        const n = k.closes.length;
+        const dates = k.dates.slice(Math.max(0, n - 120));
+        const closes = k.closes.slice(Math.max(0, n - 120));
+        const ma5 = closes.map((_, i) => i < 4 ? null : +(closes.slice(i - 4, i + 1).reduce((a, b) => a + b, 0) / 5).toFixed(3));
+        const ma20 = closes.map((_, i) => i < 19 ? null : +(closes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0) / 20).toFixed(3));
+        ch.setOption({
+          animation: false,
+          tooltip: { trigger: 'axis' },
+          grid: { left: 10, right: 10, top: 24, bottom: 20, containLabel: true },
+          xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { color: '#6b6258', fontSize: 10, interval: Math.max(0, Math.ceil(dates.length / 6) - 1) } },
+          yAxis: { type: 'value', scale: true, axisLabel: { color: '#6b6258', fontSize: 10 } },
+          dataZoom: [{ type: 'inside' }],
+          series: [
+            { name: '收盘', type: 'line', data: closes, showSymbol: false, lineStyle: { width: 1.6, color: '#5b8fd6' }, itemStyle: { color: '#5b8fd6' } },
+            { name: 'MA5', type: 'line', data: ma5, showSymbol: false, lineStyle: { width: 1, color: '#e8a33d' } },
+            { name: 'MA20', type: 'line', data: ma20, showSymbol: false, lineStyle: { width: 1, color: '#dc2626' } },
+          ],
+        });
+      }
+    }
+
+    // 股票名可点击弹详情
+    function nameLink(p) {
+      return `<a href="#" class="stock-link" data-hd-code="${p.code}" style="color:inherit;text-decoration:none" title="点击查看详情">${p.name}</a>`;
+    }
 
     // 持仓卡片
     const cards = items.map((p, i) => {
@@ -44,18 +129,21 @@
       return `
       <div class="card">
         <div class="card-header">
-          <div><span class="card-title">${p.name}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.code}</span></div>
+          <div><span class="card-title">${nameLink(p)}</span> <span class="sec-chip">${p.sector || ''}</span> <span class="date-tag">${p.code}</span></div>
           ${actionBadge(p.grid)}
         </div>
         <div class="card-summary">
           <span class="cs-item"><i>现价</i><b>${RV.fmt.num(p.price, p.price < 5 ? 3 : 2)}</b></span>
           <span class="cs-item"><i>涨幅</i><b class="${RV.fmt.cls(p.change_pct)}">${RV.fmt.pct(p.change_pct)}</b></span>
           <span class="cs-item"><i>市值</i><b>${RV.fmt.money(p.market_value)}</b></span>
+          <span class="cs-item"><i>今日盈亏</i><b class="${RV.fmt.cls(p.day_pnl)}">${pnlMoney(p.day_pnl)}</b></span>
         </div>
         <div class="card-detail">
         <div class="points" style="grid-template-columns:repeat(3,1fr)">
           <div class="point"><span class="p-label">持仓</span><span class="p-val">${RV.fmt.num(p.shares, 0)}</span></div>
           <div class="point"><span class="p-label">市值</span><span class="p-val">${RV.fmt.money(p.market_value)}</span></div>
+          <div class="point"><span class="p-label">成本</span><span class="p-val">${p.cost ? RV.fmt.num(p.cost, 3) : '--'}</span></div>
+          <div class="point"><span class="p-label">累计盈亏</span><span class="p-val ${RV.fmt.cls(p.total_pnl)}">${pnlMoney(p.total_pnl)} (${RV.fmt.pct(p.total_pnl_pct)})</span></div>
         </div>
         ${g.dev !== undefined && g.dev !== null ? `
         <div class="reason" style="margin-top:10px">${RV.ui.icon('grid-2', 'fa-xs')} 网格：${g.reason}</div>` : ''}
@@ -122,6 +210,17 @@
          ${emptyMsg}<div class="cards">${cards}</div></div>`
       + configSection
       + '<footer>网格建议来自均值线偏离策略 · 目标仓位为理论值非投资建议 · 不构成投资建议</footer>';
+
+    // 股票名点击 → 详情弹窗
+    document.addEventListener('click', e => {
+      const link = e.target.closest('.stock-link[data-hd-code]');
+      if (!link) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const code = link.getAttribute('data-hd-code');
+      const p = items.find(x => x.code === code);
+      if (p) stockDetailModal(p);
+    });
   } catch (e) {
     app.innerHTML = RV.ui.header('持仓跟踪', '', 'holdings') + RV.ui.error(e);
   }

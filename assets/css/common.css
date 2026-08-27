@@ -463,3 +463,23 @@ th.sort-desc::after { content: " ▼"; font-size: 10px; color: var(--accent, #c7
   background: var(--surface-2); border: 1px solid var(--border);
   font-size: 11px; font-weight: 800; color: var(--accent, #c78d5a);
 }
+
+/* ===== 宽基指数模块（全球配置） ===== */
+.wide-group { margin-top: 12px; }
+.wide-group:first-of-type { margin-top: 0; }
+.wide-group-title { font-size: 12px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; display:flex; align-items:center; gap:6px; }
+.wide-group-title i { color: var(--accent); }
+.wide-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.wide-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; cursor: pointer; transition: transform .15s, box-shadow .15s;
+  display:flex; flex-direction:column; gap:6px; min-width:0;
+}
+.wide-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.wide-head { display:flex; align-items:center; gap:6px; }
+.wide-name { font-size: 13px; font-weight: 800; color: var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wide-kind { font-size: 10px; color: var(--text-2); background: var(--surface-2); padding: 1px 6px; border-radius: 4px; flex-shrink:0; }
+.wide-price { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; display:flex; align-items:baseline; gap:8px; }
+.wide-price span { font-size: 12px; }
+.wide-meta { font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wide-sig { margin-top: -2px; }

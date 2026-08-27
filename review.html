@@ -177,6 +177,13 @@
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
     </div>`;
 
+    // ===== 宽基指数模块（2026-08）：沪深300/中证500/A500/科创50/恒生科技/创新药/中概/纳指/标普/医药 =====
+    let wideHtml = '';
+    try {
+      const wd = await RV.API.fetch('wide_index_data.json');
+      wideHtml = RV.ui.wideIndexSection(wd);
+    } catch (e) {}
+
     // ===== 汇总卡片 =====
     const tempoCls = t.score >= 55 ? 'up' : (t.score < 40 ? 'down' : '');
     const summary = `
@@ -524,7 +531,7 @@
         </div>`;
       const items = pageItems();
       app.innerHTML = RV.ui.header(`${d.market}每日复盘`, '趋势 · 评分 · 买卖点位 · 板块分组', 'review', d.generatedAt)
-        + indicesHtml + `<div class="section" data-nav="温度总览" data-nav-icon="temperature-high">${summary}</div>` + tabs
+        + indicesHtml + wideHtml + `<div class="section" data-nav="温度总览" data-nav-icon="temperature-high">${summary}</div>` + tabs
         + `<div data-nav="按板块" data-nav-icon="layer-group">${sectorSection(items, tab === 'watch' ? '自选股' : '大盘')}</div>`
         + cardSec()
         + '<footer>数据口径：MA5/10/20/60 · MACD(12,26,9) · RSI(6,12,24) · 点击板块展开/收起 · 仅供学习研究，不构成投资建议</footer>';      // 板块展开/收起

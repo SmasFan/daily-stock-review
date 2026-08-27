@@ -78,6 +78,83 @@
       return (neg ? '-' : '') + (a >= 1e8 ? (a/1e8).toFixed(2) + '亿' : (a >= 1e4 ? (a/1e4).toFixed(1) + '万' : a.toFixed(0))); };
     const cls = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
 
+    // ===== 股票详情弹窗：点击股票名查看当日行情 + 持仓 + 迷你K线 =====
+    function stockModal(x) {
+      const money = v => (v > 0 ? '+' : '') + RV.fmt.money(v);
+      const kv = (k, v, c = '') => `<div class="it-row"><span class="k">${k}</span><span class="v ${c}">${v}</span></div>`;
+      const rows = [
+        kv('代码', x.code || x.ticker || '--'),
+        kv('现价', x.price != null ? RV.fmt.num(x.price, x.price < 5 ? 3 : 2) : '--', cls(x.change_pct)),
+        kv('当日涨跌', x.change_pct != null ? RV.fmt.pct(x.change_pct) : '--', cls(x.change_pct)),
+      ];
+      if (x.inst_net != null) rows.push(kv('机构净买', mf(x.inst_net), cls(x.inst_net)));
+      if (x.inst_buy != null) rows.push(kv('机构买入 / 卖出', mf(x.inst_buy) + ' / ' + mf(x.inst_sell), cls(x.inst_net)));
+      if (x.hold_ratio != null) rows.push(kv('持股比例', RV.fmt.num(x.hold_ratio, 2) + '%'));
+      if (x.change != null) rows.push(kv('持仓变动', String(x.change), cls(x.change_ratio || 0)));
+      if (x.holder) rows.push(kv('机构', x.holder));
+      if (x.report) rows.push(kv('报告期', x.report + ' · ' + (x.end_date || '')));
+      if (x.amount != null) rows.push(kv('成交额', RV.fmt.amount(x.amount)));
+      if (x.turnover != null) rows.push(kv('换手率', RV.fmt.num(x.turnover, 2) + '%'));
+      if (x.heat != null) rows.push(kv('热度', RV.fmt.num(x.heat)));
+      if (x.limit_up_times != null) rows.push(kv('连板', x.limit_up_times));
+      if (x.analysis_content) rows.push(kv('异动原因', x.analysis_content));
+      const overlay = document.createElement('div');
+      overlay.className = 'idx-modal-overlay';
+      overlay.innerHTML = `<div class="idx-modal">
+        <div class="idx-modal-head">
+          <span class="idx-m-name">${x.name || x.ticker || ''} <span style="font-size:12px;color:var(--text-2)">${x.code || x.ticker || ''}</span></span>
+          <span class="idx-m-price ${cls(x.change_pct)}">${x.price != null ? RV.fmt.num(x.price, x.price < 5 ? 3 : 2) : '--'} ${x.change_pct != null ? RV.fmt.pct(x.change_pct) : ''}</span>
+          <button class="idx-modal-close" aria-label="关闭">${RV.ui.icon('xmark')}</button>
+        </div>
+        <div class="idx-modal-body">
+          <div class="card-kv" style="display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;font-size:13px">${rows.join('')}</div>
+          <div id="inst-kline-${x.code || x.ticker}" style="width:100%;height:200px;margin-top:12px"></div>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      document.body.style.overflow = 'hidden';
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      overlay.querySelector('.idx-modal-close').addEventListener('click', close);
+      const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
+      document.addEventListener('keydown', esc);
+      // 迷你K线
+      const code6 = String(x.code || x.ticker || '').replace(/\D/g, '').padStart(6, '0').slice(-6);
+      if (code6 && window.RV.loadEcharts) {
+        window.RV.loadEcharts().then(() => {
+          fetch('data/cache/kline_' + code6 + '.json').then(r => r.ok ? r.json() : null)
+            .then(k => {
+              if (!k || !k.closes || !k.closes.length) return;
+              const el = document.getElementById('inst-kline-' + (x.code || x.ticker));
+              if (!el || !window.echarts) return;
+              const ch = window.echarts.init(el);
+              const n = k.closes.length;
+              const dates = k.dates.slice(Math.max(0, n - 120));
+              const closes = k.closes.slice(Math.max(0, n - 120));
+              ch.setOption({
+                animation: false, tooltip: { trigger: 'axis' },
+                grid: { left: 10, right: 10, top: 24, bottom: 20, containLabel: true },
+                xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { color: '#6b6258', fontSize: 10, interval: Math.max(0, Math.ceil(dates.length / 6) - 1) } },
+                yAxis: { type: 'value', scale: true, axisLabel: { color: '#6b6258', fontSize: 10 } },
+                dataZoom: [{ type: 'inside' }],
+                series: [{ name: '收盘', type: 'line', data: closes, showSymbol: false, lineStyle: { width: 1.6, color: '#5b8fd6' }, itemStyle: { color: '#5b8fd6' } }],
+              });
+            }).catch(() => {});
+        }).catch(() => {});
+      }
+    }
+
+    // 股票名链接：可点击弹详情
+    function stockLink(x) {
+      const code = x.code || x.ticker || '';
+      return `<a href="#" class="stock-link" data-code="${code}" style="color:inherit;text-decoration:none" title="点击查看详情">${x.name || code}</a>`;
+    }
+    // 当日涨跌单元格
+    function chgCell(x) {
+      if (x.change_pct == null) return '';
+      return `<td class="${cls(x.change_pct)}" style="font-weight:700">${RV.fmt.pct(x.change_pct)}</td>`;
+    }
+
     // ===== 全市场主力资金概览 =====
     const mainNet = o.main_net ?? null;
     const overviewHtml = `
@@ -147,12 +224,12 @@
     // ===== 板块资金排行 =====
     function rankTable(rows, withPct = true) {
       if (!rows || !rows.length) return '<div class="empty">暂无数据</div>';
-      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>名称</th><th>主力净流入</th>${withPct ? '<th>净占比</th><th>涨跌</th>' : ''}</tr></thead><tbody>` +
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>名称</th>${withPct ? '<th>当日</th><th>主力净流入</th><th>净占比</th>' : '<th>主力净流入</th>'}</tr></thead><tbody>` +
         rows.map(r => `<tr>
-          <td>${r.name || r.code}</td>
+          <td>${stockLink(r)}</td>
+          ${withPct ? `<td class="${cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
           <td class="${cls(r.main_net)}">${mf(r.main_net)}</td>
-          ${withPct ? `<td class="${cls(r.main_ratio)}">${RV.fmt.pct(r.main_ratio)}</td>
-          <td class="${RV.fmt.cls(r.change_pct)}">${RV.fmt.pct(r.change_pct)}</td>` : ''}
+          ${withPct ? `<td class="${cls(r.main_ratio)}">${RV.fmt.pct(r.main_ratio)}</td>` : ''}
         </tr>`).join('') + '</tbody></table></div>';
     }
     const sector = d.sector || {};
@@ -184,9 +261,10 @@
     const bb = d.billboard || {};
     function instTable(rows) {
       if (!rows || !rows.length) return '<div class="empty">当日无机构席位参与</div>';
-      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构买入</th><th>机构卖出</th><th>机构净额</th></tr></thead><tbody>` +
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>当日</th><th>机构买入</th><th>机构卖出</th><th>机构净额</th></tr></thead><tbody>` +
         rows.map(r => `<tr>
-          <td>${r.name || r.code}</td>
+          <td>${stockLink(r)}</td>
+          ${chgCell(r)}
           <td class="up">${mf(r.inst_buy)}</td>
           <td class="down">${mf(r.inst_sell)}</td>
           <td class="${cls(r.inst_net)}"><b>${mf(r.inst_net)}</b></td>
@@ -200,7 +278,7 @@
         .filter(x => (x.inst_net || 0) > 0)
         .sort((a, b) => b.inst_net - a.inst_net)
         .slice(0, 8)
-        .forEach(x => picks.push({ code: x.code, name: x.name, type: '龙虎榜机构净买', value: x.inst_net, unit: '元' }));
+        .forEach(x => picks.push({ code: x.code, name: x.name, type: '龙虎榜机构净买', value: x.inst_net, unit: '元', change_pct: x.change_pct, price: x.price, inst_buy: x.inst_buy, inst_sell: x.inst_sell, inst_net: x.inst_net, amount: x.amount, turnover: x.turnover }));
       const nat = (d.institution && d.institution.national) || [];
       const seen = {};
       nat
@@ -214,7 +292,7 @@
         .forEach(x => {
           if (seen[x.code]) return;
           seen[x.code] = 1;
-          picks.push({ code: x.code, name: x.name, type: '国家队·' + (x.holder_type || '机构'), value: x.change_ratio || 0, unit: '%', detail: (x.holder || '') + ' ' + (x.report || '') });
+          picks.push({ code: x.code, name: x.name, type: '国家队·' + (x.holder_type || '机构'), value: x.change_ratio || 0, unit: '%', detail: (x.holder || '') + ' ' + (x.report || ''), change_pct: x.change_pct, price: x.price, hold_ratio: x.hold_ratio, change: x.change, holder: x.holder, report: x.report, end_date: x.end_date });
         });
       const bt = (d.institution && d.institution.by_type) || {};
       const best = {};
@@ -228,12 +306,13 @@
       Object.values(best).sort((a, b) => b.r - a.r).slice(0, 8).forEach(x => {
         if (seen[x.code]) return;
         seen[x.code] = 1;
-        picks.push({ code: x.code, name: x.name, type: '机构增持·' + (x.holder || ''), value: x.r, unit: '%', detail: x.report });
+        picks.push({ code: x.code, name: x.name, type: '机构增持·' + (x.holder || ''), value: x.r, unit: '%', detail: x.report, change_pct: x.change_pct, price: x.price, hold_ratio: x.hold_ratio, change: x.change, holder: x.holder, report: x.report, end_date: x.end_date });
       });
       if (!picks.length) return '';
       const rows = picks.map((p, i) => `
         <tr>
-          <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${p.name}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span></td>
+          <td class="asset-name"><span class="row-num">${String(i+1).padStart(2,'0')}</span>${stockLink(p)}${RV.ui.heatBtn(p.code, p.name, 'stock')}<span class="stock-code">${p.code}</span></td>
+          <td>${chgCell(p) || '<td>--</td>'}</td>
           <td><span class="signal-badge s-buy">${RV.ui.icon('building-columns','fa-xs')} ${p.type}</span></td>
           <td class="up" style="font-weight:800">${p.unit === '%' ? RV.fmt.pct(p.value) : RV.fmt.amount(p.value)}</td>
           <td style="font-size:11px;color:var(--text-2)">${p.detail || '--'}</td>
@@ -242,7 +321,7 @@
         <div class="section-title"><span class="title-icon">${RV.ui.icon('bullseye')}</span><h2>机构资金 · 明确标的</h2>
           <span class="sec-chip">龙虎榜机构净买 + 国家队/机构增持</span></div>
         <div class="table-desktop"><div class="table-wrap"><table class="data-table">
-          <thead><tr><th>个股</th><th>信号</th><th>金额/增持</th><th>明细</th></tr></thead>
+          <thead><tr><th>个股</th><th>当日</th><th>信号</th><th>金额/增持</th><th>明细</th></tr></thead>
           <tbody>${rows}</tbody></table></div></div>
         <div class="cards-mobile" style="margin-top:10px"><div class="mini-cards">${picks.map((p, i) => `
           <div class="mini-card"><div class="mini-head">
@@ -250,6 +329,7 @@
             <span class="mini-head-right"><span class="signal-badge s-buy">${RV.ui.icon('building-columns','fa-xs')} ${p.type}</span></span>
           </div>
           <div class="mini-kv">
+            <span class="k">当日涨跌</span><span class="v ${cls(p.change_pct)}" style="font-weight:800">${p.change_pct != null ? RV.fmt.pct(p.change_pct) : '--'}</span>
             <span class="k">金额/增持</span><span class="v up" style="font-weight:800">${p.unit === '%' ? RV.fmt.pct(p.value) : RV.fmt.amount(p.value)}</span>
             <span class="k">明细</span><span class="v" style="font-size:11px">${p.detail || '--'}</span>
           </div></div>`).join('')}</div></div>
@@ -289,12 +369,13 @@
     function natTable(rows) {
       if (!rows.length) return '<div class="empty">暂无数据</div>';
       const seen = new Set();
-      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>机构</th><th>持股比例</th><th>变动</th></tr></thead><tbody>` +
+      return `<div class="tk-table-wrap"><table class="ret-table"><thead><tr><th>股票</th><th>当日</th><th>机构</th><th>持股比例</th><th>变动</th></tr></thead><tbody>` +
         rows.map(r => {
           const key = r.code + r.holder;
           if (seen.has(key)) return '';
           seen.add(key);
-          return `<tr><td>${r.name || r.code}</td><td>${r.holder}</td>
+          return `<tr><td>${stockLink(r)}</td>${chgCell(r)}
+            <td>${r.holder}</td>
             <td>${RV.fmt.num(r.hold_ratio, 2)}%</td>
             <td class="${r.change === '增持' ? 'up' : (r.change === '减持' ? 'down' : '')}">${r.change || '--'}</td></tr>`;
         }).join('') + '</tbody></table></div>';
@@ -440,29 +521,29 @@
       const ths = d.ths || {};
       const dt = ths.dragon_tiger || {};
       const dtRows = (dt.items || []).map(x => `<tr>
-        <td>${x.name || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${stockLink(x)} <span class="row-num">${x.ticker || ''}</span></td>
         <td class="${cls((x.change || 0) * 100)}">${x.change != null ? RV.fmt.pct(x.change * 100) : '--'}</td>
         <td class="${cls(x.net_value || 0)}" style="font-weight:700">${x.net_value != null ? mf(x.net_value) : '--'}</td>
         <td>${x.hot_rank ?? '--'}</td>
       </tr>`).join('');
       const hotRows = (ths.hot_list || []).map((x, i) => `<tr>
-        <td>${i + 1}</td><td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${i + 1}</td><td>${stockLink(x)} <span class="row-num">${x.ticker || ''}</span></td>
         <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
         <td class="${cls(x.change_pct || 0)}">${x.change_pct != null ? RV.fmt.pct(x.change_pct) : '--'}</td>
         ${x.rank != null ? `<td>${x.rank}</td>` : ''}
       </tr>`).join('');
       const skyRows = (ths.skyrocket || []).map((x, i) => `<tr>
-        <td>${i + 1}</td><td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${i + 1}</td><td>${stockLink(x)} <span class="row-num">${x.ticker || ''}</span></td>
         <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
         <td class="${cls(x.change_pct || 0)}">${x.change_pct != null ? RV.fmt.pct(x.change_pct) : '--'}</td>
       </tr>`).join('');
       const anomRows = (ths.anomaly || []).map(x => `<tr>
-        <td>${x.stock_name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${stockLink(x)} <span class="row-num">${x.ticker || ''}</span></td>
         <td style="text-align:left;font-size:12px;color:var(--text-2);max-width:480px">${(x.analysis_content || x.reason || '').slice(0, 120)}${(x.analysis_content || '').length > 120 ? '…' : ''}</td>
       </tr>`).join('');
       const lu = ths.limit_up || {};
       const luRows = (lu.items || []).slice(0, 20).map(x => `<tr>
-        <td>${x.name || x.ticker || ''} <span class="row-num">${x.ticker || ''}</span></td>
+        <td>${stockLink(x)} <span class="row-num">${x.ticker || ''}</span></td>
         <td>${x.limit_up_times ?? (x.board ?? '--')}</td>
         <td>${x.price != null ? RV.fmt.num(x.price, 2) : '--'}</td>
       </tr>`).join('');
@@ -521,6 +602,28 @@
       + thsSection()
       + '<footer>主力=超大单+大单 · 龙虎榜/股东数据来自交易所披露 · 回测含双边0.1%成本 · 数据仅供学习研究，不构成投资建议</footer>';
     RV.ui.initSidebar();
+
+    // 股票名点击 → 详情弹窗
+    document.addEventListener('click', e => {
+      const link = e.target.closest('.stock-link[data-code]');
+      if (!link) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const code = link.getAttribute('data-code');
+      // 在 d 各列表中找该股票对象
+      let hit = null;
+      const scan = (x) => { if (!hit && x && (x.code === code || x.ticker === code)) hit = x; };
+      (d.billboard.net_list || []).forEach(scan);
+      (d.billboard.buys || []).forEach(scan);
+      (d.billboard.sells || []).forEach(scan);
+      (d.institution.national || []).forEach(scan);
+      Object.values(d.institution.by_type || {}).forEach(l => (l || []).forEach(scan));
+      Object.values(d.ths || {}).forEach(v => {
+        const items = (v && v.items) || (Array.isArray(v) ? v : null);
+        (items || []).forEach(scan);
+      });
+      if (hit) stockModal(hit);
+    });
   } catch (e) {
     app.innerHTML = RV.ui.header('资金', '', 'institution') + RV.ui.error(e);
   }

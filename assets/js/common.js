@@ -243,6 +243,47 @@
       update();
     },
 
+    /* 宽基指数模块：沪深300/中证500/A500/科创50/恒生科技/创新药/中概/纳指/标普/医药
+       wide = { items: [{code,name,kind,close,change_pct,pe,pb,pe_percentile,factors}], source_note } */
+    wideIndexSection(wide) {
+      if (!wide || !(wide.items || []).length) return '';
+      const items = wide.items;
+      const byKind = {};
+      items.forEach(x => { (byKind[x.kind || '其他'] = byKind[x.kind || '其他'] || []).push(x); });
+      const peText = (x) => {
+        if (x.pe == null) return 'PE --';
+        const srcTag = x.pe_source === '腾讯' ? '<span style="opacity:.55">(Q)</span>' : '';
+        if (x.pe_percentile != null) return `PE ${RV.fmt.num(x.pe, 1)} ${srcTag}<span class="${x.pe_percentile >= 0.7 ? 'down' : (x.pe_percentile <= 0.3 ? 'up' : '')}" style="font-size:10px">${(x.pe_percentile * 100).toFixed(0)}%分位</span>`;
+        return `PE ${RV.fmt.num(x.pe, 1)} ${srcTag}`;
+      };
+      const card = (x) => {
+        const f = x.factors || {};
+        const sig = f.signal_key ? RV.ui.signalBadge(f.signal_key, f.signal) : '';
+        return `
+        <div class="wide-card" data-wide-code="${x.code}">
+          <div class="wide-head">
+            <span class="wide-name">${x.name}</span>
+            <span class="wide-kind">${x.kind}</span>
+          </div>
+          <div class="wide-price">${RV.fmt.num(x.close)} <span class="${RV.fmt.cls(x.change_pct)}">${RV.fmt.pct(x.change_pct)}</span></div>
+          <div class="wide-meta">${peText(x)} · ${f.trend_status || ''} ${f.score != null ? '· ' + f.score + '分' : ''}</div>
+          ${sig ? `<div class="wide-sig">${sig}</div>` : ''}
+        </div>`;
+      };
+      const groups = Object.keys(byKind).map(k => `
+        <div class="wide-group">
+          <div class="wide-group-title">${RV.ui.icon('chart-column', 'fa-xs')} ${k}</div>
+          <div class="wide-cards">${byKind[k].map(card).join('')}</div>
+        </div>`).join('');
+      return `<div class="section" data-nav="宽基指数" data-nav-icon="chart-line">
+        <div class="section-title"><span class="title-icon">${RV.ui.icon('chart-line')}</span><h2>宽基指数 · 全球配置</h2>
+          ${RV.ui.infoDot(wide.source_note || '行情腾讯 · 估值蛋卷 · 技术因子同源分析器')}
+        </div>
+        ${groups}
+        <div style="font-size:11px;color:var(--text-2);margin-top:10px">${RV.ui.icon('hand-pointer', 'fa-xs')} 点击卡片查看走势 · PE分位=近10年估值百分位（越高越贵） · 不构成投资建议</div>
+      </div>`;
+    },
+
     /* 宏观新闻弹窗：点击「宏观利好/宏观风险」标签查看相关新闻列表
        data = { title, score, bulls, risks, key: [{title, kind, score}] } */
     macroNewsModal(data) {
@@ -371,8 +412,8 @@
   let chart = null;
   let overlayEl = null;
   let preloaded = false;
-
-  function loadEcharts() {
+  const loadEcharts = _loadEcharts;
+  async function _loadEcharts() {
     if (window.echarts) return Promise.resolve();
     if (echartsPromise) return echartsPromise;
     echartsPromise = new Promise((resolve, reject) => {
@@ -534,6 +575,70 @@
     e.stopPropagation();
     openHeat(btn.getAttribute('data-heat'), btn.getAttribute('data-heat-name'), btn.getAttribute('data-heat-kind') || 'stock');
   });
+
+  /* 宽基卡片点击 → 弹走势图（复用 heat 弹窗框架） */
+  document.addEventListener('click', e => {
+    const card = e.target.closest('.wide-card[data-wide-code]');
+    if (!card) return;
+    e.stopPropagation();
+    openWideKline(card.getAttribute('data-wide-code'));
+  });
+
+  async function openWideKline(code) {
+    try {
+      const isMobile = window.innerWidth <= 640;
+      const chartH = isMobile ? 280 : 360;
+      const overlay = document.createElement('div');
+      overlay.className = 'heat-overlay';
+      overlay.style.cssText = `position:fixed;inset:0;background:rgba(20,18,16,0.55);z-index:9998;display:flex;align-items:${isMobile ? 'flex-end' : 'center'};justify-content:center;padding:${isMobile ? '8px' : '16px'};`;
+      overlay.innerHTML = `<div class="heat-modal" style="background:var(--surface,#fff);border-radius:${isMobile ? '16px 16px 0 0' : '14px'};box-shadow:0 16px 48px rgba(0,0,0,.25);width:min(760px,${isMobile ? '100vw' : '92vw'});padding:${isMobile ? '12px 10px' : '18px 20px'};position:relative">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-weight:800;font-size:14px">${RV.ui.icon('chart-line')} 宽基走势</span>
+          <button class="heat-close" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">${RV.ui.icon('xmark')} 关闭</button>
+        </div>
+        <div class="heat-loading" style="display:flex;align-items:center;justify-content:center;height:${chartH}px;color:var(--text-2);font-size:13px">${RV.ui.icon('spinner', 'fa-spin')} 加载中…</div>
+      </div>`;
+      document.body.appendChild(overlay);
+      const close = () => { overlay.remove(); document.body.style.overflow = ''; };
+      overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+      overlay.querySelector('.heat-close').addEventListener('click', close);
+      document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+      document.body.style.overflow = 'hidden';
+
+      await RV.loadEcharts();
+      const resp = await fetch('data/cache/kline_idx_' + code + '_320.json');
+      if (!resp.ok) throw new Error('无K线数据');
+      const k = await resp.json();
+      const n = k.closes.length;
+      const dates = k.dates.slice(Math.max(0, n - 250));
+      const closes = k.closes.slice(Math.max(0, n - 250));
+      const ma5 = closes.map((_, i) => i < 4 ? null : +(closes.slice(i - 4, i + 1).reduce((a, b) => a + b, 0) / 5).toFixed(2));
+      const ma20 = closes.map((_, i) => i < 19 ? null : +(closes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0) / 20).toFixed(2));
+      const loader = overlay.querySelector('.heat-loading');
+      loader.outerHTML = `<div class="heat-chart" style="width:100%;height:${chartH}px"></div>`;
+      const ch = window.echarts.init(overlay.querySelector('.heat-chart'));
+      ch.setOption({
+        animation: false,
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['收盘', 'MA5', 'MA20'], top: 0, textStyle: { color: '#6b6258', fontSize: 11 } },
+        grid: { left: 8, right: 12, top: 30, bottom: 30, containLabel: true },
+        dataZoom: [{ type: 'inside' }],
+        xAxis: { type: 'category', data: dates, boundaryGap: false, axisLabel: { color: '#6b6258', fontSize: 10, interval: Math.max(0, Math.ceil(dates.length / 6) - 1) } },
+        yAxis: { type: 'value', scale: true, axisLabel: { color: '#6b6258', fontSize: 10 } },
+        series: [
+          { name: '收盘', type: 'line', data: closes, showSymbol: false, lineStyle: { width: 1.6, color: '#5b8fd6' }, itemStyle: { color: '#5b8fd6' }, areaStyle: { color: 'rgba(91,143,214,0.08)' } },
+          { name: 'MA5', type: 'line', data: ma5, showSymbol: false, lineStyle: { width: 1, color: '#e8a33d' } },
+          { name: 'MA20', type: 'line', data: ma20, showSymbol: false, lineStyle: { width: 1, color: '#dc2626' } },
+        ],
+      });
+    } catch (err) {
+      alert('打开走势失败: ' + (err.message || err));
+    }
+  }
+
+  // 暴露 echarts 加载器给其它模块（持仓/资金页迷你K线用）
+  window.RV = window.RV || {};
+  window.RV.loadEcharts = loadEcharts;
 })();
 
 /* ===== 表格点击排序：通用（所有页面 .data-table / .ret-table） =====

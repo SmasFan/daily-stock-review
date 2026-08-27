@@ -36,6 +36,7 @@ from src import futures as fm
 from src import stock_pool as sp
 from src import market_breadth as mb
 from src import fund_flow as ff
+from src import wide_index as wi
 from src.stock_pool import WATCHLIST_CODES, INDEX_CODES, MARKET_POOL, MARKET_POOL_CODES, BACKTEST_CODES, US_INDEX_CODES
 
 
@@ -574,6 +575,23 @@ def run_recommend(args):
         print(f"       💡 {it.reasons}")
 
 
+def run_wide_index():
+    """生成宽基指数模块数据：沪深300/中证500/A500/科创50/恒生科技/创新药/中概/纳指/标普/医药。"""
+    print("== 宽基指数 ==")
+    try:
+        d = wi.build_wide_index_data()
+        p = wi.save_wide_index_data(d)
+        print(f"   {p}  {len(d['items'])} 个宽基")
+        for it in d["items"]:
+            f = it.get("factors") or {}
+            pe = f"PE {it.get('pe') or '--'}"
+            if it.get("pe_percentile") is not None:
+                pe += f" 分位 {it['pe_percentile']:.0%}"
+            print(f"     {it['name']:8s} {it.get('change_pct', 0):+.2f}%  {pe}  {f.get('signal', '')}")
+    except Exception as e:
+        print(f"   [warn] 宽基指数生成失败: {e}")
+
+
 def run_holdings():
     """生成持仓页面数据：盘中实时跟踪 + 盘后复盘 + 网格提醒。"""
     print("== 持仓跟踪 ==")
@@ -662,6 +680,8 @@ def main():
         run_recommend(args)
     if args.mode in ("holdings", "all"):
         run_holdings()
+    if args.mode in ("review", "recommend", "holdings", "all"):
+        run_wide_index()
     if args.mode in ("metals", "all"):
         run_metals(args)
     if args.mode in ("institution", "all"):

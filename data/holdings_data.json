@@ -1,1 +1,116 @@
-{"generatedAt": "2026-08-04 10:29:37", "market_open": true, "holdings": [{"name": "长江电力", "code": "600900", "cost": 28.5, "shares": 1000}, {"name": "中证A500ETF景顺", "code": "159353", "cost": 1.15, "shares": 10000}, {"name": "中概互联网ETF易方达", "code": "513050", "cost": 1.2, "shares": 10000}], "items": [{"name": "长江电力", "code": "600900", "sector": "新能源电力", "shares": 1000.0, "price": 28.3, "change_pct": -2.58, "market_value": 28300.0, "grid": {"name": "长江电力", "code": "600900", "date": "2026-08-04", "close": null, "anchor": 30.4233, "price_only": false, "position": 0.8452, "action": "持有观察", "action_key": "hold", "target_pos": 0.8452, "dev": -0.0698, "grid_idx": -14, "reason": "偏离均值线 -6.98%，目标仓位 85% 与当前 85% 接近，维持现有仓位"}}, {"name": "中证A500ETF景顺", "code": "159353", "sector": "宽基跨境", "shares": 10000.0, "price": 1.23, "change_pct": 1.82, "market_value": 12300.0, "grid": {"name": "中证A500ETF景顺", "code": "159353", "date": "2026-08-04", "close": 1.23, "anchor": 1.2359, "price_only": true, "position": 0.7099, "action": "持有观察", "action_key": "hold", "target_pos": 0.7099, "dev": -0.0047, "grid_idx": -1, "reason": "偏离均值线 -0.47%，目标仓位 71% 与当前 71% 接近，维持现有仓位"}}, {"name": "中概互联网ETF易方达", "code": "513050", "sector": "科技-互联网传媒", "shares": 10000.0, "price": 1.178, "change_pct": -0.17, "market_value": 11780.0, "grid": {"name": "中概互联网ETF易方达", "code": "513050", "date": "2026-08-04", "close": 1.178, "anchor": 1.2068, "price_only": true, "position": 0.7497, "action": "持有观察", "action_key": "hold", "target_pos": 0.7497, "dev": -0.0239, "grid_idx": -5, "reason": "偏离均值线 -2.39%，目标仓位 75% 与当前 75% 接近，维持现有仓位"}}], "total_market": 52380.0}
+{
+  "generatedAt": "2026-08-27 22:09:43",
+  "market_open": false,
+  "holdings": [
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "cost": 28.5,
+      "shares": 1000
+    },
+    {
+      "name": "中证A500ETF景顺",
+      "code": "159353",
+      "cost": 1.15,
+      "shares": 10000
+    },
+    {
+      "name": "中概互联网ETF易方达",
+      "code": "513050",
+      "cost": 1.2,
+      "shares": 10000
+    }
+  ],
+  "items": [
+    {
+      "name": "中证A500ETF景顺",
+      "code": "159353",
+      "sector": "宽基跨境",
+      "shares": 10000.0,
+      "cost": 1.15,
+      "price": 1.247,
+      "prev_close": 1.234,
+      "change_pct": 1.05,
+      "market_value": 12470.0,
+      "grid": {
+        "name": "中证A500ETF景顺",
+        "code": "159353",
+        "date": "2026-08-27",
+        "close": 1.24,
+        "anchor": 1.2406,
+        "price_only": true,
+        "position": 0.7003,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.7003,
+        "dev": -0.0005,
+        "grid_idx": -1,
+        "reason": "偏离均值线 -0.05%，目标仓位 70% 与当前 70% 接近，维持现有仓位"
+      },
+      "day_pnl": 130.94,
+      "total_pnl": 970.0,
+      "total_pnl_pct": 8.43
+    },
+    {
+      "name": "长江电力",
+      "code": "600900",
+      "sector": "新能源电力",
+      "shares": 1000.0,
+      "cost": 28.5,
+      "price": 28.1,
+      "prev_close": 28.24,
+      "change_pct": -0.5,
+      "market_value": 28100.0,
+      "grid": {
+        "name": "长江电力",
+        "code": "600900",
+        "date": "2026-08-27",
+        "close": 27.95,
+        "anchor": 29.9888,
+        "price_only": false,
+        "position": 0.7481,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.7481,
+        "dev": -0.068,
+        "grid_idx": -5,
+        "reason": "偏离均值线 -6.80%，目标仓位 75% 与当前 75% 接近，维持现有仓位"
+      },
+      "day_pnl": -140.5,
+      "total_pnl": -400.0,
+      "total_pnl_pct": -1.4
+    },
+    {
+      "name": "中概互联网ETF易方达",
+      "code": "513050",
+      "sector": "科技-互联网传媒",
+      "shares": 10000.0,
+      "cost": 1.2,
+      "price": 1.08,
+      "prev_close": 1.085,
+      "change_pct": -0.46,
+      "market_value": 10800.0,
+      "grid": {
+        "name": "中概互联网ETF易方达",
+        "code": "513050",
+        "date": "2026-08-27",
+        "close": 1.081,
+        "anchor": 1.209,
+        "price_only": true,
+        "position": 0.7384,
+        "action": "持有观察",
+        "action_key": "hold",
+        "target_pos": 0.7384,
+        "dev": -0.1059,
+        "grid_idx": -4,
+        "reason": "偏离均值线 -10.59%，目标仓位 74% 与当前 74% 接近，维持现有仓位"
+      },
+      "day_pnl": -49.68,
+      "total_pnl": -1200.0,
+      "total_pnl_pct": -10.0
+    }
+  ],
+  "total_market": 51370.0,
+  "total_day_pnl": -59.24,
+  "total_pnl": -630.0
+}

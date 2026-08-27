@@ -575,6 +575,54 @@ def build_institution_data(codes: List[str]) -> Dict:
             data["ths"] = ths_part
     except Exception as e:
         print(f"   [warn] 同花顺特色数据整体失败: {e}")
+    # 给全部股票列表补当日行情（现价/涨跌幅/成交额/换手）：龙虎榜/国家队/机构/同花顺列表
+    try:
+        from . import data_provider as _dp2
+        _q_codes = []
+        for _x in (billboard.get("net_list") or []) + (billboard.get("buys") or []) + (billboard.get("sells") or []):
+            if _x.get("code"):
+                _q_codes.append(_x["code"])
+        for _x in inst.get("national") or []:
+            if _x.get("code"):
+                _q_codes.append(_x["code"])
+        for _lst in (inst.get("by_type") or {}).values():
+            for _x in _lst or []:
+                if _x.get("code"):
+                    _q_codes.append(_x["code"])
+        for _lst in (data.get("ths") or {}).values():
+            _items = _lst.get("items") if isinstance(_lst, dict) else _lst
+            for _x in _items or []:
+                _c = _x.get("code") or _x.get("ticker")
+                if _c:
+                    _q_codes.append(str(_c).zfill(6))
+        _q_codes = list(dict.fromkeys([c for c in _q_codes if c and c.isdigit()]))
+        if _q_codes:
+            _q = _dp2.fetch_quotes(_q_codes)
+            def _patch(_x):
+                _c = str(_x.get("code") or _x.get("ticker") or "").zfill(6)
+                _qq = _q.get(_c) or {}
+                if not _qq:
+                    return
+                _x["price"] = _qq.get("price")
+                _x["change_pct"] = _qq.get("change")
+                _x["amount"] = _qq.get("amount")
+                _x["turnover"] = _qq.get("turnover")
+                if not _x.get("name") and _qq.get("name"):
+                    _x["name"] = _qq["name"]
+            for _x in (billboard.get("net_list") or []) + (billboard.get("buys") or []) + (billboard.get("sells") or []):
+                _patch(_x)
+            for _x in inst.get("national") or []:
+                _patch(_x)
+            for _lst in (inst.get("by_type") or {}).values():
+                for _x in _lst or []:
+                    _patch(_x)
+            for _lst in (data.get("ths") or {}).values():
+                _items = _lst.get("items") if isinstance(_lst, dict) else _lst
+                for _x in _items or []:
+                    _patch(_x)
+            print(f"   股票列表补当日行情: {len(_q_codes)} 只")
+    except Exception as _e:
+        print(f"   [warn] 补当日行情失败: {_e}")
     return data
 
 

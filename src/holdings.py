@@ -104,13 +104,30 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
             "code": code,
             "sector": sector_map.get(code, ""),
             "shares": shares,
+            "cost": float(h.get("cost") or 0),
             "price": price or q.get("prevClose") or 0,
+            "prev_close": q.get("prevClose") or 0,
             "change_pct": change,
             "market_value": round(market, 2),
             "grid": grid,
         })
 
+    # 当日盈亏：市值 × 当日涨跌幅（涨跌幅为百分比小数，如 1.23 表示 +1.23%）
+    for it in items:
+        pct = it.get("change_pct") or 0
+        it["day_pnl"] = round(it["market_value"] * pct / 100.0, 2)
+        # 持仓盈亏：成本价 vs 现价
+        cost = it.get("cost") or 0
+        if cost and it["price"]:
+            it["total_pnl"] = round((it["price"] - cost) * it["shares"], 2)
+            it["total_pnl_pct"] = round((it["price"] / cost - 1) * 100, 2)
+        else:
+            it["total_pnl"] = 0
+            it["total_pnl_pct"] = 0
+
     total_market = sum(i["market_value"] for i in items)
+    total_day_pnl = sum(i.get("day_pnl") or 0 for i in items)
+    total_pnl = sum(i.get("total_pnl") or 0 for i in items)
 
     # 排序：有网格操作建议的优先（clear/buy/reduce 在前），其次按涨跌
     prio = {"clear": 0, "buy": 1, "reduce": 2, "hold": 3, "wait": 4, None: 5}
@@ -125,6 +142,8 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
         "holdings": holdings,
         "items": items,
         "total_market": round(total_market, 2),
+        "total_day_pnl": round(total_day_pnl, 2),
+        "total_pnl": round(total_pnl, 2),
     }
 
 

@@ -172,6 +172,13 @@
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
     </div>`;
 
+    // 宽基指数模块（2026-08）：沪深300/中证500/A500/科创50/恒生科技/创新药/中概/纳指/标普/医药
+    let wideHtml = '';
+    try {
+      const wd = await RV.API.fetch('wide_index_data.json');
+      wideHtml = RV.ui.wideIndexSection(wd);
+    } catch (e) {}
+
     // 网格策略操作提醒（均值线偏离度 → 操作建议）
     const ACTION_META = {
       clear:  { icon: 'right-from-bracket',  cls: 'down',  label: '超涨清仓' },
@@ -609,7 +616,7 @@
         + `<div data-nav="推荐榜单" data-nav-icon="table-list">${listTable(list.slice(0, 20))}</div>`
         + `<div data-nav="推荐详情" data-nav-icon="id-card"><div class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('id-card')}</span><h2>${tab === 'watch' ? '自选' : '大盘'} · 推荐详情</h2></div><div class="cards">${listCards(list.slice(0, 20))}</div></div></div>`;
       app.innerHTML = RV.ui.header('每日推荐 · 选股', '多因子横截面打分 + 技术信号 + 板块轮动', 'recommend', d.generatedAt)
-        + indicesHtml + gridSignalSection() + modTabs
+        + indicesHtml + wideHtml + gridSignalSection() + modTabs
         + (mod === 'sector' ? sectorHtml : stockHtml)
         + '<footer>硬过滤剔除 ST/退市/无报价 · 评分=技术50%+横截面50% · 板块按估值+动量排序 · 点击板块展开/收起 · 不构成投资建议</footer>';
       RV.ui.initSidebar();
