@@ -361,15 +361,22 @@ def fetch_index_kline(sym: str, count: int = 320, use_cache: bool = True,
                     return json.load(fp)
             except Exception:
                 pass
-    url = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
-           f"?param={sym},day,,,{count},qfq")
-    try:
-        raw = _get(url)
-        data = json.loads(raw)
-        node = data["data"][sym]
-        rows = node.get("qfqday") or node.get("day") or []
-    except Exception:
-        return None
+    urls = [
+        f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={sym},day,,,{count},qfq",
+        f"https://web.ifzq.gtimg.cn/appstock/app/newfqkline/get?param={sym},day,,,{count},qfq",
+        f"https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get?param={sym},day,,,{count},qfq",
+    ]
+    rows = []
+    for url in urls:
+        try:
+            raw = _get(url)
+            data = json.loads(raw)
+            node = data["data"][sym]
+            rows = node.get("qfqday") or node.get("day") or []
+            if rows:
+                break
+        except Exception:
+            continue
     if not rows:
         return None
     dates, opens, closes, highs, lows, vols = [], [], [], [], [], []

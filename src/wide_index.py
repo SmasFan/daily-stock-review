@@ -29,6 +29,8 @@ WIDE_INDEXES = [
     {"code": "sh513050", "name": "中概互联",    "kind": "海外中概", "pe_keys": ["CSIH30533"]},
     {"code": "usIXIC",   "name": "纳斯达克",    "kind": "美股",   "pe_keys": ["NDX"]},
     {"code": "usINX",    "name": "标普500",    "kind": "美股",   "pe_keys": ["SP500"]},
+    {"code": "sz159502", "name": "标普生物",    "kind": "美股生物", "pe_keys": []},
+    {"code": "sh513290", "name": "纳指生物",    "kind": "美股生物", "pe_keys": []},
     {"code": "sh512010", "name": "医药",       "kind": "行业",   "pe_keys": ["SH000991", "SH000978", "SZ399989"]},
 ]
 
