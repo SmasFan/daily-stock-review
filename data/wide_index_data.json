@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-28 14:52:21",
+  "generatedAt": "2026-08-28 15:43:20",
   "items": [
     {
       "code": "sh000300",
       "name": "沪深300",
       "kind": "A股宽基",
-      "close": 4608.81,
+      "close": 4609.18,
       "change_pct": -0.46,
       "prev_close": 4630.28,
       "factors": {
@@ -51,8 +51,8 @@
       "code": "sh000905",
       "name": "中证500",
       "kind": "A股宽基",
-      "close": 7896.61,
-      "change_pct": -0.63,
+      "close": 7895.45,
+      "change_pct": -0.64,
       "prev_close": 7946.33,
       "factors": {
         "trend_status": "弱势空头",
@@ -97,7 +97,7 @@
       "code": "sh000510",
       "name": "中证A500",
       "kind": "A股宽基",
-      "close": 5710.23,
+      "close": 5710.5,
       "change_pct": -0.53,
       "prev_close": 5740.88,
       "factors": {
@@ -140,8 +140,8 @@
       "code": "sh000688",
       "name": "科创50",
       "kind": "A股宽基",
-      "close": 1663.15,
-      "change_pct": -1.79,
+      "close": 1662.15,
+      "change_pct": -1.85,
       "prev_close": 1693.48,
       "factors": {
         "trend_status": "空头排列",
@@ -186,8 +186,8 @@
       "code": "hkHSTECH",
       "name": "恒生科技",
       "kind": "港股",
-      "close": 4622.99,
-      "change_pct": 0.06,
+      "close": 4604.78,
+      "change_pct": -0.34,
       "prev_close": 4620.29,
       "factors": {
         "trend_status": "空头排列",
@@ -222,9 +222,9 @@
         "boll_pos": 0.199
       },
       "price_ma20": 4756.0,
-      "pe": 24.7138,
+      "pe": 24.7435,
       "pb": 2.4939,
-      "pe_percentile": 0.4652,
+      "pe_percentile": 0.4659,
       "pe_date": "08-27",
       "pe_source": "蛋卷"
     },
@@ -273,8 +273,8 @@
       "code": "sh513050",
       "name": "中概互联",
       "kind": "海外中概",
-      "close": 1.083,
-      "change_pct": 0.28,
+      "close": 1.081,
+      "change_pct": 0.09,
       "prev_close": 1.08,
       "factors": {
         "trend_status": "空头排列",
@@ -309,9 +309,9 @@
         "boll_pos": 0.207
       },
       "price_ma20": 1.13,
-      "pe": 17.4805,
-      "pb": 2.093,
-      "pe_percentile": 0.096,
+      "pe": 17.4336,
+      "pb": 2.0874,
+      "pe_percentile": 0.0948,
       "pe_date": "08-27",
       "pe_source": "蛋卷"
     },
@@ -355,10 +355,10 @@
         "boll_pos": 0.651
       },
       "price_ma20": 26338.15,
-      "pe": 30.0221,
-      "pb": 9.1546,
-      "pe_percentile": 0.4596,
-      "pe_date": "08-26",
+      "pe": 30.4379,
+      "pb": 9.2851,
+      "pe_percentile": 0.4836,
+      "pe_date": "08-27",
       "pe_source": "蛋卷"
     },
     {
@@ -401,18 +401,18 @@
         "boll_pos": 0.608
       },
       "price_ma20": 7701.48,
-      "pe": 25.3051,
-      "pb": 5.5413,
-      "pe_percentile": 0.5844,
-      "pe_date": "08-26",
+      "pe": 25.4808,
+      "pb": 5.5728,
+      "pe_percentile": 0.6,
+      "pe_date": "08-27",
       "pe_source": "蛋卷"
     },
     {
       "code": "sz159502",
       "name": "标普生物",
       "kind": "美股生物",
-      "close": 1.69,
-      "change_pct": -0.41,
+      "close": 1.689,
+      "change_pct": -0.47,
       "prev_close": 1.697,
       "factors": {
         "trend_status": "强势多头",
