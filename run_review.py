@@ -183,9 +183,7 @@ def run_review(args):
         print(f"   资金流成功 {ok} / {len(fflow_codes)} 只")
         del fflows
 
-    # 普涨过热日闸门（2026-08-07，口径与推荐模块一致）：全市场/自选池上涨占比 ≥65%
-    # 视为过热日，当日未跑赢沪深300 的买入信号降为观望，避免普涨日复盘买入信号泛滥。
-    # 全市场数据缺失时退用自选池上涨占比；两者任一超阈即触发。
+    # 普涨过热日闸门 + 急跌低温闸门（2026-08，口径与推荐模块共用一套 helper）
     breadth = mb.fetch_market_breadth(use_cache=True)
     if breadth and breadth.get("total"):
         print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
@@ -195,30 +193,11 @@ def run_review(args):
         if ix.get("code") == "sh000300" and ix.get("change_pct") is not None:
             idx_chg = ix["change_pct"]
             break
-    pool_up = sum(1 for a in analyses if a.change_pct > 0)
-    pool_ratio = pool_up / len(analyses) if analyses else None
-    mkt_ratio = None
-    if breadth and breadth.get("total"):
-        mkt_ratio = breadth["up"] / breadth["total"]
-    b_up_ratio = None
-    src_ratio = ""
-    if mkt_ratio is not None and pool_ratio is not None:
-        b_up_ratio = max(mkt_ratio, pool_ratio)
-        src_ratio = "全市场" if mkt_ratio >= pool_ratio else "自选池"
-    elif mkt_ratio is not None:
-        b_up_ratio, src_ratio = mkt_ratio, "全市场"
-    elif pool_ratio is not None:
-        b_up_ratio, src_ratio = pool_ratio, "自选池"
+    b_up_ratio, src_ratio = compute_breadth_ratio(analyses, breadth)
     market_temp = rp._market_temperature(analyses, breadth).get("score")
     regime = scr.apply_market_regime(analyses, b_up_ratio, idx_chg, cold_temp=market_temp)
     regime_m = scr.apply_market_regime(market_analyses, b_up_ratio, idx_chg, cold_temp=market_temp)
-    if regime["overheat"]:
-        print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
-              f"{len(regime['downgraded']) + len(regime_m['downgraded'])} 只"
-              f"未跑赢沪深300({idx_chg:+.2f}%)降为观望")
-    if regime["cold"]:
-        print(f"   ⚠ 急跌低温日（市场温度 {market_temp} < 20）："
-              f"buy 信号 {len(regime['downgraded']) + len(regime_m['downgraded'])} 只降为观望")
+    _regime_warn(regime, regime_m, src_ratio, idx_chg, market_temp)
 
     print("== 生成复盘数据 ==")
     review = rp.build_review("A股", analyses, "post",
@@ -280,7 +259,51 @@ def run_review(args):
     return pool, indices, market_analyses
 
 
-def _load_sector_valuation():
+def compute_breadth_ratio(items, breadth):
+    """全市场/自选池上涨占比取大者作为过热闸门输入。
+
+    全市场数据缺失时退用自选池上涨占比。返回 (b_up_ratio, src_ratio)。
+    """
+    pool_up = sum(1 for it in items if it.change_pct > 0)
+    pool_ratio = pool_up / len(items) if items else None
+    mkt_ratio = None
+    if breadth and breadth.get("total"):
+        mkt_ratio = breadth["up"] / breadth["total"]
+    b_up_ratio = None
+    src_ratio = ""
+    if mkt_ratio is not None and pool_ratio is not None:
+        b_up_ratio = max(mkt_ratio, pool_ratio)
+        src_ratio = "全市场" if mkt_ratio >= pool_ratio else "自选池"
+    elif mkt_ratio is not None:
+        b_up_ratio, src_ratio = mkt_ratio, "全市场"
+    elif pool_ratio is not None:
+        b_up_ratio, src_ratio = pool_ratio, "自选池"
+    return b_up_ratio, src_ratio
+
+
+def _regime_warn(regime, regime_m, src_ratio, idx_chg, temp, items_label=True):
+    """过热/低温触发时打印提示（复盘与推荐口径一致）。"""
+    n = len(regime['downgraded']) + len(regime_m['downgraded'])
+    if regime["overheat"]:
+        print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{regime['breadth_up_ratio']:.0%}）："
+              f"{n} 只未跑赢沪深300({idx_chg:+.2f}%)降为观望")
+    if regime["cold"]:
+        print(f"   ⚠ 急跌低温日（市场温度 {temp} < 20）：{n} 只 buy 信号降为观望")
+
+
+def load_backtest_prev():
+    """读取旧版单文件 data/backtest_data.json（兼容，不存在返回 None）。"""
+    bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
+    if not os.path.exists(bt_path):
+        return None
+    try:
+        with open(bt_path, "r", encoding="utf-8") as fp:
+            return json.load(fp)
+    except Exception:
+        return None
+
+
+def load_sector_valuation():
     """读取 sector_valuation_data.js，返回板块估值记录列表。"""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sector_valuation_data.js")
     try:
@@ -291,6 +314,10 @@ def _load_sector_valuation():
     except Exception as e:
         print(f"   [warn] 板块估值读取失败: {e}")
     return []
+
+
+def _load_sector_valuation():
+    return load_sector_valuation()
 
 
 def _rank_sectors(sectors):
@@ -421,10 +448,7 @@ def run_recommend(args):
     market_picks = scr.screen(market_items, tech_weight=0.5, top_n=market_top)
     market_picks.sort(key=lambda it: (scr.strength_key(it), -it.total_score))
 
-    # 普涨过热日闸门（2026-08-07）：全市场上涨家数占比 ≥65% 视为过热日，
-    # 当日未跑赢沪深300 的买入信号降为观望，避免普涨日推荐买入泛滥。
-    # 全市场数据缺失时退用自选池上涨占比；两者任一超阈即触发（自选池普涨
-    # 同样会导致推荐买入泛滥，哪怕大盘只有 43% 上涨）。
+    # 普涨过热日闸门 + 急跌低温闸门（2026-08，与复盘模块共用 compute_breadth_ratio/_regime_warn）
     breadth = mb.fetch_market_breadth(use_cache=True)
     if breadth and breadth.get("total"):
         print(f"   全市场涨跌家数: 涨{breadth['up']} 跌{breadth['down']} "
@@ -434,29 +458,11 @@ def run_recommend(args):
         if ix.get("code") == "sh000300" and ix.get("change_pct") is not None:
             idx_chg = ix["change_pct"]
             break
-    pool_up = sum(1 for it in screen_items if it.change_pct > 0)
-    pool_ratio = pool_up / len(screen_items) if screen_items else None
-    mkt_ratio = None
-    if breadth and breadth.get("total"):
-        mkt_ratio = breadth["up"] / breadth["total"]
-    b_up_ratio = None
-    src_ratio = ""
-    if mkt_ratio is not None and pool_ratio is not None:
-        b_up_ratio = max(mkt_ratio, pool_ratio)
-        src_ratio = "全市场" if mkt_ratio >= pool_ratio else "自选池"
-    elif mkt_ratio is not None:
-        b_up_ratio, src_ratio = mkt_ratio, "全市场"
-    elif pool_ratio is not None:
-        b_up_ratio, src_ratio = pool_ratio, "自选池"
+    b_up_ratio, src_ratio = compute_breadth_ratio(screen_items, breadth)
     rec_temp = rp._market_temperature(screen_items, breadth).get("score")
     regime = scr.apply_market_regime(screen_items, b_up_ratio, idx_chg, cold_temp=rec_temp)
     regime_m = scr.apply_market_regime(market_items, b_up_ratio, idx_chg, cold_temp=rec_temp)
-    if regime["overheat"]:
-        print(f"   ⚠ 普涨过热日（{src_ratio}上涨占比{b_up_ratio:.0%}）："
-              f"{len(regime['downgraded'])} 只未跑赢沪深300({idx_chg:+.2f}%)降为观望")
-    if regime["cold"]:
-        print(f"   ⚠ 急跌低温日（市场温度 {rec_temp} < 20）："
-              f"{len(regime['downgraded']) + len(regime_m['downgraded'])} 只 buy 信号降为观望")
+    _regime_warn(regime, regime_m, src_ratio, idx_chg, rec_temp)
 
     # 板块推荐：基于估值 + 动量
     sector_recs = _rank_sectors(_load_sector_valuation())
@@ -506,14 +512,7 @@ def run_recommend(args):
             hit = pool_by_code.get(hc)
             if hit:
                 cand[hc] = (hit.name, hc)
-    bt_data_prev = None
-    bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
-    if os.path.exists(bt_path):
-        try:
-            with open(bt_path, "r", encoding="utf-8") as fp:
-                bt_data_prev = json.load(fp)
-        except Exception:
-            bt_data_prev = None
+    bt_data_prev = load_backtest_prev()
     grid_signals = gs.build_grid_signals(list(cand.values()), gparams, gap, bt_data_prev, holding_codes)
     print(f"   推荐候选 {len(cand)} 只，网格信号成功 {len(grid_signals)} 只")
     for s in grid_signals:
@@ -533,18 +532,9 @@ def run_recommend(args):
             import time as _t
             for c in fin_codes:
                 fi = ths_api.fetch_financial_indicators(c)
-                if fi:
-                    g = fi.get("growth", {})
-                    p = fi.get("profitability", {})
-                    s = fi.get("solvency", {})
-                    financials[c] = {
-                        "revenue_yoy": g.get("calculate_operating_income_yoy_growth_ratio"),
-                        "profit_yoy": g.get("calculate_parent_holder_net_profit_yoy_growth_ratio"),
-                        "roe": p.get("index_weighted_avg_roe"),
-                        "gross_margin": p.get("sale_gross_margin"),
-                        "net_margin": p.get("sale_net_interest_ratio"),
-                        "debt_ratio": s.get("asset_liability_ratio"),
-                    }
+                fs = ths_api.extract_financial_summary(fi)
+                if fs:
+                    financials[c] = fs
                 _t.sleep(0.15)
             print(f"   同花顺财务指标: {len(financials)}/{len(fin_codes)} 只")
     except Exception as e:
@@ -597,14 +587,7 @@ def run_holdings():
     print("== 持仓跟踪 ==")
     gparams = gbt.GridParams()
     gap = gbt.AnchorParams(lookback_days=750, min_periods=500)
-    bt_data_prev = None
-    bt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "backtest_data.json")
-    if os.path.exists(bt_path):
-        try:
-            with open(bt_path, "r", encoding="utf-8") as fp:
-                bt_data_prev = json.load(fp)
-        except Exception:
-            bt_data_prev = None
+    bt_data_prev = load_backtest_prev()
     data = hd.build_holdings_data(gparams, gap, bt_data_prev)
     p = hd.save_holdings_data(data)
     open_now = "盘中" if data.get("market_open") else "盘后"

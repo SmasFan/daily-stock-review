@@ -184,6 +184,27 @@ def fetch_valuations(codes):
     return out
 
 
+def extract_financial_summary(fi: dict) -> dict:
+    """把 fetch_financial_indicators 的原始分组结果映射为通用摘要字段。
+
+    返回 {revenue_yoy, profit_yoy, roe, gross_margin, net_margin, debt_ratio}（缺省 None）。
+    供 run_review 推荐财务栏、build_lowval 质量分等共用，避免多处重复 key 映射。
+    """
+    if not fi:
+        return {}
+    g = fi.get("growth", {})
+    p = fi.get("profitability", {})
+    s = fi.get("solvency", {})
+    return {
+        "revenue_yoy": g.get("calculate_operating_income_yoy_growth_ratio"),
+        "profit_yoy": g.get("calculate_parent_holder_net_profit_yoy_growth_ratio"),
+        "roe": p.get("index_weighted_avg_roe"),
+        "gross_margin": p.get("sale_gross_margin"),
+        "net_margin": p.get("sale_net_interest_ratio"),
+        "debt_ratio": s.get("asset_liability_ratio"),
+    }
+
+
 def fetch_financial_indicators(code, report=None):
     """单只股票财务指标（按能力块分组）。
 

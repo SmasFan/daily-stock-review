@@ -43,17 +43,15 @@ def code_sector(code):
 
 
 def pct_rank(values, higher_is_better=True):
-    """横截面百分位排名（0-100）。"""
-    n = len(values)
-    if n == 0:
-        return {}
-    import statistics
-    out = {}
-    for i, v in enumerate(values):
-        less = sum(1 for x in values if x is not None and v is not None and
-                   (x < v if higher_is_better else x > v))
-        out[i] = less / n * 100
-    return out
+    """横截面百分位排名（0-100），复用 screener.rank_pct 的 O(n log n) 实现。"""
+    try:
+        from src.screener import rank_pct
+    except Exception:
+        rank_pct = None
+    if rank_pct is None:
+        raise ImportError("screener.rank_pct 不可用")
+    scores = rank_pct(list(values), higher_is_better=higher_is_better)
+    return {i: s for i, s in enumerate(scores)}
 
 
 def is_st_or_bad(name):
@@ -235,18 +233,9 @@ def main():
     fins = {}
     for c in final_codes:
         fi = ths_api.fetch_financial_indicators(c)
-        if fi:
-            g = fi.get("growth", {})
-            p = fi.get("profitability", {})
-            s = fi.get("solvency", {})
-            fins[c] = {
-                "revenue_yoy": g.get("calculate_operating_income_yoy_growth_ratio"),
-                "profit_yoy": g.get("calculate_parent_holder_net_profit_yoy_growth_ratio"),
-                "roe": p.get("index_weighted_avg_roe"),
-                "gross_margin": p.get("sale_gross_margin"),
-                "net_margin": p.get("sale_net_interest_ratio"),
-                "debt_ratio": s.get("asset_liability_ratio"),
-            }
+        fs = ths_api.extract_financial_summary(fi)
+        if fs:
+            fins[c] = fs
         time.sleep(0.15)
     # 质量门槛：ROE>0 且 净利增速>-30%（排除明显亏损/衰退）
     good = []

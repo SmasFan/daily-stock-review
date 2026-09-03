@@ -9,11 +9,18 @@
 """
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import replace
 from typing import Dict, List, Optional, Tuple
 
 from . import grid_backtest as gbt
 from . import data_provider as dp
+from . import stock_pool as sp
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKTEST_INDEX_PATH = os.path.join(BASE_DIR, "data", "backtest_index.json")
+BACKTEST_SPLIT_DIR = os.path.join(BASE_DIR, "data", "backtest")
 
 
 def grid_action(dev: Optional[float], pos: Optional[float],
@@ -121,9 +128,10 @@ def compute_grid_signal(name: str, code: str,
 
 def signal_from_backtest(name: str, code: str, stock: Dict,
                          gparams: Optional[gbt.GridParams] = None) -> Optional[Dict]:
-    """从已有的回测结果（backtest_data.json 的 stocks[name]）生成信号，避免重复计算。
+    """从已有回测结果生成信号，避免重复拉长K线/估值。
 
-    stock 结构对齐 build_backtest_data：{summary, equity, benchmark, dates, position, dev, trades, price_only}
+    stock 可为完整单只文件（含 close/dates/dev/position/anchor）或精简索引条目
+    （仅 summary）。完整数据给出现价；仅摘要时现价置 None，由调用方用行情快照补齐。
     """
     gparams = gparams or gbt.GridParams()
     # 与回测口径一致：复用回测实际使用的 ATR 动态步长
@@ -139,7 +147,9 @@ def signal_from_backtest(name: str, code: str, stock: Dict,
     dev = devs[-1]
     pos = positions[-1] if positions else None
     sig = grid_action(dev, pos, gparams)
-    last_close = None
+    last_close = stock.get("close")
+    if isinstance(last_close, (list, tuple)):
+        last_close = last_close[-1] if last_close else None
     anchor = anchors[-1] if anchors else None
     return {
         "name": name,
@@ -158,6 +168,55 @@ def signal_from_backtest(name: str, code: str, stock: Dict,
     }
 
 
+def _bt_index_members() -> Tuple[Dict, Dict]:
+    """读取 backtest 索引（含拆分文件路径）。返回 (members, index)。
+
+    members: {code: {name, stock}}，代码优先匹配。无索引/读取失败返回空。
+    """
+    index = {}
+    if os.path.exists(BACKTEST_INDEX_PATH):
+        try:
+            with open(BACKTEST_INDEX_PATH, "r", encoding="utf-8") as fp:
+                index = json.load(fp) or {}
+        except Exception:
+            index = {}
+    bt_stocks = index.get("stocks") or {}
+    try:
+        backtest_meta = sp.BACKTEST_CODES
+    except Exception:
+        backtest_meta = []
+    name_to_code = {meta["name"]: meta["code"] for meta in backtest_meta}
+    code_to_name = {meta["code"]: meta["name"] for meta in backtest_meta}
+    # 先补索引里没有 code 映射的（索引按 name 键存储）
+    members = {}
+    for name, entry in bt_stocks.items():
+        code = name_to_code.get(name, "")
+        if not code:
+            continue
+        members.setdefault(code, {"name": name, "stock": entry})
+    return members, index
+
+
+def _load_split_stock(code: str) -> Optional[Dict]:
+    """加载单只拆分文件（data/backtest/{name}.json），失败返回 None。"""
+    name = ""
+    try:
+        for meta in sp.BACKTEST_CODES:
+            if meta["code"] == code:
+                name = meta["name"]
+                break
+    except Exception:
+        return None
+    if not name:
+        return None
+    path = os.path.join(BACKTEST_SPLIT_DIR, name + ".json")
+    try:
+        with open(path, "r", encoding="utf-8") as fp:
+            return json.load(fp)
+    except Exception:
+        return None
+
+
 def build_grid_signals(codes: List[Tuple[str, str]],
                        gparams: Optional[gbt.GridParams] = None,
                        ap: Optional[gbt.AnchorParams] = None,
@@ -165,41 +224,49 @@ def build_grid_signals(codes: List[Tuple[str, str]],
                        holding_codes: Optional[set] = None) -> List[Dict]:
     """批量计算网格信号。codes: [(name, code), ...]。返回按操作优先级排序列表。
 
-    backtest_data: 可选，若提供则优先复用其中已有的回测结果（按名称匹配，
-    并自动用回测标的代码兜底），其余标的再现场计算，避免重复拉取长K线/估值数据。
-    holding_codes: 可选，持仓代码集合，命中时在信号中标记 is_holding=True。
+    复用顺序（避免重复拉长K线/估值）：
+    1. 完整拆分文件 data/backtest/{name}.json（含最新 dev/position/close，当日盘后已刷新）
+    2. 索引/传入 backtest_data 的精简摘要（dev/position 序列缺失时跳过）
+    其余标的现场计算。
+    backtest_data: 兼容旧参数，传 backtest_index.json 结构即可；缺省自动读索引。
+    holding_codes: 持仓代码集合，命中时标记 is_holding=True。
     """
     holding_codes = holding_codes or set()
-    out = []
+    gparams = gparams or gbt.GridParams()
     order = {"clear": 0, "buy": 1, "reduce": 2, "hold": 3, "wait": 4}
-    done = set()
+    members, index = _bt_index_members()
     if backtest_data:
-        bt_stocks = backtest_data.get("stocks") or {}
-        # 名称 -> code 映射（BACKTEST_CODES 顺序提供真实代码，用于按 code 兜底匹配）
-        name_to_code = {}
+        index = backtest_data if isinstance(backtest_data, dict) else {}
+        members = {}
+        bt_stocks = index.get("stocks") or {}
         try:
-            from .stock_pool import BACKTEST_CODES
-            name_to_code = {meta["name"]: meta["code"] for meta in BACKTEST_CODES}
+            bt_meta = sp.BACKTEST_CODES
         except Exception:
-            name_to_code = {}
-        for name, code in codes:
-            s = bt_stocks.get(name)
-            bt_name = name
-            if not s:
-                # 名称可能带空格/变形，用 code 反查真实名称
-                for k, v in name_to_code.items():
-                    if v == code and k in bt_stocks:
-                        bt_name = k
-                        break
-                s = bt_stocks.get(bt_name)
-            if not s:
-                continue
-            sig = signal_from_backtest(bt_name, code, s, gparams)
-            if sig:
-                sig["is_holding"] = code in holding_codes
-                sig["_prio"] = (0 if sig["is_holding"] else 1, order.get(sig["action_key"], 5))
-                out.append(sig)
-                done.add(code)
+            bt_meta = []
+        name_to_code = {m["name"]: m["code"] for m in bt_meta}
+        for nm, entry in bt_stocks.items():
+            c = name_to_code.get(nm, "")
+            if c:
+                members.setdefault(c, {"name": nm, "stock": entry})
+
+    out = []
+    done = set()
+    for name, code in codes:
+        member = members.get(code)
+        if not member:
+            continue
+        bt_name = member["name"]
+        s = _load_split_stock(code) or member["stock"]
+        if not s:
+            continue
+        if not (s.get("dev") or s.get("position")):
+            continue  # 精简摘要无序列，走现场计算
+        sig = signal_from_backtest(bt_name, code, s, gparams)
+        if sig:
+            sig["is_holding"] = code in holding_codes
+            sig["_prio"] = (0 if sig["is_holding"] else 1, order.get(sig["action_key"], 5))
+            out.append(sig)
+            done.add(code)
     for name, code in codes:
         if code in done:
             continue

@@ -78,9 +78,17 @@ def build_holdings_data(gparams: Optional[gbt.GridParams] = None,
 
         market = price * shares if price else 0
 
-        # 网格信号：优先复用回测结果，否则现场计算
+        # 网格信号：优先复用拆分回测结果（data/backtest/{name}.json，含最新 dev/position）
         grid = None
-        if bt_data:
+        try:
+            split = gs._load_split_stock(code)
+        except Exception:
+            split = None
+        if split and (split.get("dev") or split.get("position")):
+            sig = gs.signal_from_backtest(h["name"], code, split, gparams)
+            if sig:
+                grid = sig
+        if not grid and bt_data:
             bt_stocks = bt_data.get("stocks") or {}
             bt_name = None
             try:
