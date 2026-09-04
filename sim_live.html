@@ -137,6 +137,7 @@
         <div class="sec-title"><span class="ti">${RV.ui.icon('shield-halved')}</span>当前策略 v${st.version} · ${st.name}</div>
         <ul class="rule-list">${st.rules.map(r=>'<li>'+r+'</li>').join('')}</ul>
       </div>
+      <footer style="text-align:center;color:var(--text-2);font-size:12px;padding:8px 0 4px">账本由 <code>python3 sim_live.py</code> 每日收盘自动结算 · 模拟盘仅供学习研究 · 不构成投资建议</footer>
 
       <div class="sec">
         <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 每日分析点</div>
@@ -211,16 +212,23 @@
     const el = document.getElementById('eq-chart');
     if (!el || !dates.length) return;
     const c = echarts.init(el);
+    // 买卖点标注
+    const buyPts = [], sellPts = [];
+    (s.trades || []).forEach(t => { const i = dates.indexOf(t.date); if (i >= 0) (t.action === 'buy' ? buyPts : sellPts).push([i, eq[i]]); });
     c.setOption({
       animation:false,
       tooltip:{trigger:'axis',axisPointer:{type:'cross'},
-        formatter(p){const i=p[0].dataIndex;return dates[i]+'<br>净值 ¥'+RV.fmt.num(eq[i])+'（'+RV.fmt.pct(ec[i].daily_return)+'）<br>持仓 '+ec[i].pos_count+'只<br><span style="color:var(--text-2)">点击看当日操作明细</span>'}},
+        formatter(p){const i=p[0].dataIndex;const d=ec[i]||{};const dt=(s.trades||[]).filter(t=>t.date===dates[i]);let x=dates[i]+'<br>净值 ¥'+RV.fmt.num(eq[i])+'（'+RV.fmt.pct(d.daily_return)+'）<br>持仓 '+(d.pos_count||0)+'只';if(dt.length)x+='<br><b>当日'+dt.length+'笔操作</b>'+dt.map(t=>(t.action==='buy'?'🔺买':'🔻卖')+t.name).join('、');x+='<br><span style="color:var(--text-2)">点击看买卖时间/理由/数量</span>';return x;}},
       grid:{left:60,right:20,top:20,bottom:26},
       xAxis:{type:'category',data:dates,axisLabel:{fontSize:10}},
       yAxis:{type:'value',scale:true,axisLabel:{fontSize:10,formatter:v=>'¥'+v}},
       dataZoom:[{type:'inside'},{type:'slider',height:16,bottom:0}],
       series:[{name:'净值',type:'line',data:eq,smooth:false,showSymbol:false,
-        lineStyle:{width:2,color:'#7c3aed'},areaStyle:{opacity:0.08,color:'#7c3aed'}}]
+        lineStyle:{width:2,color:'#7c3aed'},areaStyle:{opacity:0.08,color:'#7c3aed'},
+        markPoint:{data:[
+          ...buyPts.map(pt=>({coord:pt,symbol:'triangle',symbolSize:10,itemStyle:{color:'#dc2626'},label:{show:false}})),
+          ...sellPts.map(pt=>({coord:pt,symbol:'triangle',symbolSize:10,symbolRotate:180,itemStyle:{color:'#16a34a'},label:{show:false}}))
+        ]}}]
     });
     c.on('click', p => { if (p && p.dataIndex != null) popupDay(s, dates[p.dataIndex]); });
     window.__liveChart = c;

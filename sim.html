@@ -107,7 +107,8 @@ let winKey = 'all';
         <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>三策略规则对照</div>
         ${ORDER.map(k => `<div class="logic-box" style="margin-bottom:10px"><b>${d.strategies[k].label}</b>：${d.strategies[k].logic}</div>`).join('')}
         <div class="logic-box"><b>混合</b>：${(d.mixed || {}).logic || '动态按上证20日斜率在攻/守间调权重 + 等权对照'}</div>
-        <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 信号当日收盘产生 → 次日开盘价成交；开盘跳空过大不追/不接；含佣金+印花税；仅供参考。</div>
+        <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 信号当日收盘产生 → 次日开盘价成交；开盘跳空过大不追/不接；含佣金+印花税。</div>
+        <footer style="text-align:center;color:var(--text-2);font-size:12px;padding:10px 0 4px">数据由 <code>python3 build_sim.py</code> 生成 · 历史回放仅供学习研究 · 不构成投资建议</footer>
       </div>`;
     document.querySelectorAll('.bt-range-btn').forEach(b =>
       b.addEventListener('click', () => { winKey = b.dataset.wk; current = 'balanced'; renderAll(); }));
