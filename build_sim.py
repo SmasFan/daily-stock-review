@@ -447,6 +447,19 @@ def build_result(key, cfg, equity_curve, trades, daily_notes, final_pos, hold_lo
     }
 
 
+# 预设观察窗口：全程 / 政策牛起点 / 2025 以来 / 2026 以来
+WINDOWS = [
+    ("all", "2024-01-02", "2026-09-04"),
+    ("bull", "2024-09-24", "2026-09-04"),
+    ("y2025", "2025-01-02", "2026-09-04"),
+    ("y2026", "2026-01-05", "2026-09-04"),
+]
+WINDOW_LABELS = {
+    "all": "全程 2024→今", "bull": "政策牛 2024.9.24→今",
+    "y2025": "2025 以来", "y2026": "2026 以来",
+}
+
+
 def run_all(start_date="2026-07-01", end_date="2026-09-04"):
     klines, pool_names = {}, {}
     for code, name in POOL.items():
@@ -483,19 +496,22 @@ def run_all(start_date="2026-07-01", end_date="2026-09-04"):
 
 
 def _yearly_ret(equity_curve):
-    """分自然年收益（用每年首个净值作基数）。"""
+    """分自然年收益 + 同段上证基准（用 curve 里每日 bench 收盘推算）。"""
     by = {}
     for p in equity_curve:
-        by.setdefault(p["date"][:4], []).append(p["equity"])
+        by.setdefault(p["date"][:4], []).append(p)
     out = []
     for y in sorted(by):
         arr = by[y]
-        prev_end = None
-        # 年收益 = 年末/年初
-        out.append({"year": y, "ret": round((arr[-1] / arr[0] - 1) * 100, 2)})
-    # 补充整段
+        eq0, eq1 = arr[0]["equity"], arr[-1]["equity"]
+        out.append({"year": y, "ret": round((eq1 / eq0 - 1) * 100, 2),
+                    "bench": round((arr[-1]["bench"] / arr[0]["bench"] - 1) * 100, 2)
+                    if arr[0].get("bench") and arr[-1].get("bench") else None})
     if equity_curve:
-        out.append({"year": "全部", "ret": round((equity_curve[-1]["equity"] / CASH_START - 1) * 100, 2)})
+        out.append({"year": "全部",
+                    "ret": round((equity_curve[-1]["equity"] / CASH_START - 1) * 100, 2),
+                    "bench": round((equity_curve[-1]["bench"] / equity_curve[0]["bench"] - 1) * 100, 2)
+                    if equity_curve[0].get("bench") and equity_curve[-1].get("bench") else None})
     return out
 
 
@@ -504,18 +520,56 @@ def time_str():
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def run_windows():
+    """跑多窗口，输出 data/sim_trade.json（全部） + data/sim_trade_all.json（多窗口）。"""
+    klines, pool_names = {}, {}
+    for code, name in POOL.items():
+        k = load_kline(code, count=900)
+        if k and len(k.get("dates") or []) >= 90:
+            klines[code] = k
+            pool_names[code] = name
+    sh = load_index_kline("sh000001")
+    if not sh or (sh["dates"] and sh["dates"][0] > "2024-01-02"):
+        sh = dp.fetch_index_kline("sh000001", 900)
+    all_dates = set()
+    for k in klines.values():
+        all_dates.update(k["dates"])
+    if sh:
+        all_dates.update(sh["dates"])
+    dates = sorted(all_dates)
+    date_pos = {}
+    for code, k in klines.items():
+        date_pos[code] = {d: i for i, d in enumerate(k["dates"])}
+    sh_pos = {d: i for i, d in enumerate(sh["dates"])} if sh else {}
+    windows = {}
+    for wk, ws, we in WINDOWS:
+        wdates = [d for d in dates if ws <= d <= we]
+        res = {}
+        for key in STRATEGIES:
+            res[key] = _run_one(key, klines, wdates, date_pos, sh, sh_pos,
+                                pool_names, ws, we)
+        windows[wk] = {
+            "start_date": ws, "end_date": we, "strategies": res,
+        }
+        r0 = res["balanced"]
+        print("窗口 %s: %s→%s 稳健%+.2f%% 纪律%+.2f%% 激进%+.2f%%" % (
+            WINDOW_LABELS[wk], ws, we,
+            res["balanced"]["return_pct"], res["disciplined"]["return_pct"],
+            res["aggressive"]["return_pct"]))
+    full = windows["all"]
+    full["title"] = "5万模拟炒股 · 三策略对比"
+    full["start_cash"] = CASH_START
+    full["windows"] = {wk: WINDOW_LABELS[wk] for wk, _, _ in WINDOWS}
+    full["generatedAt"] = time_str()
+    with open(os.path.join(DATA_DIR, "sim_trade.json"), "w", encoding="utf-8") as f:
+        json.dump(full, f, ensure_ascii=False)
+    with open(os.path.join(DATA_DIR, "sim_trade_all.json"), "w", encoding="utf-8") as f:
+        json.dump({"start_cash": CASH_START, "windows": {
+            k: {"label": WINDOW_LABELS[k], "strategies": v["strategies"]}
+            for k, v in windows.items()}}, f, ensure_ascii=False)
+    print("完成:", os.path.join(DATA_DIR, "sim_trade.json"),
+          os.path.join(DATA_DIR, "sim_trade_all.json"))
+
+
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default="2024-01-01")
-    ap.add_argument("--end", default="2026-09-04")
-    args = ap.parse_args()
-    out = run_all(args.start, args.end)
-    out_path = os.path.join(DATA_DIR, "sim_trade.json")
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(out, f, ensure_ascii=False)
-    print("完成:", out_path, "区间", out["start_date"], "→", out["end_date"])
-    for key, r in out["strategies"].items():
-        s = r["stats"]
-        print("  %s: 净值%.0f 收益%+.2f%% 回撤%.2f%% 胜率%s%% 买卖%s/%s 总盈亏%+.0f" % (
-            r["label"], r["final_equity"], r["return_pct"], r["max_drawdown"],
-            s["win_rate"], s["buy_times"], s["sell_times"], s["total_pnl"]))
+    run_windows()

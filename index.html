@@ -42,7 +42,7 @@
   document.getElementById('app').innerHTML = RV.ui.header('每日复盘工作台', '', '');
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null, lowval = null;
+  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null, lowval = null, simAll = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
@@ -53,6 +53,7 @@
   try { strat = await RV.API.fetch('strategy_results.json'); } catch (e) {}
   try { macro = await RV.API.fetch('macro_data.json'); } catch (e) {}
   try { lowval = await RV.API.fetch('lowval_data.json'); } catch (e) {}
+  try { simAll = await RV.API.fetch('sim_trade_all.json'); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -91,6 +92,12 @@
       <div class="e-icon">${RV.ui.icon('newspaper')}</div><h3>宏观</h3>
       <p>政策与财经新闻情感打分 + 主题/行业映射，利好与风险提醒，反馈个股与板块</p>
       ${macro && macro.overview ? `<div class="e-stat">${RV.ui.icon('temperature-half', 'fa-xs')} 情绪 ${macro.overview.temperature}（${macro.overview.temperature_label}） · ${RV.ui.icon('arrow-trend-up', 'fa-xs')}${macro.overview.bull_count} ${RV.ui.icon('triangle-exclamation', 'fa-xs')}${macro.overview.risk_count}</div>` : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="sim.html">
+      <div class="e-icon">${RV.ui.icon('gamepad')}</div><h3>模拟炒股</h3>
+      <p>5万本金三策略回放：激进/稳健/严守纪律，多窗口（2024至今/政策牛/2025）收益对比</p>
+      ${simAll && simAll.windows && simAll.windows.all ? (() => { const s = simAll.windows.all.strategies; return `<div class="e-stat">${RV.ui.icon('medal', 'fa-xs')} 稳健 ${RV.fmt.pct(s.balanced.return_pct)} · 纪律 ${RV.fmt.pct(s.disciplined.return_pct)} · 激进 ${RV.fmt.pct(s.aggressive.return_pct)}</div>`; })() : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="metals.html">

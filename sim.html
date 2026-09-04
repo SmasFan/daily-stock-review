@@ -62,6 +62,9 @@ const KEY_META = {
 const ORDER = ['aggressive', 'balanced', 'disciplined'];
 let current = 'balanced';
 let charts = {};
+let WDATA = null;      // sim_trade_all.json windows
+let WIN_ORDER = [];     // [{key,label}]
+let winKey = 'all';
 (async function () {
   const app = document.getElementById('app');
   const loading = document.getElementById('loading');
@@ -69,20 +72,25 @@ let charts = {};
   let D = null;
   try {
     D = await RV.API.fetch('sim_trade.json');
-    app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '5万 · ' + (D?D.start_date+' → '+D.end_date:'') + ' · 激进 / 稳健 / 严守纪律(保本)', 'sim', D.generatedAt);
+    WDATA = await RV.API.fetch('sim_trade_all.json');
+    WIN_ORDER = Object.keys(WDATA.windows).map(k => ({ key: k, label: WDATA.windows[k].label }));
+    app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '5万 · 多窗口回放 · 激进 / 稳健 / 严守纪律(保本)', 'sim', D.generatedAt);
     loading.style.display = 'none';
     content.style.display = 'block';
-    renderAll(D);
+    renderAll();
   } catch (e) {
     app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '', 'sim');
     loading.innerHTML = '数据加载失败：' + e.message + '（先运行 python3 build_sim.py）';
     loading.style.display = 'block';
   }
 
-  function renderAll(d) {
+  function renderAll() {
+    const d = WDATA.windows[winKey];
     const stratCards = ORDER.map(k => card(d.strategies[k], k)).join('');
+    const winBtns = WIN_ORDER.map(w => `<button class="bt-range-btn ${w.key === winKey ? 'active' : ''}" data-wk="${w.key}">${w.label}</button>`).join('');
     content.innerHTML = `
-      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${RV.ui.icon('calendar', 'fa-xs')} 回测区间 <b>${d.start_date} → ${d.end_date}</b>（${d.strategies.balanced.equity_curve.length} 个交易日）· 上证同期 ${RV.fmt.pct(d.strategies.balanced.bench_return_pct)} · 初始 ¥${RV.fmt.money(d.start_cash)}，点卡片切换查看各策略</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${RV.ui.icon('calendar', 'fa-xs')} 每窗口独立以 ¥${RV.fmt.money(WDATA.start_cash)} 起步回放，点卡片切换策略 / 上方按钮切换窗口</div>
+      <div class="bt-range" style="margin-bottom:14px">${winBtns}</div>
       <div class="strat-cards">${stratCards}</div>
       <div id="detail"></div>
       <div class="sec-block">
@@ -90,6 +98,8 @@ let charts = {};
         ${ORDER.map(k => `<div class="logic-box" style="margin-bottom:10px"><b>${d.strategies[k].label}</b>：${d.strategies[k].logic}</div>`).join('')}
         <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 信号当日收盘产生 → 次日开盘价成交，含佣金+印花税；净值含持仓浮盈；仅供参考不构成投资建议。</div>
       </div>`;
+    document.querySelectorAll('.bt-range-btn').forEach(b =>
+      b.addEventListener('click', () => { winKey = b.dataset.wk; current = 'balanced'; renderAll(); }));
     ORDER.forEach(k => {
       document.getElementById('sc-' + k).addEventListener('click', () => select(k));
     });
@@ -117,7 +127,7 @@ let charts = {};
     current = key;
     document.querySelectorAll('.strat-card').forEach(el => el.classList.remove('active'));
     document.getElementById('sc-' + key).classList.add('active');
-    renderDetail(D.strategies[key]);
+    renderDetail(WDATA.windows[winKey].strategies[key]);
   }
 
   function renderDetail(r) {
@@ -133,8 +143,9 @@ let charts = {};
         <div class="sec-title"><span class="ti">${RV.ui.icon('calendar-days')}</span>分年收益 vs 上证</div>
         <table class="data-table"><thead><tr><th>年份</th>${(r.yearly || []).map(y => `<th>${y.year}</th>`).join('')}</tr></thead><tbody>
         <tr><td style="font-weight:700">${r.label}策略</td>${(r.yearly || []).map(y => `<td class="${RV.fmt.cls(y.ret)}">${RV.fmt.pct(y.ret)}</td>`).join('')}</tr>
+        <tr><td style="color:var(--text-2)">上证</td>${(r.yearly || []).map(y => `<td class="${y.bench != null ? RV.fmt.cls(y.bench) : 'neutral'}">${y.bench != null ? RV.fmt.pct(y.bench) : '--'}</td>`).join('')}</tr>
         </tbody></table>
-        <div class="fmt-hint">上证 ${r.bench_return_pct != null ? RV.fmt.pct(r.bench_return_pct) : '--'}（整段 ${r.start_date}→${r.end_date}）· 年收益=每年末净值/年初净值</div>
+        <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 年收益=每年末/年初净值；上证按同区间指数收盘；"全部"=整段区间收益</div>
       </div>
       <div class="sec-block">
         <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓 <span class="sec-chip">浮盈 ${r.stats.unrealized_pnl > 0 ? '+' : ''}¥${RV.fmt.num(r.stats.unrealized_pnl)}</span></div>
@@ -176,7 +187,7 @@ let charts = {};
     const eq = r.equity_curve.map(p => p.equity);
     const daily = r.equity_curve.map(p => p.daily_return);
     const b0 = r.equity_curve.find(p => p.bench != null);
-    const base = D.start_cash;
+    const base = WDATA.start_cash;
     const bench = r.equity_curve.map(p => p.bench != null && b0 && b0.bench ? base * p.bench / b0.bench : null);
     // 买卖 mark
     const buyPts = [], sellPts = [];
