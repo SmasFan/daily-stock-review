@@ -103,7 +103,7 @@ let winKey = 'all';
       <div class="bt-range" style="margin-bottom:14px">${winBtns}</div>
       <div class="strat-cards">${stratCards}</div>
       <div id="detail"></div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="规则对照" data-nav-icon="book">
         <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>三策略规则对照</div>
         ${ORDER.map(k => `<div class="logic-box" style="margin-bottom:10px"><b>${d.strategies[k].label}</b>：${d.strategies[k].logic}</div>`).join('')}
         <div class="logic-box"><b>混合</b>：${(d.mixed || {}).logic || '动态按上证20日斜率在攻/守间调权重 + 等权对照'}</div>
@@ -164,6 +164,7 @@ let winKey = 'all';
     } else {
       renderDetail(WDATA.windows[winKey].strategies[key]);
     }
+    if (window.RV && RV.ui.initSidebar) setTimeout(() => RV.ui.initSidebar(), 30);
   }
 
   /* ===== 混合视图（无持仓/交易，显示 dyn vs 等权 vs 上证 + regime 色带） ===== */
@@ -172,17 +173,17 @@ let winKey = 'all';
     const st = d.strategies;
     const el = document.getElementById('detail');
     el.innerHTML = `
-      <div class="sec-block">
+      <div class="sec-block" data-nav="混合净值" data-nav-icon="chart-line">
         <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>混合净值：动态择时 vs 静态等权 vs 上证</div>
         <div class="chart-box" id="mx-chart"></div>
         <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 紫=动态择时（按上证20日斜率攻/守调权重）灰=等权 黄虚=上证；背景色带 红=攻(70%激进) 绿=守(70%纪律) 灰=衡 · 点击看当日组合明细</div>
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="权重分布" data-nav-icon="layer-group">
         <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>动态权重分布 & 各策略角色</div>
         ${regimeStats(m)}
         <div class="fmt-hint">${RV.ui.icon('arrows-split-up-and-left', 'fa-xs')} 攻：激进70/稳健20/纪律10 → 主吃上涨段；守：激进10/稳健20/纪律70 → 避险保本；衡：25/50/25。</div>
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="收益对比" data-nav-icon="brain">
         <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>逻辑</div>
         <div class="logic-box">${(m || {}).logic || ''}</div>
         <div style="margin-top:10px" class="data-table">
@@ -327,13 +328,13 @@ let winKey = 'all';
   function renderDetail(r) {
     const el = document.getElementById('detail');
     el.innerHTML = `
-      <div class="sec-block">
+      <div class="sec-block" data-nav="净值与收益" data-nav-icon="chart-line">
         <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>净值与每日收益</div>
         <div class="chart-box" id="eq-chart"></div>
         <div class="chart-box small" id="bar-chart"></div>
         <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 上图净值曲线（橙=模拟盘，灰虚=上证基准）；下图每日收益柱（红=涨，绿=跌）。悬停看明细。</div>
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="分年对比" data-nav-icon="calendar-days">
         <div class="sec-title"><span class="ti">${RV.ui.icon('calendar-days')}</span>分年收益 vs 上证</div>
         <table class="data-table"><thead><tr><th>年份</th>${(r.yearly || []).map(y => `<th>${y.year}</th>`).join('')}</tr></thead><tbody>
         <tr><td style="font-weight:700">${r.label}策略</td>${(r.yearly || []).map(y => `<td class="${RV.fmt.cls(y.ret)}">${RV.fmt.pct(y.ret)}</td>`).join('')}</tr>
@@ -341,17 +342,17 @@ let winKey = 'all';
         </tbody></table>
         <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 年收益=每年末/年初净值；上证按同区间指数收盘；"全部"=整段区间收益</div>
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="当前持仓" data-nav-icon="briefcase">
         <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓 <span class="sec-chip">浮盈 ${r.stats.unrealized_pnl > 0 ? '+' : ''}¥${RV.fmt.num(r.stats.unrealized_pnl)}</span></div>
         ${(r.positions || []).length ? `<table class="data-table"><thead><tr><th>股票</th><th>买入日</th><th>股数</th><th>成本</th><th>现价</th><th>市值</th><th>浮盈亏</th></tr></thead><tbody>
           ${r.positions.map(p => `<tr><td style="font-weight:700">${p.name}</td><td><span class="date-tag">${p.buy_date}</span></td><td>${p.shares}</td><td>${RV.fmt.num(p.cost)}</td><td>${RV.fmt.num(p.price)}</td><td>¥${RV.fmt.num(p.value)}</td><td class="${RV.fmt.cls(p.pnl_pct)}">${RV.fmt.pct(p.pnl_pct)}（${p.pnl > 0 ? '+' : ''}¥${RV.fmt.num(p.pnl)}）</td></tr>`).join('')}
         </tbody></table>` : `<div class="empty">空仓（现金全部保留）</div>`}
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="持仓变化" data-nav-icon="arrows-rotate">
         <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span> <span class="sec-chip">在图上点击该日 → 图上展开详情卡</span></div>
         <div id="trade-groups"></div>
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="逻辑思考" data-nav-icon="brain">
         <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>逻辑思考 · 每日操作与持仓</div>
         ${(r.daily_notes || []).map(n => `
           <div class="note-item">
@@ -362,7 +363,7 @@ let winKey = 'all';
             ${n.holds && n.holds.length ? `<div class="hold-pills">${n.holds.map(h => `<span class="hold-pill"><span class="pn">${h.name}</span> ${h.shares}股 · 成本${RV.fmt.num(h.cost)} · 现${RV.fmt.num(h.px)}</span>`).join('')}</div>` : ''}
           </div>`).join('') || '<div class="empty">无操作日</div>'}
       </div>
-      <div class="sec-block">
+      <div class="sec-block" data-nav="策略逻辑" data-nav-icon="lightbulb">
         <div class="sec-title"><span class="ti">${RV.ui.icon('lightbulb')}</span>策略逻辑</div>
         <div class="logic-box">${r.logic}</div>
       </div>`;

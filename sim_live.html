@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>实时模拟盘 · 盘中触发</title>
+<title>实时模拟盘 · 四账户盘中触发</title>
 <link rel="stylesheet" href="assets/css/common.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <style>
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin:16px 0; }
   .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:13px 15px; }
   .kpi .k-label { font-size:11px; color:var(--text-2); }
   .kpi .k-val { font-size:20px; font-weight:800; margin-top:4px; }
@@ -23,19 +23,23 @@
   .up{color:var(--up);} .down{color:var(--down);} .neutral{color:var(--neutral);}
   .tag { display:inline-block; font-size:10.5px; font-weight:700; border-radius:6px; padding:1px 7px; }
   .tag-buy{background:#fef2f2;color:#dc2626;} .tag-sell{background:#f0fdf4;color:#16a34a;}
-  .tag-pend{background:#fffbeb;color:#d97706;} .tag-block{background:#f1f5f9;color:#64748b;}
-  .tag-replay{background:#f0fdf4;color:#15803d;}
+  .tag-wait{background:#fffbeb;color:#d97706;} .tag-block{background:#f1f5f9;color:#64748b;}
   .reason { font-size:11px; color:var(--text-2); line-height:1.5; }
-  .chart-box { height:300px; }
+  .chart-box { height:320px; }
+  .strat-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:16px 0; }
+  .strat-card { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius); padding:16px; cursor:pointer; transition:border-color .15s; }
+  .strat-card.active { border-color:var(--accent); }
+  .strat-card:hover { transform:translateY(-1px); }
+  .sc-badge { display:inline-block; font-size:11px; font-weight:800; border-radius:20px; padding:3px 11px; color:#fff; }
+  .sc-kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+  .sc-kpi .v { font-size:17px; font-weight:800; } .sc-kpi .l { font-size:10px; color:var(--text-2); }
   .timeline { display:flex; flex-direction:column; gap:6px; font-size:12px; }
-  .tl-step { display:flex; gap:8px; align-items:baseline; }
-  .tl-idx { color:var(--accent); font-weight:800; width:22px; flex:none; }
+  .tl-step { display:flex; gap:8px; align-items:baseline; } .tl-idx { color:var(--accent); font-weight:800; width:22px; flex:none; }
   .note-item { padding:6px 0; border-bottom:1px dashed var(--border); font-size:12px; }
-  .note-item:last-child { border:none; }
-  .nd { font-weight:700; }
-  .revbox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; line-height:1.7; margin-bottom:10px; white-space:pre-line; }
+  .note-item:last-child { border:none; } .nd { font-weight:700; }
+  .revbox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; margin-bottom:10px; white-space:pre-line; }
   .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} }
+  @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} .kpis{grid-template-columns:repeat(2,1fr);} }
 </style>
 </head>
 <body>
@@ -52,155 +56,279 @@
   const loading = document.getElementById('loading');
   const content = document.getElementById('content');
   const fmt = (v, d) => v == null ? '--' : Number(v).toFixed(d == null ? 2 : d);
-  function pnlCls(v) { return v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral'); }
+  const pcl = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
   let S = null;
+  const ORDER = ['aggressive', 'balanced', 'disciplined', 'mix'];
+  const META = {
+    aggressive: { badge: '#dc2626', icon: 'fire', label: '激进' },
+    balanced: { badge: '#d97706', icon: 'scale-balanced', label: '稳健' },
+    disciplined: { badge: '#2563eb', icon: 'shield-halved', label: '严守纪律' },
+    mix: { badge: '#7c3aed', icon: 'layer-group', label: '合并' },
+  };
   try {
     S = await RV.API.fetch('sim_live.json');
-    const m = S.meta;
-    app.innerHTML = RV.ui.header('实时模拟盘 · 盘中触发', '5万 · 盘中实时价触发成交 · 每笔记时分秒/现价/涨跌/理由', 'simlive', m.created);
+    app.innerHTML = RV.ui.header('实时模拟盘 · 四账户', '激进 / 稳健 / 严守纪律 / 合并 · 盘中触发 · 时分秒成交', 'simlive', S.meta.created);
     loading.style.display = 'none';
     content.style.display = 'block';
-    render(S);
+    render();
+    RV.ui.initSidebar();
   } catch (e) {
-    app.innerHTML = RV.ui.header('实时模拟盘 · 盘中触发', '', 'simlive');
+    app.innerHTML = RV.ui.header('实时模拟盘', '', 'simlive');
     loading.innerHTML = '数据加载失败：' + e.message;
     loading.style.display = 'block';
   }
 
-  function render(s) {
-    const m = s.meta, st = m.strategy;
-    const eqc = s.equity_curve || [];
-    const positions = s.positions || [];
-    const trades = s.trades || [];
-    const plan = (s.plan || []).filter(p => p.status === 'wait' || p.status === 'filled');
-    const waitPlan = plan.filter(p => p.status === 'wait');
-    const closedSells = trades.filter(t => t.action === 'sell');
-    const realized = closedSells.reduce((a, t) => a + (t.pnl || 0), 0);
+  function acct(key) { return S.accounts[key]; }
+  function eqOf(key) {
+    if (key === 'mix') { const c = S.mix.equity_curve; return c.length ? c[c.length - 1].equity : 50000; }
+    const a = acct(key); const c = a.equity_curve;
+    if (c.length) return c[c.length - 1].equity;
+    return a.cash + a.positions.reduce((x, p) => x + p.shares * p.cost, 0);
+  }
+  function retOf(key) {
+    const c = (key === 'mix' ? S.mix : acct(key)).equity_curve;
+    return c.length ? (c[c.length - 1].equity / 50000 - 1) * 100 : 0;
+  }
+
+  function render() {
+    const cards = ORDER.map(k => card(k)).join('');
     content.innerHTML = `
-      <div class="sec" style="padding:14px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)">
-        <div class="sec-title" style="margin-bottom:8px"><span class="ti">${RV.ui.icon('timeline')}</span>运行机制 <span class="sec-chip">盘中触发单 · 不做盘后挂单</span></div>
+      <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
         <div class="timeline">
-          <div class="tl-step"><span class="tl-idx">①</span><span>盘前/收盘后 <code>--plan</code>：按最近信号生成<b>回踩买点 + ATR 止损 + 止盈</b>价位</span></div>
-          <div class="tl-step"><span class="tl-idx">②</span><span>交易时段每 5 分钟 <code>--intraday</code>：拉<b>实时快照</b>，价格<b>触及买点即买入</b>（现价≤买点），破止损/到止盈即卖出</span></div>
-          <div class="tl-step"><span class="tl-idx">③</span><span>每笔记录 <b>真实时分秒 + 成交现价 + 当时涨跌幅 + 触发理由</b>，股数 100 整数倍</span></div>
-          <div class="tl-step"><span class="tl-idx">④</span><span>收盘 <code>--review</code>：持仓市值按收盘价更新净值 + 平仓自动自我复盘</span></div>
+          <div class="tl-step"><span class="tl-idx">①</span><span><code>--plan</code> 按最近收盘信号生成各账户<b>回踩买点/止损/止盈</b>（激进回踩少、稳健2%、纪律3%）</span></div>
+          <div class="tl-step"><span class="tl-idx">②</span><span>盘中每5分钟 <code>--intraday</code> 拉实时快照：现价 ≤ 买点即买，破止损/到止盈即卖</span></div>
+          <div class="tl-step"><span class="tl-idx">③</span><span>每笔记 <b>真实时分秒 + 成交价 + 当时涨跌幅 + 触发理由</b>，100 股整</span></div>
+          <div class="tl-step"><span class="tl-idx">④</span><span>收盘 <code>--review</code> 市值按收盘更新 + 每账户自动自我复盘</span></div>
         </div>
       </div>
-
-      <div class="kpis">
-        <div class="kpi"><div class="k-label">账户净值</div><div class="k-val">¥${fmt(eqc.length?eqc[eqc.length-1].equity:(m.cash||m.start_cash))}</div><div class="k-sub">起始 ¥${fmt(m.start_cash)}</div></div>
-        <div class="kpi"><div class="k-label">现金</div><div class="k-val">¥${fmt(m.cash)}</div><div class="k-sub">可用资金</div></div>
-        <div class="kpi"><div class="k-label">持仓</div><div class="k-val">${positions.length} / 5</div><div class="k-sub">${positions.length?('持'+positions.map(p=>p.name).join('、')):'空仓'}</div></div>
-        <div class="kpi"><div class="k-label">待触发买点</div><div class="k-val">${waitPlan.length} 单</div><div class="k-sub">现价回踩到即买入</div></div>
-        <div class="kpi"><div class="k-label">已成交</div><div class="k-val">${trades.length} 笔</div><div class="k-sub">买${trades.filter(t=>t.action==='buy').length}/卖${closedSells.length}</div></div>
-        <div class="kpi"><div class="k-label">已实现盈亏</div><div class="k-val ${pnlCls(realized)}">${realized>0?'+':''}¥${fmt(realized)}</div><div class="k-sub">策略 v${st.version} ${st.name}</div></div>
-      </div>
-
-      <div class="sec">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>账户净值</div>
-        <div class="chart-box" id="eq-chart"></div>
-        <div class="reason">🔺红三角=买入 🔻绿三角=卖出 · 点击图上任意点 → 看当日每笔成交（时间/价/涨跌/理由）</div>
-      </div>
-
-      <div class="chart-row">
-        <div class="sec">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓</div>
-          ${positions.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>买入日</th><th>买入时间</th><th>股数</th><th>成本</th><th>信号分</th><th>ATR止损</th><th>止盈</th></tr></thead><tbody>
-            ${positions.map(p=>`<tr><td style="font-weight:700">${p.name}</td><td><span class="sec-chip">${p.buy_date}</span></td><td>${p.buy_time||'--'}</td><td>${p.shares}</td><td>${fmt(p.cost)}</td><td>${p.score||'--'}</td><td class="down">${p.stop_atr!=null?fmt(p.stop_atr):'--'}</td><td class="up">${p.tp!=null?fmt(p.tp):'--'}</td></tr>`).join('')}
-          </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 持币等回踩触发</div>'}
-        </div>
-        <div class="sec">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点（现价 ≤ 买点即买入）</div>
-          ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>信号</th><th>分</th><th>现价基准</th><th>回踩买点≤</th><th>预算</th><th>触发逻辑</th></tr></thead><tbody>
-            ${waitPlan.map(b=>`<tr><td style="font-weight:700">${b.name}</td><td>${b.signal}</td><td>${b.score}</td><td>${b.close!=null?fmt(b.close):'--'}</td><td class="up">${fmt(b.buy_below)}</td><td>¥${fmt(b.budget)}</td><td class="reason">${(b.reason||'').slice(0,60)}</td></tr>`).join('')}
-          </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发单（收盘后 --plan 重建）</div>'}
+      <div class="strat-cards" data-nav="账户对比" data-nav-icon="layer-group">${cards}</div>
+      <div id="detail"></div>
+      <div class="sec" data-nav="操作逻辑" data-nav-icon="magnifying-glass-chart">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 分析点</div>
+        <div style="font-size:12px;line-height:1.9">
+          <div>· <b>何时买：</b>现价回踩到计划买点才触发；高开冲高 &gt;3% 不追</div>
+          <div>· <b>何时卖：</b>破 ATR/保本止损、到止盈价、峰值回落8%（曾+8%以上，激进账户）</div>
+          <div>· <b>风控：</b>大盘空头/普涨过热日不加新仓；每账户独立 5万、100股整倍数</div>
+          <div>· <b>留证：</b>每笔 时分秒/价格/涨跌/理由/所属策略</div>
         </div>
       </div>
-
-      <div class="sec">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('receipt')}</span>成交流水 <span class="sec-chip">${trades.length} 笔</span> <span class="sec-chip">时间=成交时分秒 · 含盘中回放标注</span></div>
-        ${trades.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>成交日</th><th>时分秒</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>当时涨跌</th><th>盈亏</th><th>策略</th><th>触发原因 / 记录</th></tr></thead><tbody>
-          ${trades.slice().reverse().map(t=>`<tr>
-            <td>${t.date}</td><td class="neutral">${t.time||'--'}</td>
-            <td>${t.action==='buy'?'<span class="tag tag-buy">买入</span>':'<span class="tag tag-sell">卖出</span>'}</td>
-            <td style="font-weight:700">${t.name}</td><td>${t.price!=null?fmt(t.price):'--'}</td><td>${t.shares||''}股</td>
-            <td class="${t.chg_at_fill!=null?pnlCls(t.chg_at_fill):'neutral'}">${t.chg_at_fill!=null?RV.fmt.pct(t.chg_at_fill):'--'}</td>
-            <td class="${t.action==='sell'?pnlCls(t.pnl):'neutral'}">${t.action==='sell'?RV.fmt.pct(t.pnl_pct):'--'}</td>
-            <td><span class="sec-chip">${t.strategy_ver||'--'}</span></td>
-            <td class="reason">${(t.reason||'').includes('回放')?'<span class="tag tag-replay">回放</span> ':''}${t.reason||''}</td></tr>`).join('')}
-        </tbody></table></div>` : '<div class="neutral" style="padding:8px">暂无成交</div>'}
-      </div>
-
-      <div class="chart-row">
-        <div class="sec">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>复盘学习</div>
-          ${(s.review_log||[]).length ? s.review_log.map(r=>`<div class="revbox"><b>复盘 ${r.date}</b>\n${r.note}</div>`).join('') : '<div class="neutral">有平仓后自动产出（亏损主因/改进建议）</div>'}
-          <div class="sec-title" style="margin-top:12px"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>策略版本史</div>
-          ${(s.version_history||[]).length ? s.version_history.map(v=>`<div class="note-item"><b>${v.from} → ${v.to}</b> ${v.date}<div class="reason">${v.change}</div></div>`).join('') : '<div class="neutral">尚无变更</div>'}
-        </div>
-        <div class="sec">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 分析点</div>
-          <div style="font-size:12px;line-height:1.9">
-            <div>· <b>何时买：</b>现价回踩到计划买点（≤买点价）才触发，高开冲高&gt;3%不追</div>
-            <div>· <b>何时卖：</b>现价破 ATR 止损 / 到止盈价 / 峰值回落8%（曾+8%以上）</div>
-            <div>· <b>买多少：</b>单票≤18%预算、最多5只、100股整倍数</div>
-            <div>· <b>风控：</b>大盘空头或普涨过热日不加新仓</div>
-            <div>· <b>留证：</b>每笔 时分秒/成交价/当时涨跌幅/触发理由/策略版本</div>
-            <div style="margin-top:6px" class="reason">待触发：${waitPlan.length ? waitPlan.map(b=>b.name+'≤'+fmt(b.buy_below)).join('、') : '（收盘 --plan 重建）'}<br>持仓止损：${positions.length ? positions.map(p=>p.name+' ≤'+fmt(p.stop_atr||0)).join('、') : '—'}</div>
+      <div class="sec" data-nav="复盘与版本" data-nav-icon="brain">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>自我复盘 & 策略版本</div>
+        <div class="chart-row">
+          <div>
+            ${ORDER.filter(k => k !== 'mix').map(k => revBlock(k)).join('')}
+          </div>
+          <div>
+            <div class="sec-title" style="margin-top:0"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>版本史</div>
+            ${(S.version_history || []).length ? S.version_history.map(v => `<div class="note-item"><b>v${v.from} → v${v.to}</b> ${v.date}<div class="reason">${v.change}</div></div>`).join('') : '<div class="neutral">尚无变更（--strategy-log 记录）</div>'}
           </div>
         </div>
       </div>
-
-      <footer style="text-align:center;color:var(--text-2);font-size:12px;padding:8px 0 4px">账本由 <code>python3 sim_live.py --plan/--intraday/--review</code> 维护 · 盘中触发模拟仅供学习研究 · 不构成投资建议</footer>`;
-    drawChart(s);
+      <footer style="text-align:center;color:var(--text-2);font-size:12px;padding:8px 0 4px">账本由 python3 sim_live.py 维护 · 模拟仅供学习研究 · 不构成投资建议</footer>`;
+    ORDER.forEach(k => {
+      const el = document.getElementById('sc-' + k);
+      if (el) el.addEventListener('click', () => select(k));
+    });
+    select('balanced');
   }
 
-  function dayTradesHTML(s, date) {
-    const trades = (s.trades || []).filter(t => t.date === date);
-    if (!trades.length) return '<div class="neutral">该日无成交</div>';
-    return `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>时间</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>当时涨跌</th><th>盈亏</th><th>触发原因</th></tr></thead><tbody>
-      ${trades.map(t=>`<tr><td class="neutral">${t.time||'--'}</td>
-        <td>${t.action==='buy'?'<span class="tag tag-buy">买入</span>':'<span class="tag tag-sell">卖出</span>'}</td>
-        <td style="font-weight:700">${t.name}</td><td>${fmt(t.price)}</td><td>${t.shares}股</td>
-        <td class="${t.chg_at_fill!=null?pnlCls(t.chg_at_fill):'neutral'}">${t.chg_at_fill!=null?RV.fmt.pct(t.chg_at_fill):'--'}</td>
-        <td class="${t.action==='sell'?pnlCls(t.pnl):'neutral'}">${t.action==='sell'?RV.fmt.pct(t.pnl_pct):'--'}</td>
-        <td class="reason">${t.reason||''}</td></tr>`).join('')}
-    </tbody></table></div>`;
+  function card(key) {
+    const m = META[key];
+    const active = ''; // 高亮在 select 中控制
+    let ret, val, sub;
+    if (key === 'mix') {
+      const c = S.mix.equity_curve;
+      const last = c[c.length - 1] || {};
+      ret = (last.equity / 50000 - 1) * 100; val = last.equity;
+      sub = 'regime ' + (last.regime || '衡') + ' · 合成净值';
+    } else {
+      const a = acct(key);
+      const c = a.equity_curve;
+      ret = retOf(key); val = c.length ? c[c.length - 1].equity : a.cash;
+      const wait = a.plan.filter(p => p.status === 'wait').length;
+      sub = `持${a.positions.length} · 待触发${wait} · 已${a.trades.length}笔`;
+    }
+    return `<div class="strat-card" id="sc-${key}" style="border-left:4px solid ${m.badge}">
+      <div><span class="sc-badge" style="background:${m.badge}">${RV.ui.icon(m.icon)} ${m.label}</span></div>
+      <div class="sc-kpis">
+        <div class="sc-kpi"><div class="v ${pcl(ret)}">${RV.fmt.pct(ret)}</div><div class="l">收益</div></div>
+        <div class="sc-kpi"><div class="v">¥${fmt(val)}</div><div class="l">净值</div></div>
+        <div class="sc-kpi"><div class="v">${sub.split('·')[0]}</div><div class="l">${sub.split('·').slice(1).join('·')}</div></div>
+      </div>
+    </div>`;
   }
 
-  function drawChart(s) {
-    const ec = s.equity_curve || [];
-    const dates = ec.map(p=>p.date), eq = ec.map(p=>p.equity);
-    const el = document.getElementById('eq-chart');
+  function select(key) {
+    document.querySelectorAll('.strat-card').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById('sc-' + key);
+    if (el) el.classList.add('active');
+    if (key === 'mix') renderMix(); else renderAccount(key);
+  }
+
+  function revBlock(key) {
+    const a = acct(key);
+    const revs = a.review_log || [];
+    return `<div style="margin-bottom:6px"><b style="color:${META[key].badge}">${META[key].label}</b></div>` +
+      (revs.length ? revs.slice(-2).map(r => `<div class="revbox">${r.date}\n${r.note}</div>`).join('') : '<div class="neutral" style="font-size:11px">暂无平仓复盘</div>');
+  }
+
+  function renderAccount(key) {
+    const a = acct(key); const m = META[key];
+    const holds = a.positions || []; const plan = a.plan || [];
+    const waitPlan = plan.filter(p => p.status === 'wait');
+    const trades = a.trades || [];
+    const realized = trades.filter(t => t.action === 'sell').reduce((x, t) => x + (t.pnl || 0), 0);
+    document.getElementById('detail').innerHTML = `
+      <div class="kpis" data-nav="${m.label}概览" data-nav-icon="${m.icon}">
+        <div class="kpi"><div class="k-label">净值</div><div class="k-val">¥${fmt(eqOf(key))}</div><div class="k-sub">起始5万 · ${RV.fmt.pct(retOf(key))}</div></div>
+        <div class="kpi"><div class="k-label">现金</div><div class="k-val">¥${fmt(a.cash)}</div><div class="k-sub">${(a.cash / Math.max(eqOf(key), 1) * 100).toFixed(0)}% 仓</div></div>
+        <div class="kpi"><div class="k-label">持仓</div><div class="k-val">${holds.length}/${m.label === '严守纪律' ? 4 : 5}</div><div class="k-sub">${holds.map(p => p.name).join('、') || '空仓'}</div></div>
+        <div class="kpi"><div class="k-label">待触发</div><div class="k-val">${waitPlan.length}</div><div class="k-sub">现价回踩即买</div></div>
+        <div class="kpi"><div class="k-label">成交</div><div class="k-val">${trades.length}笔</div><div class="k-sub">已实现 ${realized > 0 ? '+' : ''}¥${fmt(realized)}</div></div>
+        <div class="kpi"><div class="k-label">净值曲线点</div><div class="k-val">${a.equity_curve.length}日</div><div class="k-sub">点击曲线看当日成交</div></div>
+      </div>
+      <div class="sec" data-nav="净值图" data-nav-icon="chart-line">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>${m.label}净值</div>
+        <div class="chart-box" id="eq-chart-${key}"></div>
+        <div class="reason">🔺买 🔻卖 · 点击任意点看当日每笔（时间/价/涨跌/理由）</div>
+      </div>
+      <div class="chart-row">
+        <div class="sec" data-nav="持仓" data-nav-icon="briefcase">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓</div>
+          ${holds.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>买入日</th><th>买入时间</th><th>股数</th><th>成本</th><th>信号分</th><th>止损/止盈</th></tr></thead><tbody>
+            ${holds.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.buy_date}</td><td class="neutral">${p.buy_time || '--'}</td><td>${p.shares}</td><td>${fmt(p.cost)}</td><td>${p.score || '--'}</td><td>${p.stop_atr ? '<span class="down">' + fmt(p.stop_atr) + '</span>' : '--'} / ${p.tp ? '<span class="up">' + fmt(p.tp) + '</span>' : '--'}</td></tr>`).join('')}
+          </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等回踩</div>'}
+        </div>
+        <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点</div>
+          ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>分</th><th>回踩≤</th><th>闸门</th><th>触发逻辑</th></tr></thead><tbody>
+            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}</td><td class="reason">${(p.reason || '').slice(0, 42)}</td></tr>`).join('')}
+          </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发（收盘 --plan 重建）</div>'}
+        </div>
+      </div>
+      <div class="sec" data-nav="成交流水" data-nav-icon="receipt">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('receipt')}</span>成交流水 <span class="sec-chip">${trades.length} 笔 · 时分秒成交</span></div>
+        ${trades.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>日期</th><th>时分秒</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>当时涨跌</th><th>盈亏</th><th>触发原因</th></tr></thead><tbody>
+          ${trades.slice().reverse().map(t => `<tr>
+            <td>${t.date}</td><td class="neutral">${t.time || '--'}</td>
+            <td>${t.action === 'buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td>
+            <td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${t.code}')">${t.name}</td>
+            <td>${fmt(t.price)}</td><td>${t.shares}股</td>
+            <td class="${t.chg_at_fill != null ? pcl(t.chg_at_fill) : 'neutral'}">${t.chg_at_fill != null ? RV.fmt.pct(t.chg_at_fill) : '--'}</td>
+            <td class="${t.action === 'sell' ? pcl(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
+            <td class="reason">${(t.reason || '').slice(0, 55)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="neutral" style="padding:8px">暂无成交</div>'}
+      </div>`;
+    drawAccountChart(key);
+    window.__stock = (code) => stockCard(code);
+  }
+
+  function renderMix() {
+    const mc = S.mix.equity_curve || [];
+    document.getElementById('detail').innerHTML = `
+      <div class="sec" data-nav="合并净值" data-nav-icon="layer-group">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>合并账户净值 <span class="sec-chip">三策略权重合成</span></div>
+        <div class="chart-box" id="mx-chart"></div>
+        <div class="reason">动态权重：上证20日斜率 &gt;2.5% 攻(激70/稳20/纪10)；&lt;-2.5% 守(10/20/70)；中间衡(25/50/25)。橙虚线=等权(1/3 各)。</div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="k-label">合并净值</div><div class="k-val">¥${fmt(eqOf('mix'))}</div><div class="k-sub">${RV.fmt.pct(retOf('mix'))}</div></div>
+        ${ORDER.filter(k => k !== 'mix').map(k => { const c = acct(k).equity_curve; return `<div class="kpi"><div class="k-label">${META[k].label}</div><div class="k-val">¥${fmt(c.length ? c[c.length - 1].equity : 50000)}</div><div class="k-sub">${RV.fmt.pct((c.length ? c[c.length - 1].equity : 50000) / 50000 * 100 - 100)}</div></div>`; }).join('')}
+      </div>
+      <div class="chart-row">
+        <div class="sec" data-nav="档位记录" data-nav-icon="flag">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('flag')}</span>每日档位 (regime)</div>
+          ${mc.slice(-40).reverse().map(x => `<div class="note-item"><span class="nd">${x.date}</span> <span class="sec-chip">${x.regime}</span> 净值¥${fmt(x.equity)}（${RV.fmt.pct(x.daily_return)}）</div>`).join('') || '<div class="neutral">暂无</div>'}
+        </div>
+        <div class="sec" data-nav="合成逻辑" data-nav-icon="book">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>合成逻辑</div>
+          <div class="logic" style="font-size:12px;line-height:1.9">合并=激进/稳健/严守纪律三账户按当日档位加权；档位由上证 20 日斜率决定（无前视）。若要独立资金账户逐笔操作，可后续把 mix 扩展为真实第4账户。</div>
+        </div>
+      </div>`;
+    drawMixChart();
+  }
+
+  function drawAccountChart(key) {
+    const a = acct(key);
+    const ec = a.equity_curve || [];
+    const dates = ec.map(p => p.date), eq = ec.map(p => p.equity);
+    const el = document.getElementById('eq-chart-' + key);
     if (!el || !dates.length) return;
     const c = echarts.init(el);
     const buyPts = [], sellPts = [];
-    (s.trades||[]).forEach(t => { const i = dates.indexOf(t.date); if (i >= 0) (t.action==='buy'?buyPts:sellPts).push([i, eq[i]]); });
+    (a.trades || []).forEach(t => { const i = dates.indexOf(t.date); if (i >= 0) (t.action === 'buy' ? buyPts : sellPts).push([i, eq[i]]); });
     c.setOption({
-      animation:false,
-      tooltip:{trigger:'axis',axisPointer:{type:'cross'},
-        formatter(p){const i=p[0].dataIndex;const d=ec[i]||{};const dt=(s.trades||[]).filter(t=>t.date===dates[i]);
-          let x=dates[i]+'<br>净值 ¥'+RV.fmt.num(eq[i])+'（'+RV.fmt.pct(d.daily_return)+'）<br>持仓 '+(d.pos_count||0)+'只';
-          if(dt.length)x+='<br><b>当日'+dt.length+'笔</b> '+dt.map(t=>(t.action==='buy'?'🔺买':'🔻卖')+t.name+'@'+t.time).join('、');
-          x+='<br><span style="color:var(--text-2)">点击看每笔成交</span>';return x;}},
-      grid:{left:60,right:20,top:20,bottom:26},
-      xAxis:{type:'category',data:dates,axisLabel:{fontSize:10}},
-      yAxis:{type:'value',scale:true,axisLabel:{fontSize:10,formatter:v=>'¥'+v}},
-      dataZoom:[{type:'inside'},{type:'slider',height:16,bottom:0}],
-      series:[{name:'净值',type:'line',data:eq,showSymbol:false,
-        lineStyle:{width:2,color:'#7c3aed'},areaStyle:{opacity:0.08,color:'#7c3aed'},
-        markPoint:{data:[
-          ...buyPts.map(pt=>({coord:pt,symbol:'triangle',symbolSize:10,itemStyle:{color:'#dc2626'},label:{show:false}})),
-          ...sellPts.map(pt=>({coord:pt,symbol:'triangle',symbolSize:10,symbolRotate:180,itemStyle:{color:'#16a34a'},label:{show:false}}))
-        ]}}]
+      animation: false,
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, formatter(p) {
+        const i = p[0].dataIndex; const dt = (a.trades || []).filter(t => t.date === dates[i]);
+        let x = dates[i] + '<br>净值 ¥' + fmt(eq[i]) + '（' + RV.fmt.pct(ec[i].daily_return) + '）<br>持仓' + ec[i].pos_count + '只';
+        if (dt.length) x += '<br><b>当日' + dt.length + '笔</b>' + dt.map(t => (t.action === 'buy' ? '🔺' : '🔻') + t.name + '@' + (t.time || '')).join('、');
+        x += '<br><span style="color:var(--text-2)">点击看每笔</span>'; return x; } },
+      grid: { left: 58, right: 20, top: 20, bottom: 24 },
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 10, formatter: v => '¥' + v } },
+      dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 0 }],
+      series: [{ name: '净值', type: 'line', data: eq, showSymbol: false,
+        lineStyle: { width: 2, color: META[key].badge }, areaStyle: { opacity: 0.07, color: META[key].badge },
+        markPoint: { data: [
+          ...buyPts.map(pt => ({ coord: pt, symbol: 'triangle', symbolSize: 10, itemStyle: { color: '#dc2626' }, label: { show: false } })),
+          ...sellPts.map(pt => ({ coord: pt, symbol: 'triangle', symbolSize: 10, symbolRotate: 180, itemStyle: { color: '#16a34a' }, label: { show: false } })) ] } }]
     });
     c.on('click', p => { if (p && p.dataIndex != null) {
       const date = dates[p.dataIndex];
-      RVX.popupCard('#eq-chart', dayTradesHTML(s, date), `<b>${date}</b> <span class="sec-chip">净值 ¥${fmt(ec[p.dataIndex].equity)}</span>`, '#7c3aed');
-    }});
-    window.__liveChart = c;
-    window.addEventListener('resize',()=>c.resize());
+      const dayT = (a.trades || []).filter(t => t.date === date);
+      const rows = dayT.length ? dayT.map(t => `<tr><td class="neutral">${t.time}</td><td>${t.action === 'buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td><td style="font-weight:700">${t.name}</td><td>${fmt(t.price)}</td><td>${t.shares}</td><td class="${pcl(t.chg_at_fill)}">${t.chg_at_fill != null ? RV.fmt.pct(t.chg_at_fill) : '--'}</td><td class="reason">${(t.reason || '').slice(0, 40)}</td></tr>`).join('') : '<div class="neutral">当日无成交</div>';
+      RVX.popupCard('#eq-chart-' + key, `<table class="data-table"><thead><tr><th>时间</th><th>方向</th><th>股票</th><th>价</th><th>量</th><th>涨跌</th><th>理由</th></tr></thead><tbody>${dayT.length ? rows : '<tr><td colspan="7" class="neutral">当日无成交</td></tr>'}</tbody></table>`, `<b>${date}</b> <span class="sec-chip">净值¥${fmt(eq[p.dataIndex])}</span>`, META[key].badge);
+    } });
+    window.addEventListener('resize', () => c.resize());
   }
+
+  function drawMixChart() {
+    const mc = S.mix.equity_curve || [];
+    const dates = mc.map(x => x.date), eq = mc.map(x => x.equity);
+    const el = document.getElementById('mx-chart');
+    if (!el || !dates.length) return;
+    const c = echarts.init(el);
+    c.setOption({
+      animation: false,
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, formatter(p) { const i = p[0].dataIndex; return dates[i] + '<br>合并 ¥' + fmt(eq[i]) + '（' + RV.fmt.pct(mc[i].daily_return) + '）<br>档位 ' + mc[i].regime; } },
+      grid: { left: 58, right: 20, top: 20, bottom: 24 },
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'value', scale: true, axisLabel: { fontSize: 10, formatter: v => '¥' + v } },
+      dataZoom: [{ type: 'inside' }, { type: 'slider', height: 14, bottom: 0 }],
+      series: [{ name: '合并净值', type: 'line', data: eq, showSymbol: false, lineStyle: { width: 2.4, color: '#7c3aed' }, areaStyle: { opacity: 0.08, color: '#7c3aed' } }]
+    });
+    window.addEventListener('resize', () => c.resize());
+  }
+
+  /* 个股卡弹层：点击任一个股名 → infoDot 风格详情（数据源 review_data 实时/当日） */
+  async function stockCard(code) {
+    try {
+      const R = await RV.API.fetch('review_data.json');
+      const it = (R.items || []).find(x => x.code === code);
+      if (!it) { alert('无 ' + code + ' 当日数据'); return; }
+      const f = it;
+      const rows = [
+        ['趋势', f.trend_status, 'MA5/MA10/MA20 排列'],
+        ['信号/分', f.signal + ' · ' + f.score + '分', ''],
+        ['乖离MA5', RV.fmt.pct(f.bias_ma5), '>5% 不追高'],
+        ['MACD', f.macd_status + ' DIF' + fmt(f.macd_dif) + ' DEA' + fmt(f.macd_dea), ''],
+        ['RSI12', fmt(f.rsi12, 1) + ' ' + f.rsi_status, ''],
+        ['量能', f.volume_status + ' 量比' + fmt(f.volume_ratio), ''],
+        ['点位', '买' + fmt(f.ideal_buy) + '/次' + fmt(f.secondary_buy) + ' 损' + fmt(f.stop_loss) + ' 盈' + fmt(f.take_profit), ''],
+        ['ATR止损', fmt(f.atr_stop), '现价-2×ATR14'],
+        ['资金流', f.fund_flow ? mone(f.fund_flow.main_net) + ' · 5日' + mone(f.fund_flow.main_net_5d) : '--', '主力净流入'],
+      ];
+      const body = `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:16px">${it.name}</b><span class="sec-chip">${it.code}</span><span class="sec-chip">${it.sector || ''}</span></div>
+        <div style="display:flex;gap:10px;align-items:baseline;margin:6px 0"><span style="font-size:20px;font-weight:800">${fmt(it.close)}</span><span class="${pcl(it.change_pct)}" style="font-weight:700">${RV.fmt.pct(it.change_pct)}</span><span class="neutral">60日 ${RV.fmt.pct(it.change_60d)}</span></div>
+        ${rows.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dashed var(--border);font-size:12px"><span class="neutral">${r[0]}</span><span><b>${r[1]}</b></span></div>`).join('')}
+        <div style="font-size:11px;color:var(--text-2);margin-top:6px">${it.reasons || ''}</div>
+        <div style="margin-top:6px"><button onclick="RV.loadEcharts?.(()=>{})" style="display:none"></button><a href="watchlist.html?code=${code}" style="font-size:12px">看K线走势 →</a></div>`;
+      RVX.popupCard('#detail', body, `<b>${it.name} · 当日快照</b>`, '#c78d5a');
+    } catch (e) { console.log(e); }
+  }
+  function mone(v) { if (v == null) return '--'; return Math.abs(v) >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : (v / 1e4).toFixed(0) + '万'; }
 })();
 </script>
 </body>

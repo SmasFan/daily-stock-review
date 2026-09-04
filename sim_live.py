@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""实时模拟炒股 · 盘中触发单引擎（v2）+ 自学习复盘。
+"""实时模拟炒股 · 四账户盘中触发引擎（v3）
 
-核心理念（与用户确认）：
-  不做"盘后挂单次日成交"。而是——
-  1) 交易日盘中定时巡检（默认每 5 分钟，cron */5 交易时段）
-  2) 用当日实时快照现价 + 已算好的技术位（买点/MA/ATR 止损/止盈）
-  3) 价格触发即成交：现价触及买点→买入；破止损/到止盈→卖出
-  4) 记录真实时分秒 + 成交时现价 + 当时涨跌幅
-  5) 计划盘前生成（基于最近收盘信号），盘中只等触发 → 无前视
+激进 / 稳健 / 严守纪律 三个真实独立账户（各 5 万）+ 合并账户（三账户净值合成）。
+每个账户独立执行盘中触发单（盘前计划回踩买点，盘中现价触发成交，记时分秒）。
 
 命令：
-  python3 sim_live.py --plan                 # 每日盘前/收盘后生成计划（买点/止损/止盈价位）
-  python3 sim_live.py --intraday             # 盘中巡检：触发即成交（交易时段每5分钟 cron）
-  python3 sim_live.py --replay 2026-09-04    # 回放历史某日盘中触发（无分时→日K低点近似）
-  python3 sim_live.py --init                 # 初始化账本（5万）
-  python3 sim_live.py --review               # 收盘后复盘总结 + 自我学习
-  python3 sim_live.py --strategy-log "理由"  # 策略版本变更
+  python3 sim_live.py --init                 # 初始化（建 4 账户）
+  python3 sim_live.py --plan                 # 重建各账户回踩买点计划
+  python3 sim_live.py --intraday             # 盘中巡检触发成交（cron 每5分钟）
+  python3 sim_live.py --replay 2026-09-04    # 历史日K近似回放
+  python3 sim_live.py --review               # 收盘复盘 + 自学习
+  python3 sim_live.py --strategy-log "msg"   # 策略版本变更
 """
 import argparse
 import json
@@ -31,23 +26,46 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 STATE_FILE = os.path.join(DATA_DIR, "sim_live.json")
 CASH_START = 50000.0
 
-STRATEGY = {
-    "version": "v2.0",
-    "name": "稳健·盘中触发",
-    "created": "2026-09-05",
-    "rules": [
-        "模式：盘前定计划（买点=MA10/MA20 或理想买点，止损=ATR），盘中实时价触发成交",
-        "买：日K多头排列/强势多头 且 收盘评分≥68 的候选列入计划",
-        "买触发：现价 ≤ 计划买点（回踩买，不追高）且 非普涨过热日 且 大盘非防守",
-        "大盘防守：上证空头且<45分 或 全市场上涨占比≥65% → 当日不执行买入",
-        "卖触发：现价 ≤ ATR 止损 → 即时卖；现价 ≤ MA20 且当日跌>3% → 即时卖",
-        "信号转卖出（收盘算）→ 次日盘中等反抽/开盘附近卖",
-        "止盈：浮盈≥15% 触发卖；已+8%后从峰值回落8% 移动止盈",
-        "单票 ≤20% 预算（约¥10000），最多持 5 只，现金≥15%",
-        "股数恒为 100 整数倍（A股一手）；每笔记录 时分秒/现价/当时涨跌幅/理由",
-    ],
-    "log": [],
+# 账户配置：与历史回测 sim.html 的三种风格对齐 + 合并
+ACCOUNTS = {
+    "aggressive": {
+        "label": "激进", "icon": "fire", "badge": "#dc2626",
+        "budget_frac": 0.22, "max_pos": 5, "cash_reserve": 0.05,
+        "buy_bias": 0.005,     # 买点相对现价回踩幅度（激进追强，回踩小）
+        "stop_ma": False, "tp_pct": 0.20,
+        "trail": 0.10, "be_at": None, "min_score": 66,
+        "desc": "仓位大(22%×5)、门槛低(≥66分)、回踩少就买，+20%止盈、峰值回落10%移动止盈，容忍回撤博主升。",
+        "rules": ["大盘多头结构才开仓（上证强势/多头排列）", "普涨过热不回避，弱市靠大盘闸门空仓",
+                  "ATR 宽止损", "峰值涨超8%后回落10%移动止盈"],
+    },
+    "balanced": {
+        "label": "稳健", "icon": "scale-balanced", "badge": "#d97706",
+        "budget_frac": 0.18, "max_pos": 5, "cash_reserve": 0.10,
+        "buy_bias": 0.02,      # 回踩 2% 才买（不追高）
+        "stop_ma": True, "tp_pct": 0.15,
+        "trail": None, "be_at": None, "min_score": 68,
+        "desc": "仓位中(18%×5)、门槛68、回踩2%买、破ATR或MA20跌3%止损、+15%止盈。攻守平衡（默认主力账户）。",
+        "rules": ["大盘卖出/减仓且<45分不开新仓", "普涨过热日(广度≥65%)不追新",
+                  "ATR 或破MA20且跌>3%止损", "+15% 止盈"],
+    },
+    "disciplined": {
+        "label": "严守纪律", "icon": "shield-halved", "badge": "#2563eb",
+        "budget_frac": 0.14, "max_pos": 4, "cash_reserve": 0.16,
+        "buy_bias": 0.03,      # 更挑剔，回踩 3%
+        "stop_ma": False, "tp_pct": 0.10,
+        "trail": None, "be_at": 0.05, "min_score": 76,
+        "desc": "仓小(14%×4)、只买最强(≥76分)、回踩3%才买；+5%后止损抬成本（保本）、+10%止盈。宁可少赚不亏。",
+        "rules": ["只做 ≥76分 多头/强势多头", "+5%后保本（止损抬到成本）",
+                  "+10% 止盈", "大盘非多头或广度弱不进"],
+    },
+    "mix": {
+        "label": "合并", "icon": "layer-group", "badge": "#7c3aed",
+        "desc": "合成账户：激进/稳健/纪律三账户 1/3 等权 + 按上证20日斜率动态择时（攻→激进70%、守→纪律70%、衡→均衡）。净值=三账户加权，非独立资金。",
+        "rules": ["合成净值 = Σ 子账户净值 × 权重", "攻：激进0.7/稳健0.2/纪律0.1",
+                  "守：激进0.1/稳健0.2/纪律0.7", "衡：0.25/0.5/0.25"],
+    },
 }
+REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
 
 
 def now_ts():
@@ -74,16 +92,20 @@ def save(state):
         json.dump(state, f, ensure_ascii=False, indent=1)
 
 
-def new_state():
+def new_account(key, cfg):
     return {
-        "meta": {"created": now_ts(), "start_cash": CASH_START, "cash": CASH_START,
-                 "strategy": STRATEGY},
-        "positions": [],
-        "plan": [],            # 盘前计划：待触发买单 {code,name,buy_below,stop_atr,stop_ma,tp,score,signal,reason,asof}
-        "trades": [],          # 已成交（含真实时分秒）
-        "equity_curve": [],
-        "daily_log": [],
-        "review_log": [],
+        "key": key, "label": cfg["label"], "start_cash": CASH_START,
+        "cash": CASH_START, "positions": [], "plan": [], "trades": [],
+        "equity_curve": [], "daily_log": [], "review_log": [],
+    }
+
+
+def new_state():
+    accounts = {k: new_account(k, ACCOUNTS[k]) for k in REAL_ACCOUNTS}
+    return {
+        "meta": {"created": now_ts(), "strategy_version": "v3.0", "accounts": list(accounts.keys())},
+        "accounts": accounts,
+        "mix": {"equity_curve": [], "daily_log": [], "regime": [], "meta": {"start_cash": CASH_START}},
         "version_history": [],
     }
 
@@ -92,75 +114,99 @@ def _is_etf(code):
     return str(code).startswith(("5", "1"))
 
 
-# ---------------- 计划生成 ----------------
+def equity_of(acct):
+    return acct["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in acct["positions"])
+
+
+# ---------------- 计划（各账户独立参数） ----------------
 def make_plan(state, review, asof):
-    """盘前/收盘后：从 review 候选生成待触发买单计划。"""
     items = review.get("items", []) or []
-    held = {p["code"] for p in state["positions"]}
-    cands = []
-    for it in items:
-        if _is_etf(it.get("code")) or it.get("code") in held:
-            continue
-        if it.get("signal_key") not in ("strong_buy", "buy"):
-            continue
-        if (it.get("score") or 0) < 68:
-            continue
-        if it.get("trend_status") not in ("强势多头", "多头排列"):
-            continue
-        cands.append(it)
-    cands.sort(key=lambda x: -x.get("score", 0))
-    # 买点：回踩位 = max(MA10, 理想买点, 现价*0.97) 下限 —— 只在回踩时买
-    plan_new = []
-    for it in cands[:10]:
-        code = it["code"]
-        close = it.get("close") or 0
-        ma10 = it.get("ma10")
-        ideal = it.get("ideal_buy") or it.get("secondary_buy")
-        # 触发买点：不高于现价-1% 的回踩位（至少要求回踩 1% 才动手，防追高）
-        candidates = [x for x in (ma10, ideal, close * 0.98) if x]
-        buy_below = max(min(candidates), close * 0.99)
-        if buy_below >= close * 0.995:  # 买点须明显低于现价，否则等回踩
-            buy_below = close * 0.99
-        stop_atr = it.get("atr_stop")
-        stop_ma = it.get("stop_loss")
-        tp = None
-        if close and it.get("take_profit"):
-            tp = it["take_profit"]
-        budget = CASH_START * 0.18
-        plan_new.append({
-            "code": code, "name": it.get("name"), "asof": asof,
-            "score": it.get("score"), "signal": it.get("signal"),
-            "buy_below": round(buy_below, 3), "buy_above": round(close * 1.0, 3),
-            "close": close,
-            "stop_atr": round(stop_atr, 3) if stop_atr else None,
-            "stop_ma": round(stop_ma, 3) if stop_ma else None,
-            "tp": round(tp, 3) if tp else None,
-            "reason": "%s(%s分)·%s 现价%.2f 回踩≤%.2f买 ATR止损%s" % (
-                it.get("signal"), it.get("score"), it.get("trend_status"),
-                close, buy_below, stop_atr if stop_atr else "--"),
-            "budget": round(budget, 2), "status": "wait",
-        })
-    return plan_new
+    idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
+    sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
+    mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
+    breadth = (review.get("temperature") or {}).get("breadth") or 0
+    overheat = breadth >= 65
+    for key in REAL_ACCOUNTS:
+        cfg = ACCOUNTS[key]
+        acct = state["accounts"][key]
+        held = {p["code"] for p in acct["positions"]}
+        cands = []
+        for it in items:
+            if _is_etf(it.get("code")) or it.get("code") in held:
+                continue
+            if it.get("signal_key") not in ("strong_buy", "buy"):
+                continue
+            if (it.get("score") or 0) < cfg["min_score"]:
+                continue
+            if it.get("trend_status") not in ("强势多头", "多头排列"):
+                continue
+            cands.append(it)
+        cands.sort(key=lambda x: -x.get("score", 0))
+        plan = []
+        gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat else "open"
+        for it in cands[:8]:
+            close = it.get("close") or 0
+            ma10 = it.get("ma10") or close
+            ideal = it.get("ideal_buy") or it.get("secondary_buy") or close
+            # 回踩买点：现价下方 bias 处；且不低于 MA10/ideal 过远
+            floor = min(ideal, close * (1 - cfg["buy_bias"]))
+            buy_below = min(close * (1 - cfg["buy_bias"]), max(floor, close * 0.96))
+            buy_below = round(buy_below, 3)
+            budget = round(CASH_START * cfg["budget_frac"], 2)
+            plan.append({
+                "code": it["code"], "name": it.get("name"), "asof": asof,
+                "score": it.get("score"), "signal": it.get("signal"),
+                "close": close, "buy_below": buy_below,
+                "stop_atr": it.get("atr_stop"),
+                "stop_ma": it.get("stop_loss") if cfg["stop_ma"] else None,
+                "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
+                "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
+                "gate": gate, "budget": budget, "status": "wait",
+                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s" % (
+                    it.get("signal"), it.get("score"), buy_below,
+                    it.get("atr_stop") if it.get("atr_stop") else "--",
+                    "（保本+5%%）" if cfg.get("be_at") else ""),
+            })
+        acct["plan"] = plan
+        acct["daily_log"].append({"date": asof, "kind": "plan",
+                                  "note": "%s：%d 单待盘中触发%s" % (
+                                      cfg["label"], len(plan),
+                                      "（大盘闸门挡）" if gate == "block" else "")})
+    return {k: len(state["accounts"][k]["plan"]) for k in REAL_ACCOUNTS}
 
 
-# ---------------- 盘中巡检 ----------------
-def intraday_scan(state, date, now_hms):
-    """盘中：拉实时快照，按计划/持仓触发成交。返回当日成交数。"""
+# ---------------- 盘中巡检（多账户） ----------------
+def intraday_scan(state, date, hms):
     from src import data_provider as dp
-    codes = ([p["code"] for p in state.get("plan", []) if p.get("status", "wait") == "wait"]
-             + [p["code"] for p in state["positions"]])
-    if not codes:
-        return 0, ["无计划/持仓，等待"]
-    # 分批快照
-    filled = 0
-    notes = []
+    all_codes = set()
+    for key in REAL_ACCOUNTS:
+        a = state["accounts"][key]
+        all_codes |= {p["code"] for p in a["plan"] if p.get("status", "wait") == "wait"}
+        all_codes |= {p["code"] for p in a["positions"]}
+    if not all_codes:
+        return 0, ["无计划/持仓"]
+    quotes = {}
     try:
-        quotes = dp.fetch_quotes(sorted(set(codes)))
+        quotes = dp.fetch_quotes(sorted(all_codes))
     except Exception as e:
         return 0, ["快照失败 %s" % e]
-    # 先看持仓卖出触发
+    total_fill = 0
+    all_notes = []
+    for key in REAL_ACCOUNTS:
+        cfg = ACCOUNTS[key]
+        acct = state["accounts"][key]
+        n, notes = _scan_account(acct, cfg, quotes, date, hms)
+        total_fill += n
+        all_notes.extend(notes)
+    return total_fill, all_notes
+
+
+def _scan_account(acct, cfg, quotes, date, hms):
+    filled = 0
+    notes = []
+    # 卖出
     sell_codes = []
-    for pos in state["positions"]:
+    for pos in acct["positions"]:
         q = quotes.get(pos["code"])
         if not q:
             continue
@@ -168,41 +214,48 @@ def intraday_scan(state, date, now_hms):
         if not px:
             continue
         prev = pos.get("prev_close") or pos["cost"]
-        chg_now = (px / prev - 1) * 100 if prev else 0
-        reason = None
-        # 更新峰值（移动止盈用）
+        chg = (px / prev - 1) * 100 if prev else 0
         if px > pos.get("peak", pos["cost"]):
             pos["peak"] = px
         gain = (px / pos["cost"] - 1) * 100
-        # 止盈：现价 ≥ 成本*(1+15%)
+        reason = None
         if pos.get("tp") and px >= pos["tp"]:
-            reason = "触发止盈：现价%.2f ≥ 目标%.2f（+%.1f%%）" % (px, pos["tp"], gain)
+            reason = "止盈：现价%.2f≥目标%.2f（+%.1f%%）" % (px, pos["tp"], gain)
+        elif pos.get("be_at") and gain >= pos["be_at"] * 100 and not pos.get("be_on"):
+            pos["be_on"] = True
+            pos["stop_atr"] = pos["cost"] * 1.002  # 保本
+            notes.append("（%s %s 浮盈+%.0f%% → 保本锁定）" % (acct["label"], pos["name"], gain))
         elif pos.get("stop_atr") and px <= pos["stop_atr"]:
-            reason = "触发ATR止损：现价%.2f ≤ 止损%.2f" % (px, pos["stop_atr"])
-        elif pos.get("peak") and pos["peak"] > pos["cost"] * 1.08 and px / pos["peak"] - 1 <= -0.08:
-            reason = "移动止盈：峰值+%.1f%%回落8%%" % ((pos["peak"] / pos["cost"] - 1) * 100)
+            reason = "破ATR/保本止损 %.2f" % pos["stop_atr"]
+        elif pos.get("peak") and pos.get("trail") and pos["peak"] > pos["cost"] * 1.08 \
+                and px / pos["peak"] - 1 <= -pos["trail"]:
+            reason = "移动止盈（峰值%+.1f%%回落%.0f%%）" % ((pos["peak"] / pos["cost"] - 1) * 100,
+                                                      pos["trail"] * 100)
         if reason:
             shares = pos["shares"]
             proceeds = shares * px
             fee = proceeds * (0.0003 + 0.0005)
             pnl = proceeds - shares * pos["cost"]
-            state["meta"]["cash"] += proceeds - fee
-            state["trades"].append({
-                "action": "sell", "date": date, "time": now_hms, "code": pos["code"],
+            acct["cash"] += proceeds - fee
+            acct["trades"].append({
+                "action": "sell", "date": date, "time": hms, "code": pos["code"],
                 "name": pos["name"], "price": round(px, 3), "shares": shares,
-                "chg_at_fill": round(chg_now, 2),
-                "pnl": round(pnl, 2), "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
-                "reason": reason, "strategy_ver": state["meta"]["strategy"]["version"],
+                "chg_at_fill": round(chg, 2), "pnl": round(pnl, 2),
+                "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
+                "reason": reason, "strategy": acct["key"],
             })
             sell_codes.append(pos["code"])
             filled += 1
-            notes.append("卖出 %s @%.2f（%+.2f%%）%s" % (pos["name"], px, chg_now, reason))
-    state["positions"] = [p for p in state["positions"] if p["code"] not in sell_codes]
-    # 再看计划买入触发
-    for pl in state.get("plan", []):
+            notes.append("[%s] 卖出 %s @%.2f（%+.2f%%）%s" % (acct["label"], pos["name"], px, chg, reason))
+    acct["positions"] = [p for p in acct["positions"] if p["code"] not in sell_codes]
+    # 买入
+    for pl in acct.get("plan", []):
         if pl.get("status", "wait") != "wait":
             continue
-        if len(state["positions"]) >= 5:
+        if pl.get("gate") == "block":
+            pl["status"] = "skip_gate"
+            continue
+        if len(acct["positions"]) >= cfg["max_pos"]:
             pl["status"] = "skip_full"
             continue
         q = quotes.get(pl["code"])
@@ -211,125 +264,155 @@ def intraday_scan(state, date, now_hms):
         px = q.get("price")
         if not px:
             continue
-        prev = q.get("prevClose") or pl.get("close") or 0
-        chg_now = (px / prev - 1) * 100 if prev else 0
-        # 触发：现价跌到 buy_below（回踩）→ 买；若现价跳空大涨(>3%)放弃（不追）
-        if px > pl["close"] * 1.03:
+        if px > (pl.get("close") or 0) * 1.03:
             continue  # 高开冲高不追
         if px <= pl["buy_below"]:
-            # 大盘防守不买（简化：用计划 asof 的全局闸门标记）
-            if pl.get("gate", "off") == "block":
-                pl["status"] = "skip_gate"
-                continue
-            budget = min(pl["budget"], state["meta"]["cash"] * 0.95)
-            price = px
-            shares = int(budget / price / 100) * 100
+            budget = min(pl["budget"], acct["cash"] * 0.98)
+            shares = int(budget / px / 100) * 100
             if shares <= 0:
                 continue
-            cost = shares * price
+            cost = shares * px
             fee = cost * 0.0003
-            state["meta"]["cash"] -= (cost + fee)
-            state["positions"].append({
+            acct["cash"] -= cost + fee
+            acct["positions"].append({
                 "code": pl["code"], "name": pl["name"], "shares": shares,
-                "cost": round(price, 3), "buy_date": date, "buy_time": now_hms,
+                "cost": round(px, 3), "buy_date": date, "buy_time": hms,
                 "stop_atr": pl.get("stop_atr"), "stop_ma": pl.get("stop_ma"),
-                "tp": pl.get("tp"), "peak": price, "prev_close": prev,
+                "tp": pl.get("tp"), "trail": pl.get("trail"), "be_at": pl.get("be_at"),
+                "be_on": False, "peak": px, "prev_close": q.get("prevClose"),
                 "score": pl.get("score"), "signal": pl.get("signal"),
             })
-            state["trades"].append({
-                "action": "buy", "date": date, "time": now_hms, "code": pl["code"],
-                "name": pl["name"], "price": round(price, 3), "shares": shares,
-                "chg_at_fill": round(chg_now, 2),
-                "reason": pl.get("reason", ""), "strategy_ver": state["meta"]["strategy"]["version"],
+            acct["trades"].append({
+                "action": "buy", "date": date, "time": hms, "code": pl["code"],
+                "name": pl["name"], "price": round(px, 3), "shares": shares,
+                "chg_at_fill": round(chg(px, q), 2) if False else round((px / (q.get("prevClose") or pl["close"]) - 1) * 100, 2),
+                "reason": pl.get("reason", ""), "strategy": acct["key"],
             })
             pl["status"] = "filled"
             filled += 1
-            notes.append("买入 %s @%.2f（%+.2f%%）回踩触发" % (pl["name"], px, chg_now))
-        elif px >= pl["buy_above"] * 1.02:
-            pass  # 在买点上方运行，继续等回踩
+            notes.append("[%s] 买入 %s @%.2f 回踩触发" % (acct["label"], pl["name"], px))
     return filled, notes
 
 
-def replay_day(state, date):
-    """盘中触发回放：用当日日K 高低价判断计划是否盘中触及买点。
-    无分时数据 → 触发价=买点价成交，时间标『盘中(回放近似)』，如实注明。"""
+def chg(px, q):
+    pc = q.get("prevClose")
+    return (px / pc - 1) * 100 if pc else 0
+
+
+# ---------------- 混合净值 ----------------
+def update_mix(state, date, bench_close=None, slope=None):
+    """mix = 三账户日收益加权。用日收益复利计算 5 万起净值；regime 按上证20日斜率。"""
+    regs = {"agg": 0.25, "bal": 0.5, "dis": 0.25}
+    if slope is not None:
+        if slope > 2.5:
+            regs = {"agg": 0.7, "bal": 0.2, "dis": 0.1}
+        elif slope < -2.5:
+            regs = {"agg": 0.1, "bal": 0.2, "dis": 0.7}
+    reg_name = "攻" if regs["agg"] >= 0.7 else ("守" if regs["dis"] >= 0.7 else "衡")
+    curve = state["mix"]["equity_curve"]
+    # 用各账户净值算日收益（无账户曲线日则跳过）
+    acct_eq = {}
+    for key in REAL_ACCOUNTS:
+        a = state["accounts"][key]
+        if a["equity_curve"]:
+            acct_eq[key] = a["equity_curve"][-1]["equity"]
+        else:
+            acct_eq[key] = a["cash"] + sum(p["shares"] * p["cost"] for p in a["positions"])
+    if curve:
+        prev = curve[-1]["equity"]
+        # 用上次记录的账户净值作基数不准；改按日收益
+    return reg_name
+
+
+def finalize_day(state, date):
+    """收盘：各账户市值按收盘价更新 + 净值曲线；mix 合成。"""
     from src import data_provider as dp
-    notes, filled = [], 0
-    for pl in state.get("plan", []):
-        if pl.get("status", "wait") != "wait":
-            continue
-        if len(state["positions"]) >= 5:
-            pl["status"] = "skip_full"
-            continue
-        if pl.get("gate") == "block":
-            pl["status"] = "skip_gate"
-            continue
-        k = dp.fetch_daily_kline(pl["code"], count=30, use_cache=True)
-        if not k or date not in k["dates"]:
-            continue
-        i = k["dates"].index(date)
-        low = k["lows"][i]
-        if low <= pl["buy_below"]:
-            price = pl["buy_below"]
-            budget = min(pl["budget"], state["meta"]["cash"] * 0.95)
-            shares = int(budget / price / 100) * 100
-            if shares <= 0:
-                continue
-            cost = shares * price
-            fee = cost * 0.0003
-            state["meta"]["cash"] -= (cost + fee)
-            state["positions"].append({
-                "code": pl["code"], "name": pl["name"], "shares": shares,
-                "cost": round(price, 3), "buy_date": date, "buy_time": "盘中低位(回放)",
-                "stop_atr": pl.get("stop_atr"), "stop_ma": pl.get("stop_ma"),
-                "tp": pl.get("tp"), "peak": price,
-                "score": pl.get("score"), "signal": pl.get("signal"),
-            })
-            state["trades"].append({
-                "action": "buy", "date": date, "time": "盘中(回放近似)",
-                "code": pl["code"], "name": pl["name"],
-                "price": round(price, 3), "shares": shares, "chg_at_fill": None,
-                "reason": "回放触发：当日低%.2f≤买点%.2f → 限价%.2f成交｜%s" % (
-                    low, pl["buy_below"], price, pl.get("reason", "")),
-                "strategy_ver": state["meta"]["strategy"]["version"],
-            })
-            pl["status"] = "filled"
-            filled += 1
-            notes.append("回放买入 %s @%.2f（当日低%.2f）" % (pl["name"], price, low))
-    return filled, notes
-
-
-def record_equity(state, date):
-    eq = state["meta"]["cash"]
-    for pos in state["positions"]:
-        eq += pos["shares"] * pos["cost"]  # 盘中无持仓市值更新（收盘复盘时替换）
-    prev = state["equity_curve"][-1]["equity"] if state["equity_curve"] else CASH_START
-    state["equity_curve"].append({"date": date, "equity": round(eq, 2),
-                                  "cash": round(state["meta"]["cash"], 2),
+    review = load_json("review_data.json")
+    items = {x.get("code"): x for x in (review.get("items") or [])} if review else {}
+    for key in REAL_ACCOUNTS:
+        a = state["accounts"][key]
+        for pos in a["positions"]:
+            it = items.get(pos["code"])
+            if it:
+                pos["last_close"] = it.get("close")
+        eq = a["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in a["positions"])
+        # 幂等：同日已有记录则替换
+        a["equity_curve"] = [x for x in a["equity_curve"] if x["date"] != date]
+        prev = a["equity_curve"][-1]["equity"] if a["equity_curve"] else CASH_START
+        a["equity_curve"].append({"date": date, "equity": round(eq, 2),
+                                  "cash": round(a["cash"], 2),
                                   "daily_return": round((eq / prev - 1) * 100, 3),
-                                  "pos_count": len(state["positions"])})
+                                  "pos_count": len(a["positions"])})
+    # mix：以三账户曲线日收益复利
+    curves = [state["accounts"][k]["equity_curve"] for k in REAL_ACCOUNTS]
+    mc = state["mix"]["equity_curve"]
+    # regime by 上证斜率
+    sh_k = None
+    try:
+        from src import data_provider as dp
+        sh_k = dp.fetch_index_kline("sh000001", 900)
+    except Exception:
+        pass
+    slope = None
+    if sh_k and len(sh_k["dates"]) >= 22:
+        dd = sh_k["dates"]
+        if date in dd:
+            i = dd.index(date)
+            if i >= 21 and dd[i - 21] and sh_k["closes"][i - 21]:
+                slope = (sh_k["closes"][i] / sh_k["closes"][i - 21] - 1) * 100
+    regs = [0.25, 0.5, 0.25]
+    if slope is not None and slope > 2.5:
+        regs = [0.7, 0.2, 0.1]
+    elif slope is not None and slope < -2.5:
+        regs = [0.1, 0.2, 0.7]
+    if all(c for c in curves):
+        rets = [(c[-1]["equity"] / c[-2]["equity"] - 1) if len(c) >= 2 and c[-2]["equity"] else 0
+                for c in curves]
+        # 首日无 c[-2] → 用 0
+        rets = [0, 0, 0]
+        for idx, c in enumerate(curves):
+            if len(c) >= 2 and c[-2].get("equity"):
+                rets[idx] = c[-1]["equity"] / c[-2]["equity"] - 1
+            elif len(c) == 1:
+                rets[idx] = 0.0
+        r_day = sum(r * w for r, w in zip(rets, regs)) * 100
+        prev_mix = mc[-1]["equity"] if mc else CASH_START
+        eq_mix = prev_mix * (1 + r_day / 100)
+        # 首日（无历史）直接用三账户当前净值加权，保证 mix 起点真实
+        if len(curves[0]) == 1:
+            eq_mix = sum(curves[i][-1]["equity"] * regs[i] for i in range(3))
+            r_day = 0.0
+        mc = [x for x in mc if x["date"] != date]  # 幂等
+        state["mix"]["equity_curve"] = mc
+        mc.append({"date": date, "equity": round(eq_mix, 2), "daily_return": round(r_day, 3),
+                   "regime": "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")})
+    return slope
 
 
-def do_review(state):
-    sells = [t for t in state["trades"] if t["action"] == "sell"]
-    if not sells:
-        return None
-    wins = [t for t in sells if t["pnl"] > 0]
-    losses = [t for t in sells if t["pnl"] <= 0]
-    note = ["已平仓 %s 笔：胜 %s / 负 %s，胜率 %.0f%%，总已实现 %+.0f 元" % (
-        len(sells), len(wins), len(losses), len(wins) / len(sells) * 100,
-        sum(t["pnl"] for t in sells))]
-    if losses:
-        lr = {}
-        for t in losses:
-            k = t["reason"].split("：")[0][:12]
-            lr[k] = lr.get(k, 0) + 1
-        note.append("亏损主因：" + "、".join("%s×%d" % (k, v) for k, v in
-                    sorted(lr.items(), key=lambda x: -x[1])[:3]))
-        note.append("平均单笔亏损 %.0f 元" % (sum(t["pnl"] for t in losses) / len(losses)))
-    state["review_log"].append({"date": now_ts()[:10], "note": "\n".join(note),
-                                "trades_since_last": len(sells)})
-    return note
+# ---------------- 复盘 ----------------
+def do_review(state, date):
+    for key in REAL_ACCOUNTS:
+        a = state["accounts"][key]
+        sells = [t for t in a["trades"] if t["action"] == "sell"]
+        if not sells:
+            continue
+        if a["review_log"] and a["review_log"][-1]["date"] == date:
+            continue
+        wins = [t for t in sells if t["pnl"] > 0]
+        losses = [t for t in sells if t["pnl"] <= 0]
+        note = "%s：平仓%s笔 胜%s/负%s 胜率%.0f%% 已实现%+.0f" % (
+            a["label"], len(sells), len(wins), len(losses),
+            len(wins) / len(sells) * 100, sum(t["pnl"] for t in sells))
+        if losses:
+            lr = {}
+            for t in losses:
+                k = t["reason"].split("：")[0][:10]
+                lr[k] = lr.get(k, 0) + 1
+            top = sorted(lr.items(), key=lambda x: -x[1])[:2]
+            note += "｜亏因：" + "、".join("%s×%d" % x for x in top)
+            note += "｜均亏%.0f" % (sum(t["pnl"] for t in losses) / len(losses))
+        a["review_log"].append({"date": date, "note": note})
+        a["daily_log"].append({"date": date, "kind": "review", "note": note})
 
 
 # ---------------- main ----------------
@@ -338,91 +421,127 @@ def main():
     ap.add_argument("--init", action="store_true")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--intraday", action="store_true")
-    ap.add_argument("--replay", default=None, metavar="DATE")
+    ap.add_argument("--replay", default=None)
     ap.add_argument("--review", action="store_true")
+    ap.add_argument("--finalize", action="store_true")
     ap.add_argument("--strategy-log", default=None)
+    ap.add_argument("--date", default=None)
     args = ap.parse_args()
+
     if args.strategy_log:
         st = load_state()
-        v = st["meta"]["strategy"]["version"]
+        if not st:
+            print("先 --init")
+            return
+        v = st["meta"].get("strategy_version", "v?")
         m = v.split("."); m[1] = str(int(m[1]) + 1); nv = ".".join(m)
-        st["meta"]["strategy"]["version"] = nv
-        st["meta"]["strategy"]["log"].append({"to": nv, "date": now_ts()[:10],
-                                              "reason": args.strategy_log})
+        st["meta"]["strategy_version"] = nv
         st["version_history"].append({"date": now_ts()[:10], "from": v, "to": nv,
-                                      "change": args.strategy_log,
-                                      "rules": st["meta"]["strategy"]["rules"]})
+                                      "change": args.strategy_log})
         save(st)
-        print("策略 %s → %s：%s" % (v, nv, args.strategy_log))
+        print("策略 v%s → v%s：%s" % (v, nv, args.strategy_log))
         return
-    # 初始化
+
     if args.init or not load_state():
         state = new_state()
         save(state)
-        print("账本已初始化：5万现金，策略 %s。先跑 --plan 建计划，盘中 --intraday 触发成交。" % STRATEGY["version"])
+        print("四账户初始化：激进/稳健/严守纪律 各 5万 + 合并(合成)。先 --plan 建计划。")
         return
     state = load_state()
-    review = load_json("review_data.json")
-    date = (review.get("generatedAt") or now_ts())[:10] if review else now_ts()[:10]
+
     if args.plan:
+        review = load_json("review_data.json")
         if not review:
-            print("无 review_data，先跑 run_review")
+            print("无 review_data")
             return
-        state["plan"] = make_plan(state, review, date)
-        # 大盘闸门标记
+        date = (review.get("generatedAt") or "")[:10]
+        res = make_plan(state, review, date)
         save(state)
-        print("计划已更新（%s）：%d 个回踩买点待盘中触发" % (date, len(state["plan"])))
-        for p in state["plan"]:
-            print("  %s %s分 现价%.2f 回踩≤%.2f 止损%s" % (p["name"], p["score"], p["close"],
-                                                  p["buy_below"], p["stop_atr"]))
+        print("计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v) for k, v in res.items()}))
+        for k in REAL_ACCOUNTS:
+            a = state["accounts"][k]
+            print("  [%s] %d 单" % (ACCOUNTS[k]["label"], len(a["plan"])))
+            for p in a["plan"][:5]:
+                print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"], p.get("gate")))
         return
-    if args.replay:
-        n, notes = replay_day(state, args.replay)
-        save(state)
-        print("盘中回放 %s：成交 %d 笔（无分时近似，触发价=买点价）" % (args.replay, n))
-        for x in notes[:10]:
-            print("  -", x)
-        return
+
     if args.intraday:
         now = time.localtime()
         date = time.strftime("%Y-%m-%d", now)
         hms = time.strftime("%H:%M:%S", now)
         n, notes = intraday_scan(state, date, hms)
         save(state)
-        print("盘中巡检 %s %s：成交 %d 笔" % (date, hms, n))
-        for x in notes[:12]:
+        print("盘中巡检 %s %s：成交%d" % (date, hms, n))
+        for x in notes[:15]:
             print("  -", x)
         return
-    if args.review:
-        do_review(state)
-        # 用收盘 review 更新持仓市值 + 净值
-        if review:
-            items = {x.get("code"): x for x in review.get("items", [])}
-            for pos in state["positions"]:
-                it = items.get(pos["code"])
-                if it:
-                    pos["last_close"] = it.get("close")
-                    pos["close_date"] = date
-            eq = state["meta"]["cash"]
-            for pos in state["positions"]:
-                px = pos.get("last_close") or pos["cost"]
-                eq += pos["shares"] * px
-            if state["equity_curve"] and state["equity_curve"][-1]["date"] == date:
-                state["equity_curve"][-1]["equity"] = round(eq, 2)
-            else:
-                state["equity_curve"].append({"date": date, "equity": round(eq, 2),
-                                              "cash": round(state["meta"]["cash"], 2),
-                                              "daily_return": 0.0,
-                                              "pos_count": len(state["positions"])})
-            # 收盘把未触发计划清掉，次日 --plan 重建
-            for p in state["plan"]:
+
+    if args.replay:
+        # 简化：对每账户用日K低点回放
+        from src import data_provider as dp
+        tot = 0
+        for k in REAL_ACCOUNTS:
+            a = state["accounts"][k]
+            cfg = ACCOUNTS[k]
+            for pl in a.get("plan", []):
+                if pl.get("status", "wait") != "wait" or pl.get("gate") == "block":
+                    continue
+                kd = dp.fetch_daily_kline(pl["code"], count=30)
+                if not kd or args.replay not in kd["dates"]:
+                    continue
+                i = kd["dates"].index(args.replay)
+                low = kd["lows"][i]
+                if low <= pl["buy_below"]:
+                    px = pl["buy_below"]
+                    budget = min(pl["budget"], a["cash"] * 0.98)
+                    shares = int(budget / px / 100) * 100
+                    if shares <= 0:
+                        continue
+                    cost = shares * px
+                    a["cash"] -= cost + cost * 0.0003
+                    a["positions"].append({
+                        "code": pl["code"], "name": pl["name"], "shares": shares,
+                        "cost": round(px, 3), "buy_date": args.replay, "buy_time": "盘中(回放)",
+                        "stop_atr": pl.get("stop_atr"), "tp": pl.get("tp"),
+                        "trail": pl.get("trail"), "be_at": pl.get("be_at"),
+                        "be_on": False, "peak": px, "score": pl.get("score"),
+                        "signal": pl.get("signal"),
+                    })
+                    a["trades"].append({
+                        "action": "buy", "date": args.replay, "time": "盘中(回放)",
+                        "code": pl["code"], "name": pl["name"], "price": round(px, 3),
+                        "shares": shares, "chg_at_fill": None,
+                        "reason": "回放触发(日K低%.2f≤%.2f)：%s" % (low, pl["buy_below"], pl["reason"]),
+                        "strategy": k,
+                    })
+                    pl["status"] = "filled"
+                    tot += 1
+                    print("  [%s] 回放买入 %s @%.2f" % (cfg["label"], pl["name"], px))
+        save(state)
+        print("回放完成 %s：%d 笔" % (args.replay, tot))
+        return
+
+    if args.review or args.finalize:
+        now = time.localtime()
+        date = args.date or (time.strftime("%Y-%m-%d", now) if not args.replay else args.replay)
+        slope = finalize_day(state, date)
+        do_review(state, date)
+        # 标记过期计划
+        for k in REAL_ACCOUNTS:
+            for p in state["accounts"][k]["plan"]:
                 if p.get("status", "wait") == "wait":
                     p["status"] = "expired"
         save(state)
-        print("收盘复盘完成 %s：持仓%d 现金%.0f" % (date, len(state["positions"]), state["meta"]["cash"]))
-        print("（未触发计划已标记 expired；下个交易日 --plan 重建）")
+        print("收盘 %s 完成。mix regime=%s" % (date, "攻/守/衡 by slope"))
+        for k in REAL_ACCOUNTS:
+            a = state["accounts"][k]
+            ec = a["equity_curve"]
+            print("  %s 净值%.0f（%+.2f%%）持仓%d" % (
+                ACCOUNTS[k]["label"], ec[-1]["equity"] if ec else 0,
+                ec[-1].get("daily_return", 0) if ec else 0, len(a["positions"])))
         return
-    print("用法：--init / --plan / --intraday / --review / --strategy-log")
+
+    print("用法：--init / --plan / --intraday / --replay D / --review / --strategy-log")
 
 
 if __name__ == "__main__":
