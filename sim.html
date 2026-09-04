@@ -69,7 +69,7 @@ let charts = {};
   let D = null;
   try {
     D = await RV.API.fetch('sim_trade.json');
-    app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '5万 · 逐日回放 · 激进 / 稳健 / 严守纪律(保本) · 无前视', 'sim', D.generatedAt);
+    app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '5万 · ' + (D?D.start_date+' → '+D.end_date:'') + ' · 激进 / 稳健 / 严守纪律(保本)', 'sim', D.generatedAt);
     loading.style.display = 'none';
     content.style.display = 'block';
     renderAll(D);
@@ -82,6 +82,7 @@ let charts = {};
   function renderAll(d) {
     const stratCards = ORDER.map(k => card(d.strategies[k], k)).join('');
     content.innerHTML = `
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${RV.ui.icon('calendar', 'fa-xs')} 回测区间 <b>${d.start_date} → ${d.end_date}</b>（${d.strategies.balanced.equity_curve.length} 个交易日）· 上证同期 ${RV.fmt.pct(d.strategies.balanced.bench_return_pct)} · 初始 ¥${RV.fmt.money(d.start_cash)}，点卡片切换查看各策略</div>
       <div class="strat-cards">${stratCards}</div>
       <div id="detail"></div>
       <div class="sec-block">
@@ -127,6 +128,13 @@ let charts = {};
         <div class="chart-box" id="eq-chart"></div>
         <div class="chart-box small" id="bar-chart"></div>
         <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 上图净值曲线（橙=模拟盘，灰虚=上证基准）；下图每日收益柱（红=涨，绿=跌）。悬停看明细。</div>
+      </div>
+      <div class="sec-block">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('calendar-days')}</span>分年收益 vs 上证</div>
+        <table class="data-table"><thead><tr><th>年份</th>${(r.yearly || []).map(y => `<th>${y.year}</th>`).join('')}</tr></thead><tbody>
+        <tr><td style="font-weight:700">${r.label}策略</td>${(r.yearly || []).map(y => `<td class="${RV.fmt.cls(y.ret)}">${RV.fmt.pct(y.ret)}</td>`).join('')}</tr>
+        </tbody></table>
+        <div class="fmt-hint">上证 ${r.bench_return_pct != null ? RV.fmt.pct(r.bench_return_pct) : '--'}（整段 ${r.start_date}→${r.end_date}）· 年收益=每年末净值/年初净值</div>
       </div>
       <div class="sec-block">
         <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓 <span class="sec-chip">浮盈 ${r.stats.unrealized_pnl > 0 ? '+' : ''}¥${RV.fmt.num(r.stats.unrealized_pnl)}</span></div>

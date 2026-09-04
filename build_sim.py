@@ -54,7 +54,9 @@ STRATEGIES = {
         "trail_pct": 0.10,        # 峰值回撤 10% 移动止盈
         "tp_pct": None,           # 无固定止盈，靠移动
         "breakeven_at": None,     # 不保本
-        "logic": "激进策略：只做强势多头/多头排列，信号门槛低（≥66分），最多6仓每仓22%，普涨过热不回避。"
+        "cooldown_days": 0,
+        "ma10_trail": None,
+        "logic": "激进策略：只做强势多头/多头排列，信号门槛低（≥66分），最多6仓每仓22%，普涨过热不回避、弱市靠大盘多头闸门空仓。ATR宽止损+峰值回落移动止盈吃主升。"
                  "但前提是上证处于多头结构（强势多头/多头排列，或弱势多头且≥60分）——大盘走多才敢重仓，弱市空仓等待。"
                  "止损用 ATR 宽止损避免被洗，止盈用「峰值涨超8%后回落10%」移动止盈让利润奔跑。"
                  "代价是回撤大（本期约-8%）、单笔亏得多；适合趋势明确的上行市。",
@@ -65,12 +67,14 @@ STRATEGIES = {
         "min_score": 68,
         "allow_trends": ("强势多头", "多头排列"),
         "max_bias5": 5.0,
-        "market_allow": lambda s, sc, br, ts: not (s in ("sell", "reduce") and sc < 45),
+        "market_allow": lambda s, sc, br, ts: not (s in ("sell", "reduce") and (sc or 0) < 45),
         "overheat_block": True,
         "stop_mode": "atr_ma",    # ATR 止损 + MA20 跌破3%确认
         "trail_pct": None,
         "tp_pct": 0.15,
         "breakeven_at": None,
+        "cooldown_days": 5,
+        "ma10_trail": None,
         "logic": "稳健策略：信号门槛中等（≥68分）且只做多头排列。每仓18%最多5仓，保留10%现金。"
                  "普涨过热日（广度≥65%）不追新、大盘空头不进场。止损=A TR宽止损+破MA20且单日跌超3%双确认，"
                  "避免洗盘误杀；单票浮盈+15%落袋。目标：控制回撤的同时吃到主要趋势，攻守平衡。",
@@ -81,12 +85,14 @@ STRATEGIES = {
         "min_score": 78,          # 门槛极高：只做最强
         "allow_trends": ("强势多头", "多头排列"),
         "max_bias5": 3.0,         # 不追高，只在回踩均线附近买
-        "market_allow": lambda s, sc, br, ts: s not in ("sell", "reduce") and (sc >= 55 or br > 0.4),
+        "market_allow": lambda s, sc, br, ts: s not in ("sell", "reduce") and ((sc or 0) >= 55 or br > 0.4),
         "overheat_block": True,
         "stop_mode": "ma10",      # 破 MA10 即纪律离场
         "trail_pct": None,
         "tp_pct": 0.10,           # +10% 就收
         "breakeven_at": 0.05,     # +5% 后止损抬到成本 → 保本
+        "cooldown_days": 10,      # 卖出后 10 日内不重买（防反复割磨损）
+        "ma10_trail": 0.97,       # 破MA10还需从峰值回落≥3% 才算破位
         "logic": "严守纪律策略：只买最强的（≥76分且多头/强势多头），且只在回踩均线附近买（乖离<3%不追高）。"
                  "每仓14%最多4仓，保留16%现金。大盘非多头或广度弱不进场。"
                  "保本铁律：浮盈+5%后止损立即抬到成本价——赚了就不许亏回去；破 MA10 无条件纪律离场。"
@@ -95,11 +101,18 @@ STRATEGIES = {
 }
 
 
-def load_kline(code):
-    path = os.path.join(CACHE_DIR, "kline_%s.json" % code)
+def load_kline(code, count=900):
+    """读长 K 线（优先 long 缓存/长拉取；次新无长史则回退普通）。"""
+    path = os.path.join(CACHE_DIR, "long_%s_%s.json" % (code, count))
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
+    try:
+        k = dp.fetch_daily_kline_long(code, count=count, min_days=min(count - 20, 700))
+        if k and len(k.get("dates") or []) >= 90:
+            return k
+    except Exception as e:
+        print("[sim] 长K拉取 %s 失败: %s" % (code, e))
     try:
         k = dp.fetch_daily_kline(code, count=320)
         return k
@@ -122,6 +135,7 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
     cfg = STRATEGIES[cfg_key]
     cash = CASH_START
     positions = {}   # code -> state
+    last_sell = {}   # code -> 卖出交易日 index（冷却）
     equity_curve = []
     trades = []
     daily_notes = []
@@ -249,6 +263,7 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                 cash += proceeds - fee
                 pnl = proceeds - p["shares"] * p["cost"]
                 sell_ops.append((code, next_day))
+                last_sell[code] = di + 1  # next_day 的索引
                 trades.append({
                     "action": "sell", "date": next_day, "code": code, "name": pool_names[code],
                     "price": round(price, 3), "shares": p["shares"],
@@ -279,6 +294,9 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                 cands = []
                 for code, sig in day_sigs.items():
                     if code in positions:
+                        continue
+                    cd = cfg.get("cooldown_days") or 0
+                    if cd and di - last_sell.get(code, -999) < cd:
                         continue
                     if sig.signal_key not in ("strong_buy", "buy"):
                         continue
@@ -421,6 +439,7 @@ def build_result(key, cfg, equity_curve, trades, daily_notes, final_pos, hold_lo
             if losses and sum(t["pnl"] for t in losses) != 0 else None,
         },
         "equity_curve": equity_curve,
+        "yearly": _yearly_ret(equity_curve),
         "trades": trades,
         "positions": final_pos or [],
         "daily_notes": daily_notes,
@@ -431,13 +450,13 @@ def build_result(key, cfg, equity_curve, trades, daily_notes, final_pos, hold_lo
 def run_all(start_date="2026-07-01", end_date="2026-09-04"):
     klines, pool_names = {}, {}
     for code, name in POOL.items():
-        k = load_kline(code)
+        k = load_kline(code, count=900)
         if k and len(k.get("dates") or []) >= 90:
             klines[code] = k
             pool_names[code] = name
     sh = load_index_kline("sh000001")
-    if not sh:
-        sh = dp.fetch_index_kline("sh000001", 320)
+    if not sh or (sh["dates"] and sh["dates"][0] > start_date):
+        sh = dp.fetch_index_kline("sh000001", 900)
     all_dates = set()
     for k in klines.values():
         all_dates.update(k["dates"])
@@ -463,6 +482,23 @@ def run_all(start_date="2026-07-01", end_date="2026-09-04"):
     }
 
 
+def _yearly_ret(equity_curve):
+    """分自然年收益（用每年首个净值作基数）。"""
+    by = {}
+    for p in equity_curve:
+        by.setdefault(p["date"][:4], []).append(p["equity"])
+    out = []
+    for y in sorted(by):
+        arr = by[y]
+        prev_end = None
+        # 年收益 = 年末/年初
+        out.append({"year": y, "ret": round((arr[-1] / arr[0] - 1) * 100, 2)})
+    # 补充整段
+    if equity_curve:
+        out.append({"year": "全部", "ret": round((equity_curve[-1]["equity"] / CASH_START - 1) * 100, 2)})
+    return out
+
+
 def time_str():
     import datetime
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -470,7 +506,7 @@ def time_str():
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--start", default="2026-07-01")
+    ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end", default="2026-09-04")
     args = ap.parse_args()
     out = run_all(args.start, args.end)
