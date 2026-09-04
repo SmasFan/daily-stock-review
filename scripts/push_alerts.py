@@ -14,6 +14,7 @@ Server酱 Key 从 .env 的 SERVERCHAN_KEY 读取（不写入代码/git）。
 import json
 import os
 import sys
+import time
 
 import requests
 
@@ -278,6 +279,93 @@ def _summary_lines(*parts):
     return "\n\n---\n\n".join(out)
 
 
+def push_market():
+    """午间大盘综合分析（12:00 推送）：大盘指数 / 自选信号 / 资金动向 / 宏观温度。
+    数据驱动：读 review_data / institution_data / macro_data 当日数据，不重复抓取。
+    """
+    today = time.strftime("%Y-%m-%d")
+    d = load("review_data.json")
+    if not d:
+        print("[market] 无复盘数据")
+        return
+    gen = d.get("generatedAt", "")
+    if not gen.startswith(today):
+        print("[market] 数据非当日（%s），跳过推送" % gen)
+        return
+    lines = [head("午间大盘分析 · %s" % gen[:16]), ""]
+    # 1) A股大盘指数（上证/深成/创业板/沪深300）
+    a_codes = {"sh000001", "sz399001", "sz399006", "sh000300"}
+    a_ix = [x for x in (d.get("indices") or []) if x.get("code") in a_codes]
+    if a_ix:
+        lines.append("▎大盘指数")
+        for ix in a_ix:
+            f = ix.get("factors") or {}
+            name_map = {"sh000001": "上证", "sz399001": "深成", "sz399006": "创业板", "sh000300": "沪深300"}
+            chg = ix.get("change_pct")
+            lines.append("%s %s · %s%s" % (
+                name_map.get(ix.get("code"), ix.get("name", "")),
+                updown(chg, pct_num(chg)) if chg is not None else "--",
+                f.get("trend_status", "--"),
+                " · %s" % ix.get("signal", "") if ix.get("signal") else ""))
+        lines.append("")
+    # 2) 市场温度 + 广度 + 过热闸门
+    t = d.get("temperature", {})
+    st = d.get("stats", {})
+    lines.append("▎市场温度：%s（%s）· 广度 %s%%" % (
+        t.get("score", "--"), t.get("label", "--"),
+        t.get("breadth", "--") if t.get("breadth") is not None else "--"))
+    if t.get("market_total"):
+        lines.append("全市场 涨%s/跌%s · 自选池 涨%s/跌%s" % (
+            t.get("market_up", "--"), t.get("market_down", "--"),
+            st.get("up", "--"), st.get("down", "--")))
+    rg = d.get("market_regime") or {}
+    if rg.get("overheat"):
+        lines.append("⚠️ 普涨过热：%s 只买入信号降为观望（上涨占比 %s%%），警惕次日回踩" % (
+            rg.get("downgraded_count", "--"),
+            round((rg.get("breadth_up_ratio") or 0) * 100)))
+    lines.append("")
+    # 3) 自选池信号分布 + 强势股
+    items = d.get("items") or []
+    buy = [x for x in items if x.get("signal_key") in ("strong_buy", "buy")]
+    sell_n = sum(1 for x in items if x.get("signal_key") == "sell")
+    watch_n = sum(1 for x in items if x.get("signal_key") == "watch")
+    strong_n = sum(1 for x in items if x.get("signal_key") == "strong_buy")
+    lines.append("▎自选（%s 只）：强烈买入%s · 买入%s · 观望%s · 卖出%s" % (
+        len(items), strong_n, len(buy) - strong_n, watch_n, sell_n))
+    if buy:
+        buy_sorted = sorted(buy, key=lambda x: x.get("score") or 0, reverse=True)[:6]
+        lines.append("强势：" + "、".join(
+            "%s%s分" % (x.get("name", ""), x.get("score", "")) for x in buy_sorted))
+        lines.append("")
+    # 4) 资金动向
+    fi = load("institution_data.json")
+    if fi:
+        o = fi.get("overview", {})
+        mn = o.get("main_net")
+        lines.append("▎资金：主力净流入 %s（板块 流入%s/流出%s）" % (
+            updown(mn, money(mn)) if isinstance(mn, (int, float)) else "--",
+            o.get("inflow_sectors", "--"), o.get("outflow_sectors", "--")))
+        sec = fi.get("sector", {}).get("industry", {})
+        for x in (sec.get("inflow") or [])[:2]:
+            lines.append("流入 %s：%s · %s" % (x.get("name"),
+                ("%.1f亿" % (x.get("main_net", 0) / 1e8)),
+                pct_num(x.get("change_pct")) if x.get("change_pct") is not None else ""))
+        for x in (sec.get("outflow") or [])[:2]:
+            lines.append("流出 %s：%s" % (x.get("name"),
+                ("%.1f亿" % (-x.get("main_net", 0) / 1e8))))
+        lines.append("")
+    # 5) 宏观温度
+    md = load("macro_data.json")
+    if md:
+        mo = md.get("overview", {})
+        lines.append("▎宏观舆情：%s · 利好 %s/风险 %s · 净分 %s" % (
+            mo.get("temperature_label", "--"), mo.get("bull_count", "--"),
+            mo.get("risk_count", "--"), mo.get("net_score", "--")))
+    lines.append("")
+    lines.append("完整复盘见 review.html · 推荐见 recommend.html")
+    send("午间大盘分析 · %s" % gen[:16], "\n".join(lines))
+
+
 def push_intraday():
     """盘中合并推送（1 条）：回测操作提醒 + 推荐 Top + 资金跟踪（10:00/12:00/14:00）。"""
     parts = []
@@ -391,6 +479,8 @@ def main():
         push_intraday()
     elif mode == "close":
         push_close()
+    elif mode == "market":
+        push_market()
     elif mode in ("backtest", "all"):
         push_backtest()
     elif mode == "review":

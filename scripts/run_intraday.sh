@@ -3,16 +3,37 @@
 # - 每 5 分钟：生成本地推荐+趋势数据
 # - 每 10 分钟（MM%10==0）：跟踪数据 + 提交推送 GitHub
 # - 每 30 分钟（MM%30==0）：资金（institution）+ 回测（含当天）
+# - 每 60 分钟（MM%60==0 / 整点）：复盘分析；10/14 点推盘中播报
+# - 12:00（午休）：只跑复盘 + 推「午间大盘分析」（大盘/自选/资金/宏观综合，单条）
 # - flock 防重叠：上次任务未完成时跳过本轮
 # CACHE_MAX_AGE_HOURS=2：盘中 K 线缓存 2 小时过期，保证当天数据进分析。
 export CACHE_MAX_AGE_HOURS=2
 exec 9>/tmp/run_intraday.lock
 flock -n 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 上次盘中任务未完成，跳过本轮" >> /mnt/c/Users/z7280/daily-stock-review/data/auto_run.log; exit 0; }
 
+cd /mnt/c/Users/z7280/daily-stock-review
 H=$(date +%H%M)
 MM=$((10#$(date +%M)))
+HOUR=$((10#$(date +%H)))
+
+IS_NOON=$([ "$H" = "1200" ] && echo 1 || echo 0)
+IN_TRADING=0
 if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -le 1500 ]; }; then
-  cd /mnt/c/Users/z7280/daily-stock-review
+  IN_TRADING=1
+fi
+
+# ============ 午间 12:00 大盘分析推送（午休，仅整点一次） ============
+if [ "$IS_NOON" = "1" ]; then
+  # 复盘数据 11:00 已是最新盘中值；12:00 再刷一次拿到完整上午走势
+  python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 午间复盘生成失败" >> data/auto_run.log
+  python3 scripts/push_alerts.py market >> data/auto_run.log 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 午间大盘分析推送失败" >> data/auto_run.log
+  exit 0
+fi
+
+# ============ 交易时段盘中任务 ============
+if [ "$IN_TRADING" = "1" ]; then
   python3 run_review.py --mode recommend --top 10 >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中推荐生成失败" >> data/auto_run.log
 
@@ -36,10 +57,9 @@ if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -
   if [ $((MM % 60)) -eq 0 ]; then
     python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
-    # 微信推送（Server酱）：盘中播报（回测+推荐+资金合并 1 条；10:00/12:00/14:00 共 3 条，
-    # 加盘后复盘 1 条 = 4 条，控制在免费版每日 5 条限额内）
-    HOUR=$((10#$(date +%H)))
-    if [ "$HOUR" = "10" ] || [ "$HOUR" = "12" ] || [ "$HOUR" = "14" ]; then
+    # 微信推送（Server酱）：盘中播报（回测+推荐+资金合并 1 条；10:00/14:00，
+    # 12:00 走上方午间块，加盘后复盘 1 条 = 每日 4 条，在免费版 5 条限额内）
+    if [ "$HOUR" = "10" ] || [ "$HOUR" = "14" ]; then
       python3 scripts/push_alerts.py intraday >> data/auto_run.log 2>&1 \
         || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中播报推送失败" >> data/auto_run.log
     fi
