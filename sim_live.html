@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实时模拟盘 · 每日持续交易</title>
+<link rel="stylesheet" href="assets/css/common.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+  .kpi .k-label { font-size:11.5px; color:var(--text-2); }
+  .kpi .k-val { font-size:20px; font-weight:800; margin-top:5px; }
+  .kpi .k-sub { font-size:10.5px; color:var(--text-2); margin-top:3px; }
+  .sec { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px; }
+  .sec-title { font-size:15px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .sec-title .ti { color:var(--accent); }
+  .data-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  .data-table th { text-align:left; color:var(--text-2); font-size:11.5px; padding:7px 8px; border-bottom:2px solid var(--border); white-space:nowrap; }
+  .data-table td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .up { color:var(--up); } .down { color:var(--down); } .neutral{color:var(--neutral);}
+  .tag { display:inline-block; font-size:10.5px; font-weight:700; border-radius:6px; padding:1px 7px; }
+  .tag-buy{background:#fef2f2;color:#dc2626;} .tag-sell{background:#f0fdf4;color:#16a34a;}
+  .tag-pend{background:#fffbeb;color:#d97706;} .tag-block{background:#f1f5f9;color:#64748b;}
+  .ver-chip { font-size:11px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; padding:1px 8px; color:var(--text-2); font-weight:600; }
+  .reason { font-size:11px; color:var(--text-2); line-height:1.5; }
+  .chart-box { height:300px; }
+  .note-item { padding:8px 0; border-bottom:1px dashed var(--border); font-size:12.5px; }
+  .note-item:last-child{border:none;}
+  .nd { font-weight:700; color:var(--text); }
+  .revbox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; font-size:12.5px; line-height:1.7; margin-bottom:10px; white-space:pre-line; }
+  .hl { background:#fef3c7; }
+  .rule-list { font-size:12px; line-height:1.9; }
+  .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="app"></div>
+  <div class="loading" id="loading">数据加载中…</div>
+  <div id="content" style="display:none"></div>
+</div>
+<script src="assets/js/common.js"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  const loading = document.getElementById('loading');
+  const content = document.getElementById('content');
+  let S = null;
+  try {
+    S = await RV.API.fetch('sim_live.json');
+    const m = S.meta;
+    app.innerHTML = RV.ui.header('实时模拟盘', '5万起步 · 每日收盘决策 / 次日开盘成交 · 自学习复盘', 'simlive', m.created);
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    render(S);
+  } catch (e) {
+    app.innerHTML = RV.ui.header('实时模拟盘', '', 'simlive');
+    loading.innerHTML = '数据加载失败：' + e.message;
+    loading.style.display = 'block';
+  }
+
+  function fmt(v, d) { return RV.fmt.num(v, d); }
+
+  function render(s) {
+    const m = s.meta;
+    const st = m.strategy;
+    const eqc = s.equity_curve || [];
+    const last = eqc[eqc.length - 1] || {};
+    const buys = (s.trades || []).filter(t => t.action === 'buy').length;
+    const sells = (s.trades || []).filter(t => t.action === 'sell').length;
+    const realized = (s.trades || []).filter(t => t.action === 'sell').reduce((a, t) => a + (t.pnl || 0), 0);
+    // 持仓市值
+    let holdVal = 0;
+    (s.positions || []).forEach(p => { holdVal += p.shares * p.cost; });
+    content.innerHTML = `
+      <div class="kpis">
+        <div class="kpi"><div class="k-label">账户净值</div><div class="k-val">¥${fmt(eqc.length ? last.equity : m.start_cash)}</div><div class="k-sub">起始 ¥${fmt(m.start_cash)} · ${m.start_date} 建账</div></div>
+        <div class="kpi"><div class="k-label">总收益</div><div class="k-val ${RV.fmt.cls(((last.equity||m.start_cash)/m.start_cash-1)*100)}">${RV.fmt.pct(((last.equity||m.start_cash)/m.start_cash-1)*100)}</div><div class="k-sub">含未实现浮盈</div></div>
+        <div class="kpi"><div class="k-label">已实现盈亏</div><div class="k-val ${RV.fmt.cls(realized)}">${realized>0?'+':''}¥${fmt(realized)}</div><div class="k-sub">卖${sells} / 买${buys}</div></div>
+        <div class="kpi"><div class="k-label">持仓</div><div class="k-val">${s.positions.length} / 5</div><div class="k-sub">市值 ¥${fmt(holdVal)}</div></div>
+        <div class="kpi"><div class="k-label">现金</div><div class="k-val">¥${fmt(m.cash)}</div><div class="k-sub">${((m.cash/(last.equity||m.start_cash))*100).toFixed(0)}% 仓位</div></div>
+        <div class="kpi"><div class="k-label">待成交意向</div><div class="k-val">${(s.pending_buys||[]).filter(b=>b.status!=='blocked').length} 单</div><div class="k-sub">${(s.pending_buys||[]).filter(b=>b.status==='blocked').length} 被大盘闸门挡</div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>净值曲线</div>
+        <div class="chart-box" id="eq-chart"></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓</div>
+        ${(s.positions||[]).length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>信号日</th><th>买入日</th><th>买入信号</th><th>分数</th><th>股数</th><th>成本</th><th>ATR止损</th></tr></thead><tbody>
+          ${s.positions.map(p=>`<tr><td style="font-weight:700">${p.name}</td><td><span class="ver-chip">${p.signal_date}</span></td><td>${p.buy_date}</td><td>${p.signal}</td><td>${p.score}</td><td>${p.shares}</td><td>${fmt(p.cost)}</td><td class="down">${p.atr_stop!=null?fmt(p.atr_stop):'--'}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 持币等待</div>'}
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('clock')}</span>待成交意向（下个交易日开盘）</div>
+        ${(s.pending_buys||[]).filter(b=>b.status!=='skipped_gap').length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>信号日</th><th>信号</th><th>分数</th><th>意向金额</th><th>状态</th><th>买入理由</th></tr></thead><tbody>
+          ${s.pending_buys.filter(b=>b.status!=='skipped_gap').map(b=>`<tr><td style="font-weight:700">${b.name}</td><td><span class="ver-chip">${b.signal_date}</span></td><td>${b.signal}</td><td>${b.score}</td><td>¥${fmt(b.intended_amount)}</td>
+          <td>${b.status==='pending'?'<span class="tag tag-pend">待买</span>':b.status==='blocked'?'<span class="tag tag-block">大盘防守暂缓</span>':b.status==='skipped_gap'?'<span class="tag tag-block">跳空放弃</span>':b.status}</td>
+          <td class="reason">${(b.reason||'').slice(0,80)}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待买意向（空仓等信号）</div>'}
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('receipt')}</span>成交流水 <span class="ver-chip">${s.trades.length} 笔</span></div>
+        ${(s.trades||[]).length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>成交日</th><th>时间</th><th>方向</th><th>股票</th><th>价格</th><th>股数</th><th>信号日</th><th>跳空</th><th>盈亏</th><th>策略版</th><th>原因 / 记录</th></tr></thead><tbody>
+          ${s.trades.slice().reverse().map(t=>`<tr>
+            <td>${t.date}</td><td class="neutral">${t.time||'--'}</td>
+            <td>${t.action==='buy'?'<span class="tag tag-buy">买入</span>':'<span class="tag tag-sell">卖出</span>'}</td>
+            <td style="font-weight:700">${t.name}</td><td>${t.price!=null?fmt(t.price):'--'}</td><td>${t.shares||''}</td>
+            <td><span class="ver-chip">${t.signal_date||'--'}</span></td>
+            <td class="${t.gap!=null?RV.fmt.cls(t.gap):'neutral'}">${t.gap!=null?RV.fmt.pct(t.gap):'--'}</td>
+            <td class="${t.action==='sell'?(t.pnl>0?'up':'down'):'neutral'}">${t.action==='sell'?RV.fmt.pct(t.pnl_pct)+'('+(t.pnl>0?'+':'')+'¥'+fmt(t.pnl)+')':'--'}</td>
+            <td><span class="ver-chip">${t.strategy_ver||'--'}</span></td>
+            <td class="reason">${t.reason||''}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="neutral" style="padding:8px">暂无成交</div>'}
+      </div>
+
+      <div class="chart-row">
+        <div class="sec">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>每日决策日志</div>
+          ${(s.daily_log||[]).slice().reverse().slice(0,30).map(n=>`<div class="note-item"><span class="nd">${n.date}</span> <span class="ver-chip">${n.kind}</span> ${n.name?('<b>'+n.name+'</b> '):''}<span class="reason">${n.note||''}</span></div>`).join('')||'<div class="neutral">无日志</div>'}
+        </div>
+        <div class="sec">
+          <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>复盘学习笔记</div>
+          ${(s.review_log||[]).length ? s.review_log.map(r=>`<div class="revbox"><b>复盘 ${r.date}</b>（${r.trades_since_last}笔后）\n${r.note}</div>`).join('') : '<div class="neutral">满 5 笔平仓后自动产出复盘（亏损共性/改进建议）</div>'}
+          <div class="sec-title" style="margin-top:12px"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>策略版本史</div>
+          ${(s.version_history||[]).length ? s.version_history.map(v=>`<div class="note-item"><b>${v.from} → ${v.to}</b> ${v.date}<div class="reason">${v.change}</div></div>`).join('') : '<div class="neutral">尚无变更（规则见下）</div>'}
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('shield-halved')}</span>当前策略 v${st.version} · ${st.name}</div>
+        <ul class="rule-list">${st.rules.map(r=>'<li>'+r+'</li>').join('')}</ul>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 每日分析点</div>
+        <div class="rule-list" style="margin-bottom:10px">
+          <li><b>何时买：</b>评分≥68 且 多头/强势多头 + 乖离&lt;5% + 大盘非防守 + 非普涨过热 + 竞价跳空≤2%</li>
+          <li><b>何时卖：</b>破 ATR 止损 / 破 MA20 且当日跌&gt;3% / 信号转卖出 / 浮盈≥15% / 峰值回落 8%</li>
+          <li><b>买多少：</b>每票≤18% 预算、最多 5 只、现金≥15%、股数恒为 100 整数倍（A股一手）</li>
+          <li><b>为何留证据：</b>每笔买卖记录 时间(09:30开盘)/信号日/跳空幅度/完整理由/当策略版本 → 复盘可查对错</li>
+        </div>
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px">
+          <b>${RV.ui.icon('bullseye', 'fa-xs')} 下个交易日分析点：</b>
+          ${(s.pending_buys||[]).filter(b=>b.status!=='skipped_gap').length ? (s.pending_buys||[]).filter(b=>b.status==='pending').map(b=>`开盘看 ${b.name} 跳空是否&gt;2%（高开弃买）或&lt;-3%（低开弃买）；不满足则以开盘价买入 ~¥${fmt(b.intended_amount)}`).join('<br>') : '暂无待买意向；<br>· 观察持仓是否触发卖出条件（ATR/MA20/信号/止盈）<br>· 大盘温度&gt;65 普涨过热日不追新；上证卖出&amp;&amp;&lt;45分不开新仓'}
+          <br><span style="color:var(--text-2)">· 持仓：</span>${(s.positions||[]).map(p=>p.name+'（成本'+fmt(p.cost)+'，ATR止损'+(p.atr_stop!=null?fmt(p.atr_stop):'--')+'）').join('、')||'空仓'}
+        </div>
+      </div>`;
+    drawChart(s);
+  }
+
+  function dayDetailHTML(s, date) {
+    // 该日成交（时间/方向/价格/数量/理由/跳空）
+    const trades = (s.trades || []).filter(t => t.date === date);
+    const buys = (s.pending_buys || []).filter(b => b.signal_date === date && b.status === 'pending');
+    const log = (s.daily_log || []).filter(l => l.date === date);
+    let h = '';
+    if (trades.length) {
+      h += '<div style="font-weight:700;font-size:13px;margin:4px 0">' + RV.ui.icon('arrows-rotate') + ' 当日成交（' + trades.length + '）</div>';
+      h += '<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>时间</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>跳空</th><th>盈亏</th><th>策略</th><th>操作原因</th></tr></thead><tbody>';
+      h += trades.map(t => `<tr><td class="neutral">${t.time||'--'}</td>
+        <td>${t.action==='buy'?'<span class="tag tag-buy">买入</span>':'<span class="tag tag-sell">卖出</span>'}</td>
+        <td style="font-weight:700">${t.name}</td><td>${t.price!=null?fmt(t.price):'--'}</td><td>${t.shares||''}股</td>
+        <td class="${t.gap!=null?RV.fmt.cls(t.gap):'neutral'}">${t.gap!=null?RV.fmt.pct(t.gap):'--'}</td>
+        <td class="${t.action==='sell'?(t.pnl>0?'up':'down'):'neutral'}">${t.action==='sell'?RV.fmt.pct(t.pnl_pct):'--'}</td>
+        <td><span class="ver-chip">${t.strategy_ver||''}</span></td>
+        <td class="reason">${t.reason||''}</td></tr>`).join('');
+      h += '</tbody></table></div>';
+    }
+    if (buys.length) {
+      h += '<div style="font-weight:700;font-size:13px;margin:8px 0 4px">' + RV.ui.icon('clock') + ' 当日产生待买意向（次交易日开盘成交）</div>';
+      h += buys.map(b => `<div class="reason">· ${b.name} ${b.signal} ${b.score}分 预算¥${fmt(b.intended_amount)}：${(b.reason||'').slice(0,60)}</div>`).join('');
+    }
+    if (log.length && !trades.length && !buys.length) {
+      h += log.map(l => `<div class="reason" style="padding:3px 0">· [${l.kind}] ${l.name?l.name+' ' : ''}${l.note||''}</div>`).join('');
+    }
+    return h;
+  }
+
+  function popupDay(s, date) {
+    const old = document.getElementById('live-pop');
+    if (old) old.remove();
+    const eqSec = document.querySelector('#eq-chart');
+    if (!eqSec) return;
+    const ec = s.equity_curve || [];
+    const i = ec.findIndex(p => p.date === date);
+    const d = i >= 0 ? ec[i] : null;
+    const inner = dayDetailHTML(s, date) || '<div class="neutral">该日无操作</div>';
+    const dv = document.createElement('div');
+    dv.id = 'live-pop';
+    dv.style.cssText = 'margin-top:12px;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:10px;background:var(--surface);padding:12px 14px';
+    dv.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <b>${date}</b>
+        ${d?`<span class="ver-chip">净值 ¥${fmt(d.equity)}</span><span class="ver-chip ${d.daily_return>=0?'up':'down'}">当日 ${RV.fmt.pct(d.daily_return)}</span><span class="ver-chip">持仓 ${d.pos_count}只</span>`:''}
+        <button id="lp-close" style="margin-left:auto;border:none;background:none;color:var(--text-2);cursor:pointer">${RV.ui.icon('xmark')}</button>
+      </div>${inner}`;
+    eqSec.parentElement.appendChild(dv);
+    dv.querySelector('#lp-close').addEventListener('click', () => dv.remove());
+    dv.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  function drawChart(s) {
+    const ec = s.equity_curve || [];
+    const dates = ec.map(p=>p.date), eq = ec.map(p=>p.equity);
+    const el = document.getElementById('eq-chart');
+    if (!el || !dates.length) return;
+    const c = echarts.init(el);
+    c.setOption({
+      animation:false,
+      tooltip:{trigger:'axis',axisPointer:{type:'cross'},
+        formatter(p){const i=p[0].dataIndex;return dates[i]+'<br>净值 ¥'+RV.fmt.num(eq[i])+'（'+RV.fmt.pct(ec[i].daily_return)+'）<br>持仓 '+ec[i].pos_count+'只<br><span style="color:var(--text-2)">点击看当日操作明细</span>'}},
+      grid:{left:60,right:20,top:20,bottom:26},
+      xAxis:{type:'category',data:dates,axisLabel:{fontSize:10}},
+      yAxis:{type:'value',scale:true,axisLabel:{fontSize:10,formatter:v=>'¥'+v}},
+      dataZoom:[{type:'inside'},{type:'slider',height:16,bottom:0}],
+      series:[{name:'净值',type:'line',data:eq,smooth:false,showSymbol:false,
+        lineStyle:{width:2,color:'#7c3aed'},areaStyle:{opacity:0.08,color:'#7c3aed'}}]
+    });
+    c.on('click', p => { if (p && p.dataIndex != null) popupDay(s, dates[p.dataIndex]); });
+    window.__liveChart = c;
+    window.__livePopup = (dt) => popupDay(s, dt);
+    window.addEventListener('resize',()=>c.resize());
+  }
+})();
+</script>
+</body>
+</html>

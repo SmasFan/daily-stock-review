@@ -1,0 +1,126 @@
+{
+ "meta": {
+  "created": "2026-09-05 00:32:35",
+  "start_date": "2026-09-04",
+  "start_cash": 50000.0,
+  "cash": 50000.0,
+  "strategy": {
+   "version": "v1.0",
+   "name": "稳健精选",
+   "created": "2026-09-04",
+   "rules": [
+    "池：自选池 256 只 + 每日推荐，剔除 ST/新股",
+    "买：signal∈(强烈买入,买入) 且 score≥68 且 多头/强势多头",
+    "买：bias_ma5<5（不追高），现价 ≤ 理想买点*1.02",
+    "竞价：次日开盘相对信号日跳空>2% 放弃买入（不追高开）",
+    "竞价：跳空低开>3% 放弃（可能有变故）",
+    "大盘：上证 score<45 且卖出/减仓 → 不开新仓（防守）",
+    "普涨过热（全市场上涨占比≥65%）→ 当日不追新买入",
+    "单票 ≤ 总资 20%，最多持 5 只，现金 ≥15%",
+    "止损：跌破 ATR 止损 或 跌破 MA20 且当日跌>3% → 次日卖",
+    "信号转卖出/减仓 → 次日卖",
+    "止盈：浮盈 ≥15% → 次日卖（落袋）；若已+8%后从峰值回落8%也走",
+    "同票卖出后 5 日内不重买（防反复割）"
+   ],
+   "log": []
+  }
+ },
+ "positions": [],
+ "pending_buys": [
+  {
+   "code": "002493",
+   "name": "荣盛石化",
+   "signal_date": "2026-09-04",
+   "signal": "强烈买入",
+   "score": 88,
+   "ideal_buy": 14.58,
+   "bias_ma5": -1.21,
+   "reason": "",
+   "atr_stop": 13.16,
+   "stop_loss": 13.68,
+   "sig_close": 14.4,
+   "intended_amount": 9000.0,
+   "status": "pending"
+  },
+  {
+   "code": "002430",
+   "name": "杭氧股份",
+   "signal_date": "2026-09-04",
+   "signal": "强烈买入",
+   "score": 86,
+   "ideal_buy": 27.19,
+   "bias_ma5": 0.25,
+   "reason": "",
+   "atr_stop": 25.38,
+   "stop_loss": 24.63,
+   "sig_close": 27.26,
+   "intended_amount": 9000.0,
+   "status": "pending"
+  },
+  {
+   "code": "600486",
+   "name": "扬农化工",
+   "signal_date": "2026-09-04",
+   "signal": "强烈买入",
+   "score": 85,
+   "ideal_buy": 55.36,
+   "bias_ma5": 0.92,
+   "reason": "",
+   "atr_stop": 51.54,
+   "stop_loss": 54.88,
+   "sig_close": 55.87,
+   "intended_amount": 9000.0,
+   "status": "pending"
+  },
+  {
+   "code": "601233",
+   "name": "桐昆股份",
+   "signal_date": "2026-09-04",
+   "signal": "强烈买入",
+   "score": 84,
+   "ideal_buy": 26.72,
+   "bias_ma5": -2.72,
+   "reason": "",
+   "atr_stop": 23.35,
+   "stop_loss": 24.77,
+   "sig_close": 25.99,
+   "intended_amount": 9000.0,
+   "status": "pending"
+  },
+  {
+   "code": "600346",
+   "name": "恒力石化",
+   "signal_date": "2026-09-04",
+   "signal": "强烈买入",
+   "score": 83,
+   "ideal_buy": 19.02,
+   "bias_ma5": 0.06,
+   "reason": "",
+   "atr_stop": 17.38,
+   "stop_loss": 18.46,
+   "sig_close": 19.03,
+   "intended_amount": 9000.0,
+   "status": "pending"
+  }
+ ],
+ "pending_sells": [],
+ "trades": [],
+ "equity_curve": [
+  {
+   "date": "2026-09-04",
+   "equity": 50000.0,
+   "cash": 50000.0,
+   "daily_return": 0.0,
+   "pos_count": 0
+  }
+ ],
+ "daily_log": [
+  {
+   "date": "2026-09-04",
+   "kind": "note",
+   "note": "初始化：生成 5 个买入意向（待下个交易日开盘成交）；策略 v1.0"
+  }
+ ],
+ "review_log": [],
+ "version_history": []
+}

@@ -56,6 +56,12 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 低估值选股生成失败" >> "$LOG"
 fi
 
+# 实时模拟盘：每日收盘结算昨日意向 + 生成今日新意向 + 自动复盘（依赖当日 review_data，须在其后）
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  python3 sim_live.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘日更失败" >> "$LOG"
+fi
+
 # 提交并推送（数据 + 页面 + 资源 + workflow）
 git add -A . ':!data/cache' ':!*.log' 2>/dev/null || true
 if git diff --cached --quiet; then

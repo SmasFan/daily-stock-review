@@ -80,6 +80,7 @@
         ['tracking', '跟踪', 'route', 'tracking.html'],
         ['metals', '期货', 'coins', 'metals.html'],
         ['sim', '模拟盘', 'gamepad', 'sim.html'],
+        ['simlive', '实时模拟', 'stopwatch', 'sim_live.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];
       const navHtml = navs.map(([k, label, icon, href]) =>
