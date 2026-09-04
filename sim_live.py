@@ -71,11 +71,18 @@ def init_state(asof_date, day_sigs, market):
     if market.get("sh_signal") in ("卖出", "减仓") and (market.get("sh_score") or 0) < 45:
         blocked = True
     for c in cands[:5]:
+        # 可读买入理由（数据给不出 review reasons 时自生成）
+        rsn = c.get("reasons") or "%s(%s分)·%s" % (
+            c.get("signal", "--"), c.get("score", "--"), c.get("trend_status", ""))
+        if c.get("bias_ma5") is not None:
+            rsn += " 乖离%+.1f%%" % c["bias_ma5"]
+        if c.get("ideal_buy"):
+            rsn += " 理想买点%.2f" % c["ideal_buy"]
         pending.append({
             "code": c["code"], "name": c["name"],
             "signal_date": asof_date, "signal": c["signal"],
             "score": c["score"], "ideal_buy": c.get("ideal_buy"),
-            "bias_ma5": c.get("bias_ma5"), "reason": c.get("reasons", ""),
+            "bias_ma5": c.get("bias_ma5"), "reason": rsn,
             "atr_stop": c.get("atr_stop"), "stop_loss": c.get("stop_loss"),
             "sig_close": c.get("close"),
             "intended_amount": round(n_budget, 2), "status": "blocked" if blocked else "pending",
@@ -472,7 +479,12 @@ def main():
             "date": date, "kind": "note",
             "note": "初始化：生成 %d 个买入意向（待下个交易日开盘成交）；策略 %s" % (
                 len(state["pending_buys"]), STRATEGY["version"])})
-        # 记录推荐买入候选理由
+        # 每笔意向入日志（含买入理由），供页面周五可见
+        for b in state["pending_buys"]:
+            st = "大盘防守暂缓" if b["status"] == "blocked" else "挂单待买"
+            state["daily_log"].append({
+                "date": date, "kind": "intent", "code": b["code"], "name": b["name"],
+                "note": "[%s] 意向买入 ~¥%.0f：%s" % (st, b["intended_amount"], b["reason"])})
         save(state)
         print("初始化完成：%d 意向待成交" % len(state["pending_buys"]))
         for b in state["pending_buys"]:

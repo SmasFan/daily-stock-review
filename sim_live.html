@@ -42,6 +42,7 @@
   <div id="content" style="display:none"></div>
 </div>
 <script src="assets/js/common.js"></script>
+<script src="assets/js/rvui.js"></script>
 <script>
 (async function () {
   const app = document.getElementById('app');
@@ -63,6 +64,23 @@
 
   function fmt(v, d) { return RV.fmt.num(v, d); }
 
+  function timelineSteps(s) {
+    const steps = [];
+    // 建账
+    const t0 = s.meta.start_date;
+    const closed = (s.trades || []).filter(t => t.action === 'sell').length;
+    const stepsHtml = [];
+    stepsHtml.push(`<span class="ver-chip">① ${t0}（五）收盘 · 建账 ¥${fmt(s.meta.start_cash)} → 信号扫描生成意向</span>`);
+    if ((s.pending_buys || []).length) {
+      const pend = s.pending_buys.filter(b => b.status === 'pending');
+      const blk = s.pending_buys.filter(b => b.status === 'blocked');
+      stepsHtml.push(`<span class="ver-chip">② 挂单中：${pend.map(b => b.name).join('、') || '无'}${blk.length ? '（' + blk.length + ' 只被大盘防守暂缓）' : ''} → 下个交易日 09:30 按开盘价买入（跳空&gt;2%弃/&lt;-3%弃）</span>`);
+    }
+    if ((s.positions || []).length) stepsHtml.push(`<span class="ver-chip">③ 当前持仓 ${s.positions.length} 只，逐日检查 ATR/MA20/信号/止盈</span>`);
+    if (closed) stepsHtml.push(`<span class="ver-chip">④ 已平仓 ${closed} 笔 → 复盘记录见下</span>`);
+    return stepsHtml.join('');
+  }
+
   function render(s) {
     const m = s.meta;
     const st = m.strategy;
@@ -75,6 +93,12 @@
     let holdVal = 0;
     (s.positions || []).forEach(p => { holdVal += p.shares * p.cost; });
     content.innerHTML = `
+      <div class="sec" style="padding:12px 16px;background:linear-gradient(90deg,var(--surface),#faf5ef)">
+        <div class="sec-title" style="margin-bottom:6px"><span class="ti">${RV.ui.icon('timeline')}</span>操作时间线 <span class="ver-chip">每日收盘决策 → 次日 09:30 开盘成交</span></div>
+        <div style="font-size:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          ${timelineSteps(s)}
+        </div>
+      </div>
       <div class="kpis">
         <div class="kpi"><div class="k-label">账户净值</div><div class="k-val">¥${fmt(eqc.length ? last.equity : m.start_cash)}</div><div class="k-sub">起始 ¥${fmt(m.start_cash)} · ${m.start_date} 建账</div></div>
         <div class="kpi"><div class="k-label">总收益</div><div class="k-val ${RV.fmt.cls(((last.equity||m.start_cash)/m.start_cash-1)*100)}">${RV.fmt.pct(((last.equity||m.start_cash)/m.start_cash-1)*100)}</div><div class="k-sub">含未实现浮盈</div></div>
