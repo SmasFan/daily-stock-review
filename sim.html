@@ -53,6 +53,14 @@
   .hl-flash td { animation: hlflash 2.2s ease 2; }
   .fmt-hint { font-size:11px; color:var(--text-2); margin-top:8px; }
   #eq-chart, #bar-chart { width:100%; }
+
+  @media (max-width:640px) {
+    .strat-card { padding:13px; }
+    .sc-kpis { grid-template-columns:repeat(3,1fr); gap:6px; }
+    .chart-box { height:240px; } .chart-box.small { height:110px; }
+    .month-head { font-size:12px; padding:8px 9px; flex-wrap:wrap; }
+    .kpi .k-val { font-size:17px; }
+  }
 </style>
 </head>
 <body>

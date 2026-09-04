@@ -56,11 +56,13 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 低估值选股生成失败" >> "$LOG"
 fi
 
-# 实时模拟盘（v2 盘中触发）：收盘后重建计划 + 收盘复盘（盘中由 run_intraday 每5分钟巡检成交）
+# 实时模拟盘（v3 四账户盘中触发）：收盘后重建计划 + 导出个股K线 + 收盘复盘（盘中由 run_intraday 每5分钟巡检成交）
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   python3 sim_live.py --plan >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘计划失败" >> "$LOG"
-  python3 sim_live.py --review >> "$LOG" 2>&1 \
+  python3 build_kline_export.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘K线导出失败" >> "$LOG"
+  python3 sim_live.py --review --date $(date +%F) >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘复盘失败" >> "$LOG"
 fi
 

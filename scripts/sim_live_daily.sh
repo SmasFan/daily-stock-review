@@ -1,26 +1,23 @@
 #!/bin/bash
-# 实时模拟盘每日维护（收盘后 15:45 由 cron 调用；也可手动）
-# 1) 用当日 review_data.json 结算昨日意向（按今日开盘价，A股100股整数）
-# 2) 按当前策略版本生成新买卖意向（大盘防守/过热闸门/跳空规则）
-# 3) 每日收盘总结 + 平仓后自动自我复盘（亏损共性/改进建议）
-# 用法: bash scripts/sim_live_daily.sh        # 日更（auto_run 收盘后已含，勿重复）
-#       python3 sim_live.py --review          # 仅复盘总结
-#       python3 sim_live.py --init            # 初始化账本（首次）
-#       python3 sim_live.py --strategy-log "理由"  # 记录策略调整并升版本
+# 实时模拟盘每日维护（v3 四账户盘中触发）
+# 收盘后运行（auto_run.sh 已含，此脚本可手动补跑）：
+#   --plan 重建四账户回踩买点计划
+#   build_kline_export.py 导出个股K线（页面弹层绘图）
+#   --review 收盘市值+复盘
+# 盘中触发由 run_intraday.sh 每5分钟自动 --intraday。
 set -u
 cd "$(dirname "$0")/.."
 LOG="data/auto_run.log"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] sim_live 日更开始" >> "$LOG"
-python3 sim_live.py >> "$LOG" 2>&1 || echo "[$(date '+%Y-%m-%d %H:%M:%S')] sim_live 失败" >> "$LOG"
-# 提交账本
-git add data/sim_live.json 2>/dev/null
+D=$(date +%F)
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] sim_live 收盘维护开始 $D" >> "$LOG"
+python3 sim_live.py --plan >> "$LOG" 2>&1
+python3 build_kline_export.py >> "$LOG" 2>&1
+python3 sim_live.py --review --date "$D" >> "$LOG" 2>&1
+git add data/sim_live.json data/kline 2>/dev/null
 if git diff --cached --quiet; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] sim_live 无变更" >> "$LOG"
 else
-  git commit -m "sim live $(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG" 2>&1
-  for i in 1 2 3; do
-    git push origin main >> "$LOG" 2>&1 && break
-    sleep 5
-  done
+  git commit -m "sim live $D" >> "$LOG" 2>&1
+  for i in 1 2 3; do git push origin main >> "$LOG" 2>&1 && break; sleep 5; done
 fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] sim_live 完成" >> "$LOG"
