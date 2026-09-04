@@ -395,3 +395,49 @@ def fetch_index_kline(sym: str, count: int = 320, use_cache: bool = True,
     except Exception:
         pass
     return out
+
+
+def fetch_intraday_trend(code: str, ndays: int = 1) -> dict:
+    """拉取 A 股当日/近日分时（东方财富 trends2，push2 主域名）。
+
+    返回 {"date": ..., "pre_close": ..., "name": ..., "trends": [
+        {"time": "09:30", "price": 55.26, "avg": 55.28, "volume": 1234, "amount": ...}, ...
+    ]} 或 None。分时约 241 点/日（09:30-15:00），跨日需 ndays>1（同花顺/东财一般仅当日）。
+    """
+    code = str(code).zfill(6)
+    if not code.isdigit() or len(code) != 6:
+        return None
+    secid = ("0." if code.startswith(("0", "3")) else "1.") + code
+    url = ("https://push2.eastmoney.com/api/qt/stock/trends2/get"
+           "?secid=%s&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13"
+           "&fields2=f51,f52,f53,f54,f55,f56,f57,f58&ndays=%d&iscr=0" % (secid, ndays))
+    try:
+        raw = _get(url)
+        data = json.loads(raw)
+        node = data.get("data") or {}
+        trends = node.get("trends") or []
+        if not trends:
+            return None
+        out = []
+        for row in trends:
+            # row: 日期 时间,价格,均价?,量,额,... 变体按 f52.. 解析
+            p = row.split(",")
+            # 常见: "2026-09-04 09:30,55.26,55.28,0,0,.." / 有时 3 列
+            day, hm = p[0].split(" ")
+            def _f(i):
+                try:
+                    return float(p[i])
+                except (ValueError, IndexError):
+                    return None
+            out.append({
+                "time": day + " " + hm,
+                "price": _f(1),
+                "avg": _f(2),
+                "volume": _f(3) if len(p) > 3 else None,
+                "amount": _f(4) if len(p) > 4 else None,
+            })
+        return {"date": node.get("date") or out[0]["time"][:10],
+                "name": node.get("name"), "pre_close": node.get("preClose")
+                or node.get("preSettlement"), "trends": out}
+    except Exception:
+        return None

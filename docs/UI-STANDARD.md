@@ -131,7 +131,7 @@
 | watchlist.html | (旧独立) | 板块汇总 + 板块卡 + 个股 modal（历史遗留，新代码勿模仿） |
 | index.html | — | entry-card 网格 + hero |
 
-## 6. 新增/修改页面 checklist
+## 6. 新增/修改页面 checklist（含 §7 必选）
 - [ ] 骨架照 layer 0；navs 已注册；active key 对
 - [ ] 组件一律调 RV/RVX，不手写重复 HTML
 - [ ] 股票信息用 stockCard 六层
@@ -142,7 +142,18 @@
 - [ ] footer 风险提示
 - [ ] node serve.js 本地验证后 git 提交（含数据 json）
 
-## 7. 反模式（禁止）
+## 7. 必选增强规范（2026-09 起，新/改页面必须）
+
+| 项 | 规范 |
+|---|---|
+| 侧边栏 | 内容区块 ≥2 个的页面必须给主要 section 加 `data-nav="标题" data-nav-icon="图标"`，渲染完调 `RV.ui.initSidebar()`（大屏右侧导航 / 小屏抽屉）。动态视图切换后重新 `setTimeout(()=>RV.ui.initSidebar(),30)` |
+| 个股可点 | **所有涉及个股名称处**（持仓/成交/计划/榜单/推荐）都要可点击弹「个股卡」：class `sname` + `onclick="window.__stock('code')"`；页面定义 `window.__stock` 拉 review_data 当日快照 → `RVX.popupCard` 展示 价/涨跌/趋势/信号/指标/点位/资金 |
+| 个股卡内嵌图表 | 弹卡内嵌专业行情图：引 `assets/js/stockchart.js` → `SC.fromKline(dom, code, name, klineJSON, {type})`；周期按钮 日/周/月；K线数据用 `data/kline/{code}.json`（`build_kline_export.py` 导出） |
+| 现代行情图 | 新行情/K线一律用 stockchart.js（K线+MA+成交量+MACD 三格、十字光标、红涨绿跌、缩放）；不复用裸 echarts 简单折线当行情图 |
+| 移动端 | viewport 已配；卡片 `grid repeat(auto-fit,minmax(280px,1fr))`；表格包 `.table-wrap` 横滚；640px 下缩图表高度/单列 |
+| 图表点击弹日卡 | 净值/收益图 `chart.on(click)` → `RVX.popupCard`（图下浮层，默认全展开） |
+
+## 8. 反模式（禁止）
 - ❌ 复制 review.html 的 HTML 到新页再改 —— 用 RVX.section/table
 - ❌ 页面写 `fetch('https://…')` 行情 —— 引擎层统一
 - ❌ 新起一套 CSS 变量/主题 —— 复用 common.css；页面专属样式须 `.pg-` 前缀
