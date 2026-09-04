@@ -96,24 +96,44 @@ let winKey = 'all';
 
   function renderAll() {
     const d = WDATA.windows[winKey];
-    const stratCards = ORDER.map(k => card(d.strategies[k], k)).join('');
+    const stratCards = ORDER.map(k => card(d.strategies[k], k)).join('') + mixCard(d.mixed);
     const winBtns = WIN_ORDER.map(w => `<button class="bt-range-btn ${w.key === winKey ? 'active' : ''}" data-wk="${w.key}">${w.label}</button>`).join('');
     content.innerHTML = `
-      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${RV.ui.icon('calendar', 'fa-xs')} 每窗口独立以 ¥${RV.fmt.money(WDATA.start_cash)} 起步回放，点卡片切换策略 / 上方按钮切换窗口</div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px">${RV.ui.icon('calendar', 'fa-xs')} 每窗口独立以 ¥${RV.fmt.money(WDATA.start_cash)} 起步回放 · 点卡片切换 / 上方按钮切窗口 · 竞价规则：高开>2%不追、低开>3%不接（激进3%/3.5%）</div>
       <div class="bt-range" style="margin-bottom:14px">${winBtns}</div>
       <div class="strat-cards">${stratCards}</div>
       <div id="detail"></div>
       <div class="sec-block">
         <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>三策略规则对照</div>
         ${ORDER.map(k => `<div class="logic-box" style="margin-bottom:10px"><b>${d.strategies[k].label}</b>：${d.strategies[k].logic}</div>`).join('')}
-        <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 信号当日收盘产生 → 次日开盘价成交，含佣金+印花税；净值含持仓浮盈；仅供参考不构成投资建议。</div>
+        <div class="logic-box"><b>混合</b>：${(d.mixed || {}).logic || '动态按上证20日斜率在攻/守间调权重 + 等权对照'}</div>
+        <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 信号当日收盘产生 → 次日开盘价成交；开盘跳空过大不追/不接；含佣金+印花税；仅供参考。</div>
       </div>`;
     document.querySelectorAll('.bt-range-btn').forEach(b =>
       b.addEventListener('click', () => { winKey = b.dataset.wk; current = 'balanced'; renderAll(); }));
     ORDER.forEach(k => {
       document.getElementById('sc-' + k).addEventListener('click', () => select(k));
     });
+    const mixEl = document.getElementById('sc-mix');
+    if (mixEl) mixEl.addEventListener('click', () => select('mix'));
     select(current);
+  }
+
+  function mixCard(m) {
+    if (!m) return '';
+    const active = current === 'mix';
+    return `<div class="strat-card mix-card ${active ? 'active' : ''}" id="sc-mix" style="border-color:${active ? '#7c3aed' : 'var(--border)'}">
+      <div class="sc-head"><span class="strat-badge" style="background:#7c3aed">${RV.ui.icon('layer-group')} 混合(动态)</span><h3>三合一 · 择时分配</h3></div>
+      <div class="sc-tagline">按上证20日斜率攻/守自动调权重 · 风险调整最优</div>
+      <div class="sc-kpis">
+        <div class="sc-kpi"><div class="v ${RV.fmt.cls(m.return_pct)}">${RV.fmt.pct(m.return_pct)}</div><div class="l">动态总收益</div></div>
+        <div class="sc-kpi"><div class="v">¥${RV.fmt.money(50000 * (1 + m.return_pct / 100))}</div><div class="l">期末净值</div></div>
+        <div class="sc-kpi"><div class="v down">${RV.fmt.num(Math.abs(m.max_drawdown), 2)}%</div><div class="l">最大回撤</div></div>
+        <div class="sc-kpi"><div class="v ${RV.fmt.cls(m.equal_return_pct)}">${RV.fmt.pct(m.equal_return_pct)}</div><div class="l">等权对照</div></div>
+        <div class="sc-kpi"><div class="v down">${RV.fmt.num(Math.abs(m.equal_max_drawdown), 2)}%</div><div class="l">等权回撤</div></div>
+        <div class="sc-kpi"><div class="v">${(m.regime || []).filter(x => x === '攻').length}天</div><div class="l">攻(≥70%激进)</div></div>
+      </div>
+    </div>`;
   }
 
   function card(r, key) {
@@ -136,8 +156,171 @@ let winKey = 'all';
   function select(key) {
     current = key;
     document.querySelectorAll('.strat-card').forEach(el => el.classList.remove('active'));
-    document.getElementById('sc-' + key).classList.add('active');
-    renderDetail(WDATA.windows[winKey].strategies[key]);
+    const sc = document.getElementById('sc-' + key);
+    if (sc) sc.classList.add('active');
+    if (key === 'mix') {
+      renderMix(WDATA.windows[winKey]);
+    } else {
+      renderDetail(WDATA.windows[winKey].strategies[key]);
+    }
+  }
+
+  /* ===== 混合视图（无持仓/交易，显示 dyn vs 等权 vs 上证 + regime 色带） ===== */
+  function renderMix(d) {
+    const m = d.mixed;
+    const st = d.strategies;
+    const el = document.getElementById('detail');
+    el.innerHTML = `
+      <div class="sec-block">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>混合净值：动态择时 vs 静态等权 vs 上证</div>
+        <div class="chart-box" id="mx-chart"></div>
+        <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 紫=动态择时（按上证20日斜率攻/守调权重）灰=等权 黄虚=上证；背景色带 红=攻(70%激进) 绿=守(70%纪律) 灰=衡 · 点击看当日组合明细</div>
+      </div>
+      <div class="sec-block">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>动态权重分布 & 各策略角色</div>
+        ${regimeStats(m)}
+        <div class="fmt-hint">${RV.ui.icon('arrows-split-up-and-left', 'fa-xs')} 攻：激进70/稳健20/纪律10 → 主吃上涨段；守：激进10/稳健20/纪律70 → 避险保本；衡：25/50/25。</div>
+      </div>
+      <div class="sec-block">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>逻辑</div>
+        <div class="logic-box">${(m || {}).logic || ''}</div>
+        <div style="margin-top:10px" class="data-table">
+        <table><thead><tr><th>组合</th><th>总收益</th><th>最大回撤</th></tr></thead><tbody>
+        <tr><td><b style="color:#7c3aed">动态混合</b></td><td class="${RV.fmt.cls(m.return_pct)}">${RV.fmt.pct(m.return_pct)}</td><td class="down">${RV.fmt.num(Math.abs(m.max_drawdown), 2)}%</td></tr>
+        <tr><td>静态等权</td><td class="${RV.fmt.cls(m.equal_return_pct)}">${RV.fmt.pct(m.equal_return_pct)}</td><td class="down">${RV.fmt.num(Math.abs(m.equal_max_drawdown), 2)}%</td></tr>
+        <tr><td>激进</td><td class="${RV.fmt.cls(st.aggressive.return_pct)}">${RV.fmt.pct(st.aggressive.return_pct)}</td><td class="down">${RV.fmt.num(Math.abs(st.aggressive.max_drawdown), 2)}%</td></tr>
+        <tr><td>稳健</td><td class="${RV.fmt.cls(st.balanced.return_pct)}">${RV.fmt.pct(st.balanced.return_pct)}</td><td class="down">${RV.fmt.num(Math.abs(st.balanced.max_drawdown), 2)}%</td></tr>
+        <tr><td>严守纪律</td><td class="${RV.fmt.cls(st.disciplined.return_pct)}">${RV.fmt.pct(st.disciplined.return_pct)}</td><td class="down">${RV.fmt.num(Math.abs(st.disciplined.max_drawdown), 2)}%</td></tr>
+        <tr><td>上证基准</td><td class="${RV.fmt.cls(st.balanced.bench_return_pct)}">${RV.fmt.pct(st.balanced.bench_return_pct)}</td><td>--</td></tr>
+        </tbody></table></div>
+      </div>`;
+    drawMixChart(d);
+  }
+
+  function regimeStats(m) {
+    const regs = m.regime || [];
+    const cnt = { '攻': 0, '衡': 0, '守': 0 };
+    regs.forEach(x => { if (cnt[x] != null) cnt[x]++; });
+    const tot = regs.length || 1;
+    const bars = Object.entries(cnt).map(([k, v]) => {
+      const c = k === '攻' ? '#dc2626' : (k === '守' ? '#16a34a' : '#94a3b8');
+      return `<div style="display:inline-block;margin-right:18px"><b style="color:${c}">${k}</b> ${v}天(${(v / tot * 100).toFixed(0)}%)</div>`;
+    }).join('');
+    return `<div style="margin-bottom:8px">${bars}</div>`;
+  }
+
+  function drawMixChart(d) {
+    const m = d.mixed;
+    const dates = m.dates;
+    const base = WDATA.start_cash;
+    const b0 = d.strategies.balanced.equity_curve.find(p => p.bench != null);
+    const bench = d.strategies.balanced.equity_curve.map(p => p.bench != null && b0 && b0.bench ? base * p.bench / b0.bench : null);
+    const el = document.getElementById('mx-chart');
+    if (!el) return;
+    const c = echarts.init(el);
+    // regime 色带
+    const colors = { '攻': 'rgba(220,38,38,0.12)', '守': 'rgba(22,163,74,0.12)', '衡': 'rgba(148,163,184,0.08)' };
+    const series = [];
+    // 用 stack 实现色带：逐段同 regime 合并
+    const segs = [];
+    m.regime.forEach((r, i) => { const last = segs[segs.length - 1]; if (last && last.r === r) last.end = i + 1; else segs.push({ r, start: i, end: i + 1 }); });
+    const maxEq = Math.max(...m.dyn, ...m.equal, ...(bench.filter(Boolean) || [base]));
+    const minEq = Math.min(...m.dyn, ...m.equal, ...(bench.filter(Boolean) || [base]));
+    const pad = (maxEq - minEq) * 0.1;
+    segs.forEach(s => {
+      series.push({
+        name: 'regime-' + s.r, type: 'line', stack: 'bg',
+        data: dates.map((_, i) => (i >= s.start && i < s.end ? 1 : null)),
+        lineStyle: { opacity: 0 }, symbol: 'none',
+        areaStyle: { color: colors[s.r] }, silent: true, tooltip: { show: false },
+        markLine: undefined, z: 1, stackStrategy: 'all',
+        yAxisIndex: 1,
+      });
+    });
+    series.push({
+      name: 'bgline', type: 'line', data: dates.map(() => minEq - pad), lineStyle: { opacity: 0 }, symbol: 'none', yAxisIndex: 1, silent: true, tooltip: { show: false }
+    });
+    const opt = {
+      animation: false,
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' },
+        formatter(params) {
+          const p = params.find(x => x.seriesName === '动态');
+          const i = p ? p.dataIndex : 0;
+          return dates[i] + '<br>动态 ¥' + RV.fmt.num(m.dyn[i]) + '<br>等权 ¥' + RV.fmt.num(m.equal[i]) +
+            (bench[i] != null ? '<br>上证 ¥' + RV.fmt.num(bench[i]) : '') + '<br><b>当日档位：' + (m.regime[i] || '') + '</b><br><span style="color:var(--text-2)">点击看贡献</span>';
+        }
+      },
+      legend: { data: ['动态', '等权', '上证'], top: 0 },
+      grid: { left: 62, right: 24, top: 34, bottom: 30 },
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
+      yAxis: [
+        { type: 'value', scale: true, axisLabel: { fontSize: 10, formatter: v => '¥' + v } },
+        { type: 'value', show: false, min: 0, max: 1 }
+      ],
+      dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 0 }],
+      series: [
+        { name: '动态', type: 'line', data: m.dyn, showSymbol: false, lineStyle: { width: 2.4, color: '#7c3aed' }, z: 6,
+          areaStyle: { color: 'rgba(124,58,237,0.06)' } },
+        { name: '等权', type: 'line', data: m.equal, showSymbol: false, lineStyle: { width: 1.6, color: '#94a3b8', type: 'dashed' }, z: 5 },
+        { name: '上证', type: 'line', data: bench, showSymbol: false, lineStyle: { width: 1.2, color: '#f59e0b', type: 'dotted' }, z: 4 },
+        ...series
+      ]
+    };
+    c.setOption(opt);
+    c.on('click', (p) => { if (p && p.dataIndex != null) showMixDay(d, dates[p.dataIndex]); });
+    window.__mxChart = c;
+    window.__simMixDay = (dt) => showMixDay(d, dt);
+    window.addEventListener('resize', () => c.resize());
+  }
+
+  /* ===== 图上浮层详情卡（点击任意点弹出；默认折叠可展开；不跳页） ===== */
+  function showMixDay(d, date) {
+    const i = d.mixed.dates.indexOf(date);
+    if (i < 0) return;
+    const m = d.mixed;
+    // 三策略当日收益
+    const gd = (k) => {
+      const ec = d.strategies[k].equity_curve;
+      return ec[i] ? ec[i].daily_return : 0;
+    };
+    const rA = gd('aggressive'), rB = gd('balanced'), rD = gd('disciplined');
+    const reg = m.regime[i] || '衡';
+    const w = reg === '攻' ? [0.7, 0.2, 0.1] : (reg === '守' ? [0.1, 0.2, 0.7] : [0.25, 0.5, 0.25]);
+    const total = (w[0] * rA + w[1] * rB + w[2] * rD);
+    const c = reg === '攻' ? '#dc2626' : (reg === '守' ? '#16a34a' : '#94a3b8');
+    const detailBox = document.getElementById('detail');
+    // 移除旧浮层
+    const old = document.getElementById('chart-pop');
+    if (old) old.remove();
+    const chartSec = detailBox.querySelector('.sec-block');
+    const dv = document.createElement('div');
+    dv.id = 'chart-pop';
+    dv.style.cssText = 'position:relative;z-index:20;margin-bottom:12px;border:1px solid var(--border);border-left:4px solid ' + c + ';border-radius:10px;background:var(--surface);padding:12px 14px;box-shadow:var(--shadow-hover)';
+    dv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b>${date}</b>
+        <span style="background:${c};color:#fff;border-radius:10px;padding:0 8px;font-size:11px;font-weight:700">${reg}（激进${Math.round(w[0] * 100)}/稳健${Math.round(w[1] * 100)}/纪律${Math.round(w[2] * 100)}）</span>
+        <span class="sec-chip">动态 ¥${RV.fmt.num(m.dyn[i])}</span>
+        <span class="sec-chip ${RV.fmt.cls(total)}">当日 ${RV.fmt.pct(total)}</span>
+        <button id="pop-toggle" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer">${RV.ui.icon('chevron-down', 'fa-xs')} 展开明细</button>
+        <button id="pop-close" style="border:none;background:none;color:var(--text-2);cursor:pointer;font-size:14px">${RV.ui.icon('xmark')}</button>
+      </div>
+      <div id="pop-body" style="display:none;margin-top:10px">
+        <table class="data-table"><thead><tr><th>子策略</th><th>当日收益</th><th>权重</th><th>贡献</th></tr></thead><tbody>
+          <tr><td style="font-weight:700">激进</td><td class="${RV.fmt.cls(rA)}">${RV.fmt.pct(rA)}</td><td>${Math.round(w[0] * 100)}%</td><td class="${RV.fmt.cls(w[0] * rA)}">${RV.fmt.pct(w[0] * rA)}</td></tr>
+          <tr><td style="font-weight:700">稳健</td><td class="${RV.fmt.cls(rB)}">${RV.fmt.pct(rB)}</td><td>${Math.round(w[1] * 100)}%</td><td class="${RV.fmt.cls(w[1] * rB)}">${RV.fmt.pct(w[1] * rB)}</td></tr>
+          <tr><td style="font-weight:700">严守纪律</td><td class="${RV.fmt.cls(rD)}">${RV.fmt.pct(rD)}</td><td>${Math.round(w[2] * 100)}%</td><td class="${RV.fmt.cls(w[2] * rD)}">${RV.fmt.pct(w[2] * rD)}</td></tr>
+        </tbody></table>
+        <div style="font-size:11px;color:var(--text-2);margin-top:6px">当日组合收益 = 各子策略收益×权重之和（${RV.fmt.pct(total)}）</div>
+      </div>`;
+    chartSec.after(dv);
+    dv.querySelector('#pop-toggle').addEventListener('click', () => {
+      const b = dv.querySelector('#pop-body');
+      const on = b.style.display !== 'none';
+      b.style.display = on ? 'none' : 'block';
+      dv.querySelector('#pop-toggle').innerHTML = on ? RV.ui.icon('chevron-down', 'fa-xs') + ' 展开明细' : RV.ui.icon('chevron-up', 'fa-xs') + ' 收起明细';
+    });
+    dv.querySelector('#pop-close').addEventListener('click', () => dv.remove());
   }
 
   function renderDetail(r) {
@@ -163,12 +346,8 @@ let winKey = 'all';
           ${r.positions.map(p => `<tr><td style="font-weight:700">${p.name}</td><td><span class="date-tag">${p.buy_date}</span></td><td>${p.shares}</td><td>${RV.fmt.num(p.cost)}</td><td>${RV.fmt.num(p.price)}</td><td>¥${RV.fmt.num(p.value)}</td><td class="${RV.fmt.cls(p.pnl_pct)}">${RV.fmt.pct(p.pnl_pct)}（${p.pnl > 0 ? '+' : ''}¥${RV.fmt.num(p.pnl)}）</td></tr>`).join('')}
         </tbody></table>` : `<div class="empty">空仓（现金全部保留）</div>`}
       </div>
-      <div id="day-detail" class="sec-block" style="display:none">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>选中日明细 <span class="sec-chip" id="day-detail-date"></span><span class="sec-chip" style="margin-left:auto;cursor:pointer" onclick="document.getElementById('day-detail').style.display='none'">${RV.ui.icon('xmark', 'fa-xs')} 关闭</span></div>
-        <div id="day-detail-body"></div>
-      </div>
       <div class="sec-block">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span> <span class="sec-chip">在图上双击该日可直接跳到此处</span></div>
+        <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span> <span class="sec-chip">在图上点击该日 → 图上展开详情卡</span></div>
         <div id="trade-groups"></div>
       </div>
       <div class="sec-block">
@@ -210,7 +389,7 @@ let winKey = 'all';
           const t = (d.day_trades || []);
           let s = dates[i] + '<br>净值 ¥' + RV.fmt.num(eq[i]) + (bench[i] != null ? '<br>上证基准 ¥' + RV.fmt.num(bench[i]) : '') + '<br>持仓 ' + r.equity_curve[i].pos_count + ' 只';
           if (t.length) s += '<br><b style="color:#c78d5a">' + RV.ui.icon('arrows-rotate') + ' 当日' + t.length + '笔：</b>' + t.map(x => (x.action === 'buy' ? '🔺买' : '🔻卖') + x.name).join('、');
-          s += '<br><span style="color:var(--text-2)">单击看明细 · 双击跳转该日交易</span>';
+          s += '<br><span style="color:var(--text-2)">点击此处 → 图上展开当日明细卡</span>';
           return s; } },
       legend: { data: ['净值', '上证基准'], top: 0 },
       grid: { left: 62, right: 24, top: 34, bottom: 24 },
@@ -240,22 +419,14 @@ let winKey = 'all';
       series: [{ type: 'bar', data: daily.map(v => ({
         value: v, itemStyle: { color: v >= 0 ? '#dc2626' : '#16a34a', opacity: 0.75 } })), barWidth: '60%' }]
     });
-    // 单击 → 当日明细；双击 → 明细 + 定位交易组该日
+    // 点击图上任意点 → 图上浮层展开详情卡（不跳转）
     const onClick = (params) => { if (params && params.dataIndex != null) showDay(r, dates[params.dataIndex]); };
-    const onDbl = (params) => {
-      if (!params || params.dataIndex == null) return;
-      showDay(r, dates[params.dataIndex]);
-      jumpToDayTrade(r, dates[params.dataIndex]);
-    };
     eqC.on('click', onClick);
-    eqC.on('dblclick', onDbl);
     barC.on('click', onClick);
-    barC.on('dblclick', onDbl);
     Object.values(charts).forEach(c => { try { c.dispose(); } catch (e) {} });
     charts = { eqC, barC };
     window.__simCharts = charts;
     window.__simShowDay = (date) => showDay(r, date);
-    window.__simJump = (date) => jumpToDayTrade(r, date);
     window.addEventListener('resize', () => { eqC.resize(); barC.resize(); });
   }
 
@@ -321,71 +492,65 @@ let winKey = 'all';
 
   /* ---- 图点击 → 当日明细面板 ---- */
   function showDay(r, date) {
-    const panel = document.getElementById('day-detail');
-    if (!panel) return;
     const i = r.equity_curve.findIndex(p => p.date === date);
     if (i < 0) return;
     const d = r.equity_curve[i];
-    const prev = i > 0 ? r.equity_curve[i - 1] : null;
-    document.getElementById('day-detail-date').textContent = date;
     const dayTrades = (d.day_trades || []);
     const holds = d.holds || [];
-    document.getElementById('day-detail-body').innerHTML = `
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+    const detailBox = document.getElementById('detail');
+    if (!detailBox) return;
+    // 移除旧浮层，保证只在图上弹一张
+    const old = document.getElementById('chart-pop');
+    if (old) old.remove();
+    const chartSec = detailBox.querySelector('.sec-block');
+    if (!chartSec) return;
+    const dv = document.createElement('div');
+    dv.id = 'chart-pop';
+    const retCls = RV.fmt.cls(d.daily_return);
+    const popColor = d.daily_return >= 0 ? '#dc2626' : '#16a34a';
+    dv.style.cssText = 'position:relative;z-index:20;margin-bottom:12px;border:1px solid var(--border);border-left:4px solid ' + popColor + ';border-radius:10px;background:var(--surface);padding:12px 14px;box-shadow:var(--shadow-hover)';
+    const net = (v, pre) => v != null ? RV.fmt.pct(v) : '--';
+    dv.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <b>${date}</b>
         <span class="sec-chip">净值 ¥${RV.fmt.num(d.equity)}</span>
-        <span class="sec-chip ${RV.fmt.cls(d.daily_return)}">日收益 ${RV.fmt.pct(d.daily_return)}</span>
-        <span class="sec-chip">现金 ¥${RV.fmt.num(d.cash)}</span>
+        <span class="sec-chip ${retCls}">当日 ${RV.fmt.pct(d.daily_return)}</span>
         <span class="sec-chip">持仓 ${d.pos_count} 只</span>
         <span class="sec-chip ${d.bench_chg != null ? RV.fmt.cls(d.bench_chg) : 'neutral'}">上证 ${d.bench_chg != null ? RV.fmt.pct(d.bench_chg) : '--'}</span>
+        <span class="sec-chip">现金 ¥${RV.fmt.num(d.cash)}</span>
+        ${dayTrades.length ? `<span class="tag tag-buy" style="font-size:11px">当日${dayTrades.length}笔交易</span>` : ''}
+        <button id="pop-toggle" style="margin-left:auto;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer">${RV.ui.icon('chevron-down', 'fa-xs')} 展开明细</button>
+        <button id="pop-close" style="border:none;background:none;color:var(--text-2);cursor:pointer;font-size:15px">${RV.ui.icon('xmark')}</button>
       </div>
-      ${dayTrades.length ? `<div style="font-weight:700;font-size:13px;margin:6px 0 4px">${RV.ui.icon('arrows-rotate', 'fa-xs')} 当日交易（${dayTrades.length}）</div>
-        <table class="data-table"><thead><tr><th>方向</th><th>股票</th><th>时间</th><th>价格</th><th>股数</th><th>较信号日</th><th>盈亏</th><th>理由</th></tr></thead><tbody>
+      <div id="pop-body" style="display:none;margin-top:10px">
+        ${dayTrades.length ? `<div style="font-weight:700;font-size:13px;margin:6px 0 4px">${RV.ui.icon('arrows-rotate', 'fa-xs')} 当日交易（${dayTrades.length}）</div>
+        <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>方向</th><th>股票</th><th>时间</th><th>开盘</th><th>较信号日</th><th>盈亏</th><th>理由</th></tr></thead><tbody>
         ${dayTrades.map(t => `<tr>
           <td>${t.action === 'buy' ? '<span class="tag tag-buy">买入</span>' : '<span class="tag tag-sell">卖出</span>'}</td>
-          <td style="font-weight:700">${t.name}</td><td>${t.time || '--'}</td><td>${RV.fmt.num(t.price)}</td><td>${t.shares}</td>
+          <td style="font-weight:700">${t.name}</td><td>${t.time || '--'}</td><td>${RV.fmt.num(t.price)}</td>
           <td class="${t.vs_sig_pct != null ? RV.fmt.cls(t.vs_sig_pct) : 'neutral'}">${t.vs_sig_pct != null ? RV.fmt.pct(t.vs_sig_pct) : '--'}</td>
           <td class="${t.action === 'sell' ? RV.fmt.cls(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
           <td style="font-size:11px;color:var(--text-2)">${t.reason || ''}</td></tr>`).join('')}
-        </tbody></table>` : ''}
-      ${holds.length ? `<div style="font-weight:700;font-size:13px;margin:10px 0 4px">${RV.ui.icon('briefcase', 'fa-xs')} 当日持仓（${holds.length}）</div>
-        <table class="data-table"><thead><tr><th>股票</th><th>股数</th><th>成本</th><th>当日收盘</th><th>估算浮盈</th></tr></thead><tbody>
+        </tbody></table></div>` : ''}
+        ${holds.length ? `<div style="font-weight:700;font-size:13px;margin:10px 0 4px">${RV.ui.icon('briefcase', 'fa-xs')} 当日持仓（${holds.length}）</div>
+        <div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>股数</th><th>成本</th><th>当日收盘</th><th>估算浮盈</th></tr></thead><tbody>
         ${holds.map(h => { const pnl = (h.px / h.cost - 1) * 100; return `<tr>
           <td style="font-weight:700">${h.name}</td><td>${h.shares}</td><td>${RV.fmt.num(h.cost)}</td><td>${RV.fmt.num(h.px)}</td>
           <td class="${RV.fmt.cls(pnl)}">${RV.fmt.pct(pnl)}</td></tr>`; }).join('')}
-        </tbody></table>` : '<div style="color:var(--text-2);margin-top:6px">当日空仓</div>'}
-    `;
-    panel.style.display = 'block';
-    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        </tbody></table></div>` : '<div style="color:var(--text-2);margin-top:6px">当日空仓</div>'}
+      </div>`;
+    // 插到净值图区块之后（紧贴图上，不需滚动到交易区）
+    chartSec.after(dv);
+    dv.querySelector('#pop-toggle').addEventListener('click', () => {
+      const b = dv.querySelector('#pop-body');
+      const on = b.style.display !== 'none';
+      b.style.display = on ? 'none' : 'block';
+      dv.querySelector('#pop-toggle').innerHTML = on ? RV.ui.icon('chevron-down', 'fa-xs') + ' 展开明细' : RV.ui.icon('chevron-up', 'fa-xs') + ' 收起明细';
+    });
+    dv.querySelector('#pop-close').addEventListener('click', () => dv.remove());
   }
 
-  /* ---- 双击图 → 定位到对应月交易组并高亮该日 ---- */
-  function jumpToDayTrade(r, date) {
-    const m = (date || '').slice(0, 7);
-    if (!m) return;
-    // 若该日无交易：只展开月组并提示
-    const hasTrade = (r.trades || []).some(t => t.date === date);
-    const head = document.querySelector(`.month-head[data-m="${m}"]`);
-    if (!head) return;
-    const body = head.nextElementSibling;
-    const wasClosed = body.style.display === 'none';
-    if (wasClosed) {
-      body.style.display = 'block';
-      head.querySelector('.mg-caret').innerHTML = RV.ui.icon('chevron-down', 'fa-xs');
-      head.lastElementChild.textContent = '点击收起';
-    }
-    if (hasTrade) {
-      const rows = body.querySelectorAll(`tr[data-date="${date}"]`);
-      const target = rows[0];
-      if (target) {
-        rows.forEach(tr => {
-          tr.classList.remove('hl-flash');
-          void tr.offsetWidth; // 重启动画
-          tr.classList.add('hl-flash');
-        });
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }
+  /* ---- 展开/收起全部月份（保留，页面按钮可复用） ---- */
 })();
 </script>
 </body>

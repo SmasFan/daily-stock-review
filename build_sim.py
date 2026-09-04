@@ -55,6 +55,7 @@ STRATEGIES = {
         "tp_pct": None,           # 无固定止盈，靠移动
         "breakeven_at": None,     # 不保本
         "cooldown_days": 0,
+        "gap_max_buy": 3.0, "gap_min_buy": -3.5,
         "ma10_trail": None,
         "logic": "激进策略：只做强势多头/多头排列，信号门槛低（≥66分），最多6仓每仓22%，普涨过热不回避、弱市靠大盘多头闸门空仓。ATR宽止损+峰值回落移动止盈吃主升。"
                  "但前提是上证处于多头结构（强势多头/多头排列，或弱势多头且≥60分）——大盘走多才敢重仓，弱市空仓等待。"
@@ -74,6 +75,7 @@ STRATEGIES = {
         "tp_pct": 0.15,
         "breakeven_at": None,
         "cooldown_days": 5,
+        "gap_max_buy": 2.0, "gap_min_buy": -3.0,
         "ma10_trail": None,
         "logic": "稳健策略：信号门槛中等（≥68分）且只做多头排列。每仓18%最多5仓，保留10%现金。"
                  "普涨过热日（广度≥65%）不追新、大盘空头不进场。止损=A TR宽止损+破MA20且单日跌超3%双确认，"
@@ -92,6 +94,7 @@ STRATEGIES = {
         "tp_pct": 0.10,           # +10% 就收
         "breakeven_at": 0.05,     # +5% 后止损抬到成本 → 保本
         "cooldown_days": 10,      # 卖出后 10 日内不重买（防反复割磨损）
+        "gap_max_buy": 2.0, "gap_min_buy": -2.5,
         "ma10_trail": 0.97,       # 破MA10还需从峰值回落≥3% 才算破位
         "logic": "严守纪律策略：只买最强的（≥76分且多头/强势多头），且只在回踩均线附近买（乖离<3%不追高）。"
                  "每仓14%最多4仓，保留16%现金。大盘非多头或广度弱不进场。"
@@ -324,6 +327,14 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                     price = klines[code]["opens"][npos]
                     if not price or price <= 0:
                         continue
+                    # 竞价跳空规则：高开过大不追（等回踩），低开过大说明有变故不接刀
+                    gap = (price / sig.close - 1) * 100 if sig.close else 0.0
+                    g_max = cfg.get("gap_max_buy", 2.0)
+                    g_min = cfg.get("gap_min_buy", -3.0)
+                    if gap > g_max:
+                        continue
+                    if gap < g_min:
+                        continue
                     shares = int(budget / price / 100) * 100
                     if shares <= 0:
                         continue
@@ -352,10 +363,11 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                         "action": "buy", "date": next_day, "code": code, "name": pool_names[code],
                         "time": "09:30", "price": round(price, 3), "shares": shares,
                         "vs_sig_pct": round((price / sig.close - 1) * 100, 2) if sig.close else None,
-                        "reason": "%s(%s分)·%s 乖离%s 理想买点%s" % (
+                        "reason": "%s(%s分)·%s 乖离%s 理想买点%s%s" % (
                             sig.signal, sig.score, sig.trend_status,
                             ("%+.1f%%" % sig.bias_ma5) if sig.bias_ma5 is not None else "--",
-                            ("%.2f" % sig.ideal_buy) if sig.ideal_buy else "--"),
+                            ("%.2f" % sig.ideal_buy) if sig.ideal_buy else "--",
+                            ("；开盘跳空%+.1f%%" % gap) if abs(gap) >= 1 else ""),
                         "signal_date": day,
                     })
                     day_notes.append("买入 %s：%s %s分 · %s" % (pool_names[code], sig.signal, sig.score, sig.trend_status))
