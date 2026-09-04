@@ -41,6 +41,14 @@
   .hold-pill { font-size:11.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:4px 10px; }
   .hold-pill .pn { font-weight:700; } .hold-pill .pp { font-weight:700; }
   .empty { color:var(--text-2); text-align:center; padding:18px; }
+
+  .month-group { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; background:var(--surface); }
+  .month-head { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; background:var(--surface-2); font-size:13px; user-select:none; }
+  .month-head:hover { background:#f1e4d8; }
+  .mg-caret { width:16px; color:var(--accent); }
+  .month-body { overflow-x:auto; }
+  .month-body .data-table { font-size:12px; }
+  .month-body .data-table th { white-space:nowrap; }
   .fmt-hint { font-size:11px; color:var(--text-2); margin-top:8px; }
   #eq-chart, #bar-chart { width:100%; }
 </style>
@@ -153,16 +161,13 @@ let winKey = 'all';
           ${r.positions.map(p => `<tr><td style="font-weight:700">${p.name}</td><td><span class="date-tag">${p.buy_date}</span></td><td>${p.shares}</td><td>${RV.fmt.num(p.cost)}</td><td>${RV.fmt.num(p.price)}</td><td>¥${RV.fmt.num(p.value)}</td><td class="${RV.fmt.cls(p.pnl_pct)}">${RV.fmt.pct(p.pnl_pct)}（${p.pnl > 0 ? '+' : ''}¥${RV.fmt.num(p.pnl)}）</td></tr>`).join('')}
         </tbody></table>` : `<div class="empty">空仓（现金全部保留）</div>`}
       </div>
+      <div id="day-detail" class="sec-block" style="display:none">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>选中日明细 <span class="sec-chip" id="day-detail-date"></span><span class="sec-chip" style="margin-left:auto;cursor:pointer" onclick="document.getElementById('day-detail').style.display='none'">${RV.ui.icon('xmark', 'fa-xs')} 关闭</span></div>
+        <div id="day-detail-body"></div>
+      </div>
       <div class="sec-block">
         <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span></div>
-        ${r.trades.length ? `<table class="data-table"><thead><tr><th>成交日</th><th>方向</th><th>股票</th><th>价格</th><th>股数</th><th>盈亏</th><th>持有</th><th>判定理由</th></tr></thead><tbody>
-          ${r.trades.map(t => `<tr><td><span class="date-tag">${t.date}</span></td>
-            <td>${t.action === 'buy' ? '<span class="tag tag-buy">买入</span>' : '<span class="tag tag-sell">卖出</span>'}</td>
-            <td style="font-weight:700">${t.name}</td><td>${RV.fmt.num(t.price)}</td><td>${t.shares}</td>
-            <td class="${t.action === 'sell' ? RV.fmt.cls(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
-            <td>${t.action === 'sell' ? t.hold_days + '天' : '--'}</td>
-            <td style="font-size:11.5px;color:var(--text-2)">${t.reason || ''}</td></tr>`).join('')}
-        </tbody></table>` : '<div class="empty">本期无交易（全程空仓观望）</div>'}
+        <div id="trade-groups"></div>
       </div>
       <div class="sec-block">
         <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>逻辑思考 · 每日操作与持仓</div>
@@ -179,6 +184,7 @@ let winKey = 'all';
         <div class="sec-title"><span class="ti">${RV.ui.icon('lightbulb')}</span>策略逻辑</div>
         <div class="logic-box">${r.logic}</div>
       </div>`;
+    renderTrades(r);
     drawCharts(r);
   }
 
@@ -198,7 +204,12 @@ let winKey = 'all';
       animation: false,
       tooltip: { trigger: 'axis', axisPointer: { type: 'cross' },
         formatter(params) { const p = params[0]; const i = p.dataIndex;
-          return dates[i] + '<br>净值 ¥' + RV.fmt.num(eq[i]) + (bench[i] != null ? '<br>上证基准 ¥' + RV.fmt.num(bench[i]) : '') + '<br>持仓 ' + r.equity_curve[i].pos_count + ' 只'; } },
+          const d = r.equity_curve[i];
+          const t = (d.day_trades || []);
+          let s = dates[i] + '<br>净值 ¥' + RV.fmt.num(eq[i]) + (bench[i] != null ? '<br>上证基准 ¥' + RV.fmt.num(bench[i]) : '') + '<br>持仓 ' + r.equity_curve[i].pos_count + ' 只';
+          if (t.length) s += '<br><b style="color:#c78d5a">' + RV.ui.icon('arrows-rotate') + ' 当日' + t.length + '笔：</b>' + t.map(x => (x.action === 'buy' ? '🔺买' : '🔻卖') + x.name).join('、');
+          s += '<br><span style="color:var(--text-2)">点击查看当日明细</span>';
+          return s; } },
       legend: { data: ['净值', '上证基准'], top: 0 },
       grid: { left: 62, right: 24, top: 34, bottom: 24 },
       xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 10 } },
@@ -227,9 +238,114 @@ let winKey = 'all';
       series: [{ type: 'bar', data: daily.map(v => ({
         value: v, itemStyle: { color: v >= 0 ? '#dc2626' : '#16a34a', opacity: 0.75 } })), barWidth: '60%' }]
     });
+    // 点击图表任意点 → 显示当日明细
+    const onClick = (params) => { if (params && params.dataIndex != null) showDay(r, dates[params.dataIndex]); };
+    eqC.on('click', onClick);
+    barC.on('click', onClick);
     Object.values(charts).forEach(c => { try { c.dispose(); } catch (e) {} });
     charts = { eqC, barC };
+    window.__simCharts = charts;
+    window.__simShowDay = (date) => showDay(r, date);
     window.addEventListener('resize', () => { eqC.resize(); barC.resize(); });
+  }
+
+  /* ---- 交易记录按月份分组折叠 ---- */
+  function renderTrades(r) {
+    const box = document.getElementById('trade-groups');
+    if (!box) return;
+    const trades = r.trades || [];
+    if (!trades.length) { box.innerHTML = '<div class="empty">本期无交易（全程空仓观望）</div>'; return; }
+    // 按 年-月 分组（保持时间序，每组内按日期倒序）
+    const groups = {};
+    trades.forEach(t => { const m = (t.date || '').slice(0, 7); (groups[m] = groups[m] || []).push(t); });
+    const months = Object.keys(groups).sort();
+    const expandAll = window.__expanded === true;
+    box.innerHTML = months.map(m => {
+      const g = groups[m];
+      const buys = g.filter(t => t.action === 'buy').length;
+      const sells = g.filter(t => t.action === 'sell').length;
+      const monthPnl = g.filter(t => t.action === 'sell').reduce((a, t) => a + (t.pnl || 0), 0);
+      const open = expandAll || m === months[months.length - 1];
+      return `<div class="month-group">
+        <div class="month-head" data-m="${m}">
+          <span class="mg-caret">${open ? RV.ui.icon('chevron-down', 'fa-xs') : RV.ui.icon('chevron-right', 'fa-xs')}</span>
+          <b>${m}</b>
+          <span class="sec-chip">买${buys} / 卖${sells}</span>
+          <span class="sec-chip ${RV.fmt.cls(monthPnl)}">月盈亏 ${monthPnl > 0 ? '+' : ''}¥${RV.fmt.num(monthPnl)}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-2)">${open ? '点击收起' : '点击展开'}</span>
+        </div>
+        <div class="month-body" style="display:${open ? 'block' : 'none'}">
+          <table class="data-table"><thead><tr><th>成交日</th><th>方向</th><th>股票</th><th>时间</th><th>成交价</th><th>股数</th><th>较信号日</th><th>盈亏</th><th>持有</th><th>判定理由</th></tr></thead><tbody>
+          ${g.slice().reverse().map(t => tradeRow(t)).join('')}
+          </tbody></table>
+        </div>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('.month-head').forEach(h => h.addEventListener('click', () => {
+      const body = h.nextElementSibling;
+      const on = body.style.display !== 'none';
+      body.style.display = on ? 'none' : 'block';
+      h.querySelector('.mg-caret').innerHTML = on ? RV.ui.icon('chevron-right', 'fa-xs') : RV.ui.icon('chevron-down', 'fa-xs');
+      h.lastElementChild.textContent = on ? '点击展开' : '点击收起';
+    }));
+    // 展开全部按钮（底部独立容器见页面；此处若存在则绑定）
+    const eb = document.getElementById('trade-expand-all');
+    if (eb) eb.onclick = () => { window.__expanded = true; renderTrades(r); };
+  }
+
+  function tradeRow(t) {
+    const vs = t.vs_sig_pct;
+    return `<tr>
+      <td><span class="date-tag">${t.date}</span></td>
+      <td>${t.action === 'buy' ? '<span class="tag tag-buy">买入</span>' : '<span class="tag tag-sell">卖出</span>'}</td>
+      <td style="font-weight:700">${t.name}</td>
+      <td style="color:var(--text-2)">${t.time || '--'}</td>
+      <td>${RV.fmt.num(t.price)}</td>
+      <td>${t.shares}</td>
+      <td class="${vs != null ? RV.fmt.cls(vs) : 'neutral'}">${vs != null ? RV.fmt.pct(vs) : '--'}</td>
+      <td class="${t.action === 'sell' ? RV.fmt.cls(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
+      <td>${t.action === 'sell' ? t.hold_days + '天' : '--'}</td>
+      <td style="font-size:11.5px;color:var(--text-2)">${t.reason || ''}</td>
+    </tr>`;
+  }
+
+  /* ---- 图点击 → 当日明细面板 ---- */
+  function showDay(r, date) {
+    const panel = document.getElementById('day-detail');
+    if (!panel) return;
+    const i = r.equity_curve.findIndex(p => p.date === date);
+    if (i < 0) return;
+    const d = r.equity_curve[i];
+    const prev = i > 0 ? r.equity_curve[i - 1] : null;
+    document.getElementById('day-detail-date').textContent = date;
+    const dayTrades = (d.day_trades || []);
+    const holds = d.holds || [];
+    document.getElementById('day-detail-body').innerHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+        <span class="sec-chip">净值 ¥${RV.fmt.num(d.equity)}</span>
+        <span class="sec-chip ${RV.fmt.cls(d.daily_return)}">日收益 ${RV.fmt.pct(d.daily_return)}</span>
+        <span class="sec-chip">现金 ¥${RV.fmt.num(d.cash)}</span>
+        <span class="sec-chip">持仓 ${d.pos_count} 只</span>
+        <span class="sec-chip ${d.bench_chg != null ? RV.fmt.cls(d.bench_chg) : 'neutral'}">上证 ${d.bench_chg != null ? RV.fmt.pct(d.bench_chg) : '--'}</span>
+      </div>
+      ${dayTrades.length ? `<div style="font-weight:700;font-size:13px;margin:6px 0 4px">${RV.ui.icon('arrows-rotate', 'fa-xs')} 当日交易（${dayTrades.length}）</div>
+        <table class="data-table"><thead><tr><th>方向</th><th>股票</th><th>时间</th><th>价格</th><th>股数</th><th>较信号日</th><th>盈亏</th><th>理由</th></tr></thead><tbody>
+        ${dayTrades.map(t => `<tr>
+          <td>${t.action === 'buy' ? '<span class="tag tag-buy">买入</span>' : '<span class="tag tag-sell">卖出</span>'}</td>
+          <td style="font-weight:700">${t.name}</td><td>${t.time || '--'}</td><td>${RV.fmt.num(t.price)}</td><td>${t.shares}</td>
+          <td class="${t.vs_sig_pct != null ? RV.fmt.cls(t.vs_sig_pct) : 'neutral'}">${t.vs_sig_pct != null ? RV.fmt.pct(t.vs_sig_pct) : '--'}</td>
+          <td class="${t.action === 'sell' ? RV.fmt.cls(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
+          <td style="font-size:11px;color:var(--text-2)">${t.reason || ''}</td></tr>`).join('')}
+        </tbody></table>` : ''}
+      ${holds.length ? `<div style="font-weight:700;font-size:13px;margin:10px 0 4px">${RV.ui.icon('briefcase', 'fa-xs')} 当日持仓（${holds.length}）</div>
+        <table class="data-table"><thead><tr><th>股票</th><th>股数</th><th>成本</th><th>当日收盘</th><th>估算浮盈</th></tr></thead><tbody>
+        ${holds.map(h => { const pnl = (h.px / h.cost - 1) * 100; return `<tr>
+          <td style="font-weight:700">${h.name}</td><td>${h.shares}</td><td>${RV.fmt.num(h.cost)}</td><td>${RV.fmt.num(h.px)}</td>
+          <td class="${RV.fmt.cls(pnl)}">${RV.fmt.pct(pnl)}</td></tr>`; }).join('')}
+        </tbody></table>` : '<div style="color:var(--text-2);margin-top:6px">当日空仓</div>'}
+    `;
+    panel.style.display = 'block';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 })();
 </script>

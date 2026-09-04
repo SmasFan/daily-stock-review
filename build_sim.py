@@ -264,11 +264,14 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                 pnl = proceeds - p["shares"] * p["cost"]
                 sell_ops.append((code, next_day))
                 last_sell[code] = di + 1  # next_day 的索引
+                sig_close = day_sigs[code].close if code in day_sigs else None
+                vs_sig = (price / sig_close - 1) * 100 if sig_close else None
                 trades.append({
                     "action": "sell", "date": next_day, "code": code, "name": pool_names[code],
-                    "price": round(price, 3), "shares": p["shares"],
+                    "time": "09:30", "price": round(price, 3), "shares": p["shares"],
                     "pnl": round(pnl, 2),
                     "pnl_pct": round(pnl / (p["shares"] * p["cost"]) * 100, 2) if p["cost"] else 0,
+                    "vs_sig_pct": round(vs_sig, 2) if vs_sig is not None else None,
                     "reason": "；".join(reason), "hold_days": 0, "signal_date": day,
                 })
                 day_notes.append("卖出 %s：%s" % (pool_names[code], "；".join(reason)))
@@ -347,7 +350,8 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
                     }
                     trades.append({
                         "action": "buy", "date": next_day, "code": code, "name": pool_names[code],
-                        "price": round(price, 3), "shares": shares,
+                        "time": "09:30", "price": round(price, 3), "shares": shares,
+                        "vs_sig_pct": round((price / sig.close - 1) * 100, 2) if sig.close else None,
                         "reason": "%s(%s分)·%s 乖离%s 理想买点%s" % (
                             sig.signal, sig.score, sig.trend_status,
                             ("%+.1f%%" % sig.bias_ma5) if sig.bias_ma5 is not None else "--",
@@ -361,11 +365,17 @@ def _run_one(cfg_key, klines, dates, date_pos, sh, sh_pos, pool_names,
         px_map = px_today
         eq = cash + sum(p["shares"] * px_map.get(c, p["cost"]) for c, p in positions.items())
         prev_eq = equity_curve[-1]["equity"] if equity_curve else CASH_START
+        prev_bench = equity_curve[-1]["bench"] if equity_curve and equity_curve[-1].get("bench") else None
         equity_curve.append({
             "date": day, "equity": round(eq, 2), "cash": round(cash, 2),
             "pos_count": len(positions),
             "daily_return": round((eq / prev_eq - 1) * 100, 3) if prev_eq else 0,
             "bench": sh_close,
+            "bench_chg": round((sh_close / prev_bench - 1) * 100, 2) if sh_close and prev_bench else None,
+            "holds": [{"code": c, "name": pool_names[c], "shares": p["shares"],
+                        "cost": p["cost"], "px": px_map.get(c, p["cost"])}
+                       for c, p in positions.items()],
+            "day_trades": [t for t in trades if t["date"] == day],
         })
         cash_curve.append(round(cash, 2))
         if day_notes or day_hold_changes:
@@ -495,6 +505,60 @@ def run_all(start_date="2026-07-01", end_date="2026-09-04"):
     }
 
 
+def _build_mixed(strategies):
+    """动态混合（按上证 20 日斜率三档切换权重）+ 静态等权 对照。
+
+    无前视：第 i 日权重只用 i-20..i 日数据（斜率滞后 1 日生效）。
+    攻(0.7/0.2/0.1) 衡(0.25/0.5/0.25) 守(0.1/0.2/0.7)。
+    """
+    agg = strategies["aggressive"]["equity_curve"]
+    bal = strategies["balanced"]["equity_curve"]
+    dis = strategies["disciplined"]["equity_curve"]
+    n = len(bal)
+    dates = [p["date"] for p in bal]
+    r = {"agg": [p["daily_return"] for p in agg],
+         "bal": [p["daily_return"] for p in bal],
+         "dis": [p["daily_return"] for p in dis]}
+    bench = [p["bench"] for p in bal]
+    eq_dyn, eq_eq = 50000.0, 50000.0
+    dyn_curve, eq_curve = [], []
+    regime = []
+    for i in range(n):
+        if i >= 21 and bench[i - 21]:
+            slope = (bench[i - 1] / bench[i - 21] - 1) * 100  # 滞后一日
+            if slope > 2.5:
+                wa, wb, wd, lab = 0.7, 0.2, 0.1, "攻"
+            elif slope < -2.5:
+                wa, wb, wd, lab = 0.1, 0.2, 0.7, "守"
+            else:
+                wa, wb, wd, lab = 0.25, 0.5, 0.25, "衡"
+        else:
+            wa, wb, wd, lab = 0.25, 0.5, 0.25, "衡"
+        rd = (wa * r["agg"][i] + wb * r["bal"][i] + wd * r["dis"][i])
+        re_ = (r["agg"][i] + r["bal"][i] + r["dis"][i]) / 3
+        eq_dyn *= 1 + rd / 100
+        eq_eq *= 1 + re_ / 100
+        dyn_curve.append(round(eq_dyn, 2))
+        eq_curve.append(round(eq_eq, 2))
+        regime.append(lab)
+
+    def summ(curve):
+        peak, mdd = -1e18, 0.0
+        for v in curve:
+            peak = max(peak, v)
+            mdd = min(mdd, v / peak - 1)
+        return round((curve[-1] / 50000 - 1) * 100, 2), round(mdd * 100, 2)
+
+    ret_d, mdd_d = summ(dyn_curve)
+    ret_e, mdd_e = summ(eq_curve)
+    return {
+        "label": "混合", "logic": "混合策略：按上证20日斜率动态分配三策略资金（斜率>2.5%攻：激进70%/稳健20%/纪律10%；斜率<-2.5%守：激进10%/稳健20%/纪律70%；中间均衡25/50/25）。斜率滞后1日避免当日追涨，无前视。",
+        "dates": dates, "dyn": dyn_curve, "equal": eq_curve, "regime": regime,
+        "return_pct": ret_d, "equal_return_pct": ret_e,
+        "max_drawdown": mdd_d, "equal_max_drawdown": mdd_e,
+    }
+
+
 def _yearly_ret(equity_curve):
     """分自然年收益 + 同段上证基准（用 curve 里每日 bench 收盘推算）。"""
     by = {}
@@ -550,6 +614,7 @@ def run_windows():
                                 pool_names, ws, we)
         windows[wk] = {
             "start_date": ws, "end_date": we, "strategies": res,
+            "mixed": _build_mixed(res),
         }
         r0 = res["balanced"]
         print("窗口 %s: %s→%s 稳健%+.2f%% 纪律%+.2f%% 激进%+.2f%%" % (
@@ -565,7 +630,7 @@ def run_windows():
         json.dump(full, f, ensure_ascii=False)
     with open(os.path.join(DATA_DIR, "sim_trade_all.json"), "w", encoding="utf-8") as f:
         json.dump({"start_cash": CASH_START, "windows": {
-            k: {"label": WINDOW_LABELS[k], "strategies": v["strategies"]}
+            k: {"label": WINDOW_LABELS[k], "strategies": v["strategies"], "mixed": v.get("mixed")}
             for k, v in windows.items()}}, f, ensure_ascii=False)
     print("完成:", os.path.join(DATA_DIR, "sim_trade.json"),
           os.path.join(DATA_DIR, "sim_trade_all.json"))
