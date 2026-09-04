@@ -1,0 +1,639 @@
+{
+ "title": "5万模拟盘 · 过去两个月回放",
+ "start_date": "2026-07-01",
+ "end_date": "2026-09-04",
+ "start_cash": 50000.0,
+ "final_equity": 50918.12,
+ "return_pct": 1.84,
+ "max_drawdown": -3.74,
+ "bench_return_pct": -3.6829627107928364,
+ "alpha_pct": 5.52,
+ "stats": {
+  "buy_times": 9,
+  "sell_times": 4,
+  "win_trades": 0,
+  "win_rate": 0.0,
+  "avg_hold_days": 12.2,
+  "realized_pnl": -1760.0,
+  "unrealized_pnl": 2725.0,
+  "total_pnl": 965.0,
+  "overall_win_rate": 55.6,
+  "open_positions": 5
+ },
+ "equity_curve": [
+  {
+   "date": "2026-07-01",
+   "equity": 50000.0,
+   "cash": 50000.0,
+   "pos_count": 0,
+   "bench": 4112.45
+  },
+  {
+   "date": "2026-07-02",
+   "equity": 49753.12,
+   "cash": 17046.12,
+   "pos_count": 4,
+   "bench": 4028.9
+  },
+  {
+   "date": "2026-07-03",
+   "equity": 49716.12,
+   "cash": 17046.12,
+   "pos_count": 4,
+   "bench": 4043.64
+  },
+  {
+   "date": "2026-07-06",
+   "equity": 50212.12,
+   "cash": 17046.12,
+   "pos_count": 4,
+   "bench": 4041.24
+  },
+  {
+   "date": "2026-07-07",
+   "equity": 48965.89,
+   "cash": 32314.89,
+   "pos_count": 2,
+   "bench": 3990.24
+  },
+  {
+   "date": "2026-07-08",
+   "equity": 48766.89,
+   "cash": 32314.89,
+   "pos_count": 2,
+   "bench": 3970.88
+  },
+  {
+   "date": "2026-07-09",
+   "equity": 49154.89,
+   "cash": 32314.89,
+   "pos_count": 2,
+   "bench": 4036.59
+  },
+  {
+   "date": "2026-07-10",
+   "equity": 48938.45,
+   "cash": 24170.45,
+   "pos_count": 3,
+   "bench": 3996.16
+  },
+  {
+   "date": "2026-07-13",
+   "equity": 48831.45,
+   "cash": 24170.45,
+   "pos_count": 3,
+   "bench": 3913.79
+  },
+  {
+   "date": "2026-07-14",
+   "equity": 48738.45,
+   "cash": 24170.45,
+   "pos_count": 3,
+   "bench": 3967.13
+  },
+  {
+   "date": "2026-07-15",
+   "equity": 49172.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3955.58
+  },
+  {
+   "date": "2026-07-16",
+   "equity": 48688.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3882.41
+  },
+  {
+   "date": "2026-07-17",
+   "equity": 48730.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3764.15
+  },
+  {
+   "date": "2026-07-20",
+   "equity": 49761.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3796.28
+  },
+  {
+   "date": "2026-07-21",
+   "equity": 49452.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3864.37
+  },
+  {
+   "date": "2026-07-22",
+   "equity": 49720.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3867.03
+  },
+  {
+   "date": "2026-07-23",
+   "equity": 49971.58,
+   "cash": 7945.58,
+   "pos_count": 5,
+   "bench": 3876.78
+  },
+  {
+   "date": "2026-07-24",
+   "equity": 49442.4,
+   "cash": 15667.4,
+   "pos_count": 4,
+   "bench": 3814.2
+  },
+  {
+   "date": "2026-07-27",
+   "equity": 49338.4,
+   "cash": 15667.4,
+   "pos_count": 4,
+   "bench": 3858.25
+  },
+  {
+   "date": "2026-07-28",
+   "equity": 49693.4,
+   "cash": 15667.4,
+   "pos_count": 4,
+   "bench": 3813.31
+  },
+  {
+   "date": "2026-07-29",
+   "equity": 49852.4,
+   "cash": 15667.4,
+   "pos_count": 4,
+   "bench": 3828.47
+  },
+  {
+   "date": "2026-07-30",
+   "equity": 50459.4,
+   "cash": 15667.4,
+   "pos_count": 4,
+   "bench": 3804.69
+  },
+  {
+   "date": "2026-07-31",
+   "equity": 50120.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3832.26
+  },
+  {
+   "date": "2026-08-03",
+   "equity": 50284.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3809.66
+  },
+  {
+   "date": "2026-08-04",
+   "equity": 49352.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3822.28
+  },
+  {
+   "date": "2026-08-05",
+   "equity": 48912.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3878.43
+  },
+  {
+   "date": "2026-08-06",
+   "equity": 48825.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3900.35
+  },
+  {
+   "date": "2026-08-07",
+   "equity": 48666.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3940.04
+  },
+  {
+   "date": "2026-08-10",
+   "equity": 48984.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3966.59
+  },
+  {
+   "date": "2026-08-11",
+   "equity": 48997.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3934.09
+  },
+  {
+   "date": "2026-08-12",
+   "equity": 48910.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3946.68
+  },
+  {
+   "date": "2026-08-13",
+   "equity": 49018.86,
+   "cash": 7180.86,
+   "pos_count": 5,
+   "bench": 3926.96
+  },
+  {
+   "date": "2026-08-14",
+   "equity": 48572.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3927.18
+  },
+  {
+   "date": "2026-08-17",
+   "equity": 48605.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3982.65
+  },
+  {
+   "date": "2026-08-18",
+   "equity": 48743.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3990.3
+  },
+  {
+   "date": "2026-08-19",
+   "equity": 49313.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3894.42
+  },
+  {
+   "date": "2026-08-20",
+   "equity": 49548.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3903.72
+  },
+  {
+   "date": "2026-08-21",
+   "equity": 49176.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3905.2
+  },
+  {
+   "date": "2026-08-24",
+   "equity": 49466.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3882.01
+  },
+  {
+   "date": "2026-08-25",
+   "equity": 49530.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3889.44
+  },
+  {
+   "date": "2026-08-26",
+   "equity": 49943.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3912.52
+  },
+  {
+   "date": "2026-08-27",
+   "equity": 49930.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3956.57
+  },
+  {
+   "date": "2026-08-28",
+   "equity": 50115.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3952.18
+  },
+  {
+   "date": "2026-08-31",
+   "equity": 50193.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3986.3
+  },
+  {
+   "date": "2026-09-01",
+   "equity": 50790.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3979.89
+  },
+  {
+   "date": "2026-09-02",
+   "equity": 50556.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3941.39
+  },
+  {
+   "date": "2026-09-03",
+   "equity": 50652.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3942.09
+  },
+  {
+   "date": "2026-09-04",
+   "equity": 50918.12,
+   "cash": 8026.12,
+   "pos_count": 5,
+   "bench": 3960.99
+  }
+ ],
+ "trades": [
+  {
+   "action": "buy",
+   "date": "2026-07-03",
+   "code": "002648",
+   "name": "卫星化学",
+   "price": 25.05,
+   "shares": 300,
+   "reason": "强烈买入(80分) 现价距理想买点24.45",
+   "signal_date": "2026-07-02"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-03",
+   "code": "600030",
+   "name": "中信证券",
+   "price": 28.88,
+   "shares": 300,
+   "reason": "买入(78分) 现价距理想买点28.61",
+   "signal_date": "2026-07-02"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-03",
+   "code": "300059",
+   "name": "东方财富",
+   "price": 20.95,
+   "shares": 400,
+   "reason": "买入(78分) 现价距理想买点20.55",
+   "signal_date": "2026-07-02"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-03",
+   "code": "002601",
+   "name": "龙佰集团",
+   "price": 16.77,
+   "shares": 500,
+   "reason": "买入(75分) 现价距理想买点16.92",
+   "signal_date": "2026-07-02"
+  },
+  {
+   "action": "sell",
+   "date": "2026-07-08",
+   "code": "002648",
+   "name": "卫星化学",
+   "price": 24.02,
+   "shares": 300,
+   "pnl": -309.0,
+   "pnl_pct": -4.11,
+   "reason": "破ATR/MA20止损 20.85",
+   "hold_days": 2,
+   "signal_date": "2026-07-07"
+  },
+  {
+   "action": "sell",
+   "date": "2026-07-08",
+   "code": "002601",
+   "name": "龙佰集团",
+   "price": 16.15,
+   "shares": 500,
+   "pnl": -310.0,
+   "pnl_pct": -3.7,
+   "reason": "破ATR/MA20止损 14.47",
+   "hold_days": 2,
+   "signal_date": "2026-07-07"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-13",
+   "code": "600900",
+   "name": "长江电力",
+   "price": 27.14,
+   "shares": 300,
+   "reason": "买入(71分) 现价距理想买点26.86",
+   "signal_date": "2026-07-10"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-16",
+   "code": "600036",
+   "name": "招商银行",
+   "price": 37.7,
+   "shares": 200,
+   "reason": "买入(71分) 现价距理想买点37.12",
+   "signal_date": "2026-07-15"
+  },
+  {
+   "action": "buy",
+   "date": "2026-07-16",
+   "code": "000001",
+   "name": "平安银行",
+   "price": 10.85,
+   "shares": 800,
+   "reason": "买入(70分) 现价距理想买点10.60",
+   "signal_date": "2026-07-15"
+  },
+  {
+   "action": "sell",
+   "date": "2026-07-27",
+   "code": "300059",
+   "name": "东方财富",
+   "price": 19.32,
+   "shares": 400,
+   "pnl": -652.0,
+   "pnl_pct": -7.78,
+   "reason": "破ATR/MA20止损 17.90",
+   "hold_days": 15,
+   "signal_date": "2026-07-24"
+  },
+  {
+   "action": "buy",
+   "date": "2026-08-03",
+   "code": "601766",
+   "name": "中国中车",
+   "price": 6.06,
+   "shares": 1400,
+   "reason": "强烈买入(82分) 现价距理想买点6.00",
+   "signal_date": "2026-07-31"
+  },
+  {
+   "action": "sell",
+   "date": "2026-08-17",
+   "code": "600030",
+   "name": "中信证券",
+   "price": 27.25,
+   "shares": 300,
+   "pnl": -489.0,
+   "pnl_pct": -5.64,
+   "reason": "信号转卖出(39分)",
+   "hold_days": 30,
+   "signal_date": "2026-08-14"
+  },
+  {
+   "action": "buy",
+   "date": "2026-08-17",
+   "code": "600309",
+   "name": "万华化学",
+   "price": 73.21,
+   "shares": 100,
+   "reason": "买入(75分) 现价距理想买点74.97",
+   "signal_date": "2026-08-14"
+  }
+ ],
+ "positions": [
+  {
+   "code": "600900",
+   "name": "长江电力",
+   "shares": 300,
+   "cost": 27.14,
+   "price": 28.42,
+   "value": 8526.0,
+   "pnl": 384.0,
+   "pnl_pct": 4.72,
+   "buy_date": "2026-07-13",
+   "unrealized": true
+  },
+  {
+   "code": "600036",
+   "name": "招商银行",
+   "shares": 200,
+   "cost": 37.7,
+   "price": 41.69,
+   "value": 8338.0,
+   "pnl": 798.0,
+   "pnl_pct": 10.58,
+   "buy_date": "2026-07-16",
+   "unrealized": true
+  },
+  {
+   "code": "000001",
+   "name": "平安银行",
+   "shares": 800,
+   "cost": 10.85,
+   "price": 11.89,
+   "value": 9512.0,
+   "pnl": 832.0,
+   "pnl_pct": 9.59,
+   "buy_date": "2026-07-16",
+   "unrealized": true
+  },
+  {
+   "code": "601766",
+   "name": "中国中车",
+   "shares": 1400,
+   "cost": 6.06,
+   "price": 6.25,
+   "value": 8750.0,
+   "pnl": 266.0,
+   "pnl_pct": 3.14,
+   "buy_date": "2026-08-03",
+   "unrealized": true
+  },
+  {
+   "code": "600309",
+   "name": "万华化学",
+   "shares": 100,
+   "cost": 73.21,
+   "price": 77.66,
+   "value": 7766.0,
+   "pnl": 445.0,
+   "pnl_pct": 6.08,
+   "buy_date": "2026-08-17",
+   "unrealized": true
+  }
+ ],
+ "daily_notes": [
+  {
+   "date": "2026-07-02",
+   "notes": [
+    "买入 卫星化学：强烈买入 80分",
+    "买入 中信证券：买入 78分",
+    "买入 东方财富：买入 78分",
+    "买入 龙佰集团：买入 75分"
+   ],
+   "breadth": 45.5,
+   "market": "观望",
+   "market_score": 44
+  },
+  {
+   "date": "2026-07-07",
+   "notes": [
+    "卖出 卫星化学：破ATR/MA20止损 20.85",
+    "卖出 龙佰集团：破ATR/MA20止损 14.47"
+   ],
+   "breadth": 27.3,
+   "market": "卖出",
+   "market_score": 39
+  },
+  {
+   "date": "2026-07-10",
+   "notes": [
+    "买入 长江电力：买入 71分"
+   ],
+   "breadth": 36.4,
+   "market": "观望",
+   "market_score": 42
+  },
+  {
+   "date": "2026-07-15",
+   "notes": [
+    "买入 招商银行：买入 71分",
+    "买入 平安银行：买入 70分"
+   ],
+   "breadth": 60.6,
+   "market": "观望",
+   "market_score": 42
+  },
+  {
+   "date": "2026-07-24",
+   "notes": [
+    "卖出 东方财富：破ATR/MA20止损 17.90"
+   ],
+   "breadth": 18.2,
+   "market": "卖出",
+   "market_score": 39
+  },
+  {
+   "date": "2026-07-31",
+   "notes": [
+    "买入 中国中车：强烈买入 82分"
+   ],
+   "breadth": 39.4,
+   "market": "观望",
+   "market_score": 45
+  },
+  {
+   "date": "2026-08-14",
+   "notes": [
+    "卖出 中信证券：信号转卖出(39分)",
+    "买入 万华化学：买入 75分"
+   ],
+   "breadth": 43.8,
+   "market": "买入",
+   "market_score": 69
+  }
+ ],
+ "generatedAt": "2026-09-04 16:09:22"
+}

@@ -205,12 +205,20 @@ def _score_bias(bias_ma5, trend_status, trend_strength):
 
 def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[float],
                   highs: List[float], lows: List[float], volumes: List[float],
-                  code: str = "") -> Optional[AnalysisResult]:
-    """对单只股票做完整趋势分析与评分。"""
+                  code: str = "", idx: Optional[int] = None) -> Optional[AnalysisResult]:
+    """对单只股票做完整趋势分析与评分。
+
+    idx 缺省为最后一天；传入任意 idx 时仅用 dates[:idx+1] 的数据计算该日信号
+    （无前视：均线/MACD/RSI 等只依赖截至 idx 的历史）。
+    """
     n = len(closes)
     if n < 30:
         return None
-    idx = n - 1
+    if idx is None:
+        idx = n - 1
+    elif idx < 30:
+        return None
+    idx = min(idx, n - 1)
 
     ma5s = ind.sma(closes, 5)
     ma10s = ind.sma(closes, 10)
@@ -240,9 +248,9 @@ def analyze_stock(name: str, dates: List[str], opens: List[float], closes: List[
     rsi12_val = rsi12[idx]
     rsi_status = _judge_rsi(rsi12_val)
 
-    # 支撑压力
-    high20 = max(highs[-20:])
-    low20 = min(lows[-20:])
+    # 支撑压力（仅用截至 idx 的 20 根，避免前视）
+    high20 = max(highs[max(0, idx - 19): idx + 1])
+    low20 = min(lows[max(0, idx - 19): idx + 1])
     resistance = high20
     support = ma20 if ma20 else low20
     support_ma5 = ma5 is not None and close >= ma5 and abs(close / ma5 - 1) <= MA_SUPPORT_TOLERANCE
