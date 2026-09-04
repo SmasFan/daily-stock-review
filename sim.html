@@ -49,6 +49,8 @@
   .month-body { overflow-x:auto; }
   .month-body .data-table { font-size:12px; }
   .month-body .data-table th { white-space:nowrap; }
+  @keyframes hlflash { 0%{background:#fde68a;} 100%{background:transparent;} }
+  .hl-flash td { animation: hlflash 2.2s ease 2; }
   .fmt-hint { font-size:11px; color:var(--text-2); margin-top:8px; }
   #eq-chart, #bar-chart { width:100%; }
 </style>
@@ -166,7 +168,7 @@ let winKey = 'all';
         <div id="day-detail-body"></div>
       </div>
       <div class="sec-block">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span></div>
+        <div class="sec-title"><span class="ti">${RV.ui.icon('arrows-rotate')}</span>持仓变化 · 每次交易 <span class="sec-chip">${r.trades.length} 笔（买${r.stats.buy_times}/卖${r.stats.sell_times}）</span> <span class="sec-chip">在图上双击该日可直接跳到此处</span></div>
         <div id="trade-groups"></div>
       </div>
       <div class="sec-block">
@@ -208,7 +210,7 @@ let winKey = 'all';
           const t = (d.day_trades || []);
           let s = dates[i] + '<br>净值 ¥' + RV.fmt.num(eq[i]) + (bench[i] != null ? '<br>上证基准 ¥' + RV.fmt.num(bench[i]) : '') + '<br>持仓 ' + r.equity_curve[i].pos_count + ' 只';
           if (t.length) s += '<br><b style="color:#c78d5a">' + RV.ui.icon('arrows-rotate') + ' 当日' + t.length + '笔：</b>' + t.map(x => (x.action === 'buy' ? '🔺买' : '🔻卖') + x.name).join('、');
-          s += '<br><span style="color:var(--text-2)">点击查看当日明细</span>';
+          s += '<br><span style="color:var(--text-2)">单击看明细 · 双击跳转该日交易</span>';
           return s; } },
       legend: { data: ['净值', '上证基准'], top: 0 },
       grid: { left: 62, right: 24, top: 34, bottom: 24 },
@@ -238,14 +240,22 @@ let winKey = 'all';
       series: [{ type: 'bar', data: daily.map(v => ({
         value: v, itemStyle: { color: v >= 0 ? '#dc2626' : '#16a34a', opacity: 0.75 } })), barWidth: '60%' }]
     });
-    // 点击图表任意点 → 显示当日明细
+    // 单击 → 当日明细；双击 → 明细 + 定位交易组该日
     const onClick = (params) => { if (params && params.dataIndex != null) showDay(r, dates[params.dataIndex]); };
+    const onDbl = (params) => {
+      if (!params || params.dataIndex == null) return;
+      showDay(r, dates[params.dataIndex]);
+      jumpToDayTrade(r, dates[params.dataIndex]);
+    };
     eqC.on('click', onClick);
+    eqC.on('dblclick', onDbl);
     barC.on('click', onClick);
+    barC.on('dblclick', onDbl);
     Object.values(charts).forEach(c => { try { c.dispose(); } catch (e) {} });
     charts = { eqC, barC };
     window.__simCharts = charts;
     window.__simShowDay = (date) => showDay(r, date);
+    window.__simJump = (date) => jumpToDayTrade(r, date);
     window.addEventListener('resize', () => { eqC.resize(); barC.resize(); });
   }
 
@@ -274,8 +284,8 @@ let winKey = 'all';
           <span class="sec-chip ${RV.fmt.cls(monthPnl)}">月盈亏 ${monthPnl > 0 ? '+' : ''}¥${RV.fmt.num(monthPnl)}</span>
           <span style="margin-left:auto;font-size:11px;color:var(--text-2)">${open ? '点击收起' : '点击展开'}</span>
         </div>
-        <div class="month-body" style="display:${open ? 'block' : 'none'}">
-          <table class="data-table"><thead><tr><th>成交日</th><th>方向</th><th>股票</th><th>时间</th><th>成交价</th><th>股数</th><th>较信号日</th><th>盈亏</th><th>持有</th><th>判定理由</th></tr></thead><tbody>
+        <div class="month-body" id="mb-${m}" style="display:${open ? 'block' : 'none'}">
+          <table class="data-table"><thead><tr><th>成交日</th><th>方向</th><th>股票</th><th>时间</th><th>成交价</th><th>股数</th><th>较信号日</th><th>盈亏</th><th>持有</th><th>判定理由</th></tr></thead><tbody id="mt-${m}">
           ${g.slice().reverse().map(t => tradeRow(t)).join('')}
           </tbody></table>
         </div>
@@ -295,7 +305,7 @@ let winKey = 'all';
 
   function tradeRow(t) {
     const vs = t.vs_sig_pct;
-    return `<tr>
+    return `<tr data-date="${t.date}">
       <td><span class="date-tag">${t.date}</span></td>
       <td>${t.action === 'buy' ? '<span class="tag tag-buy">买入</span>' : '<span class="tag tag-sell">卖出</span>'}</td>
       <td style="font-weight:700">${t.name}</td>
@@ -346,6 +356,35 @@ let winKey = 'all';
     `;
     panel.style.display = 'block';
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ---- 双击图 → 定位到对应月交易组并高亮该日 ---- */
+  function jumpToDayTrade(r, date) {
+    const m = (date || '').slice(0, 7);
+    if (!m) return;
+    // 若该日无交易：只展开月组并提示
+    const hasTrade = (r.trades || []).some(t => t.date === date);
+    const head = document.querySelector(`.month-head[data-m="${m}"]`);
+    if (!head) return;
+    const body = head.nextElementSibling;
+    const wasClosed = body.style.display === 'none';
+    if (wasClosed) {
+      body.style.display = 'block';
+      head.querySelector('.mg-caret').innerHTML = RV.ui.icon('chevron-down', 'fa-xs');
+      head.lastElementChild.textContent = '点击收起';
+    }
+    if (hasTrade) {
+      const rows = body.querySelectorAll(`tr[data-date="${date}"]`);
+      const target = rows[0];
+      if (target) {
+        rows.forEach(tr => {
+          tr.classList.remove('hl-flash');
+          void tr.offsetWidth; // 重启动画
+          tr.classList.add('hl-flash');
+        });
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   }
 })();
 </script>
