@@ -441,3 +441,53 @@ def fetch_intraday_trend(code: str, ndays: int = 1) -> dict:
                 or node.get("preSettlement"), "trends": out}
     except Exception:
         return None
+
+
+def fetch_minute_kline(code, scale=5, datalen=240, use_cache=True):
+    """新浪分钟K线（1/5/15/30/60 分）。返回 {dates[], opens[], closes[], highs[], lows[], volumes[]}
+    或 None。scale=1 时 datalen≤240（约一天）；5/15/30/60 可取多日。
+    """
+    code = str(code).zfill(6)
+    if not code.isdigit() or len(code) != 6:
+        return None
+    symbol = ("sh" if code.startswith("6") else "sz") + code
+    cache_key = "min_{}_{}_{}".format(symbol, scale, datalen)
+    cp = os.path.join(CACHE_DIR, cache_key + ".json")
+    if use_cache and os.path.exists(cp):
+        try:
+            with open(cp, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    url = ("https://quotes.sina.cn/cn/api/jsonp_v2.php/var%%20_x=/CN_MarketDataService.getKLineData"
+           "?symbol=%s&scale=%d&ma=no&datalen=%d" % (symbol, scale, datalen))
+    try:
+        ua = UA["User-Agent"] if isinstance(UA, dict) else UA
+        req = urllib.request.Request(url, headers={"User-Agent": ua,
+                                                   "Referer": "https://finance.sina.com.cn"})
+        raw = urllib.request.urlopen(req, timeout=12).read().decode("utf-8", "ignore")
+        i = raw.find('[{"day"')
+        if i < 0:
+            return None
+        j = raw.rfind('}]') + 2
+        arr = json.loads(raw[i:j])
+        dates, opens, closes, highs, lows, vols, amts = [], [], [], [], [], [], []
+        for r in arr:
+            dates.append(r["day"])
+            opens.append(float(r["open"]))
+            closes.append(float(r["close"]))
+            highs.append(float(r["high"]))
+            lows.append(float(r["low"]))
+            vols.append(float(r.get("volume", 0) or 0))
+            amts.append(float(r.get("amount", 0) or 0))
+        out = {"dates": dates, "opens": opens, "closes": closes,
+               "highs": highs, "lows": lows, "volumes": vols,
+               "amounts": amts, "scale": scale}
+        try:
+            with open(cp, "w", encoding="utf-8") as f:
+                json.dump(out, f, ensure_ascii=False)
+        except Exception:
+            pass
+        return out
+    except Exception:
+        return None

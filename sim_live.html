@@ -50,7 +50,7 @@
 </div>
 <script src="assets/js/common.js"></script>
 <script src="assets/js/rvui.js"></script>
-<script src="assets/js/stockchart.js"></script>
+<script src="assets/js/stockchart.js?v=3"></script>
 <script>
 (async function () {
   const app = document.getElementById('app');
@@ -327,7 +327,9 @@
           <button class="kbtn" data-t="day" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">日K</button>
           <button class="kbtn" data-t="week" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">周K</button>
           <button class="kbtn" data-t="month" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">月K</button>
-          <button class="kbtn" data-t="intraday" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">分时</button>
+          <button class="kbtn" data-t="intraday" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">当日分时</button>
+          <button class="kbtn" data-t="m5" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">5分</button>
+          <button class="kbtn" data-t="m1" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">1分</button>
         </div>
         <div id="scchart" style="width:100%;height:320px"></div>
         <div style="font-size:11px;color:var(--text-2);margin-top:4px">${it.reasons || ''}</div>`;
@@ -340,14 +342,19 @@
         document.querySelectorAll('#rvx-pop .kbtn').forEach(b => { const on = b.dataset.t === t; b.style.background = on ? '#c78d5a' : ''; b.style.color = on ? '#fff' : ''; });
         try {
           if (t === 'intraday') {
-            // 分时走东财需后端代理；此处若 SC.fromKline 无分时数据则提示
-            const box = document.getElementById('scchart');
-            box.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:20px 0">分时需交易时段后端拉取，暂用日K替代（见 当日分时采集模块）。</div>';
-            if (kdata) SC.fromKline('scchart', code, it.name, kdata, { type: 'day' });
+            try {
+              const m1 = await RV.API.fetch('kline/' + code + '_m1.json');
+              const chgp = it.change_pct || 0; const prevC = chgp ? it.close * 100 / (100 + chgp) : null;
+              if (typeof SC !== 'undefined' && m1 && m1.dates && m1.dates.length) {
+                SC.dispose('scchart');
+                SC.fromIntradayMinutes('scchart', m1, prevC || (m1.closes && m1.closes[0]));
+              }
+            } catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:20px 0">当日分时暂缺（收盘后运行 build_kline_export.py）</div>'; }
             return;
           }
-          if (!kdata) kdata = await RV.API.fetch('kline/' + code + '.json');
-          if (typeof SC !== 'undefined') { SC.dispose('scchart'); SC.fromKline('scchart', code, it.name, kdata, { type: t }); }
+          const file = (t === 'm5' || t === 'm1') ? 'kline/' + code + '_' + t + '.json' : 'kline/' + code + '.json';
+          kdata = await RV.API.fetch(file);
+          if (typeof SC !== 'undefined') { SC.dispose('scchart'); SC.fromKline('scchart', code, it.name, kdata, { type: t === 'm5' || t === 'm1' ? 'day' : t }); }
         } catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px">K线暂缺（运行 build_kline_export.py）</div>'; }
       };
       document.querySelectorAll('#rvx-pop .kbtn').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));

@@ -7,7 +7,6 @@ data/kline/{code}.json，页面按 code 动态加载。
 """
 import json
 import os
-import shutil
 import sys
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -47,7 +46,21 @@ def main():
                 print("skip %s %s" % (c, ex))
         else:
             print("缓存缺 %s" % c)
-    print("导出 %d 只 → data/kline/" % len(codes))
+    # 分钟K导出（5分/1分，供弹卡分时/分钟图）
+    sys.path.insert(0, os.path.join(BASE, "src"))
+    from src import data_provider as dp
+    m_n = 0
+    for c in sorted(codes):
+        for scale, tag in ((5, "m5"), (1, "m1")):
+            try:
+                k = dp.fetch_minute_kline(c, scale=scale, datalen=240, use_cache=False)
+            except Exception:
+                k = None
+            if k and k.get("dates"):
+                with open(os.path.join(OUT, "%s_%s.json" % (c, tag)), "w", encoding="utf-8") as f:
+                    json.dump(k, f, ensure_ascii=False)
+                m_n += 1
+    print("导出 %d 只日K → data/kline/ + %d 个分钟文件" % (len(codes), m_n))
 
 
 if __name__ == "__main__":

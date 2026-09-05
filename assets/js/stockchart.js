@@ -188,9 +188,50 @@
     return chart;
   }
 
+  function fromMinuteIntraday(domId, klineObj, prevClose) {
+    const el = document.getElementById(domId);
+    if (!el) return null;
+    const ch = echarts.init(el);
+    const dates = klineObj.dates || [];
+    const lastDay = dates.length ? dates[dates.length - 1].slice(0, 10) : '';
+    const idxs = [];
+    dates.forEach((d, i) => { if (d.slice(0, 10) === lastDay) idxs.push(i); });
+    if (!idxs.length) { ch.dispose(); return null; }
+    const times = idxs.map(i => dates[i].slice(11, 16));
+    const prices = idxs.map(i => klineObj.closes[i]);
+    const vols = idxs.map(i => klineObj.volumes[i] || 0);
+    const cumVol = []; let cv = 0; vols.forEach(v => { cv += v; cumVol.push(cv); });
+    const amts = (klineObj.amounts && klineObj.amounts.length) ? idxs.map(i => klineObj.amounts[i] || 0) : null;
+    const avgs = []; let cAmt = 0;
+    prices.forEach((p, k) => { cAmt += amts ? amts[k] : (p * (vols[k] || 0)); avgs.push(cumVol[k] > 0 ? +(cAmt / cumVol[k]).toFixed(3) : null); });
+    const base = prevClose || prices[0];
+    ch.setOption({
+      animation: false,
+      axisPointer: { label: { backgroundColor: '#777' } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, backgroundColor: 'rgba(17,24,39,.92)', borderWidth: 0,
+        textStyle: { color: '#fff', fontSize: 11 }, confine: true,
+        formatter(ps) { const i = ps[0].dataIndex; const p = prices[i]; if (p == null) return '';
+          const chg = (p / base - 1) * 100; const col = p >= base ? UP : DOWN;
+          return lastDay + ' ' + times[i] + '<br>价 <b style="color:' + col + '">' + p + '</b>（' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%）<br>均价 ' + (avgs[i] || '--'); } },
+      grid: [{ left: 52, right: 16, top: 12, height: '78%' }],
+      xAxis: { type: 'category', data: times, boundaryGap: false, axisLine: { lineStyle: { color: '#ddd' } },
+        axisLabel: { fontSize: 9, color: '#9a9a9a', interval: Math.max(1, Math.floor(times.length / 6)) } },
+      yAxis: { scale: true, position: 'right', splitNumber: 5, axisLabel: { fontSize: 9, color: '#9a9a9a', formatter: v => v.toFixed(2) },
+        splitLine: { lineStyle: { color: '#f0f0f0' } } },
+      series: [
+        { type: 'line', data: prices, showSymbol: false, smooth: true, lineStyle: { width: 1.4, color: '#2563eb' },
+          areaStyle: { color: 'rgba(37,99,235,.1)' },
+          markLine: { silent: true, symbol: 'none', label: { show: true, position: 'insideEndTop', formatter: '昨收 ' + base, fontSize: 9, color: '#f59e0b' },
+            lineStyle: { color: '#f59e0b', type: 'dashed', width: 1 }, data: [{ yAxis: base }] } },
+        { type: 'line', data: avgs, showSymbol: false, smooth: true, lineStyle: { width: 1, color: '#f59e0b' } },
+      ],
+    });
+    return ch;
+  }
   global.SC = {
     stockChart: render,
     renderIntraday,
+    fromIntradayMinutes: fromMinuteIntraday,
     // 便捷：从 kline JSON（{dates,opens,closes,highs,lows,volumes}）画
     fromKline(domId, code, name, klineObj, extra) {
       return render(domId, Object.assign({ code, name, type: extra && extra.type || 'day', kline: klineObj }, extra || {}));
