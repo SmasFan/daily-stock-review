@@ -65,7 +65,7 @@
     icon(name, cls = '') {
       return `<i class="fa-solid fa-${name} ${cls}" aria-hidden="true"></i>`;
     },
-    /* 页头（含导航），active 为高亮页 key */
+    /* 页头：顶部 [☰ + 标题]，导航改为左侧抽屉（点击滑出，可收起） */
     header(title, subtitle, active, genTime) {
       const navs = [
         ['review', '复盘', 'clipboard-list', 'review.html'],
@@ -83,17 +83,51 @@
         ['simlive', '实时模拟', 'stopwatch', 'sim_live.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];
-      const navHtml = navs.map(([k, label, icon, href]) =>
-        `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${ui.icon(icon)} ${label}</a>`
-      ).join('');
-      return `
-      <header class="top">
-        <h1>${title}</h1>
-        <div class="gen-time">${subtitle || ''}${genTime ? ' · 生成于 ' + genTime : ''}</div>
-        <nav class="nav">${navHtml}
-          <a class="nav-link repo-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">${ui.icon('github')} 项目源码</a>
-        </nav>
+      const html = `
+      <header class="top drawer-top">
+        <button class="drawer-btn" id="drawer-open" aria-label="打开导航">${ui.icon('bars')}</button>
+        <div class="drawer-title-wrap">
+          <h1>${title}</h1>
+          <div class="gen-time">${subtitle || ''}${genTime ? ' · 生成于 ' + genTime : ''}</div>
+        </div>
       </header>`;
+      // 注入抽屉（body 级一次）
+      if (!document.getElementById('app-drawer')) {
+        const ov = document.createElement('div');
+        ov.className = 'drawer-overlay';
+        ov.id = 'drawer-overlay';
+        const navHtml = navs.map(([k, label, icon, href]) =>
+          `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${ui.icon(icon)} <span>${label}</span></a>`
+        ).join('');
+        const drawer = document.createElement('div');
+        drawer.className = 'app-drawer';
+        drawer.id = 'app-drawer';
+        drawer.innerHTML = `<div class="drawer-head">${ui.icon('chart-line')} <b>每日复盘工作台</b></div>
+          <nav class="drawer-nav">${navHtml}
+            <a class="nav-link repo-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">${ui.icon('github')} <span>项目源码</span></a>
+          </nav>`;
+        document.body.appendChild(ov);
+        document.body.appendChild(drawer);
+        const open = () => { ov.classList.add('show'); drawer.classList.add('open'); document.body.style.overflow = 'hidden'; };
+        const close = () => { ov.classList.remove('show'); drawer.classList.remove('open'); document.body.style.overflow = ''; };
+        ov.addEventListener('click', close);
+        drawer.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', close));
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+        window.__navClose = close;
+      }
+      // 绑定打开按钮（head 渲染后可能多次调用）
+      setTimeout(() => {
+        const b = document.getElementById('drawer-open');
+        if (b && !b.__bound) {
+          b.__bound = true;
+          b.addEventListener('click', () => {
+            document.getElementById('drawer-overlay').classList.add('show');
+            document.getElementById('app-drawer').classList.add('open');
+            document.body.style.overflow = 'hidden';
+          });
+        }
+      }, 0);
+      return html;
     },
 
     signalBadge(key, label) {
