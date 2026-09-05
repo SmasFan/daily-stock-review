@@ -55,8 +55,8 @@
   #eq-chart, #bar-chart { width:100%; }
 
   @media (max-width:640px) {
-    .strat-card { padding:13px; flex:0 0 74%; scroll-snap-align:start; }
-    .strat-cards { display:flex; overflow-x:auto; gap:10px; padding-bottom:6px; -webkit-overflow-scrolling:touch; scroll-snap-type:x mandatory; }
+    .strat-card { padding:13px; }
+    .strat-cards { grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; }
     .sc-kpis { grid-template-columns:repeat(3,1fr); gap:6px; }
     .chart-box { height:240px; } .chart-box.small { height:110px; }
     .month-head { font-size:12px; padding:8px 9px; flex-wrap:wrap; }
@@ -479,7 +479,7 @@ let winKey = 'all';
       <td class="${vs != null ? RV.fmt.cls(vs) : 'neutral'}">${vs != null ? RV.fmt.pct(vs) : '--'}</td>
       <td class="${t.action === 'sell' ? RV.fmt.cls(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td>
       <td>${t.action === 'sell' ? t.hold_days + '天' : '--'}</td>
-      <td style="font-size:11.5px;color:var(--text-2)">${t.reason || ''}</td>
+      <td class="reason" style="font-size:11.5px;color:var(--text-2)">${t.reason || ''}</td>
     </tr>`;
   }
 

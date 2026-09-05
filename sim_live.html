@@ -42,11 +42,10 @@
   @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} .kpis{grid-template-columns:repeat(2,1fr);} }
 
   @media (max-width:640px) {
-    .strat-cards { display:flex; overflow-x:auto; gap:10px; padding-bottom:6px; -webkit-overflow-scrolling:touch; scroll-snap-type:x mandatory; }
-    .strat-card { flex:0 0 72%; scroll-snap-align:start; }
+    .strat-cards { grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
   }
   @media (max-width:480px) {
-    .strat-card { flex:0 0 84%; }
+    .strat-cards { grid-template-columns:1fr; }
     .kpi { padding:10px 12px; }
     .kpi .k-val { font-size:17px; }
     .sec { padding:12px 12px; overflow-x:auto; }

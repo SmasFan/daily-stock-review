@@ -527,26 +527,26 @@ th.sort-desc::after { content: " ▼"; font-size: 10px; color: var(--accent, #c7
 }
 .drawer-overlay.show { opacity:1; pointer-events:auto; }
 @media (min-width:900px) { .app-drawer { box-shadow:3px 0 30px rgba(0,0,0,.18); } }
-
-/* ===== 窄屏表格卡片化（仅 .card-table） ===== */
+/* ===== 窄屏表格卡片化（紧凑双列版，仅 .card-table） ===== */
 @media (max-width:720px) {
-  .card-table { border-collapse:separate; border-spacing:0 8px; }
+  .card-table { border-collapse:separate; border-spacing:0 6px; }
   .card-table thead { display:none; }
-  .card-table, .card-table tbody, .card-table tr, .card-table td { display:block; width:100%; box-sizing:border-box; }
-  .card-table tbody { padding:0 2px; }
+  .card-table, .card-table tbody { display:block; width:100%; box-sizing:border-box; }
   .card-table tr {
-    background:var(--surface); border:1px solid var(--border); border-radius:12px;
-    padding:6px 12px; margin-bottom:8px; box-shadow:var(--shadow);
+    display:grid; grid-template-columns:1fr 1fr; gap:2px 14px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:6px 10px; margin-bottom:6px; box-shadow:var(--shadow);
   }
   .card-table td {
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
-    border:none !important; padding:5px 0 !important; font-size:12.5px;
-    border-bottom:1px dashed var(--border) !important;
+    display:flex; align-items:center; gap:6px; min-width:0;
+    border:none !important; padding:3px 0 !important; font-size:12px;
+    overflow:hidden;
   }
-  .card-table td:last-child { border-bottom:none !important; }
-  .card-table td::before { content:attr(data-label); color:var(--text-2); font-size:11px; font-weight:600; flex:none; }
+  .card-table td:nth-last-child(1):nth-child(odd) { grid-column:1 / -1; }
+  .card-table td::before { content:attr(data-label); color:var(--text-2); font-size:10.5px; font-weight:600; flex:none; }
   .card-table td[data-label=""]::before { content:none; }
-  .card-table td.reason, .card-table td:has(.reason) { flex-direction:column; align-items:flex-start; }
-  .card-table td.reason::before, .card-table td:has(.reason)::before { content:attr(data-label); margin-bottom:2px; }
-  .card-table td .tag, .card-table td .sec-chip, .card-table td .date-tag { margin:1px 0; }
+  .card-table td.reason { grid-column:1 / -1; flex-direction:column; align-items:flex-start; padding:4px 0 !important; }
+  .card-table td.reason::before { content:attr(data-label); margin-bottom:1px; }
+  .card-table td .tag, .card-table td .sec-chip, .card-table td .date-tag { flex:none; }
+  .card-table td span, .card-table td b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
