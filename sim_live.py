@@ -12,6 +12,10 @@
   python3 sim_live.py --replay 2026-09-04    # 历史日K近似回放
   python3 sim_live.py --review               # 收盘复盘 + 自学习
   python3 sim_live.py --strategy-log "msg"   # 策略版本变更
+
+LLM 层（--plan 时自动）:
+  - 宏观: data/macro_llm_data.json（macro_llm.py 生成）空头/防御 → 全局闸门
+  - 个股评审: 候选股画像 + 宏观 → ollama/本地 LLM 批量评审，回避股不入计划
 """
 import argparse
 import json
@@ -65,7 +69,21 @@ ACCOUNTS = {
                   "守：激进0.1/稳健0.2/纪律0.7", "衡：0.25/0.5/0.25"],
     },
 }
+
 REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
+
+# 精选 6 股池（6c：资源/制造龙头+银行+防守；--pool six 启用）
+SIX_POOL = {
+    "601138": "工业富联", "600900": "长江电力", "601899": "紫金矿业",
+    "600309": "万华化学", "002142": "宁波银行", "600177": "雅戈尔",
+}
+POOL_MODE = "all"   # all=全池(默认) / six=6股精选
+
+def pool_filter(item):
+    """按当前池模式过滤候选。全池模式=不过滤（沿用 review_data 全量）。"""
+    if POOL_MODE == "six":
+        return item.get("code") in SIX_POOL
+    return True
 
 
 def now_ts():
@@ -118,8 +136,76 @@ def equity_of(acct):
     return acct["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in acct["positions"])
 
 
+
+# ---------------- LLM 个股评审（计划阶段，一次性批量） ----------------
+OLLAMA = "http://localhost:11434"
+LLM_MODEL = "qwen3-vl:32b"
+
+def _llm_chat(system, user, timeout=480):
+    """本地 ollama（与云端失败时回退中性放行）"""
+    import urllib.request
+    body = json.dumps({
+        "model": LLM_MODEL, "stream": False,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "format": "json",
+        "options": {"num_predict": 4096, "temperature": 0.2, "num_ctx": 16384},
+    }).encode()
+    req = urllib.request.Request(OLLAMA + "/api/chat", data=body,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        d = json.loads(r.read().decode())
+    content = (d.get("message") or {}).get("content") or ""
+    if not content.strip():
+        raise RuntimeError("ollama 空返回")
+    return content
+
+
+def llm_review_candidates(cands, macro_llm=None):
+    """候选股批量评审 → {code: "allow"/"avoid", note}
+    cands: [{code,name,score,signal,trend,bias,chg60,sector}]
+    纯基于 宏观+量化画像 的逻辑评审；不臆造个股新闻。
+    失败/超时 → 全 allow（不影响主流程）。"""
+    if not cands:
+        return {}
+    macro_txt = "无"
+    if macro_llm:
+        ll = macro_llm.get("llm") or {}
+        macro_txt = "%s score=%s | %s | 利好:%s | 风险:%s | 板块:%s" % (
+            ll.get("sentiment"), ll.get("score"), ll.get("summary"),
+            "、".join(ll.get("drivers") or []) or "-",
+            "、".join(ll.get("risks") or []) or "-",
+            "、".join(ll.get("sectors") or []) or "-")
+    lines = []
+    for c in cands:
+        lines.append("%s %s | %s %s分 | %s | 乖离MA5 %s%% | 60日 %s%% | %s" % (
+            c["code"], c["name"], c.get("signal"), c.get("score"),
+            c.get("trend"), c.get("bias", "?"), c.get("chg60", "?"), c.get("sector", "")))
+    sysp = """你是A股量化策略的风控评审。系统信号给出买入候选，你要结合【宏观判断】与【个股技术画像】评审：
+- 宏观逆风(空头/防御/score<45) 时：回避高位追强(乖离大、60日涨幅大)、回避宏观重灾方向
+- 宏观顺风 时：只剔除明显高危(极端乖离追高/放量下跌后反弹)
+- 纯技术面已过滤，不要重复挑技术毛病；重点是【宏观与个股方向冲突】
+输出严格 JSON: {"reviews":[{"code":"600000","verdict":"allow|avoid","note":"一句话理由(≤25字)"}]}"""
+    user = "【宏观】%s\n【候选】\n%s\n评审哪些应 avoid（宏观冲突/高位风险），其余 allow。" % (macro_txt, "\n".join(lines))
+    try:
+        content = _llm_chat(sysp, user)
+        j = json.loads(content)
+        out = {}
+        for r in j.get("reviews", []):
+            code = str(r.get("code", "")).strip()
+            if code:
+                out[code] = {"verdict": r.get("verdict") == "avoid" and "avoid" or "allow",
+                             "note": (r.get("note") or "")[:40]}
+        return out
+    except Exception as e:
+        print("  [llm] 个股评审失败(放行): %s" % e)
+        return {}
+
+
 # ---------------- 计划（各账户独立参数） ----------------
 def make_plan(state, review, asof):
+    global POOL_MODE
+    POOL_MODE = (state.get("meta") or {}).get("pool_mode", "all")
     items = review.get("items", []) or []
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
     sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
@@ -137,6 +223,9 @@ def make_plan(state, review, asof):
         llm_def = _llm_def or _llm_weak
     except Exception:
         pass
+    # 收集各账户候选（用于合并 LLM 评审）
+    cand_pool = {}   # code -> item
+    per_key = {}     # key -> [item]
     for key in REAL_ACCOUNTS:
         cfg = ACCOUNTS[key]
         acct = state["accounts"][key]
@@ -144,6 +233,8 @@ def make_plan(state, review, asof):
         cands = []
         for it in items:
             if _is_etf(it.get("code")) or it.get("code") in held:
+                continue
+            if not pool_filter(it):
                 continue
             if it.get("signal_key") not in ("strong_buy", "buy"):
                 continue
@@ -153,9 +244,40 @@ def make_plan(state, review, asof):
                 continue
             cands.append(it)
         cands.sort(key=lambda x: -x.get("score", 0))
+        per_key[key] = cands
+        for it in cands:
+            cand_pool.setdefault(it.get("code"), it)
+    # LLM 个股评审（盘前一次性；失败放行）
+    llm_rev = {}
+    if not llm_def:
+        _llm_macro = None
+        try:
+            _llm_macro = load_json("macro_llm_data.json")
+        except Exception:
+            pass
+        rev_cands = [{"code": it["code"], "name": it.get("name", ""),
+                      "score": it.get("score"), "signal": it.get("signal"),
+                      "trend": it.get("trend_status"),
+                      "bias": it.get("bias_ma5"), "chg60": it.get("change_60d"),
+                      "sector": it.get("sector")}
+                     for it in sorted(cand_pool.values(), key=lambda x: -x.get("score", 0))[:12]]
+        if rev_cands:
+            llm_rev = llm_review_candidates(rev_cands, _llm_macro)
+            n_avoid = sum(1 for v in llm_rev.values() if v.get("verdict") == "avoid")
+            print("  [llm] 个股评审 %d 只 → avoid %d" % (len(rev_cands), n_avoid))
+    for key in REAL_ACCOUNTS:
+        cfg = ACCOUNTS[key]
+        acct = state["accounts"][key]
+        cands = per_key.get(key, [])
         plan = []
         gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat or llm_def else "open"
         for it in cands[:8]:
+            _rv = llm_rev.get(it.get("code"))
+            if _rv and _rv.get("verdict") == "avoid":
+                acct["daily_log"].append({"date": asof, "kind": "plan",
+                                          "note": "%s：%s LLM回避(%s)" % (
+                                              cfg["label"], it.get("name"), _rv.get("note", ""))})
+                continue
             close = it.get("close") or 0
             ma10 = it.get("ma10") or close
             ideal = it.get("ideal_buy") or it.get("secondary_buy") or close
@@ -173,10 +295,11 @@ def make_plan(state, review, asof):
                 "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
                 "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
                 "gate": gate, "budget": budget, "status": "wait",
-                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s" % (
+                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s" % (
                     it.get("signal"), it.get("score"), buy_below,
                     it.get("atr_stop") if it.get("atr_stop") else "--",
-                    "（保本+5%%）" if cfg.get("be_at") else ""),
+                    "（保本+5%%）" if cfg.get("be_at") else "",
+                    ("；LLM:" + _rv.get("note", "")) if _rv else ""),
             })
         acct["plan"] = plan
         acct["daily_log"].append({"date": asof, "kind": "plan",
@@ -436,6 +559,7 @@ def main():
     ap.add_argument("--review", action="store_true")
     ap.add_argument("--finalize", action="store_true")
     ap.add_argument("--strategy-log", default=None)
+    ap.add_argument("--pool", default=None, help="all=全池 / six=6股精选")
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
 
@@ -459,6 +583,17 @@ def main():
         print("四账户初始化：激进/稳健/严守纪律 各 5万 + 合并(合成)。先 --plan 建计划。")
         return
     state = load_state()
+    # 池模式：--pool 显式指定则切换并持久化；否则沿用 state.meta.pool_mode
+    if args.pool:
+        if args.pool not in ("all", "six"):
+            print("未知池模式:", args.pool)
+            return
+        state.setdefault("meta", {})["pool_mode"] = args.pool
+        state["meta"]["pool_switched_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        save(state)
+        print("池模式已切换 →", args.pool)
+    _mode = (state.get("meta") or {}).get("pool_mode", "all")
+    print("当前池模式:", _mode, "(" + ("6股精选" if _mode == "six" else "全池") + ")")
 
     if args.plan:
         review = load_json("review_data.json")

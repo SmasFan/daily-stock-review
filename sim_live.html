@@ -94,7 +94,12 @@
   };
   try {
     S = await RV.API.fetch('sim_live.json');
-    app.innerHTML = RV.ui.header('实时模拟盘 · 四账户', '激进 / 稳健 / 严守纪律 / 合并 · 盘中触发 · 时分秒成交', 'simlive', S.meta.created);
+    const pm = (S.meta || {}).pool_mode || 'all';
+    const poolLabel = pm === 'six'
+      ? '6股精选(工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔)'
+      : '全池(36股复盘池)';
+    app.innerHTML = RV.ui.header('实时模拟盘 · 四账户' + (pm === 'six' ? ' · 6股模式' : ''),
+      '激进 / 稳健 / 严守纪律 / 合并 · 盘中触发 · 时分秒成交 · <b style="color:var(--accent)">池: ' + poolLabel + '</b>', 'simlive', S.meta.created);
     loading.style.display = 'none';
     content.style.display = 'block';
     render();
@@ -135,6 +140,7 @@
       <div class="sec" data-nav="操作逻辑" data-nav-icon="magnifying-glass-chart">
         <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 分析点</div>
         <div style="font-size:12px;line-height:1.9">
+          <div>· <b>池模式：</b>六股精选 = 只做 工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔（全池 = 36 股复盘池）。切换命令：<code>scripts/sim_mode.sh six|all</code>，切换后自动按新池重建计划。</div>
           <div>· <b>何时买：</b>现价回踩到计划买点才触发；高开冲高 &gt;3% 不追</div>
           <div>· <b>何时卖：</b>破 ATR/保本止损、到止盈价、峰值回落8%（曾+8%以上，激进账户）</div>
           <div>· <b>风控：</b>大盘空头/普涨过热日不加新仓；每账户独立 5万、100股整倍数</div>
