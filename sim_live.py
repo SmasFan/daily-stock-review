@@ -202,6 +202,34 @@ def llm_review_candidates(cands, macro_llm=None):
         return {}
 
 
+
+def review_from_kline(code, name, date):
+    """用日K对指定日收盘算信号（无前视 idx=date），返回 make_plan 用的 item dict。
+    用于历史补录（如 9/3 收盘信号 → 9/4 盘中触发）。"""
+    from src import data_provider as dp
+    from src import analyzer as az
+    k = dp.fetch_daily_kline_long(code, count=320, min_days=200, use_cache=True)
+    if not k or date not in k["dates"]:
+        return None
+    i = k["dates"].index(date)
+    r = az.analyze_stock(name, k["dates"], k["opens"], k["closes"],
+                         k["highs"], k["lows"], k["volumes"], code, idx=i)
+    if not r:
+        return None
+    return {
+        "name": name, "code": code, "date": date,
+        "close": r.close, "open": r.open, "change_pct": r.change_pct,
+        "sector": "", "trend_status": r.trend_status,
+        "ma5": r.ma5, "ma10": r.ma10, "ma20": r.ma20, "ma60": r.ma60,
+        "bias_ma5": r.bias_ma5, "score": r.score,
+        "signal_key": r.signal_key, "signal": r.signal,
+        "ideal_buy": r.ideal_buy, "secondary_buy": r.secondary_buy,
+        "stop_loss": r.stop_loss, "atr_stop": r.atr_stop,
+        "take_profit": r.take_profit, "high20": r.high20, "low20": r.low20,
+        "change_60d": r.change_60d,
+    }
+
+
 # ---------------- 计划（各账户独立参数） ----------------
 def make_plan(state, review, asof):
     global POOL_MODE
@@ -249,10 +277,16 @@ def make_plan(state, review, asof):
             cand_pool.setdefault(it.get("code"), it)
     # LLM 个股评审（盘前一次性；失败放行）
     llm_rev = {}
+    _news_rev = {}
     if not llm_def:
         _llm_macro = None
         try:
             _llm_macro = load_json("macro_llm_data.json")
+            # 个股消息面评审（macro_llm.py 6股模式产出）：利空/低分 → 回避
+            for _s in (_llm_macro.get("stocks") or []):
+                if _s.get("sentiment") in ("利空", "防御") or (_s.get("score") or 50) < 45:
+                    _news_rev[_s.get("code")] = "消息面:%s(%s)" % (
+                        _s.get("sentiment"), _s.get("note", ""))
         except Exception:
             pass
         rev_cands = [{"code": it["code"], "name": it.get("name", ""),
@@ -273,10 +307,16 @@ def make_plan(state, review, asof):
         gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat or llm_def else "open"
         for it in cands[:8]:
             _rv = llm_rev.get(it.get("code"))
+            _nr = _news_rev.get(it.get("code"))
             if _rv and _rv.get("verdict") == "avoid":
                 acct["daily_log"].append({"date": asof, "kind": "plan",
-                                          "note": "%s：%s LLM回避(%s)" % (
+                                          "note": "%s：%s LLM技术回避(%s)" % (
                                               cfg["label"], it.get("name"), _rv.get("note", ""))})
+                continue
+            if _nr:
+                acct["daily_log"].append({"date": asof, "kind": "plan",
+                                          "note": "%s：%s %s" % (
+                                              cfg["label"], it.get("name"), _nr)})
                 continue
             close = it.get("close") or 0
             ma10 = it.get("ma10") or close
@@ -560,6 +600,7 @@ def main():
     ap.add_argument("--finalize", action="store_true")
     ap.add_argument("--strategy-log", default=None)
     ap.add_argument("--pool", default=None, help="all=全池 / six=6股精选")
+    ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03)")
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
 
@@ -596,11 +637,30 @@ def main():
     print("当前池模式:", _mode, "(" + ("6股精选" if _mode == "six" else "全池") + ")")
 
     if args.plan:
-        review = load_json("review_data.json")
-        if not review:
-            print("无 review_data")
-            return
-        date = (review.get("generatedAt") or "")[:10]
+        if args.plan_date:
+            # 历史日：对当前池股票用 K 线重建信号（无前视）
+            date = args.plan_date
+            codes = SIX_POOL if _mode == "six" else None
+            if codes is None:
+                print("--plan-date 仅支持 --pool six")
+                return
+            items = []
+            for c, n in SIX_POOL.items():
+                it = review_from_kline(c, n, date)
+                if it:
+                    items.append(it)
+            review = {"generatedAt": date + " 15:00:00", "items": items,
+                      "indices": [], "temperature": {"breadth": 0}}
+            print("历史日信号重建 %s：%d 只有效" % (date, len(items)))
+            for it in items:
+                print("   %s %s %s(%s分) %s" % (it["code"], it["name"], it["signal"],
+                                               it["score"], it["trend_status"]))
+        else:
+            review = load_json("review_data.json")
+            if not review:
+                print("无 review_data")
+                return
+            date = (review.get("generatedAt") or "")[:10]
         res = make_plan(state, review, date)
         save(state)
         print("计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v) for k, v in res.items()}))
