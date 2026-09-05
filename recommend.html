@@ -9,6 +9,8 @@
 <body>
 <div class="container" id="app"><div class="loading">数据加载中…</div></div>
 <script src="assets/js/common.js"></script>
+<script src="assets/js/rvui.js?v=3"></script>
+<script src="assets/js/stockchart.js?v=3"></script>
 <script>
 (async function () {
   const app = document.getElementById('app');
@@ -258,7 +260,7 @@
 
     // 股票名称 + 代码小字（附温度&走势按钮）
     function nameBlock(p, suffix) {
-      return `${p.name}${suffix || ''}${p.code ? RV.ui.heatBtn(p.code, p.name, 'stock') : ''}<span class="stock-code">${p.code}</span>`;
+      return `<span class="sname" style="cursor:pointer;color:var(--accent);font-weight:700" onclick="window.__stock('${p.code}')" title="专业行情">${p.name}</span>${suffix || ''}${p.code ? RV.ui.heatBtn(p.code, p.name, 'stock') : ''}<span class="stock-code">${p.code}</span>`;
     }
 
     // 个股推荐评分原因（'?' 弹层，与复盘页一致）

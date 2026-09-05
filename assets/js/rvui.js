@@ -151,28 +151,105 @@
         ${head}${px}${mline}${score}${reason}${fund}</div>`;
     },
 
-    /* ---------- 6. 图上浮层详情卡（点击图表弹当日卡，默认全展开，带 × 关闭） ---------- */
-    popupCard(hostSel, contentHTML, headerLine, color) {
+    /* ---------- 6. 悬浮弹窗卡（模态居中；移动端底部抽屉） ---------- */
+    popupCard(hostSel, contentHTML, headerHTML, color) {
       const old = document.getElementById('rvx-pop');
       if (old) old.remove();
-      const host = document.querySelector(hostSel);
-      if (!host) return null;
-      const dv = document.createElement('div');
-      dv.id = 'rvx-pop';
-      dv.style.cssText = `margin-top:12px;border:1px solid var(--border);border-left:4px solid ${color||'var(--accent)'};border-radius:10px;background:var(--surface);padding:12px 14px;box-shadow:var(--shadow-hover);position:relative;z-index:20`;
-      dv.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">${headerLine||''}
-        <button id="rvx-pop-close" style="margin-left:auto;border:none;background:none;color:var(--text-2);cursor:pointer">${ui.icon('xmark')}</button></div>${contentHTML}`;
-      host.parentElement.appendChild(dv);
-      dv.querySelector('#rvx-pop-close').addEventListener('click', () => dv.remove());
-      return dv;
+      const ov = document.createElement('div');
+      ov.id = 'rvx-pop';
+      ov.className = 'idx-modal-overlay';
+      const isMobile = window.innerWidth <= 640;
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:9990;display:flex;align-items:flex-start;justify-content:center;padding:' + (isMobile ? '0' : '30px 16px') + ';overflow-y:auto';
+      const box = document.createElement('div');
+      const accent = color || 'var(--accent)';
+      box.style.cssText = 'background:var(--surface,#fff);width:100%;max-width:640px;border-radius:' + (isMobile ? '18px 18px 0 0' : '14px') + ';box-shadow:0 20px 60px rgba(0,0,0,.28);overflow:hidden;animation:idxPop .18s ease-out;' +
+        (isMobile ? 'margin-top:auto;' : '');
+      box.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);border-top:3px solid ${accent};background:var(--surface-2)"><div style="min-width:0">${headerHTML || ''}</div>
+        <button class="rvx-pop-close" style="margin-left:auto;flex:none;width:26px;height:26px;border:none;background:#e5e7eb;border-radius:7px;color:#374151;cursor:pointer">${ui.icon('xmark')}</button></div>
+        <div class="rvx-pop-body" style="padding:12px 16px;max-height:${isMobile ? '78vh' : '76vh'};overflow-y:auto">${contentHTML}</div>`;
+      ov.appendChild(box);
+      document.body.appendChild(ov);
+      const close = () => { ov.remove(); document.removeEventListener('keydown', esc); };
+      const esc = (e) => { if (e.key === 'Escape') close(); };
+      document.addEventListener('keydown', esc);
+      ov.querySelector('.rvx-pop-close').addEventListener('click', close);
+      ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+      return box;
     },
-
     /* ---------- 7. 空态 / 提示 ---------- */
     empty(text) { return `<div class="empty" style="color:var(--text-2);text-align:center;padding:18px">${text || '暂无数据'}</div>`; },
     hint(html) { return `<div style="font-size:11px;color:var(--text-2);margin-top:8px">${html}</div>`; },
+
+    /* 全站个股卡（点击任意股票名）：review 快照 + 专业行情图（stockchart.js） */
+    async stockModal(code) {
+      try {
+        // 确保 echarts 与 stockchart 就绪（页面若无 CDN 则动态注入）
+        if (typeof window.echarts === 'undefined' && R.loadEcharts) {
+          try { await R.loadEcharts(); } catch (e) {}
+        }
+        if (typeof window.SC === 'undefined' && typeof window.echarts !== 'undefined') {
+          try {
+            await new Promise((res, rej) => {
+              const s = document.createElement('script');
+              s.src = 'assets/js/stockchart.js?v=' + Date.now();
+              s.onload = res; s.onerror = rej;
+              document.head.appendChild(s);
+            });
+          } catch (e) {}
+        }
+        if (typeof window.SC === 'undefined') { alert('行情组件未加载'); return; }
+        const rev = await R.API.fetch('review_data.json');
+        const it = (rev.items || []).find(x => String(x.code) === String(code));
+        if (!it) { alert('无 ' + code + ' 当日数据'); return; }
+        const f = it;
+        const fm2 = (v, d) => v == null ? '--' : Number(v).toFixed(d == null ? 2 : d);
+        const pcl2 = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
+        const moneyFmt = v => v == null ? '--' : (Math.abs(v) >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : (v / 1e4).toFixed(0) + '万');
+        const ff = f.fund_flow || {};
+        const rows = [
+          ['趋势', f.trend_status || '--', ''], ['信号/分', (f.signal || '') + ' · ' + (f.score != null ? f.score + '分' : '--'), ''],
+          ['乖离MA5', fm2(f.bias_ma5) != null ? R.fmt.pct(f.bias_ma5) : '--', ''],
+          ['MACD', (f.macd_status || '') + ' DIF' + fm2(f.macd_dif) + ' DEA' + fm2(f.macd_dea), ''],
+          ['RSI12', fm2(f.rsi12, 1) + ' ' + (f.rsi_status || ''), ''],
+          ['量能', (f.volume_status || '') + ' 量比' + fm2(f.volume_ratio), ''],
+          ['点位', '买' + fm2(f.ideal_buy) + '/次' + fm2(f.secondary_buy) + ' 损' + fm2(f.stop_loss) + ' 盈' + fm2(f.take_profit), ''],
+          ['ATR止损', fm2(f.atr_stop), '现价-2×ATR14'],
+          ['资金', moneyFmt(ff.main_net) + ' · 5日' + moneyFmt(ff.main_net_5d) + ' · 10日' + moneyFmt(ff.main_net_10d), ''],
+        ];
+        const body = `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><b style="font-size:16px">${it.name}</b><span class="sec-chip">${it.code}</span><span class="sec-chip">${it.sector || ''}</span></div>
+        <div style="display:flex;gap:12px;align-items:baseline;margin:6px 0 8px"><span style="font-size:22px;font-weight:800">${fm2(it.close)}</span><span class="${pcl2(it.change_pct)}" style="font-weight:700">${R.fmt.pct(it.change_pct)}</span><span style="color:var(--text-2);font-size:11px">60日 ${R.fmt.pct(it.change_60d)}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px">${['day','week','month','intraday','m5','m1'].map(t => `<button class="rvx-kbtn" data-t="${t}" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">${({day:'日K',week:'周K',month:'月K',intraday:'当日分时',m5:'5分',m1:'1分'})[t]}</button>`).join('')}</div>
+        <div id="rvx-scchart" style="width:100%;height:330px"></div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:6px">${(it.reasons || '').slice(0, 100)}</div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:8px">${rows.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:2.5px 0;border-bottom:1px dashed var(--border);font-size:12px"><span style="color:var(--text-2)">${r[0]}</span><span><b>${r[1]}</b></span></div>`).join('')}</div>`;
+        const box = RVX.popupCard('#content', body, `<b>${it.name} · 专业行情</b>`, '#c78d5a');
+        if (typeof window.SC === 'undefined') return;
+        let kd = null;
+        const draw = async (t) => {
+          document.querySelectorAll('#rvx-pop .rvx-kbtn').forEach(b => { const on = b.dataset.t === t; b.style.background = on ? '#c78d5a' : ''; b.style.color = on ? '#fff' : ''; });
+          const sc = document.getElementById('rvx-scchart'); if (!sc) return;
+          try {
+            if (t === 'intraday') {
+              const m1 = await R.API.fetch('kline/' + code + '_m1.json');
+              const chgp = it.change_pct || 0; const prevC = chgp ? it.close * 100 / (100 + chgp) : null;
+              window.SC.dispose('rvx-scchart');
+              window.SC.fromIntradayMinutes('rvx-scchart', m1, prevC || (m1.closes && m1.closes[0]));
+              return;
+            }
+            const file = (t === 'm5' || t === 'm1') ? 'kline/' + code + '_' + t + '.json' : 'kline/' + code + '.json';
+            kd = await R.API.fetch(file);
+            window.SC.dispose('rvx-scchart');
+            window.SC.fromKline('rvx-scchart', code, it.name, kd, { type: (t === 'm5' || t === 'm1') ? 'day' : t });
+          } catch (e) { sc.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:18px">行情暂缺（收盘后运行 build_kline_export.py）</div>'; }
+        };
+        document.querySelectorAll('#rvx-pop .rvx-kbtn').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
+        draw('day');
+      } catch (e) { console.log(e); }
+    },
   };
 
   global.RVX = RVX;
+  global.__stock = (code) => RVX.stockModal(code);
 
   // 折叠表事件委托（动态 HTML 也生效）
   document.addEventListener('click', function (e) {

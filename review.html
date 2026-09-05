@@ -9,6 +9,8 @@
 <body>
 <div class="container" id="app"><div class="loading">数据加载中…</div></div>
 <script src="assets/js/common.js"></script>
+<script src="assets/js/rvui.js?v=3"></script>
+<script src="assets/js/stockchart.js?v=3"></script>
 <script>
 (async function () {
   const app = document.getElementById('app');
@@ -283,7 +285,7 @@
       return `<div class="mini-cards">${items.map((r, i) => `
         <div class="mini-card">
           <div class="mini-head">
-            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span>${r.name}${RV.ui.heatBtn(r.code, r.name, 'stock')}</span>
+            <span class="mini-name"><span class="row-num">${String(i + 1).padStart(2, '0')}</span><span class="sname" style="cursor:pointer;color:var(--accent);font-weight:700" onclick="window.__stock('${r.code}')" title="查看专业行情">${r.name}</span>${RV.ui.heatBtn(r.code, r.name, 'stock')}</span>
             <span class="mini-head-right">${RV.ui.pctBadge(r.change_pct)} ${fundFlowBadge(r)} ${RV.ui.signalBadge(r.signal_key, r.signal)} ${stockDot(r)}</span>
           </div>
           <div class="mini-tags">
