@@ -53,6 +53,16 @@
   .hl-flash td { animation: hlflash 2.2s ease 2; }
   .fmt-hint { font-size:11px; color:var(--text-2); margin-top:8px; }
   #eq-chart, #bar-chart { width:100%; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:12px; margin:4px 0 16px; }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:13px 15px; }
+  .kpi .k-label { font-size:11px; color:var(--text-2); }
+  .kpi .k-val { font-size:20px; font-weight:800; margin-top:4px; }
+  .kpi .k-sub { font-size:10.5px; color:var(--text-2); margin-top:2px; }
+  .timeline { display:flex; flex-direction:column; gap:6px; font-size:12.5px; }
+  .tl-step { display:flex; gap:8px; align-items:baseline; } .tl-idx { color:var(--accent); font-weight:800; width:22px; flex:none; }
+  .revbox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; margin-bottom:10px; white-space:pre-line; }
+  .regime-chip { display:inline-block; font-size:10px; font-weight:800; border-radius:10px; padding:1px 8px; color:#fff; }
+  .regime-gong { background:#dc2626; } .regime-shou { background:#16a34a; } .regime-heng { background:#94a3b8; }
 
   @media (max-width:640px) {
     .strat-card { padding:13px; }
@@ -60,7 +70,8 @@
     .sc-kpis { grid-template-columns:repeat(3,1fr); gap:6px; }
     .chart-box { height:240px; } .chart-box.small { height:110px; }
     .month-head { font-size:12px; padding:8px 9px; flex-wrap:wrap; }
-    .kpi .k-val { font-size:17px; }
+    .kpi { padding:10px 12px; } .kpi .k-val { font-size:17px; }
+    .kpis { grid-template-columns:repeat(2,1fr); gap:8px; }
     .reason, .note-item, .note-item * { overflow-wrap:break-word; }
   }
 </style>
@@ -115,6 +126,15 @@ let winKey = 'all';
       <div class="bt-range" style="margin-bottom:14px">${winBtns}</div>
       <div class="strat-cards">${stratCards}</div>
       <div id="detail"></div>
+      <div class="sec-block" data-nav="回放机制" data-nav-icon="timeline">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>历史回放机制 <span class="sec-chip">次日开盘成交 · 不偷看未来</span></div>
+        <div class="timeline">
+          <div class="tl-step"><span class="tl-idx">①</span><span>每日收盘按三策略各自逻辑产生<b>次日计划</b>：目标买点（激进多回踩/稳健2%/纪律保本）与卖出规则</span></div>
+          <div class="tl-step"><span class="tl-idx">②</span><span>次日以<b>开盘价</b>撮合：高开 &gt;2%（激进3%）不追买、低开 &gt;3%（纪律3.5%）不接——跳空过大放弃</span></div>
+          <div class="tl-step"><span class="tl-idx">③</span><span>每笔记录 <b>成交日/时分/价/较信号日涨跌/持仓天数/理由</b>；含佣金+印花税，100 股整</span></div>
+          <div class="tl-step"><span class="tl-idx">④</span><span>收盘市值按收盘价更新，逐日记账 → 净值曲线/回撤/分年对比/每日操作笔记</span></div>
+        </div>
+      </div>
       <div class="sec-block" data-nav="规则对照" data-nav-icon="book">
         <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>三策略规则对照</div>
         ${ORDER.map(k => `<div class="logic-box" style="margin-bottom:10px"><b>${d.strategies[k].label}</b>：${d.strategies[k].logic}</div>`).join('')}
@@ -195,6 +215,11 @@ let winKey = 'all';
         ${regimeStats(m)}
         <div class="fmt-hint">${RV.ui.icon('arrows-split-up-and-left', 'fa-xs')} 攻：激进70/稳健20/纪律10 → 主吃上涨段；守：激进10/稳健20/纪律70 → 避险保本；衡：25/50/25。</div>
       </div>
+      <div class="sec-block" data-nav="每日档位" data-nav-icon="flag">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('flag')}</span>每日档位记录 <span class="sec-chip">近期 ${Math.min((m.dates || []).length, 40)} 日</span></div>
+        <div style="display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto">${regimeLog(m)}</div>
+        <div class="fmt-hint">${RV.ui.icon('circle-info', 'fa-xs')} 每日合成净值 + 档位（图内色带同口径）；点图上任意点看当日子策略贡献。</div>
+      </div>
       <div class="sec-block" data-nav="收益对比" data-nav-icon="brain">
         <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>逻辑</div>
         <div class="logic-box">${(m || {}).logic || ''}</div>
@@ -222,6 +247,29 @@ let winKey = 'all';
       return `<div style="display:inline-block;margin-right:18px"><b style="color:${c}">${k}</b> ${v}天(${(v / tot * 100).toFixed(0)}%)</div>`;
     }).join('');
     return `<div style="margin-bottom:8px">${bars}</div>`;
+  }
+
+  /* 每日档位 log：净值/日收益/档位 chip（同图内色带口径） */
+  function regimeLog(m) {
+    const dates = m.dates || [];
+    if (!dates.length) return '<div class="neutral" style="padding:6px 0">暂无档位记录</div>';
+    const N = Math.min(dates.length, 40);
+    const rows = [];
+    for (let i = dates.length - N; i < dates.length; i++) {
+      const dt = dates[i];
+      const prev = i > 0 ? m.dyn[i - 1] : null;
+      const cur = m.dyn[i];
+      const dr = prev ? (cur / prev - 1) * 100 : 0;
+      const reg = (m.regime || [])[i] || '衡';
+      const c = reg === '攻' ? 'regime-gong' : (reg === '守' ? 'regime-shou' : 'regime-heng');
+      const lbl = reg === '攻' ? '攻' : (reg === '守' ? '守' : '衡');
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--border)">
+        <span style="flex:none"><span class="regime-chip ${c}">${lbl}</span></span>
+        <span style="flex:none;min-width:86px">${dt}</span>
+        <span style="flex:1;min-width:0;color:var(--text)">¥${RV.fmt.money(cur)}</span>
+        <span style="flex:none" class="${RV.fmt.cls(dr)}">${i === 0 ? '--' : RV.fmt.pct(dr)}</span></div>`);
+    }
+    return rows.join('');
   }
 
   function drawMixChart(d) {
@@ -318,6 +366,14 @@ let winKey = 'all';
   function renderDetail(r) {
     const el = document.getElementById('detail');
     el.innerHTML = `
+      <div class="kpis" data-nav="${r.label}概览" data-nav-icon="chart-line">
+        <div class="kpi"><div class="k-label">期末净值</div><div class="k-val">¥${RV.fmt.money(r.final_equity)}</div><div class="k-sub">${r.start_date} → ${r.end_date}</div></div>
+        <div class="kpi"><div class="k-label">总收益</div><div class="k-val ${RV.fmt.cls(r.return_pct)}">${RV.fmt.pct(r.return_pct)}</div><div class="k-sub">超额(上证) ${RV.fmt.pct(r.alpha_pct)}</div></div>
+        <div class="kpi"><div class="k-label">最大回撤</div><div class="k-val down">-${RV.fmt.num(Math.abs(r.max_drawdown), 2)}%</div><div class="k-sub">等权口径同步上图</div></div>
+        <div class="kpi"><div class="k-label">胜率</div><div class="k-val">${r.stats.overall_win_rate}%</div><div class="k-sub">均盈 +¥${RV.fmt.num(r.stats.avg_win)} / 均亏 ¥${RV.fmt.num(Math.abs(r.stats.avg_loss))}</div></div>
+        <div class="kpi"><div class="k-label">买卖次数</div><div class="k-val">${r.stats.buy_times}/${r.stats.sell_times}</div><div class="k-sub">已实现 ${r.stats.realized_pnl > 0 ? '+' : ''}¥${RV.fmt.num(r.stats.realized_pnl)}</div></div>
+        <div class="kpi"><div class="k-label">当前持仓</div><div class="k-val">${(r.positions || []).length}只</div><div class="k-sub">${r.stats.open_positions > 0 ? '未平仓 ' + r.stats.open_positions + ' 笔' : '空仓'}</div></div>
+      </div>
       <div class="sec-block" data-nav="净值与收益" data-nav-icon="chart-line">
         <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>净值与每日收益</div>
         <div class="chart-box" id="eq-chart"></div>
