@@ -231,7 +231,7 @@ def review_from_kline(code, name, date):
 
 
 # ---------------- 计划（各账户独立参数） ----------------
-def make_plan(state, review, asof):
+def make_plan(state, review, asof, skip_llm=False):
     global POOL_MODE
     POOL_MODE = (state.get("meta") or {}).get("pool_mode", "all")
     items = review.get("items", []) or []
@@ -278,7 +278,7 @@ def make_plan(state, review, asof):
     # LLM 个股评审（盘前一次性；失败放行）
     llm_rev = {}
     _news_rev = {}
-    if not llm_def:
+    if not llm_def and not skip_llm:
         _llm_macro = None
         try:
             _llm_macro = load_json("macro_llm_data.json")
@@ -601,6 +601,7 @@ def main():
     ap.add_argument("--strategy-log", default=None)
     ap.add_argument("--pool", default=None, help="all=全池 / six=6股精选")
     ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03)")
+    ap.add_argument("--no-llm", action="store_true", help="跳过LLM个股评审(快速切池用)")
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
 
@@ -661,7 +662,7 @@ def main():
                 print("无 review_data")
                 return
             date = (review.get("generatedAt") or "")[:10]
-        res = make_plan(state, review, date)
+        res = make_plan(state, review, date, skip_llm=bool(args.no_llm))
         save(state)
         print("计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v) for k, v in res.items()}))
         for k in REAL_ACCOUNTS:

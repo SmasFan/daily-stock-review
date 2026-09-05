@@ -6,12 +6,39 @@
 # - 每 60 分钟（MM%60==0 / 整点）：复盘分析；10/14 点推盘中播报
 # - 12:00（午休）：只跑复盘 + 推「午间大盘分析」（大盘/自选/资金/宏观综合，单条）
 # - flock 防重叠：上次任务未完成时跳过本轮
+#   2026-09 加固：等锁最长 90 秒（避免整天跳过）；锁龄 >35 分钟视为死锁，强制接管
 # CACHE_MAX_AGE_HOURS=2：盘中 K 线缓存 2 小时过期，保证当天数据进分析。
 export CACHE_MAX_AGE_HOURS=2
-exec 9>/tmp/run_intraday.lock
-flock -n 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 上次盘中任务未完成，跳过本轮" >> /mnt/c/Users/z7280/daily-stock-review/data/auto_run.log; exit 0; }
+LOCK=/tmp/run_intraday.lock
+LOG=/mnt/c/Users/z7280/daily-stock-review/data/auto_run.log
+
+# 死锁检测：锁龄 >35 分钟 → 持锁进程视为卡死，SIGTERM + 清锁（正常任务不会超过 35 分钟）
+if [ -f "$LOCK" ]; then
+  LOCK_AGE=$(( $(date +%s) - $(stat -c %Y "$LOCK") ))
+  if [ "$LOCK_AGE" -gt 2100 ]; then
+    HOLDPID=$(fuser "$LOCK" 2>/dev/null | awk '{print $1}')
+    if [ -n "$HOLDPID" ] && kill -0 "$HOLDPID" 2>/dev/null; then
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] 检测到卡死任务(pid=$HOLDPID 锁龄${LOCK_AGE}s)，强制终止" >> "$LOG"
+      kill "$HOLDPID" 2>/dev/null
+      sleep 2
+      kill -9 "$HOLDPID" 2>/dev/null
+    fi
+    rm -f "$LOCK"
+  fi
+fi
+
+exec 9>"$LOCK"
+# 等锁最长 90 秒（任务接近完成时顺延等待，避免整日跳过）；超时则放弃本轮
+flock -w 90 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 锁忙(>90s)，跳过本轮" >> "$LOG"; exit 0; }
 
 cd /mnt/c/Users/z7280/daily-stock-review
+
+# 整体超时：任务超 25 分钟自动终止（正常每轮 <10 分钟；防网络挂死拖垮整天）
+cleanup() { exit 0; }
+trap cleanup EXIT
+( sleep 1500 && echo "[$(date '+%Y-%m-%d %H:%M:%S')] 本轮超时25分钟，强制终止" >> "$LOG" &&   HOLD=$(fuser "$LOCK" 2>/dev/null | awk '{print $1}') && [ -n "$HOLD" ] && kill "$HOLD" 2>/dev/null && sleep 1 && kill -9 "$HOLD" 2>/dev/null ) &
+TIMER_PID=$!
+
 H=$(date +%H%M)
 MM=$((10#$(date +%M)))
 HOUR=$((10#$(date +%H)))
@@ -21,6 +48,9 @@ IN_TRADING=0
 if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -le 1500 ]; }; then
   IN_TRADING=1
 fi
+
+# 结束时取消超时器
+kill $TIMER_PID 2>/dev/null
 
 # ============ 午间 12:00 大盘分析推送（午休，仅整点一次） ============
 if [ "$IS_NOON" = "1" ]; then

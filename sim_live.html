@@ -66,6 +66,13 @@
     .kpis { grid-template-columns:repeat(2,1fr); }
     .strat-card { padding:12px; }
   }
+
+  #pool-switch .ps-btn { cursor:pointer; font-size:13px; font-weight:800; padding:6px 14px;
+    border-radius:20px; border:1.5px solid var(--border); color:var(--text-2); user-select:none; transition:all .15s; }
+  #pool-switch .ps-btn.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #pool-switch .ps-btn:hover:not(.on) { border-color:var(--accent); color:var(--accent); }
+  #pool-switch.busy { opacity:.55; pointer-events:none; }
+  #pool-switch.busy::after { content:'切换中…'; font-size:12px; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -92,23 +99,45 @@
     disciplined: { badge: '#2563eb', icon: 'shield-halved', label: '严守纪律' },
     mix: { badge: '#7c3aed', icon: 'layer-group', label: '合并' },
   };
-  try {
-    S = await RV.API.fetch('sim_live.json');
-    const pm = (S.meta || {}).pool_mode || 'all';
-    const poolLabel = pm === 'six'
-      ? '6股精选(工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔)'
-      : '全池(36股复盘池)';
-    app.innerHTML = RV.ui.header('实时模拟盘 · 四账户' + (pm === 'six' ? ' · 6股模式' : ''),
-      '激进 / 稳健 / 严守纪律 / 合并 · 盘中触发 · 时分秒成交 · <b style="color:var(--accent)">池: ' + poolLabel + '</b>', 'simlive', S.meta.created);
-    loading.style.display = 'none';
-    content.style.display = 'block';
-    render();
-    RV.ui.initSidebar();
-  } catch (e) {
-    app.innerHTML = RV.ui.header('实时模拟盘', '', 'simlive');
-    loading.innerHTML = '数据加载失败：' + e.message;
-    loading.style.display = 'block';
+  async function init() {
+    try {
+      S = await RV.API.fetch('sim_live.json');
+      const pm = (S.meta || {}).pool_mode || 'all';
+      const poolLabel = pm === 'six'
+        ? '6股精选(工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔)'
+        : '全池(36股复盘池)';
+      app.innerHTML = RV.ui.header('实时模拟盘 · 四账户' + (pm === 'six' ? ' · 6股模式' : ''),
+        '激进 / 稳健 / 严守纪律 / 合并 · 盘中触发 · 时分秒成交 · <b style="color:var(--accent)">池: ' + poolLabel + '</b>', 'simlive', S.meta.created);
+      loading.style.display = 'none';
+      content.style.display = 'block';
+      render();
+      RV.ui.initSidebar();
+    } catch (e) {
+      app.innerHTML = RV.ui.header('实时模拟盘', '', 'simlive');
+      loading.innerHTML = '数据加载失败：' + e.message;
+      loading.style.display = 'block';
+    }
   }
+
+  /* 池模式开关：页顶一键切换 six(6股精选)/all(全池) → 后端重建计划 → 刷新 */
+  async function switchPool(mode, btn) {
+    if (switching) return;
+    switching = true;
+    const bar = document.getElementById('pool-switch');
+    if (bar) bar.classList.add('busy');
+    try {
+      const r = await fetch('/api/sim_mode', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pool: mode })
+      });
+      const j = await r.json();
+      if (!j.ok) { alert('切换失败: ' + (j.error || '')); return; }
+      await init();
+    } catch (e) { alert('切换失败: ' + e.message); }
+    finally { switching = false; }
+  }
+  let switching = false;
+  init();
 
   function acct(key) { return S.accounts[key]; }
   function eqOf(key) {
@@ -124,7 +153,16 @@
 
   function render() {
     const cards = ORDER.map(k => card(k)).join('');
+    const curMode = (S.meta || {}).pool_mode || 'all';
     content.innerHTML = `
+      <div id="pool-switch" class="sec" data-nav="池模式" data-nav-icon="layer-group" style="padding:11px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="sec-title" style="margin:0"><span class="ti">${RV.ui.icon('layer-group')}</span>操作池</span>
+        <span class="ps-btn ${curMode === 'six' ? 'on' : ''}" data-m="six">🎯 6股精选</span>
+        <span class="ps-btn ${curMode === 'all' ? 'on' : ''}" data-m="all">🗂 全池(36股)</span>
+        <span class="sec-chip" id="ps-hint" style="font-size:11px">${
+          curMode === 'six' ? '只做 富联/长电/紫金/万华/宁行/雅戈尔 — 计划已按6股重建' :
+          '全池 36 只复盘候选 — 计划已按全池重建'}</span>
+      </div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
@@ -140,7 +178,7 @@
       <div class="sec" data-nav="操作逻辑" data-nav-icon="magnifying-glass-chart">
         <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 分析点</div>
         <div style="font-size:12px;line-height:1.9">
-          <div>· <b>池模式：</b>六股精选 = 只做 工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔（全池 = 36 股复盘池）。切换命令：<code>scripts/sim_mode.sh six|all</code>，切换后自动按新池重建计划。</div>
+          <div>· <b>池模式：</b>页顶开关一键切换 <b>6股精选</b>（工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔，抓个股新闻+消息面评审）与 <b>全池</b>（36 股复盘池，宏观闸门）；切换即时重建计划。</div>
           <div>· <b>何时买：</b>现价回踩到计划买点才触发；高开冲高 &gt;3% 不追</div>
           <div>· <b>何时卖：</b>破 ATR/保本止损、到止盈价、峰值回落8%（曾+8%以上，激进账户）</div>
           <div>· <b>风控：</b>大盘空头/普涨过热日不加新仓；每账户独立 5万、100股整倍数</div>
@@ -165,6 +203,11 @@
       if (el) el.addEventListener('click', () => select(k));
     });
     RVX.enableCardTables('#content');
+    document.querySelectorAll('#pool-switch .ps-btn').forEach(b =>
+      b.addEventListener('click', () => {
+        const m = b.dataset.m;
+        if (m !== curMode) switchPool(m, b);
+      }));
     loadLlmMacro();
     select('balanced');
   }
