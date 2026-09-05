@@ -71,6 +71,7 @@
 </div>
 <script src="assets/js/common.js"></script>
 <script src="assets/js/rvui.js"></script>
+<script src="assets/js/stockchart.js?v=3"></script>
 <script>
 /* 三策略展示顺序与视觉 meta */
 const KEY_META = {
@@ -579,9 +580,17 @@ let winKey = 'all';
       rows.push(['资金', moneyFmt(ff.main_net) + ' · 5日' + moneyFmt(ff.main_net_5d), '']);
       const body = `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:16px">${it.name}</b><span class="sec-chip">${it.code}</span><span class="sec-chip">${it.sector || ''}</span></div>
         <div style="display:flex;gap:10px;align-items:baseline;margin:6px 0"><span style="font-size:20px;font-weight:800">${RV.fmt.num(it.close)}</span><span class="${RV.fmt.cls(it.change_pct)}" style="font-weight:700">${RV.fmt.pct(it.change_pct)}</span></div>
-        ${rows.map(r => `<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dashed var(--border);font-size:12px"><span style="color:var(--text-2)">${r[0]}</span><span><b>${r[1]}</b></span></div>`).join('')}
+        <div style="display:flex;gap:6px;margin-bottom:6px">${['day','week','month'].map(t=>`<button class="kbtn" data-t="${t}" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">${t==='day'?'日K':t==='week'?'周K':'月K'}</button>`).join('')}</div>
+        <div id="scchart" style="width:100%;height:300px"></div>
         <div style="font-size:11px;color:var(--text-2);margin-top:6px">${(it.reasons || '').slice(0, 90)}</div>`;
-      RVX.popupCard('#detail', body, `<b>${it.name} · 当前行情快照</b>`, '#c78d5a');
+      RVX.popupCard('#detail', body, `<b>${it.name} · 专业行情</b>`, '#c78d5a');
+      let kd = null; let cur = 'day';
+      const draw = async (t) => { cur = t;
+        document.querySelectorAll('#rvx-pop .kbtn').forEach(b => { const on = b.dataset.t === t; b.style.background = on ? '#c78d5a' : ''; b.style.color = on ? '#fff' : ''; });
+        try { if (!kd) kd = await RV.API.fetch('kline/' + code + '.json'); SC.dispose('scchart'); SC.fromKline('scchart', code, it.name, kd, { type: t }); }
+        catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:20px">K线暂缺（build_kline_export.py）</div>'; } };
+      document.querySelectorAll('#rvx-pop .kbtn').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
+      draw('day');
     } catch (e) { console.log(e); }
   }
   window.__stock = stockCard;
