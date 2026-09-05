@@ -486,37 +486,58 @@ def main():
             for pl in a.get("plan", []):
                 if pl.get("status", "wait") != "wait" or pl.get("gate") == "block":
                     continue
-                kd = dp.fetch_daily_kline(pl["code"], count=30)
-                if not kd or args.replay not in kd["dates"]:
-                    continue
-                i = kd["dates"].index(args.replay)
-                low = kd["lows"][i]
-                if low <= pl["buy_below"]:
-                    px = pl["buy_below"]
-                    budget = min(pl["budget"], a["cash"] * 0.98)
-                    shares = int(budget / px / 100) * 100
-                    if shares <= 0:
+                # 1) 优先用 1 分钟K精确定位触发时刻（真实时分秒 + 当时涨跌）
+                m1 = dp.fetch_minute_kline(pl["code"], scale=1, datalen=480, use_cache=True)
+                trig = None  # (time_str, price, chg)
+                pc = None
+                if m1 and m1.get("dates"):
+                    prev_closes = [c for d, c in zip(m1["dates"], m1["closes"]) if not d.startswith(args.replay)]
+                    pc = prev_closes[-1] if prev_closes else None
+                    for d, c in zip(m1["dates"], m1["closes"]):
+                        if d.startswith(args.replay) and c <= pl["buy_below"]:
+                            trig = (d[11:16], c, (c / pc - 1) * 100 if pc else None)
+                            break
+                px = None; low = None
+                if trig:
+                    px = trig[1]; low = trig[1]
+                else:
+                    # 2) 无分钟数据回退日K low
+                    kd = dp.fetch_daily_kline(pl["code"], count=30)
+                    if not kd or args.replay not in kd["dates"]:
                         continue
-                    cost = shares * px
-                    a["cash"] -= cost + cost * 0.0003
-                    a["positions"].append({
-                        "code": pl["code"], "name": pl["name"], "shares": shares,
-                        "cost": round(px, 3), "buy_date": args.replay, "buy_time": "盘中(回放)",
-                        "stop_atr": pl.get("stop_atr"), "tp": pl.get("tp"),
-                        "trail": pl.get("trail"), "be_at": pl.get("be_at"),
-                        "be_on": False, "peak": px, "score": pl.get("score"),
-                        "signal": pl.get("signal"),
-                    })
-                    a["trades"].append({
-                        "action": "buy", "date": args.replay, "time": "盘中(回放)",
-                        "code": pl["code"], "name": pl["name"], "price": round(px, 3),
-                        "shares": shares, "chg_at_fill": None,
-                        "reason": "回放触发(日K低%.2f≤%.2f)：%s" % (low, pl["buy_below"], pl["reason"]),
-                        "strategy": k,
-                    })
-                    pl["status"] = "filled"
-                    tot += 1
-                    print("  [%s] 回放买入 %s @%.2f" % (cfg["label"], pl["name"], px))
+                    i = kd["dates"].index(args.replay)
+                    low = kd["lows"][i]
+                    if low > pl["buy_below"]:
+                        continue
+                    px = pl["buy_below"]
+                budget = min(pl["budget"], a["cash"] * 0.98)
+                shares = int(budget / px / 100) * 100
+                if shares <= 0:
+                    continue
+                cost = shares * px
+                a["cash"] -= cost + cost * 0.0003
+                time_str = trig[0] + ":00" if trig else "盘中(回放近似)"
+                a["positions"].append({
+                    "code": pl["code"], "name": pl["name"], "shares": shares,
+                    "cost": round(px, 3), "buy_date": args.replay, "buy_time": time_str,
+                    "stop_atr": pl.get("stop_atr"), "tp": pl.get("tp"),
+                    "trail": pl.get("trail"), "be_at": pl.get("be_at"),
+                    "be_on": False, "peak": px, "score": pl.get("score"),
+                    "signal": pl.get("signal"),
+                })
+                a["trades"].append({
+                    "action": "buy", "date": args.replay, "time": time_str,
+                    "code": pl["code"], "name": pl["name"], "price": round(px, 3),
+                    "shares": shares,
+                    "chg_at_fill": round(trig[2], 2) if trig and trig[2] is not None else None,
+                    "reason": "回放触发(1分K首触@%s 价%.2f)：%s" % (trig[0], px, pl["reason"]) if trig
+                              else "回放触发(日K低%.2f≤%.2f)：%s" % (low, pl["buy_below"], pl["reason"]),
+                    "strategy": k,
+                })
+                pl["status"] = "filled"
+                tot += 1
+                print("  [%s] 回放买入 %s @%.2f %s" % (cfg["label"], pl["name"], px, time_str))
+
         save(state)
         print("回放完成 %s：%d 笔" % (args.replay, tot))
         return

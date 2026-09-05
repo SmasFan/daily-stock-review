@@ -1,6 +1,6 @@
 {
  "meta": {
-  "created": "2026-09-05 01:07:26",
+  "created": "2026-09-05 10:12:21",
   "strategy_version": "v3.0",
   "accounts": [
    "aggressive",
@@ -13,21 +13,21 @@
    "key": "aggressive",
    "label": "激进",
    "start_cash": 50000.0,
-   "cash": 24433.53236,
+   "cash": 24470.3434,
    "positions": [
     {
      "code": "600486",
      "name": "扬农化工",
      "shares": 100,
-     "cost": 55.36,
+     "cost": 55.27,
      "buy_date": "2026-09-04",
-     "buy_time": "盘中(回放)",
+     "buy_time": "09:31:00",
      "stop_atr": 51.54,
      "tp": 67.044,
      "trail": 0.1,
      "be_at": null,
      "be_on": false,
-     "peak": 55.36,
+     "peak": 55.27,
      "score": 85,
      "signal": "强烈买入",
      "last_close": 55.87
@@ -36,15 +36,15 @@
      "code": "600346",
      "name": "恒力石化",
      "shares": 500,
-     "cost": 18.935,
+     "cost": 18.91,
      "buy_date": "2026-09-04",
-     "buy_time": "盘中(回放)",
+     "buy_time": "10:16:00",
      "stop_atr": 17.38,
      "tp": 22.836,
      "trail": 0.1,
      "be_at": null,
      "be_on": false,
-     "peak": 18.935,
+     "peak": 18.91,
      "score": 83,
      "signal": "强烈买入",
      "last_close": 19.03
@@ -53,15 +53,15 @@
      "code": "601766",
      "name": "中国中车",
      "shares": 1700,
-     "cost": 6.209,
+     "cost": 6.2,
      "buy_date": "2026-09-04",
-     "buy_time": "盘中(回放)",
+     "buy_time": "09:31:00",
      "stop_atr": 6.0,
      "tp": 7.488,
      "trail": 0.1,
      "be_at": null,
      "be_on": false,
-     "peak": 6.209,
+     "peak": 6.2,
      "score": 82,
      "signal": "强烈买入",
      "last_close": 6.24
@@ -217,46 +217,46 @@
     {
      "action": "buy",
      "date": "2026-09-04",
-     "time": "盘中(回放)",
+     "time": "09:31:00",
      "code": "600486",
      "name": "扬农化工",
-     "price": 55.36,
+     "price": 55.27,
      "shares": 100,
-     "chg_at_fill": null,
-     "reason": "回放触发(日K低55.10≤55.36)：强烈买入(85分) 回踩≤55.36 ATR止损51.54",
+     "chg_at_fill": 0.34,
+     "reason": "回放触发(1分K首触@09:31 价55.27)：强烈买入(85分) 回踩≤55.36 ATR止损51.54",
      "strategy": "aggressive"
     },
     {
      "action": "buy",
      "date": "2026-09-04",
-     "time": "盘中(回放)",
+     "time": "10:16:00",
      "code": "600346",
      "name": "恒力石化",
-     "price": 18.935,
+     "price": 18.91,
      "shares": 500,
-     "chg_at_fill": null,
-     "reason": "回放触发(日K低18.85≤18.93)：强烈买入(83分) 回踩≤18.93 ATR止损17.38",
+     "chg_at_fill": -1.3,
+     "reason": "回放触发(1分K首触@10:16 价18.91)：强烈买入(83分) 回踩≤18.93 ATR止损17.38",
      "strategy": "aggressive"
     },
     {
      "action": "buy",
      "date": "2026-09-04",
-     "time": "盘中(回放)",
+     "time": "09:31:00",
      "code": "601766",
      "name": "中国中车",
-     "price": 6.209,
+     "price": 6.2,
      "shares": 1700,
-     "chg_at_fill": null,
-     "reason": "回放触发(日K低6.17≤6.21)：强烈买入(82分) 回踩≤6.21 ATR止损6.0",
+     "chg_at_fill": 0.49,
+     "reason": "回放触发(1分K首触@09:31 价6.20)：强烈买入(82分) 回踩≤6.21 ATR止损6.0",
      "strategy": "aggressive"
     }
    ],
    "equity_curve": [
     {
      "date": "2026-09-04",
-     "equity": 50143.53,
-     "cash": 24433.53,
-     "daily_return": 0.287,
+     "equity": 50180.34,
+     "cash": 24470.34,
+     "daily_return": 0.361,
      "pos_count": 3
     }
    ],
@@ -616,7 +616,7 @@
   "equity_curve": [
    {
     "date": "2026-09-04",
-    "equity": 50035.88,
+    "equity": 50045.08,
     "daily_return": 0.0,
     "regime": "衡"
    }
