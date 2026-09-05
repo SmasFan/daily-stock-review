@@ -126,6 +126,17 @@ def make_plan(state, review, asof):
     mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
     breadth = (review.get("temperature") or {}).get("breadth") or 0
     overheat = breadth >= 65
+    # LLM 宏观消息面观察（macro_llm.py 生成）：空头/防御 → 全局闸门
+    llm_def = False
+    try:
+        _llm = load_json("macro_llm_data.json") or {}
+        _ll = (_llm.get("llm") or {})
+        _llm_sent = _ll.get("sentiment")
+        _llm_def = _llm_sent in ("空头", "防御")
+        _llm_weak = _llm_sent == "中性" and (_ll.get("score") or 50) < 40
+        llm_def = _llm_def or _llm_weak
+    except Exception:
+        pass
     for key in REAL_ACCOUNTS:
         cfg = ACCOUNTS[key]
         acct = state["accounts"][key]
@@ -143,7 +154,7 @@ def make_plan(state, review, asof):
             cands.append(it)
         cands.sort(key=lambda x: -x.get("score", 0))
         plan = []
-        gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat else "open"
+        gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat or llm_def else "open"
         for it in cands[:8]:
             close = it.get("close") or 0
             ma10 = it.get("ma10") or close

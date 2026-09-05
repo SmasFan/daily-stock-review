@@ -1,0 +1,534 @@
+{
+ "window": "近2月",
+ "mode": "v4-equal-macro",
+ "start": "2026-07-01",
+ "end": "2026-09-04",
+ "generated": "2026-09-05 18:03:34",
+ "accounts": {
+  "v4": {
+   "label": "等权满仓·宏观过滤",
+   "equity_curve": [
+    {
+     "date": "2026-07-01",
+     "equity": 49995.87,
+     "cash": 36231.87,
+     "daily_return": -0.008,
+     "pos_count": 2
+    },
+    {
+     "date": "2026-07-02",
+     "equity": 49367.59,
+     "cash": 28322.59,
+     "daily_return": -1.257,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-03",
+     "equity": 49625.38,
+     "cash": 34829.38,
+     "daily_return": 0.522,
+     "pos_count": 2
+    },
+    {
+     "date": "2026-07-06",
+     "equity": 49848.87,
+     "cash": 26468.87,
+     "daily_return": 0.45,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-07",
+     "equity": 49719.87,
+     "cash": 26468.87,
+     "daily_return": -0.259,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-08",
+     "equity": 49664.87,
+     "cash": 26468.87,
+     "daily_return": -0.111,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-09",
+     "equity": 49610.87,
+     "cash": 26468.87,
+     "daily_return": -0.109,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-10",
+     "equity": 49701.87,
+     "cash": 26468.87,
+     "daily_return": 0.183,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-13",
+     "equity": 49534.87,
+     "cash": 26468.87,
+     "daily_return": -0.336,
+     "pos_count": 3
+    },
+    {
+     "date": "2026-07-14",
+     "equity": 50344.33,
+     "cash": 11325.33,
+     "daily_return": 1.634,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-15",
+     "equity": 50181.33,
+     "cash": 11325.33,
+     "daily_return": -0.324,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-16",
+     "equity": 49742.33,
+     "cash": 11325.33,
+     "daily_return": -0.875,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-17",
+     "equity": 49120.8,
+     "cash": 16985.8,
+     "daily_return": -1.25,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-20",
+     "equity": 50701.8,
+     "cash": 16985.8,
+     "daily_return": 3.219,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-21",
+     "equity": 50576.8,
+     "cash": 16985.8,
+     "daily_return": -0.247,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-22",
+     "equity": 51966.8,
+     "cash": 16985.8,
+     "daily_return": 2.748,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-23",
+     "equity": 52556.8,
+     "cash": 16985.8,
+     "daily_return": 1.135,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-24",
+     "equity": 51541.8,
+     "cash": 16985.8,
+     "daily_return": -1.931,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-27",
+     "equity": 51272.97,
+     "cash": 10893.97,
+     "daily_return": -0.522,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-28",
+     "equity": 51166.97,
+     "cash": 10893.97,
+     "daily_return": -0.207,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-29",
+     "equity": 51386.97,
+     "cash": 10893.97,
+     "daily_return": 0.43,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-07-30",
+     "equity": 51759.73,
+     "cash": 16188.73,
+     "daily_return": 0.725,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-07-31",
+     "equity": 51273.73,
+     "cash": 16188.73,
+     "daily_return": -0.939,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-08-03",
+     "equity": 51068.73,
+     "cash": 16188.73,
+     "daily_return": -0.4,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-08-04",
+     "equity": 50620.73,
+     "cash": 16188.73,
+     "daily_return": -0.877,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-08-05",
+     "equity": 51153.73,
+     "cash": 16188.73,
+     "daily_return": 1.053,
+     "pos_count": 4
+    },
+    {
+     "date": "2026-08-06",
+     "equity": 51452.68,
+     "cash": 9359.68,
+     "daily_return": 0.584,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-07",
+     "equity": 51793.68,
+     "cash": 9359.68,
+     "daily_return": 0.663,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-10",
+     "equity": 52394.68,
+     "cash": 9359.68,
+     "daily_return": 1.16,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-11",
+     "equity": 51194.68,
+     "cash": 9359.68,
+     "daily_return": -2.29,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-12",
+     "equity": 50983.68,
+     "cash": 9359.68,
+     "daily_return": -0.412,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-13",
+     "equity": 50158.68,
+     "cash": 9359.68,
+     "daily_return": -1.618,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-14",
+     "equity": 50333.68,
+     "cash": 9359.68,
+     "daily_return": 0.349,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-17",
+     "equity": 50769.68,
+     "cash": 9359.68,
+     "daily_return": 0.866,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-18",
+     "equity": 50936.68,
+     "cash": 9359.68,
+     "daily_return": 0.329,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-19",
+     "equity": 50455.68,
+     "cash": 9359.68,
+     "daily_return": -0.944,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-20",
+     "equity": 50877.68,
+     "cash": 9359.68,
+     "daily_return": 0.836,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-21",
+     "equity": 51307.68,
+     "cash": 9359.68,
+     "daily_return": 0.845,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-24",
+     "equity": 50604.07,
+     "cash": 9318.07,
+     "daily_return": -1.371,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-25",
+     "equity": 50315.07,
+     "cash": 9318.07,
+     "daily_return": -0.571,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-26",
+     "equity": 50713.07,
+     "cash": 9318.07,
+     "daily_return": 0.791,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-27",
+     "equity": 51529.07,
+     "cash": 9318.07,
+     "daily_return": 1.609,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-28",
+     "equity": 51964.07,
+     "cash": 9318.07,
+     "daily_return": 0.844,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-08-31",
+     "equity": 51682.07,
+     "cash": 9318.07,
+     "daily_return": -0.543,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-09-01",
+     "equity": 51701.07,
+     "cash": 9318.07,
+     "daily_return": 0.037,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-09-02",
+     "equity": 51201.07,
+     "cash": 9318.07,
+     "daily_return": -0.967,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-09-03",
+     "equity": 51653.07,
+     "cash": 9318.07,
+     "daily_return": 0.883,
+     "pos_count": 5
+    },
+    {
+     "date": "2026-09-04",
+     "equity": 51744.07,
+     "cash": 9318.07,
+     "daily_return": 0.176,
+     "pos_count": 5
+    }
+   ],
+   "trades": [
+    {
+     "action": "buy",
+     "date": "2026-07-01",
+     "code": "600309",
+     "name": "万华化学",
+     "price": 68.29,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-01",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 69.35,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "sell",
+     "date": "2026-07-02",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 62.85,
+     "shares": 100,
+     "pnl": -650.0,
+     "pnl_pct": -9.37,
+     "reason": "信号转减仓(29分)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-02",
+     "code": "600900",
+     "name": "长江电力",
+     "price": 26.16,
+     "shares": 300,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-02",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 63.37,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "sell",
+     "date": "2026-07-03",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 65.12,
+     "shares": 100,
+     "pnl": 175.0,
+     "pnl_pct": 2.76,
+     "reason": "信号转卖出(19分)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-06",
+     "code": "601899",
+     "name": "紫金矿业",
+     "price": 27.86,
+     "shares": 300,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-14",
+     "code": "600989",
+     "name": "宝丰能源",
+     "price": 21.61,
+     "shares": 400,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-14",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 64.95,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "sell",
+     "date": "2026-07-17",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 56.65,
+     "shares": 100,
+     "pnl": -830.0,
+     "pnl_pct": -12.78,
+     "reason": "破止损56.65"
+    },
+    {
+     "action": "buy",
+     "date": "2026-07-27",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 60.9,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "sell",
+     "date": "2026-07-30",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 52.99,
+     "shares": 100,
+     "pnl": -791.0,
+     "pnl_pct": -12.99,
+     "reason": "破止损52.99"
+    },
+    {
+     "action": "buy",
+     "date": "2026-08-06",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 68.27,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    },
+    {
+     "action": "sell",
+     "date": "2026-08-24",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 60.05,
+     "shares": 100,
+     "pnl": -822.0,
+     "pnl_pct": -12.04,
+     "reason": "破止损60.05"
+    },
+    {
+     "action": "buy",
+     "date": "2026-08-24",
+     "code": "601138",
+     "name": "工业富联",
+     "price": 60.4,
+     "shares": 100,
+     "reason": "宏观非防御 等权建仓(收盘近似)"
+    }
+   ],
+   "positions": [
+    {
+     "code": "600309",
+     "name": "万华化学",
+     "shares": 100,
+     "cost": 68.29,
+     "buy_date": "2026-07-01"
+    },
+    {
+     "code": "600900",
+     "name": "长江电力",
+     "shares": 300,
+     "cost": 26.16,
+     "buy_date": "2026-07-02"
+    },
+    {
+     "code": "601899",
+     "name": "紫金矿业",
+     "shares": 300,
+     "cost": 27.86,
+     "buy_date": "2026-07-06"
+    },
+    {
+     "code": "600989",
+     "name": "宝丰能源",
+     "shares": 400,
+     "cost": 21.61,
+     "buy_date": "2026-07-14"
+    },
+    {
+     "code": "601138",
+     "name": "工业富联",
+     "shares": 100,
+     "cost": 60.4,
+     "buy_date": "2026-08-24"
+    }
+   ]
+  }
+ }
+}
