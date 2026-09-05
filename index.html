@@ -106,7 +106,7 @@
     <a class="entry-card" href="sim_live.html">
       <div class="e-icon">${RV.ui.icon('stopwatch')}</div><h3>实时模拟盘</h3>
       <p>5万实盘节奏逐日操作：每日收盘决策/次日开盘成交、买卖原因与时间全记录、自学习复盘优化</p>
-      ${liveSim && liveSim.meta ? (() => { const eq = liveSim.equity_curve || []; const v = eq.length ? eq[eq.length - 1].equity : liveSim.meta.start_cash; const r = (v / liveSim.meta.start_cash - 1) * 100; return `<div class="e-stat">${RV.ui.icon('chart-line', 'fa-xs')} 净值 ¥${RV.fmt.money(v)}（${RV.fmt.pct(r)}）· 持仓 ${liveSim.positions.length} · v${liveSim.meta.strategy.version}</div>`; })() : ''}
+      ${liveSim && liveSim.meta ? (() => { try { const eq = liveSim.meta.start_cash || 50000; const r = 0; const act = (liveSim.accounts && Object.keys(liveSim.accounts)) || []; const pos = act.length ? act.map(k => liveSim.accounts[k].positions.length).reduce((a, b) => a + b, 0) : (liveSim.positions || []).length; const ver = liveSim.meta.strategy_version || liveSim.meta.strategy?.version || '--'; return `<div class="e-stat">${RV.ui.icon('stopwatch', 'fa-xs')} ${act.length ? act.length + ' 账户 · 持仓' + pos + ' · v' + ver : ''}</div>`; } catch (e) { return ''; } })() : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="metals.html">
