@@ -624,6 +624,8 @@
         const items = (v && v.items) || (Array.isArray(v) ? v : null);
         (items || []).forEach(scan);
       });
+      // 统一个股卡：优先走全局悬浮专业行情卡；失败回退旧 modal
+      if (code && typeof window.__stock === 'function') { try { window.__stock(code); return; } catch (err) {} }
       if (hit) stockModal(hit);
     });
   } catch (e) {

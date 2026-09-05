@@ -40,6 +40,28 @@
   .revbox { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; margin-bottom:10px; white-space:pre-line; }
   .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} .kpis{grid-template-columns:repeat(2,1fr);} }
+
+  @media (max-width:480px) {
+    .strat-cards { grid-template-columns:1fr; }
+    .kpi { padding:10px 12px; }
+    .kpi .k-val { font-size:17px; }
+    .sec { padding:12px 12px; overflow-x:auto; }
+    .sec-title { font-size:14px; }
+    .timeline { font-size:11px; }
+    .data-table { font-size:11.5px; }
+    .data-table th, .data-table td { padding:5px 6px; }
+    .chart-row { grid-template-columns:1fr; }
+    .kpis { grid-template-columns:repeat(2,1fr); gap:8px; }
+    .kpis .kpi:nth-child(odd) { }
+    .sc-kpis { grid-template-columns:repeat(3,1fr); }
+    .sc-kpi .v { font-size:15px; }
+    body { overflow-x:hidden; }
+    .chart-box { height:250px; }
+  }
+  @media (max-width:380px) {
+    .kpis { grid-template-columns:repeat(2,1fr); }
+    .strat-card { padding:12px; }
+  }
 </style>
 </head>
 <body>
