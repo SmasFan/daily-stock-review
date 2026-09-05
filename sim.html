@@ -156,8 +156,8 @@ let winKey = 'all';
     if (!m) return '';
     const active = current === 'mix';
     return `<div class="strat-card mix-card ${active ? 'active' : ''}" id="sc-mix" style="border-color:${active ? '#7c3aed' : 'var(--border)'}">
-      <div class="sc-head"><span class="strat-badge" style="background:#7c3aed">${RV.ui.icon('layer-group')} 混合(动态)</span><h3>三合一 · 择时分配</h3></div>
-      <div class="sc-tagline">按上证20日斜率攻/守自动调权重 · 风险调整最优</div>
+      <div class="sc-head"><span class="strat-badge" style="background:#7c3aed">${RV.ui.icon('layer-group')} 混合(动态)</span><h3>三合一 · 只守不攻</h3></div>
+      <div class="sc-tagline">斜率&lt;-5%才守(降激进) · 上行恒衡不踏空 · v2只守不攻</div>
       <div class="sc-kpis">
         <div class="sc-kpi"><div class="v ${RV.fmt.cls(m.return_pct)}">${RV.fmt.pct(m.return_pct)}</div><div class="l">动态总收益</div></div>
         <div class="sc-kpi"><div class="v">¥${RV.fmt.money(50000 * (1 + m.return_pct / 100))}</div><div class="l">期末净值</div></div>
@@ -208,12 +208,12 @@ let winKey = 'all';
       <div class="sec-block" data-nav="混合净值" data-nav-icon="chart-line">
         <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>混合净值：动态择时 vs 静态等权 vs 上证</div>
         <div class="chart-box" id="mx-chart"></div>
-        <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 紫=动态择时（按上证20日斜率攻/守调权重）灰=等权 黄虚=上证；背景色带 红=攻(70%激进) 绿=守(70%纪律) 灰=衡 · 点击看当日组合明细</div>
+        <div class="fmt-hint">${RV.ui.icon('hand-pointer', 'fa-xs')} 紫=动态择时（斜率&lt;-5%转守档）灰=等权 黄虚=上证；色带 绿=守(纪律70%) 灰=衡(25/50/25) · 上行恒衡不踏空 · 点击看当日组合明细</div>
       </div>
       <div class="sec-block" data-nav="权重分布" data-nav-icon="layer-group">
         <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>动态权重分布 & 各策略角色</div>
         ${regimeStats(m)}
-        <div class="fmt-hint">${RV.ui.icon('arrows-split-up-and-left', 'fa-xs')} 攻：激进70/稳健20/纪律10 → 主吃上涨段；守：激进10/稳健20/纪律70 → 避险保本；衡：25/50/25。</div>
+        <div class="fmt-hint">${RV.ui.icon('arrows-split-up-and-left', 'fa-xs')} 守(斜率&lt;-5%)：激进10/稳健20/纪律70 → 避险；衡(其余)：25/50/25。无攻档=永不踏空。</div>
       </div>
       <div class="sec-block" data-nav="每日档位" data-nav-icon="flag">
         <div class="sec-title"><span class="ti">${RV.ui.icon('flag')}</span>每日档位记录 <span class="sec-chip">近期 ${Math.min((m.dates || []).length, 40)} 日</span></div>

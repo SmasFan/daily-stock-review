@@ -520,10 +520,14 @@ def run_all(start_date="2026-07-01", end_date="2026-09-04"):
 
 
 def _build_mixed(strategies):
-    """动态混合（按上证 20 日斜率三档切换权重）+ 静态等权 对照。
+    """混合v2 只守不攻+宽阈值（wide_guard）：按上证 20 日斜率。
 
-    无前视：第 i 日权重只用 i-20..i 日数据（斜率滞后 1 日生效）。
-    攻(0.7/0.2/0.1) 衡(0.25/0.5/0.25) 守(0.1/0.2/0.7)。
+    v2 规则（2026-09 对比实测最优：全程反超等权且回撤最小）：
+      斜率 < -5%（上证20日跌超5%）→ 守(10/20/70) 降激进避险
+      其余（含一切上行/震荡）→ 恒衡(25/50/25)，永不踏空
+    弃用旧版"攻"档：追涨切换在震荡市反复打脸、长期跑输等权。
+    无前视：斜率滞后 1 日（i-1 vs i-21）。
+    对照：静态等权 1/3。
     """
     agg = strategies["aggressive"]["equity_curve"]
     bal = strategies["balanced"]["equity_curve"]
@@ -540,9 +544,7 @@ def _build_mixed(strategies):
     for i in range(n):
         if i >= 21 and bench[i - 21]:
             slope = (bench[i - 1] / bench[i - 21] - 1) * 100  # 滞后一日
-            if slope > 2.5:
-                wa, wb, wd, lab = 0.7, 0.2, 0.1, "攻"
-            elif slope < -2.5:
+            if slope < -5.0:
                 wa, wb, wd, lab = 0.1, 0.2, 0.7, "守"
             else:
                 wa, wb, wd, lab = 0.25, 0.5, 0.25, "衡"
@@ -566,7 +568,7 @@ def _build_mixed(strategies):
     ret_d, mdd_d = summ(dyn_curve)
     ret_e, mdd_e = summ(eq_curve)
     return {
-        "label": "混合", "logic": "混合策略：按上证20日斜率动态分配三策略资金（斜率>2.5%攻：激进70%/稳健20%/纪律10%；斜率<-2.5%守：激进10%/稳健20%/纪律70%；中间均衡25/50/25）。斜率滞后1日避免当日追涨，无前视。",
+        "label": "混合", "logic": "混合v2(只守不攻)：上证20日斜率<-5%触发守(激进10/稳健20/纪律70)避险；其余恒衡(25/50/25)永不踏空。斜率滞后1日无前视。对照=静态等权1/3。",
         "dates": dates, "dyn": dyn_curve, "equal": eq_curve, "regime": regime,
         "return_pct": ret_d, "equal_return_pct": ret_e,
         "max_drawdown": mdd_d, "equal_max_drawdown": mdd_e,
