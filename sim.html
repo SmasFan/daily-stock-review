@@ -70,7 +70,7 @@
   <div id="content" style="display:none"></div>
 </div>
 <script src="assets/js/common.js"></script>
-<script src="assets/js/rvui.js"></script>
+<script src="assets/js/rvui.js?v=2"></script>
 <script src="assets/js/stockchart.js?v=3"></script>
 <script>
 /* 三策略展示顺序与视觉 meta */
@@ -562,38 +562,6 @@ let winKey = 'all';
     dv.querySelector('#pop-close').addEventListener('click', () => dv.remove());
   }
 
-  /* ---- 展开/收起全部月份（保留，页面按钮可复用） ---- */
-  /* 个股卡弹层（点击任意股票名） */
-  async function stockCard(code) {
-    try {
-      const R = await RV.API.fetch('review_data.json');
-      const it = (R.items || []).find(x => x.code === code);
-      if (!it) { alert('无 ' + code + ' 当日数据'); return; }
-      const f = it;
-      const rows = [['趋势', f.trend_status, ''], ['信号/分', (f.signal || '') + ' · ' + f.score + '分', ''],
-        ['乖离MA5', RV.fmt.pct(f.bias_ma5), ''], ['MACD', (f.macd_status || '') + ' DIF' + RV.fmt.num(f.macd_dif), ''],
-        ['RSI12', RV.fmt.num(f.rsi12, 1) + ' ' + (f.rsi_status || ''), ''], ['量能', (f.volume_status || '') + ' 量比' + RV.fmt.num(f.volume_ratio), ''],
-        ['点位', '买' + RV.fmt.num(f.ideal_buy) + '/次' + RV.fmt.num(f.secondary_buy) + ' 损' + RV.fmt.num(f.stop_loss) + ' 盈' + RV.fmt.num(f.take_profit), ''],
-        ['ATR止损', RV.fmt.num(f.atr_stop), '']];
-      const ff = f.fund_flow || {};
-      const moneyFmt = v => v == null ? '--' : (Math.abs(v) >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : (v / 1e4).toFixed(0) + '万');
-      rows.push(['资金', moneyFmt(ff.main_net) + ' · 5日' + moneyFmt(ff.main_net_5d), '']);
-      const body = `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:16px">${it.name}</b><span class="sec-chip">${it.code}</span><span class="sec-chip">${it.sector || ''}</span></div>
-        <div style="display:flex;gap:10px;align-items:baseline;margin:6px 0"><span style="font-size:20px;font-weight:800">${RV.fmt.num(it.close)}</span><span class="${RV.fmt.cls(it.change_pct)}" style="font-weight:700">${RV.fmt.pct(it.change_pct)}</span></div>
-        <div style="display:flex;gap:6px;margin-bottom:6px">${['day','week','month'].map(t=>`<button class="kbtn" data-t="${t}" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">${t==='day'?'日K':t==='week'?'周K':'月K'}</button>`).join('')}</div>
-        <div id="scchart" style="width:100%;height:300px"></div>
-        <div style="font-size:11px;color:var(--text-2);margin-top:6px">${(it.reasons || '').slice(0, 90)}</div>`;
-      RVX.popupCard('#detail', body, `<b>${it.name} · 专业行情</b>`, '#c78d5a');
-      let kd = null; let cur = 'day';
-      const draw = async (t) => { cur = t;
-        document.querySelectorAll('#rvx-pop .kbtn').forEach(b => { const on = b.dataset.t === t; b.style.background = on ? '#c78d5a' : ''; b.style.color = on ? '#fff' : ''; });
-        try { if (!kd) kd = await RV.API.fetch('kline/' + code + '.json'); SC.dispose('scchart'); SC.fromKline('scchart', code, it.name, kd, { type: t }); }
-        catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:20px">K线暂缺（build_kline_export.py）</div>'; } };
-      document.querySelectorAll('#rvx-pop .kbtn').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
-      draw('day');
-    } catch (e) { console.log(e); }
-  }
-  window.__stock = stockCard;
 })();
 </script>
 </body>

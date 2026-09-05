@@ -49,7 +49,7 @@
   <div id="content" style="display:none"></div>
 </div>
 <script src="assets/js/common.js"></script>
-<script src="assets/js/rvui.js"></script>
+<script src="assets/js/rvui.js?v=2"></script>
 <script src="assets/js/stockchart.js?v=3"></script>
 <script>
 (async function () {
@@ -222,7 +222,6 @@
         </tbody></table></div>` : '<div class="neutral" style="padding:8px">暂无成交</div>'}
       </div>`;
     drawAccountChart(key);
-    window.__stock = (code) => stockCard(code);
   }
 
   function renderMix() {
@@ -303,65 +302,6 @@
     window.addEventListener('resize', () => c.resize());
   }
 
-  /* 个股卡弹层：点击任一个股名 → infoDot 风格详情（数据源 review_data 实时/当日） */
-  async function stockCard(code) {
-    try {
-      const R = await RV.API.fetch('review_data.json');
-      const it = (R.items || []).find(x => x.code === code);
-      if (!it) { alert('无 ' + code + ' 当日数据'); return; }
-      const f = it;
-      const rows = [
-        ['趋势', f.trend_status, 'MA5/MA10/MA20 排列'],
-        ['信号/分', f.signal + ' · ' + f.score + '分', ''],
-        ['乖离MA5', RV.fmt.pct(f.bias_ma5), '>5% 不追高'],
-        ['MACD', f.macd_status + ' DIF' + fmt(f.macd_dif) + ' DEA' + fmt(f.macd_dea), ''],
-        ['RSI12', fmt(f.rsi12, 1) + ' ' + f.rsi_status, ''],
-        ['量能', f.volume_status + ' 量比' + fmt(f.volume_ratio), ''],
-        ['点位', '买' + fmt(f.ideal_buy) + '/次' + fmt(f.secondary_buy) + ' 损' + fmt(f.stop_loss) + ' 盈' + fmt(f.take_profit), ''],
-        ['ATR止损', fmt(f.atr_stop), '现价-2×ATR14'],
-        ['资金流', f.fund_flow ? mone(f.fund_flow.main_net) + ' · 5日' + mone(f.fund_flow.main_net_5d) : '--', '主力净流入'],
-      ];
-      const body = `<div style="display:flex;align-items:baseline;gap:10px"><b style="font-size:16px">${it.name}</b><span class="sec-chip">${it.code}</span><span class="sec-chip">${it.sector || ''}</span></div>
-        <div style="display:flex;gap:10px;align-items:baseline;margin:4px 0 8px"><span style="font-size:20px;font-weight:800">${fmt(it.close)}</span><span class="${pcl(it.change_pct)}" style="font-weight:700">${RV.fmt.pct(it.change_pct)}</span><span class="neutral">60日 ${RV.fmt.pct(it.change_60d)}</span></div>
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <button class="kbtn" data-t="day" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">日K</button>
-          <button class="kbtn" data-t="week" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">周K</button>
-          <button class="kbtn" data-t="month" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">月K</button>
-          <button class="kbtn" data-t="intraday" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">当日分时</button>
-          <button class="kbtn" data-t="m5" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">5分</button>
-          <button class="kbtn" data-t="m1" style="border:1px solid var(--border);background:var(--surface-2);border-radius:6px;padding:2px 9px;font-size:11px;cursor:pointer">1分</button>
-        </div>
-        <div id="scchart" style="width:100%;height:320px"></div>
-        <div style="font-size:11px;color:var(--text-2);margin-top:4px">${it.reasons || ''}</div>`;
-      RVX.popupCard('#detail', body, `<b>${it.name} · 专业行情</b>`, '#c78d5a');
-      // 载入 K 线并绘图
-      const btn = (t) => { const el = document.querySelector('#rvx-pop .kbtn[data-t="' + t + '"]'); if (el) { el.style.background = t === curT ? '#c78d5a' : ''; el.style.color = t === curT ? '#fff' : ''; } };
-      let curT = 'day'; let kdata = null;
-      const draw = async (t) => {
-        curT = t;
-        document.querySelectorAll('#rvx-pop .kbtn').forEach(b => { const on = b.dataset.t === t; b.style.background = on ? '#c78d5a' : ''; b.style.color = on ? '#fff' : ''; });
-        try {
-          if (t === 'intraday') {
-            try {
-              const m1 = await RV.API.fetch('kline/' + code + '_m1.json');
-              const chgp = it.change_pct || 0; const prevC = chgp ? it.close * 100 / (100 + chgp) : null;
-              if (typeof SC !== 'undefined' && m1 && m1.dates && m1.dates.length) {
-                SC.dispose('scchart');
-                SC.fromIntradayMinutes('scchart', m1, prevC || (m1.closes && m1.closes[0]));
-              }
-            } catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px;padding:20px 0">当日分时暂缺（收盘后运行 build_kline_export.py）</div>'; }
-            return;
-          }
-          const file = (t === 'm5' || t === 'm1') ? 'kline/' + code + '_' + t + '.json' : 'kline/' + code + '.json';
-          kdata = await RV.API.fetch(file);
-          if (typeof SC !== 'undefined') { SC.dispose('scchart'); SC.fromKline('scchart', code, it.name, kdata, { type: t === 'm5' || t === 'm1' ? 'day' : t }); }
-        } catch (e) { const box = document.getElementById('scchart'); if (box) box.innerHTML = '<div style="color:var(--text-2);font-size:12px">K线暂缺（运行 build_kline_export.py）</div>'; }
-      };
-      document.querySelectorAll('#rvx-pop .kbtn').forEach(b => b.addEventListener('click', () => draw(b.dataset.t)));
-      draw('day');
-    } catch (e) { console.log(e); }
-  }
-  function mone(v) { if (v == null) return '--'; return Math.abs(v) >= 1e8 ? (v / 1e8).toFixed(2) + '亿' : (v / 1e4).toFixed(0) + '万'; }
 })();
 </script>
 </body>
