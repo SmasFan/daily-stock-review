@@ -41,8 +41,12 @@
   .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} .kpis{grid-template-columns:repeat(2,1fr);} }
 
+  @media (max-width:640px) {
+    .strat-cards { display:flex; overflow-x:auto; gap:10px; padding-bottom:6px; -webkit-overflow-scrolling:touch; scroll-snap-type:x mandatory; }
+    .strat-card { flex:0 0 72%; scroll-snap-align:start; }
+  }
   @media (max-width:480px) {
-    .strat-cards { grid-template-columns:1fr; }
+    .strat-card { flex:0 0 84%; }
     .kpi { padding:10px 12px; }
     .kpi .k-val { font-size:17px; }
     .sec { padding:12px 12px; overflow-x:auto; }
@@ -56,6 +60,7 @@
     .sc-kpis { grid-template-columns:repeat(3,1fr); }
     .sc-kpi .v { font-size:15px; }
     body { overflow-x:hidden; }
+    .reason, .note-item, .tl-step, .logic { overflow-wrap:break-word; }
     .chart-box { height:250px; }
   }
   @media (max-width:380px) {
@@ -153,6 +158,7 @@
       const el = document.getElementById('sc-' + k);
       if (el) el.addEventListener('click', () => select(k));
     });
+    RVX.enableCardTables('#content');
     select('balanced');
   }
 
@@ -219,20 +225,20 @@
       <div class="chart-row">
         <div class="sec" data-nav="持仓" data-nav-icon="briefcase">
           <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓</div>
-          ${holds.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>买入日</th><th>买入时间</th><th>股数</th><th>成本</th><th>信号分</th><th>止损/止盈</th></tr></thead><tbody>
+          ${holds.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>买入日</th><th>买入时间</th><th>股数</th><th>成本</th><th>信号分</th><th>止损/止盈</th></tr></thead><tbody>
             ${holds.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.buy_date}</td><td class="neutral">${p.buy_time || '--'}</td><td>${p.shares}</td><td>${fmt(p.cost)}</td><td>${p.score || '--'}</td><td>${p.stop_atr ? '<span class="down">' + fmt(p.stop_atr) + '</span>' : '--'} / ${p.tp ? '<span class="up">' + fmt(p.tp) + '</span>' : '--'}</td></tr>`).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等回踩</div>'}
         </div>
         <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">
           <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点</div>
-          ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>股票</th><th>分</th><th>回踩≤</th><th>闸门</th><th>触发逻辑</th></tr></thead><tbody>
+          ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>分</th><th>回踩≤</th><th>闸门</th><th>触发逻辑</th></tr></thead><tbody>
             ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}</td><td class="reason">${(p.reason || '').slice(0, 42)}</td></tr>`).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发（收盘 --plan 重建）</div>'}
         </div>
       </div>
       <div class="sec" data-nav="成交流水" data-nav-icon="receipt">
         <div class="sec-title"><span class="ti">${RV.ui.icon('receipt')}</span>成交流水 <span class="sec-chip">${trades.length} 笔 · 时分秒成交</span></div>
-        ${trades.length ? `<div style="overflow-x:auto"><table class="data-table"><thead><tr><th>日期</th><th>时分秒</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>当时涨跌</th><th>盈亏</th><th>触发原因</th></tr></thead><tbody>
+        ${trades.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>日期</th><th>时分秒</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>当时涨跌</th><th>盈亏</th><th>触发原因</th></tr></thead><tbody>
           ${trades.slice().reverse().map(t => `<tr>
             <td>${t.date}</td><td class="neutral">${t.time || '--'}</td>
             <td>${t.action === 'buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td>
@@ -244,6 +250,7 @@
         </tbody></table></div>` : '<div class="neutral" style="padding:8px">暂无成交</div>'}
       </div>`;
     drawAccountChart(key);
+    RVX.enableCardTables('#detail');
   }
 
   function renderMix() {
@@ -269,6 +276,7 @@
         </div>
       </div>`;
     drawMixChart();
+    RVX.enableCardTables('#detail');
   }
 
   function drawAccountChart(key) {
@@ -301,7 +309,7 @@
       const date = dates[p.dataIndex];
       const dayT = (a.trades || []).filter(t => t.date === date);
       const rows = dayT.length ? dayT.map(t => `<tr><td class="neutral">${t.time}</td><td>${t.action === 'buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td><td style="font-weight:700">${t.name}</td><td>${fmt(t.price)}</td><td>${t.shares}</td><td class="${pcl(t.chg_at_fill)}">${t.chg_at_fill != null ? RV.fmt.pct(t.chg_at_fill) : '--'}</td><td class="reason">${(t.reason || '').slice(0, 40)}</td></tr>`).join('') : '<div class="neutral">当日无成交</div>';
-      RVX.popupCard('#eq-chart-' + key, `<table class="data-table"><thead><tr><th>时间</th><th>方向</th><th>股票</th><th>价</th><th>量</th><th>涨跌</th><th>理由</th></tr></thead><tbody>${dayT.length ? rows : '<tr><td colspan="7" class="neutral">当日无成交</td></tr>'}</tbody></table>`, `<b>${date}</b> <span class="sec-chip">净值¥${fmt(eq[p.dataIndex])}</span>`, META[key].badge);
+      RVX.popupCard('#eq-chart-' + key, `<table class="data-table card-table"><thead><tr><th>时间</th><th>方向</th><th>股票</th><th>价</th><th>量</th><th>涨跌</th><th>理由</th></tr></thead><tbody>${dayT.length ? rows : '<tr><td colspan="7" class="neutral">当日无成交</td></tr>'}</tbody></table>`, `<b>${date}</b> <span class="sec-chip">净值¥${fmt(eq[p.dataIndex])}</span>`, META[key].badge);
     } });
     window.addEventListener('resize', () => c.resize());
   }

@@ -174,11 +174,29 @@
       document.addEventListener('keydown', esc);
       ov.querySelector('.rvx-pop-close').addEventListener('click', close);
       ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+      try { RVX.enableCardTables(ov); } catch (e) {}
       return box;
     },
     /* ---------- 7. 空态 / 提示 ---------- */
     empty(text) { return `<div class="empty" style="color:var(--text-2);text-align:center;padding:18px">${text || '暂无数据'}</div>`; },
     hint(html) { return `<div style="font-size:11px;color:var(--text-2);margin-top:8px">${html}</div>`; },
+
+    /* 把 .card-table 行在窄屏变卡片：读 thead th 文本注入每 td data-label */
+    enableCardTables(rootSel) {
+      const root = rootSel ? document.querySelector(rootSel) : document;
+      if (!root) return;
+      root.querySelectorAll('table.card-table').forEach(tb => {
+        const head = tb.querySelector('thead');
+        if (!head) return;
+        const labels = Array.from(head.querySelectorAll('th')).map(th => th.textContent.trim());
+        tb.querySelectorAll('tbody tr').forEach(tr => {
+          Array.from(tr.children).forEach((td, idx) => {
+            if (idx < labels.length && labels[idx] && !td.hasAttribute('data-label'))
+              td.setAttribute('data-label', labels[idx]);
+          });
+        });
+      });
+    },
 
     /* 全站个股卡（点击任意股票名）：review 快照 + 专业行情图（stockchart.js） */
     async stockModal(code) {
