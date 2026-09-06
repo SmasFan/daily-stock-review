@@ -138,11 +138,52 @@ def equity_of(acct):
 
 
 # ---------------- LLM 个股评审（计划阶段，一次性批量） ----------------
+# 通道：commandcode (deepseek-v4-flash) 优先 → ollama qwen3-vl 降级（macro_llm 同策略）
 OLLAMA = "http://localhost:11434"
 LLM_MODEL = "qwen3-vl:32b"
+CC_URL = "https://api.commandcode.ai/provider/v1/chat/completions"
+CC_UA = "OpenAI/Python 1.99.0"
+CC_CLOUD_MODEL = "deepseek/deepseek-v4-flash"
+
+
+def _cc_key():
+    import glob as _g
+    for envf in _g.glob("/mnt/c/Users/z7280/binance-llm-bot/.env"):
+        try:
+            for line in open(envf):
+                if line.startswith("COMMAND_CODE_API_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return ""
+
+
+def _llm_chat_cc(system, user, timeout=120):
+    import urllib.request
+    key = _cc_key()
+    if not key:
+        raise RuntimeError("无 commandcode key")
+    body = json.dumps({
+        "model": CC_CLOUD_MODEL, "stream": False,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "temperature": 0.2, "max_tokens": 2400,
+    }).encode()
+    req = urllib.request.Request(CC_URL, data=body, headers={
+        "Authorization": "Bearer " + key, "Content-Type": "application/json",
+        "User-Agent": CC_UA})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        d = json.loads(r.read().decode())
+    return (d["choices"][0]["message"]["content"] or "").strip()
+
 
 def _llm_chat(system, user, timeout=480):
-    """本地 ollama（与云端失败时回退中性放行）"""
+    """commandcode 优先 → ollama 降级"""
+    errs = []
+    try:
+        return _llm_chat_cc(system, user, timeout=min(timeout, 120))
+    except Exception as e:
+        errs.append("cc: %s" % e)
     import urllib.request
     body = json.dumps({
         "model": LLM_MODEL, "stream": False,

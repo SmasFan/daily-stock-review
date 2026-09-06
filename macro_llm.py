@@ -29,15 +29,50 @@ sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 from src import macro as mc
 
 OUT = os.path.join(BASE_DIR, "data", "macro_llm_data.json")
-# LLM 后端：优先本地 ollama（免费离线，与 pi 同机）；云端 deepseek/commandcode 需余额。
-# 若配了可用 key，把 OLLAMA 置空即可走 deepseek。
+# LLM 后端（2026-09 多通道）:
+#   1) commandcode /provider/v1 (deepseek-v4-flash) — 快, UA 须 OpenAI/Python 才过 CF
+#   2) ollama 本地 qwen3-vl:32b — 免费离线降级
+# key 复用 binance-llm-bot/.env 的 COMMAND_CODE_API_KEY（已验证可用）
 OLLAMA = "http://localhost:11434"
-MODEL = "qwen3-vl:32b"          # ollama 本地
-CLOUD_MODEL = "deepseek-v4-flash"
-API = "https://api.deepseek.com/chat/completions"
+MODEL = "qwen3-vl:32b"                 # ollama 本地模型
+CLOUD_MODEL = "deepseek/deepseek-v4-flash"
+CC_URL = "https://api.commandcode.ai/provider/v1/chat/completions"
+CC_UA = "OpenAI/Python 1.99.0"
 
 
-def call_llm(system, user, timeout=240):
+def _cc_key():
+    import glob as _g
+    envs = _g.glob("/mnt/c/Users/z7280/binance-llm-bot/.env")
+    for envf in envs:
+        try:
+            for line in open(envf):
+                if line.startswith("COMMAND_CODE_API_KEY="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+        except Exception:
+            pass
+    return ""
+
+
+def _call_cc(system, user, timeout=120):
+    import urllib.request
+    key = _cc_key()
+    if not key:
+        raise RuntimeError("无 commandcode key")
+    body = json.dumps({
+        "model": CLOUD_MODEL, "stream": False,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "temperature": 0.2, "max_tokens": 2400,
+    }).encode()
+    req = urllib.request.Request(CC_URL, data=body, headers={
+        "Authorization": "Bearer " + key, "Content-Type": "application/json",
+        "User-Agent": CC_UA})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        d = json.loads(r.read().decode())
+    return (d["choices"][0]["message"]["content"] or "").strip()
+
+
+def _call_ollama(system, user, timeout=240):
     import urllib.request
     body = json.dumps({
         "model": MODEL, "stream": False,
@@ -52,9 +87,22 @@ def call_llm(system, user, timeout=240):
         d = json.loads(r.read().decode())
     content = (d.get("message") or {}).get("content") or ""
     if not content.strip():
-        # qwen3 思考型：content 空则取 thinking 兜底（一般不会）
         raise RuntimeError("ollama 返回空 content")
     return content
+
+
+def call_llm(system, user, timeout=240):
+    # 返回 (content, backend)。commandcode 优先 → ollama 降级。
+    errs = []
+    try:
+        return _call_cc(system, user, timeout=min(timeout, 120)), "commandcode"
+    except Exception as e:
+        errs.append("cc: %s" % e)
+    try:
+        return _call_ollama(system, user, timeout=timeout), "ollama"
+    except Exception as e:
+        errs.append("ollama: %s" % e)
+    raise RuntimeError("LLM 全部失败: " + "; ".join(errs))
 
 
 SYSTEM = """你是A股宏观策略分析师。输入一批当日财经新闻标题+摘要（含政策/央行动向/经济数据/产业/外围）。
@@ -131,7 +179,7 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
         return {}
     user = "【宏观】%s\n【个股新闻】\n%s\n逐只给出消息面 sentiment/score/note。" % (macro_txt, "\n".join(lines))
     try:
-        content = call_llm(STOCK_SYSTEM, user, timeout=timeout)
+        content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout)
         j = _json.loads(content)
         out = {}
         for r in j.get("stocks", []):
@@ -199,9 +247,9 @@ def main():
     date = args.date or (news[0].get("show_time") or time.strftime("%Y-%m-%d"))[:10]
     print("新闻 %d 条（截至 %s），调用 %s ..." % (len(news), date, MODEL))
     try:
-        content = call_llm(SYSTEM, build_user(news, date))
+        content, _bk = call_llm(SYSTEM, build_user(news, date))
         j = json.loads(content)
-        j["_backend"] = "ollama " + MODEL
+        j["_backend"] = _bk
     except Exception as e:
         print("LLM 失败: %s（回退词典法温度）" % e)
         # 回退: macro 词典净分 → 近似
