@@ -238,6 +238,14 @@
         ${(ll.drivers || []).length ? '<div style="margin-top:6px;font-size:12px"><span style="color:#dc2626;font-weight:700">利好</span> ' + ll.drivers.join('；') + '</div>' : ''}
         ${(ll.risks || []).length ? '<div style="font-size:12px"><span style="color:#16a34a;font-weight:700">风险</span> ' + ll.risks.join('；') + '</div>' : ''}
         ${(ll.sectors || []).length ? '<div style="font-size:12px;margin-top:2px"><b>关注板块</b> ' + ll.sectors.join('、') + '</div>' : ''}
+        ${(r.events || []).map(ev => `
+          <div style="margin-top:8px;border:1px dashed var(--border);border-left:3px solid #7c3aed;border-radius:8px;padding:8px 10px;background:var(--surface-2)">
+            <div style="font-size:12px;font-weight:800">${RV.ui.icon('flag')} 事件追踪 · ${ev.date} · ${ev.title}</div>
+            <div style="font-size:11.5px;color:var(--text);margin-top:3px;line-height:1.6">${ev.summary || ''}</div>
+            ${ev.impact ? '<div style="font-size:11.5px;margin-top:2px"><b>影响:</b> ' + ev.impact + '</div>' : ''}
+            ${ev.style ? '<div style="font-size:11.5px"><b>风格:</b> ' + ev.style + '</div>' : ''}
+            ${(ev.watch || []).length ? '<div style="font-size:11px;color:var(--text-2);margin-top:2px">🔍 跟踪: ' + ev.watch.join(' / ') + '</div>' : ''}
+          </div>`).join('') || ''}
         ${def ? '<div class="revbox" style="margin:8px 0 0;background:#f0fdf4;border-color:#bbf7d0;color:#166534">宏观判断为 <b>' + sent + '</b>（score ' + ll.score + '）→ 实时模拟账户 <b>新仓闸门 block</b>（不建新仓，持仓照常止损止盈）</div>'
                : '<div class="fmt-hint" style="margin:6px 0 0">宏观判断 ' + sent + '（score ' + ll.score + '）→ 实时模拟正常开新仓</div>'}`
       ;
