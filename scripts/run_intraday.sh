@@ -34,7 +34,7 @@ flock -w 90 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 锁忙(>90s)，跳过本
 cd /mnt/c/Users/z7280/daily-stock-review
 
 # 整体超时：任务超 25 分钟自动终止（正常每轮 <10 分钟；防网络挂死拖垮整天）
-cleanup() { exit 0; }
+cleanup() { [ -n "${TIMER_PID:-}" ] && kill $TIMER_PID 2>/dev/null; exit 0; }
 trap cleanup EXIT
 ( sleep 1500 && echo "[$(date '+%Y-%m-%d %H:%M:%S')] 本轮超时25分钟，强制终止" >> "$LOG" &&   HOLD=$(fuser "$LOCK" 2>/dev/null | awk '{print $1}') && [ -n "$HOLD" ] && kill "$HOLD" 2>/dev/null && sleep 1 && kill -9 "$HOLD" 2>/dev/null ) &
 TIMER_PID=$!
@@ -48,9 +48,6 @@ IN_TRADING=0
 if { [ "$H" -ge 930 ] && [ "$H" -le 1130 ]; } || { [ "$H" -ge 1300 ] && [ "$H" -le 1500 ]; }; then
   IN_TRADING=1
 fi
-
-# 结束时取消超时器
-kill $TIMER_PID 2>/dev/null
 
 # ============ 午间 12:00 大盘分析推送（午休，仅整点一次） ============
 if [ "$IS_NOON" = "1" ]; then
