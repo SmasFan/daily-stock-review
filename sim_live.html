@@ -127,14 +127,20 @@
   function acct(key) { return book().accounts[key]; }
   function mixBook() { return book().mix || {}; }
   function eqOf(key) {
+    // 账户净值 = 现金 + Σ持仓×现价（盘中用巡检 last，盘后用 last_close）
     if (key === 'mix') { const c = mixBook().equity_curve; return c.length ? c[c.length - 1].equity : 50000; }
-    const a = acct(key); const c = a.equity_curve;
-    if (c.length) return c[c.length - 1].equity;
-    return a.cash + a.positions.reduce((x, p) => x + p.shares * p.cost, 0);
+    const a = acct(key);
+    const holdEq = a.positions.reduce((x, p) => x + p.shares * (p.last != null ? p.last : p.last_close != null ? p.last_close : p.cost), 0);
+    return a.cash + holdEq;
   }
   function retOf(key) {
-    const c = (key === 'mix' ? mixBook() : acct(key)).equity_curve;
-    return c.length ? (c[c.length - 1].equity / 50000 - 1) * 100 : 0;
+    const base = (key === 'mix' ? mixBook() : acct(key)).equity_curve;
+    const lastEq = eqOf(key);
+    if (key === 'mix') return base.length ? (base[base.length - 1].equity / 50000 - 1) * 100 : 0;
+    const prev = base.length ? base[base.length - 2] || base[base.length - 1] : null;
+    // 当日收益 = (当前净值 / 上个已结算净值 - 1)；无历史则对起始 5 万
+    const ref = prev ? prev.equity : 50000;
+    return (lastEq / ref - 1) * 100;
   }
 
   function render() {
@@ -246,8 +252,7 @@
       sub = 'regime ' + (last.regime || '衡') + ' · 合成净值';
     } else {
       const a = acct(key);
-      const c = a.equity_curve;
-      ret = retOf(key); val = c.length ? c[c.length - 1].equity : a.cash;
+      ret = retOf(key); val = eqOf(key);
       const wait = a.plan.filter(p => p.status === 'wait').length;
       sub = `持${a.positions.length} · 待触发${wait} · 已${a.trades.length}笔`;
     }
