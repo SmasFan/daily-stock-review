@@ -34,9 +34,10 @@ flock -w 90 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 锁忙(>90s)，跳过本
 cd /mnt/c/Users/z7280/daily-stock-review
 
 # 整体超时：任务超 25 分钟自动终止（正常每轮 <10 分钟；防网络挂死拖垮整天）
-cleanup() { [ -n "${TIMER_PID:-}" ] && kill $TIMER_PID 2>/dev/null; exit 0; }
+cleanup() { [ -n "${TIMER_PID:-}" ] && kill $TIMER_PID 2>/dev/null; rm -f "$LOCK"; exit 0; }
 trap cleanup EXIT
-( sleep 1500 && echo "[$(date '+%Y-%m-%d %H:%M:%S')] 本轮超时25分钟，强制终止" >> "$LOG" &&   HOLD=$(fuser "$LOCK" 2>/dev/null | awk '{print $1}') && [ -n "$HOLD" ] && kill "$HOLD" 2>/dev/null && sleep 1 && kill -9 "$HOLD" 2>/dev/null ) &
+# 定时器子进程必须关掉 fd9 继承，否则主 shell 被杀后孤儿 sleep 会一直握住锁 fd
+( exec 9>&-; sleep 1500 && echo "[$(date '+%Y-%m-%d %H:%M:%S')] 本轮超时25分钟，强制终止" >> "$LOG" &&   HOLD=$(fuser "$LOCK" 2>/dev/null | awk '{print $1}') && [ -n "$HOLD" ] && kill "$HOLD" 2>/dev/null && sleep 1 && kill -9 "$HOLD" 2>/dev/null; rm -f "$LOCK" ) &
 TIMER_PID=$!
 
 H=$(date +%H%M)
