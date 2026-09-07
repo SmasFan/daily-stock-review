@@ -178,12 +178,18 @@ def _llm_chat_cc(system, user, timeout=120):
 
 
 def _llm_chat(system, user, timeout=480):
-    """commandcode 优先 → ollama 降级"""
+    """commandcode 优先 → ollama 降级；空返回自动重试。"""
     errs = []
-    try:
-        return _llm_chat_cc(system, user, timeout=min(timeout, 120))
-    except Exception as e:
-        errs.append("cc: %s" % e)
+    import time as _t
+    for attempt in range(3):
+        try:
+            c = _llm_chat_cc(system, user, timeout=min(timeout, 120))
+            if c.strip():
+                return c
+            errs.append("cc 空返回(第%d次)" % (attempt + 1))
+        except Exception as e:
+            errs.append("cc: %s" % e)
+        _t.sleep(1.5 * (attempt + 1))
     import urllib.request
     body = json.dumps({
         "model": LLM_MODEL, "stream": False,

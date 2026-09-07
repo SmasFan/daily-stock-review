@@ -92,12 +92,18 @@ def _call_ollama(system, user, timeout=240):
 
 
 def call_llm(system, user, timeout=240):
-    # 返回 (content, backend)。commandcode 优先 → ollama 降级。
+    # 返回 (content, backend)。commandcode 优先 → ollama 降级；空返回自动重试。
     errs = []
-    try:
-        return _call_cc(system, user, timeout=min(timeout, 120)), "commandcode"
-    except Exception as e:
-        errs.append("cc: %s" % e)
+    for attempt in range(3):
+        try:
+            c = _call_cc(system, user, timeout=min(timeout, 120))
+            if c.strip():
+                return c, "commandcode"
+            errs.append("cc 空返回(第%d次)" % (attempt + 1))
+        except Exception as e:
+            errs.append("cc: %s" % e)
+        import time as _t
+        _t.sleep(1.5 * (attempt + 1))
     try:
         return _call_ollama(system, user, timeout=timeout), "ollama"
     except Exception as e:
