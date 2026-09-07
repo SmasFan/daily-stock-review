@@ -1,0 +1,25 @@
+{
+ "meta": {
+  "created": "2026-09-07 14:43:31",
+  "start_cash": 50000.0,
+  "label": "一周冲刺",
+  "pool": "sprint-AI选股",
+  "rule": {
+   "label": "一周冲刺",
+   "max_pos": 2,
+   "max_frac": 0.5,
+   "buy_fee": 0.0003,
+   "sell_fee": 0.0008,
+   "trail_peak": 0.08,
+   "trail_drop": 0.06,
+   "tp_pct": 0.18,
+   "hard_stop": -0.065
+  }
+ },
+ "cash": 50000.0,
+ "positions": [],
+ "trades": [],
+ "equity_curve": [],
+ "log": [],
+ "signals": []
+}
