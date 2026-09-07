@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""实时模拟本地服务：静态文件 + 池模式切换 API。
+"""实时模拟本地服务：静态文件 + 双池状态/重建 API。
 
-  GET  /api/sim_state            → {pool_mode, switched_at, plans:{key:n}, 说明}
-  POST /api/sim_mode {pool:six|all} → 切池 + 重建计划 → 同上
-替代 python3 -m http.server（原静态服务无法切模式）。
+  GET  /api/sim_state            → 双池概览 {pools:{six:{...},all:{...}}, version}
+  POST /api/sim_plan {pool?:six|all} → 重建计划（省略 = 双池并行重建；--no-llm 快速）
+替代 python3 -m http.server（原静态服务无 API）。
+双池并行架构下无"切换"概念：six/all 常驻各自独立交易，仅计划重建入口。
 """
 import functools
 import http.server
@@ -27,28 +28,35 @@ def load_state():
         return None
 
 
+def pool_summary(pb):
+    acc = pb.get("accounts") or {}
+    plans = {k: len(a.get("plan") or []) for k, a in acc.items()}
+    pos = {k: len(a.get("positions") or []) for k, a in acc.items()}
+    cash = {k: round(a.get("cash") or 0, 0) for k, a in acc.items()}
+    return {"plans": plans, "positions": pos, "cash": cash,
+            "mix": len((pb.get("mix") or {}).get("equity_curve") or [])}
+
+
 def sim_state():
     st = load_state() or {}
     meta = st.get("meta") or {}
-    out = {"pool_mode": meta.get("pool_mode", "all"),
-           "switched_at": meta.get("pool_switched_at", "")}
-    plans = {}
-    for k, a in (st.get("accounts") or {}).items():
-        plans[k] = len(a.get("plan") or [])
-    out["plans"] = plans
-    out["positions"] = {k: len(a.get("positions") or [])
-                        for k, a in (st.get("accounts") or {}).items()}
-    return out
+    pools = st.get("pools") or {}
+    return {
+        "version": meta.get("strategy_version", "v?"),
+        "pools": {p: pool_summary(pools.get(p, {})) for p in ("six", "all")},
+        "accounts": meta.get("accounts", []),
+        "updated": meta.get("created", ""),
+    }
 
 
-def switch_mode(pool):
-    if pool not in ("six", "all"):
-        return {"ok": False, "error": "pool 须为 six|all"}
+def run_plan(pool):
+    cmd = [sys.executable, "sim_live.py", "--plan", "--no-llm"]
+    if pool:
+        cmd += ["--pool", pool]
     try:
-        r = subprocess.run([sys.executable, "sim_live.py", "--pool", pool, "--plan", "--no-llm"],
-                           cwd=ROOT, capture_output=True, text=True, timeout=240)
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=300)
         ok = r.returncode == 0
-        tail = (r.stdout or "")[-800:] + (r.stderr or "")[-400:]
+        tail = (r.stdout or "")[-1200:] + (r.stderr or "")[-500:]
         return {"ok": ok, "output": tail, "state": sim_state()}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -76,7 +84,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path.split('?')[0] != '/api/sim_mode':
+        if self.path.split('?')[0] != '/api/sim_plan':
             self._json(404, {"ok": False, "error": "not found"})
             return
         try:
@@ -85,11 +93,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             body = {}
         pool = body.get("pool") or body.get("pool_mode")
-        self._json(200, switch_mode(pool))
+        if pool not in ("six", "all", None):
+            self._json(400, {"ok": False, "error": "pool 须为 six|all 或省略"})
+            return
+        self._json(200, run_plan(pool))
 
 
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     httpd = http.server.ThreadingHTTPServer(('0.0.0.0', port), Handler)
-    print('实时模拟服务(静态+API): http://0.0.0.0:%d root=%s' % (port, ROOT), flush=True)
+    print('实时模拟服务(静态+API 双池并行): http://0.0.0.0:%d root=%s' % (port, ROOT), flush=True)
     httpd.serve_forever()

@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""实时模拟炒股 · 四账户盘中触发引擎（v3）
+"""实时模拟炒股 · 双池并行盘中触发引擎（v4）
 
-激进 / 稳健 / 严守纪律 三个真实独立账户（各 5 万）+ 合并账户（三账户净值合成）。
-每个账户独立执行盘中触发单（盘前计划回踩买点，盘中现价触发成交，记时分秒）。
+双池 = 6股精选(six) + 全池(all)，两池各持 3 个真实独立账户（激进/稳健/严守纪律，各 5 万），
+互不共享资金/计划/持仓，盘中并行巡检同时成交。合并净值 = 池内三账户加权合成。
 
-命令：
-  python3 sim_live.py --init                 # 初始化（建 4 账户）
-  python3 sim_live.py --plan                 # 重建各账户回踩买点计划
-  python3 sim_live.py --intraday             # 盘中巡检触发成交（cron 每5分钟）
-  python3 sim_live.py --replay 2026-09-04    # 历史日K近似回放
-  python3 sim_live.py --review               # 收盘复盘 + 自学习
+数据模型 v4：
+  state.pools = { six: {accounts:{...3账户...}, mix:{...}}, all: {...} }
+  state.meta.pools = ["six","all"]；旧 v1~v3 单池数据自动迁移 → pools.all，six 全新开账。
+
+命令（默认作用于双池，--pool 可限定单池）：
+  python3 sim_live.py --init                 # 初始化（双池 × 3 账户）
+  python3 sim_live.py --plan [--pool six|all]   # 重建计划（默认双池；收盘 auto_run 调用）
+  python3 sim_live.py --intraday [--pool ...]   # 盘中巡检触发成交（cron 每5分钟，双池）
+  python3 sim_live.py --review [--date D]       # 收盘复盘 + 自学习
+  python3 sim_live.py --plan-date 2026-09-04 --pool six   # 6股池历史日K信号重建
   python3 sim_live.py --strategy-log "msg"   # 策略版本变更
 
 LLM 层（--plan 时自动）:
   - 宏观: data/macro_llm_data.json（macro_llm.py 生成）空头/防御 → 全局闸门
-  - 个股评审: 候选股画像 + 宏观 → ollama/本地 LLM 批量评审，回避股不入计划
+  - 个股评审: 候选股画像 + 宏观 → LLM 批量评审，回避股不入计划（6股池另加个股消息面回避）
 """
 import argparse
 import json
@@ -30,7 +34,11 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 STATE_FILE = os.path.join(DATA_DIR, "sim_live.json")
 CASH_START = 50000.0
 
-# 账户配置：与历史回测 sim.html 的三种风格对齐 + 合并
+# 双池
+POOLS = ("six", "all")
+POOL_LABEL = {"six": "6股精选", "all": "全池"}
+
+# 账户配置：与历史回测 sim.html 的三种风格对齐
 ACCOUNTS = {
     "aggressive": {
         "label": "激进", "icon": "fire", "badge": "#dc2626",
@@ -62,28 +70,15 @@ ACCOUNTS = {
         "rules": ["只做 ≥76分 多头/强势多头", "+5%后保本（止损抬到成本）",
                   "+10% 止盈", "大盘非多头或广度弱不进"],
     },
-    "mix": {
-        "label": "合并", "icon": "layer-group", "badge": "#7c3aed",
-        "desc": "合成账户：激进/稳健/纪律三账户 1/3 等权 + 按上证20日斜率动态择时（攻→激进70%、守→纪律70%、衡→均衡）。净值=三账户加权，非独立资金。",
-        "rules": ["合成净值 = Σ 子账户净值 × 权重", "攻：激进0.7/稳健0.2/纪律0.1",
-                  "守：激进0.1/稳健0.2/纪律0.7", "衡：0.25/0.5/0.25"],
-    },
 }
 
 REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
 
-# 精选 6 股池（6c：资源/制造龙头+银行+防守；--pool six 启用）
+# 精选 6 股池（6c：资源/制造龙头+银行+防守）
 SIX_POOL = {
     "601138": "工业富联", "600900": "长江电力", "601899": "紫金矿业",
     "600309": "万华化学", "002142": "宁波银行", "600177": "雅戈尔",
 }
-POOL_MODE = "all"   # all=全池(默认) / six=6股精选
-
-def pool_filter(item):
-    """按当前池模式过滤候选。全池模式=不过滤（沿用 review_data 全量）。"""
-    if POOL_MODE == "six":
-        return item.get("code") in SIX_POOL
-    return True
 
 
 def now_ts():
@@ -99,10 +94,71 @@ def load_json(name):
 
 
 def load_state():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return None
+    if not os.path.exists(STATE_FILE):
+        return None
+    with open(STATE_FILE, "r", encoding="utf-8") as f:
+        st = json.load(f)
+    # v1~v3 单池 → v4 双池迁移：旧 accounts/mix → pools.all，six 全新开账
+    if st and "pools" not in st and "accounts" in st:
+        st["pools"] = {
+            "all": {"accounts": st.get("accounts") or {},
+                    "mix": st.get("mix") or {"equity_curve": [], "daily_log": [],
+                                             "regime": [], "meta": {"start_cash": CASH_START}}},
+            "six": pool_books(),
+        }
+        st.pop("accounts", None)
+        st.pop("mix", None)
+        st.setdefault("meta", {})
+        st["meta"]["pools"] = list(POOLS)
+        st["meta"].pop("pool_mode", None)
+        st["meta"].pop("pool_switched_at", None)
+    st = normalize_state(st)
+    return st
+
+
+def normalize_state(st):
+    """补齐双池结构（新老字段兜底）。"""
+    if not st:
+        st = {}
+    st.setdefault("meta", {})
+    m = st["meta"]
+    m.setdefault("created", now_ts())
+    m.setdefault("strategy_version", "v4.0")
+    m.setdefault("accounts", list(REAL_ACCOUNTS))
+    m.setdefault("pools", list(POOLS))
+    st.setdefault("version_history", [])
+    for p in POOLS:
+        b = st.setdefault("pools", {}).setdefault(p, {})
+        acc = b.setdefault("accounts", {})
+        for k in REAL_ACCOUNTS:
+            if k not in acc or not isinstance(acc[k], dict):
+                acc[k] = new_account(k, ACCOUNTS[k])
+            else:
+                acc[k] = normalize_account(k, acc[k])
+        mx = b.setdefault("mix", {})
+        mx.setdefault("equity_curve", [])
+        mx.setdefault("daily_log", [])
+        mx.setdefault("regime", [])
+        mx.setdefault("meta", {"start_cash": CASH_START})
+    return st
+
+
+def normalize_account(key, a):
+    for f in ("key", "label", "start_cash", "cash", "positions", "plan",
+              "trades", "equity_curve", "daily_log", "review_log"):
+        if f not in a:
+            if f == "key":
+                a[f] = key
+            elif f == "label":
+                a[f] = ACCOUNTS[key]["label"]
+            elif f == "start_cash":
+                a[f] = CASH_START
+            elif f == "cash":
+                a[f] = CASH_START
+            elif f in ("positions", "plan", "trades", "equity_curve",
+                       "daily_log", "review_log"):
+                a[f] = []
+    return a
 
 
 def save(state):
@@ -118,14 +174,30 @@ def new_account(key, cfg):
     }
 
 
-def new_state():
-    accounts = {k: new_account(k, ACCOUNTS[k]) for k in REAL_ACCOUNTS}
+def pool_books():
+    """单个池的三账户账本 + 合成账户骨架。"""
     return {
-        "meta": {"created": now_ts(), "strategy_version": "v3.0", "accounts": list(accounts.keys())},
-        "accounts": accounts,
-        "mix": {"equity_curve": [], "daily_log": [], "regime": [], "meta": {"start_cash": CASH_START}},
+        "accounts": {k: new_account(k, ACCOUNTS[k]) for k in REAL_ACCOUNTS},
+        "mix": {"equity_curve": [], "daily_log": [], "regime": [],
+                "meta": {"start_cash": CASH_START}},
+    }
+
+
+def new_state():
+    return {
+        "meta": {"created": now_ts(), "strategy_version": "v4.0",
+                 "accounts": list(REAL_ACCOUNTS), "pools": list(POOLS)},
+        "pools": {p: pool_books() for p in POOLS},
         "version_history": [],
     }
+
+
+def books(state, pool):
+    return state["pools"][pool]
+
+
+def accts(state, pool):
+    return books(state, pool)["accounts"]
 
 
 def _is_etf(code):
@@ -134,7 +206,6 @@ def _is_etf(code):
 
 def equity_of(acct):
     return acct["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in acct["positions"])
-
 
 
 # ---------------- LLM 个股评审（计划阶段，一次性批量） ----------------
@@ -249,7 +320,6 @@ def llm_review_candidates(cands, macro_llm=None):
         return {}
 
 
-
 def review_from_kline(code, name, date):
     """用日K对指定日收盘算信号（无前视 idx=date），返回 make_plan 用的 item dict。
     用于历史补录（如 9/3 收盘信号 → 9/4 盘中触发）。"""
@@ -277,39 +347,53 @@ def review_from_kline(code, name, date):
     }
 
 
-# ---------------- 计划（各账户独立参数） ----------------
-def make_plan(state, review, asof, skip_llm=False):
-    global POOL_MODE
-    POOL_MODE = (state.get("meta") or {}).get("pool_mode", "all")
-    items = review.get("items", []) or []
+# ---------------- 计划（每池每账户独立） ----------------
+def market_gate(review):
+    """大盘闸门：上证空头 / 普涨过热 / LLM宏观防御 → block。返回 (gate, 说明)。"""
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
     sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
     mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
     breadth = (review.get("temperature") or {}).get("breadth") or 0
     overheat = breadth >= 65
-    # LLM 宏观消息面观察（macro_llm.py 生成）：空头/防御 → 全局闸门
     llm_def = False
     try:
         _llm = load_json("macro_llm_data.json") or {}
         _ll = (_llm.get("llm") or {})
         _llm_sent = _ll.get("sentiment")
-        _llm_def = _llm_sent in ("空头", "防御")
+        llm_def = _llm_sent in ("空头", "防御")
         _llm_weak = _llm_sent == "中性" and (_ll.get("score") or 50) < 40
-        llm_def = _llm_def or _llm_weak
+        llm_def = llm_def or _llm_weak
     except Exception:
         pass
-    # 收集各账户候选（用于合并 LLM 评审）
+    gate = "block" if (mkt_bear or overheat or llm_def) else "open"
+    why = []
+    if mkt_bear:
+        why.append("上证空头")
+    if overheat:
+        why.append("普涨过热(广度%d%%)" % int(breadth))
+    if llm_def:
+        why.append("LLM宏观防御")
+    return gate, ("；".join(why) if why else "open")
+
+
+def make_plan(state, review, asof, pool, skip_llm=False):
+    """对单个池生成 3 账户回踩买点计划。"""
+    items = review.get("items", []) or []
+    pool_b = books(state, pool)
+    acc_b = pool_b["accounts"]
+    gate, gate_why = market_gate(review)
+    # 候选：池过滤
     cand_pool = {}   # code -> item
     per_key = {}     # key -> [item]
     for key in REAL_ACCOUNTS:
         cfg = ACCOUNTS[key]
-        acct = state["accounts"][key]
+        acct = acc_b[key]
         held = {p["code"] for p in acct["positions"]}
         cands = []
         for it in items:
             if _is_etf(it.get("code")) or it.get("code") in held:
                 continue
-            if not pool_filter(it):
+            if pool == "six" and it.get("code") not in SIX_POOL:
                 continue
             if it.get("signal_key") not in ("strong_buy", "buy"):
                 continue
@@ -325,11 +409,11 @@ def make_plan(state, review, asof, skip_llm=False):
     # LLM 个股评审（盘前一次性；失败放行）
     llm_rev = {}
     _news_rev = {}
-    if not llm_def and not skip_llm:
+    if not skip_llm:
         _llm_macro = None
         try:
             _llm_macro = load_json("macro_llm_data.json")
-            # 个股消息面评审（macro_llm.py 6股模式产出）：利空/低分 → 回避
+            # 个股消息面评审（macro_llm.py --pool six 产出 stocks）：利空/低分 → 回避
             for _s in (_llm_macro.get("stocks") or []):
                 if _s.get("sentiment") in ("利空", "防御") or (_s.get("score") or 50) < 45:
                     _news_rev[_s.get("code")] = "消息面:%s(%s)" % (
@@ -345,25 +429,26 @@ def make_plan(state, review, asof, skip_llm=False):
         if rev_cands:
             llm_rev = llm_review_candidates(rev_cands, _llm_macro)
             n_avoid = sum(1 for v in llm_rev.values() if v.get("verdict") == "avoid")
-            print("  [llm] 个股评审 %d 只 → avoid %d" % (len(rev_cands), n_avoid))
+            print("  [llm][%s] 个股评审 %d 只 → avoid %d" % (pool, len(rev_cands), n_avoid))
     for key in REAL_ACCOUNTS:
         cfg = ACCOUNTS[key]
-        acct = state["accounts"][key]
+        acct = acc_b[key]
         cands = per_key.get(key, [])
         plan = []
-        gate = "block" if (mkt_bear and key in ("balanced", "disciplined")) or overheat or llm_def else "open"
         for it in cands[:8]:
             _rv = llm_rev.get(it.get("code"))
-            _nr = _news_rev.get(it.get("code"))
+            _nr = _news_rev.get(it.get("code")) if pool == "six" else None
             if _rv and _rv.get("verdict") == "avoid":
                 acct["daily_log"].append({"date": asof, "kind": "plan",
-                                          "note": "%s：%s LLM技术回避(%s)" % (
-                                              cfg["label"], it.get("name"), _rv.get("note", ""))})
+                                          "note": "[%s]%s：%s LLM技术回避(%s)" % (
+                                              POOL_LABEL[pool], cfg["label"], it.get("name"),
+                                              _rv.get("note", ""))})
                 continue
             if _nr:
                 acct["daily_log"].append({"date": asof, "kind": "plan",
-                                          "note": "%s：%s %s" % (
-                                              cfg["label"], it.get("name"), _nr)})
+                                          "note": "[%s]%s：%s %s" % (
+                                              POOL_LABEL[pool], cfg["label"],
+                                              it.get("name"), _nr)})
                 continue
             close = it.get("close") or 0
             ma10 = it.get("ma10") or close
@@ -390,20 +475,21 @@ def make_plan(state, review, asof, skip_llm=False):
             })
         acct["plan"] = plan
         acct["daily_log"].append({"date": asof, "kind": "plan",
-                                  "note": "%s：%d 单待盘中触发%s" % (
-                                      cfg["label"], len(plan),
-                                      "（大盘闸门挡）" if gate == "block" else "")})
-    return {k: len(state["accounts"][k]["plan"]) for k in REAL_ACCOUNTS}
+                                  "note": "[%s]%s：%d 单待盘中触发%s" % (
+                                      POOL_LABEL[pool], cfg["label"], len(plan),
+                                      ("（大盘闸门挡）" if gate == "block" else ""))})
+    return {k: len(acc_b[k]["plan"]) for k in REAL_ACCOUNTS}
 
 
-# ---------------- 盘中巡检（多账户） ----------------
+# ---------------- 盘中巡检（双池并行） ----------------
 def intraday_scan(state, date, hms):
     from src import data_provider as dp
     all_codes = set()
-    for key in REAL_ACCOUNTS:
-        a = state["accounts"][key]
-        all_codes |= {p["code"] for p in a["plan"] if p.get("status", "wait") == "wait"}
-        all_codes |= {p["code"] for p in a["positions"]}
+    for pool in POOLS:
+        for key in REAL_ACCOUNTS:
+            a = accts(state, pool)[key]
+            all_codes |= {p["code"] for p in a["plan"] if p.get("status", "wait") == "wait"}
+            all_codes |= {p["code"] for p in a["positions"]}
     if not all_codes:
         return 0, ["无计划/持仓"]
     quotes = {}
@@ -413,16 +499,17 @@ def intraday_scan(state, date, hms):
         return 0, ["快照失败 %s" % e]
     total_fill = 0
     all_notes = []
-    for key in REAL_ACCOUNTS:
-        cfg = ACCOUNTS[key]
-        acct = state["accounts"][key]
-        n, notes = _scan_account(acct, cfg, quotes, date, hms)
-        total_fill += n
-        all_notes.extend(notes)
+    for pool in POOLS:
+        for key in REAL_ACCOUNTS:
+            cfg = ACCOUNTS[key]
+            a = accts(state, pool)[key]
+            n, notes = _scan_account(pool, a, cfg, quotes, date, hms)
+            total_fill += n
+            all_notes.extend(notes)
     return total_fill, all_notes
 
 
-def _scan_account(acct, cfg, quotes, date, hms):
+def _scan_account(pool, acct, cfg, quotes, date, hms):
     filled = 0
     notes = []
     # 卖出
@@ -445,7 +532,8 @@ def _scan_account(acct, cfg, quotes, date, hms):
         elif pos.get("be_at") and gain >= pos["be_at"] * 100 and not pos.get("be_on"):
             pos["be_on"] = True
             pos["stop_atr"] = pos["cost"] * 1.002  # 保本
-            notes.append("（%s %s 浮盈+%.0f%% → 保本锁定）" % (acct["label"], pos["name"], gain))
+            notes.append("（[%s]%s %s 浮盈+%.0f%% → 保本锁定）" % (
+                POOL_LABEL[pool], acct["label"], pos["name"], gain))
         elif pos.get("stop_atr") and px <= pos["stop_atr"]:
             reason = "破ATR/保本止损 %.2f" % pos["stop_atr"]
         elif pos.get("peak") and pos.get("trail") and pos["peak"] > pos["cost"] * 1.08 \
@@ -463,7 +551,7 @@ def _scan_account(acct, cfg, quotes, date, hms):
                 "name": pos["name"], "price": round(px, 3), "shares": shares,
                 "chg_at_fill": round(chg, 2), "pnl": round(pnl, 2),
                 "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
-                "reason": reason, "strategy": acct["key"],
+                "reason": reason, "strategy": acct["key"], "pool": pool,
             })
             sell_codes.append(pos["code"])
             filled += 1
@@ -506,8 +594,8 @@ def _scan_account(acct, cfg, quotes, date, hms):
             acct["trades"].append({
                 "action": "buy", "date": date, "time": hms, "code": pl["code"],
                 "name": pl["name"], "price": round(px, 3), "shares": shares,
-                "chg_at_fill": round(chg(px, q), 2) if False else round((px / (q.get("prevClose") or pl["close"]) - 1) * 100, 2),
-                "reason": pl.get("reason", ""), "strategy": acct["key"],
+                "chg_at_fill": round((px / (q.get("prevClose") or pl["close"]) - 1) * 100, 2),
+                "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
             })
             pl["status"] = "filled"
             filled += 1
@@ -520,100 +608,76 @@ def chg(px, q):
     return (px / pc - 1) * 100 if pc else 0
 
 
-# ---------------- 混合净值 ----------------
-def update_mix(state, date, bench_close=None, slope=None):
-    """mix = 三账户日收益加权。用日收益复利计算 5 万起净值；regime 按上证20日斜率。"""
-    regs = {"agg": 0.25, "bal": 0.5, "dis": 0.25}
-    if slope is not None:
-        if slope > 2.5:
-            regs = {"agg": 0.7, "bal": 0.2, "dis": 0.1}
-        elif slope < -2.5:
-            regs = {"agg": 0.1, "bal": 0.2, "dis": 0.7}
-    reg_name = "攻" if regs["agg"] >= 0.7 else ("守" if regs["dis"] >= 0.7 else "衡")
-    curve = state["mix"]["equity_curve"]
-    # 用各账户净值算日收益（无账户曲线日则跳过）
-    acct_eq = {}
-    for key in REAL_ACCOUNTS:
-        a = state["accounts"][key]
-        if a["equity_curve"]:
-            acct_eq[key] = a["equity_curve"][-1]["equity"]
-        else:
-            acct_eq[key] = a["cash"] + sum(p["shares"] * p["cost"] for p in a["positions"])
-    if curve:
-        prev = curve[-1]["equity"]
-        # 用上次记录的账户净值作基数不准；改按日收益
-    return reg_name
+# ---------------- 收盘结算（每池独立） ----------------
+def sh_slope(date):
+    """上证 20 日斜率（无前视）。"""
+    try:
+        from src import data_provider as dp
+        sh_k = dp.fetch_index_kline("sh000001", 900)
+    except Exception:
+        return None
+    if not sh_k or len(sh_k["dates"]) < 22 or date not in sh_k["dates"]:
+        return None
+    i = sh_k["dates"].index(date)
+    if i < 21 or not sh_k["dates"][i - 21] or not sh_k["closes"][i - 21]:
+        return None
+    return (sh_k["closes"][i] / sh_k["closes"][i - 21] - 1) * 100
 
 
-def finalize_day(state, date):
-    """收盘：各账户市值按收盘价更新 + 净值曲线；mix 合成。"""
+def finalize_pool(state, pool, date):
+    """单池收盘：各账户市值按收盘价更新 + 净值曲线；池内 mix 合成。返回 regime。"""
     from src import data_provider as dp
     review = load_json("review_data.json")
     items = {x.get("code"): x for x in (review.get("items") or [])} if review else {}
+    pool_b = books(state, pool)
+    acc_b = pool_b["accounts"]
     for key in REAL_ACCOUNTS:
-        a = state["accounts"][key]
+        a = acc_b[key]
         for pos in a["positions"]:
             it = items.get(pos["code"])
             if it:
                 pos["last_close"] = it.get("close")
-        eq = a["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in a["positions"])
-        # 幂等：同日已有记录则替换
+        eq = equity_of(a)
         a["equity_curve"] = [x for x in a["equity_curve"] if x["date"] != date]
         prev = a["equity_curve"][-1]["equity"] if a["equity_curve"] else CASH_START
         a["equity_curve"].append({"date": date, "equity": round(eq, 2),
                                   "cash": round(a["cash"], 2),
                                   "daily_return": round((eq / prev - 1) * 100, 3),
                                   "pos_count": len(a["positions"])})
-    # mix：以三账户曲线日收益复利
-    curves = [state["accounts"][k]["equity_curve"] for k in REAL_ACCOUNTS]
-    mc = state["mix"]["equity_curve"]
-    # regime by 上证斜率
-    sh_k = None
-    try:
-        from src import data_provider as dp
-        sh_k = dp.fetch_index_kline("sh000001", 900)
-    except Exception:
-        pass
-    slope = None
-    if sh_k and len(sh_k["dates"]) >= 22:
-        dd = sh_k["dates"]
-        if date in dd:
-            i = dd.index(date)
-            if i >= 21 and dd[i - 21] and sh_k["closes"][i - 21]:
-                slope = (sh_k["closes"][i] / sh_k["closes"][i - 21] - 1) * 100
+    # mix：以上证斜率定档，三账户日收益加权复利（首日直接取三账户加权净值）
+    slope = sh_slope(date)
     regs = [0.25, 0.5, 0.25]
     if slope is not None and slope > 2.5:
         regs = [0.7, 0.2, 0.1]
     elif slope is not None and slope < -2.5:
         regs = [0.1, 0.2, 0.7]
+    curves = [acc_b[k]["equity_curve"] for k in REAL_ACCOUNTS]
+    mc = pool_b["mix"]["equity_curve"]
     if all(c for c in curves):
-        rets = [(c[-1]["equity"] / c[-2]["equity"] - 1) if len(c) >= 2 and c[-2]["equity"] else 0
-                for c in curves]
-        # 首日无 c[-2] → 用 0
-        rets = [0, 0, 0]
-        for idx, c in enumerate(curves):
-            if len(c) >= 2 and c[-2].get("equity"):
-                rets[idx] = c[-1]["equity"] / c[-2]["equity"] - 1
-            elif len(c) == 1:
-                rets[idx] = 0.0
-        r_day = sum(r * w for r, w in zip(rets, regs)) * 100
-        prev_mix = mc[-1]["equity"] if mc else CASH_START
-        eq_mix = prev_mix * (1 + r_day / 100)
-        # 首日（无历史）直接用三账户当前净值加权，保证 mix 起点真实
+        # 首日：无 c[-2] → 直接取各账户当前净值加权
         if len(curves[0]) == 1:
             eq_mix = sum(curves[i][-1]["equity"] * regs[i] for i in range(3))
             r_day = 0.0
+        else:
+            rets = []
+            for c in curves:
+                if len(c) >= 2 and c[-2].get("equity"):
+                    rets.append(c[-1]["equity"] / c[-2]["equity"] - 1)
+                else:
+                    rets.append(0.0)
+            prev_mix = mc[-1]["equity"] if mc else CASH_START
+            eq_mix = prev_mix * (1 + sum(r * w for r, w in zip(rets, regs)))
+            r_day = sum(r * w for r, w in zip(rets, regs)) * 100
         mc = [x for x in mc if x["date"] != date]  # 幂等
-        state["mix"]["equity_curve"] = mc
+        pool_b["mix"]["equity_curve"] = mc
         mc.append({"date": date, "equity": round(eq_mix, 2), "daily_return": round(r_day, 3),
                    "regime": "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")})
-    return slope
+    return "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")
 
 
-# ---------------- 复盘 ----------------
-def do_review(state, date):
+def do_review(state, pool, date):
     for key in REAL_ACCOUNTS:
-        a = state["accounts"][key]
+        a = accts(state, pool)[key]
         sells = [t for t in a["trades"] if t["action"] == "sell"]
         if not sells:
             continue
@@ -621,8 +685,8 @@ def do_review(state, date):
             continue
         wins = [t for t in sells if t["pnl"] > 0]
         losses = [t for t in sells if t["pnl"] <= 0]
-        note = "%s：平仓%s笔 胜%s/负%s 胜率%.0f%% 已实现%+.0f" % (
-            a["label"], len(sells), len(wins), len(losses),
+        note = "[%s]%s：平仓%s笔 胜%s/负%s 胜率%.0f%% 已实现%+.0f" % (
+            POOL_LABEL[pool], a["label"], len(sells), len(wins), len(losses),
             len(wins) / len(sells) * 100, sum(t["pnl"] for t in sells))
         if losses:
             lr = {}
@@ -636,6 +700,14 @@ def do_review(state, date):
         a["daily_log"].append({"date": date, "kind": "review", "note": note})
 
 
+def expiry_plan(state, pool):
+    """收盘后：当日未触发 wait 单标记 expired（次日 --plan 重建）。"""
+    for k in REAL_ACCOUNTS:
+        for p in accts(state, pool)[k]["plan"]:
+            if p.get("status", "wait") == "wait":
+                p["status"] = "expired"
+
+
 # ---------------- main ----------------
 def main():
     ap = argparse.ArgumentParser()
@@ -646,11 +718,16 @@ def main():
     ap.add_argument("--review", action="store_true")
     ap.add_argument("--finalize", action="store_true")
     ap.add_argument("--strategy-log", default=None)
-    ap.add_argument("--pool", default=None, help="all=全池 / six=6股精选")
-    ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03)")
-    ap.add_argument("--no-llm", action="store_true", help="跳过LLM个股评审(快速切池用)")
+    ap.add_argument("--pool", default=None, help="six=6股精选 / all=全池（默认双池并行）")
+    ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03，仅six)")
+    ap.add_argument("--no-llm", action="store_true", help="跳过LLM个股评审(快速重建用)")
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
+
+    if args.pool and args.pool not in POOLS:
+        print("未知池模式:", args.pool, "（six|all，省略=双池并行）")
+        return
+    target_pools = [args.pool] if args.pool else list(POOLS)
 
     if args.strategy_log:
         st = load_state()
@@ -669,28 +746,18 @@ def main():
     if args.init or not load_state():
         state = new_state()
         save(state)
-        print("四账户初始化：激进/稳健/严守纪律 各 5万 + 合并(合成)。先 --plan 建计划。")
+        print("双池初始化：six(6股精选) + all(全池) × 激进/稳健/严守纪律 各 5万，各自独立并行交易。")
+        print("先 --plan 建计划（默认双池）。")
         return
     state = load_state()
-    # 池模式：--pool 显式指定则切换并持久化；否则沿用 state.meta.pool_mode
-    if args.pool:
-        if args.pool not in ("all", "six"):
-            print("未知池模式:", args.pool)
-            return
-        state.setdefault("meta", {})["pool_mode"] = args.pool
-        state["meta"]["pool_switched_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-        save(state)
-        print("池模式已切换 →", args.pool)
-    _mode = (state.get("meta") or {}).get("pool_mode", "all")
-    print("当前池模式:", _mode, "(" + ("6股精选" if _mode == "six" else "全池") + ")")
+    print("当前双池: " + " + ".join("%s(%s)" % (p, POOL_LABEL[p]) for p in POOLS))
 
     if args.plan:
         if args.plan_date:
-            # 历史日：对当前池股票用 K 线重建信号（无前视）
+            # 历史日：6股池用日K重建信号（无前视）
             date = args.plan_date
-            codes = SIX_POOL if _mode == "six" else None
-            if codes is None:
-                print("--plan-date 仅支持 --pool six")
+            if "six" not in target_pools:
+                print("--plan-date 仅支持 6股精选池（--pool six）")
                 return
             items = []
             for c, n in SIX_POOL.items():
@@ -699,24 +766,31 @@ def main():
                     items.append(it)
             review = {"generatedAt": date + " 15:00:00", "items": items,
                       "indices": [], "temperature": {"breadth": 0}}
-            print("历史日信号重建 %s：%d 只有效" % (date, len(items)))
+            print("6股池历史日信号重建 %s：%d 只有效" % (date, len(items)))
             for it in items:
                 print("   %s %s %s(%s分) %s" % (it["code"], it["name"], it["signal"],
                                                it["score"], it["trend_status"]))
-        else:
-            review = load_json("review_data.json")
-            if not review:
-                print("无 review_data")
-                return
-            date = (review.get("generatedAt") or "")[:10]
-        res = make_plan(state, review, date, skip_llm=bool(args.no_llm))
+            res = make_plan(state, review, date, "six", skip_llm=bool(args.no_llm))
+            save(state)
+            print("6股池计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v)
+                                                   for k, v in res.items()}))
+            return
+        review = load_json("review_data.json")
+        if not review:
+            print("无 review_data")
+            return
+        date = (review.get("generatedAt") or "")[:10]
+        for pool in target_pools:
+            res = make_plan(state, review, date, pool, skip_llm=bool(args.no_llm))
+            print("计划更新 %s [%s]：%s" % (date, POOL_LABEL[pool],
+                                          {ACCOUNTS[k]["label"] + ":" + str(v) for k, v in res.items()}))
+            for k in REAL_ACCOUNTS:
+                a = accts(state, pool)[k]
+                print("  [%s] %d 单" % (ACCOUNTS[k]["label"], len(a["plan"])))
+                for p in a["plan"][:5]:
+                    print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"],
+                                                       p.get("gate")))
         save(state)
-        print("计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v) for k, v in res.items()}))
-        for k in REAL_ACCOUNTS:
-            a = state["accounts"][k]
-            print("  [%s] %d 单" % (ACCOUNTS[k]["label"], len(a["plan"])))
-            for p in a["plan"][:5]:
-                print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"], p.get("gate")))
         return
 
     if args.intraday:
@@ -731,11 +805,12 @@ def main():
         return
 
     if args.replay:
-        # 简化：对每账户用日K低点回放
+        # 简化：对每账户用日K低点回放（仅目标池；默认全池）
         from src import data_provider as dp
+        pool = args.pool or "all"
         tot = 0
         for k in REAL_ACCOUNTS:
-            a = state["accounts"][k]
+            a = accts(state, pool)[k]
             cfg = ACCOUNTS[k]
             for pl in a.get("plan", []):
                 if pl.get("status", "wait") != "wait" or pl.get("gate") == "block":
@@ -786,34 +861,35 @@ def main():
                     "chg_at_fill": round(trig[2], 2) if trig and trig[2] is not None else None,
                     "reason": "回放触发(1分K首触@%s 价%.2f)：%s" % (trig[0], px, pl["reason"]) if trig
                               else "回放触发(日K低%.2f≤%.2f)：%s" % (low, pl["buy_below"], pl["reason"]),
-                    "strategy": k,
+                    "strategy": k, "pool": pool,
                 })
                 pl["status"] = "filled"
                 tot += 1
                 print("  [%s] 回放买入 %s @%.2f %s" % (cfg["label"], pl["name"], px, time_str))
-
         save(state)
-        print("回放完成 %s：%d 笔" % (args.replay, tot))
+        print("回放完成 %s [%s]：%d 笔" % (args.replay, POOL_LABEL[pool], tot))
         return
 
     if args.review or args.finalize:
         now = time.localtime()
-        date = args.date or (time.strftime("%Y-%m-%d", now) if not args.replay else args.replay)
-        slope = finalize_day(state, date)
-        do_review(state, date)
-        # 标记过期计划
-        for k in REAL_ACCOUNTS:
-            for p in state["accounts"][k]["plan"]:
-                if p.get("status", "wait") == "wait":
-                    p["status"] = "expired"
+        date = args.date or time.strftime("%Y-%m-%d", now)
+        regims = []
+        for pool in target_pools:
+            regims.append((pool, finalize_pool(state, pool, date)))
+            do_review(state, pool, date)
+            expiry_plan(state, pool)
+            for k in REAL_ACCOUNTS:
+                a = accts(state, pool)[k]
+                ec = a["equity_curve"]
+                print("  [%s]%s 净值%.0f（%+.2f%%）持仓%d" % (
+                    POOL_LABEL[pool], ACCOUNTS[k]["label"],
+                    ec[-1]["equity"] if ec else 0,
+                    ec[-1].get("daily_return", 0) if ec else 0,
+                    len(a["positions"])))
         save(state)
-        print("收盘 %s 完成。mix regime=%s" % (date, "攻/守/衡 by slope"))
-        for k in REAL_ACCOUNTS:
-            a = state["accounts"][k]
-            ec = a["equity_curve"]
-            print("  %s 净值%.0f（%+.2f%%）持仓%d" % (
-                ACCOUNTS[k]["label"], ec[-1]["equity"] if ec else 0,
-                ec[-1].get("daily_return", 0) if ec else 0, len(a["positions"])))
+        print("收盘 %s 完成。" % date)
+        for pool, reg in regims:
+            print("  %s regime=%s" % (POOL_LABEL[pool], reg))
         return
 
     print("用法：--init / --plan / --intraday / --replay D / --review / --strategy-log")
