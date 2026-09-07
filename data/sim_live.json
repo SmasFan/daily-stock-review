@@ -7,8 +7,8 @@
    "balanced",
    "disciplined"
   ],
-  "pool_mode": "six",
-  "pool_switched_at": "2026-09-06 11:14:32"
+  "pool_mode": "all",
+  "pool_switched_at": "2026-09-07 10:02:01"
  },
  "accounts": {
   "aggressive": {
@@ -18,6 +18,96 @@
    "cash": 50000.0,
    "positions": [],
    "plan": [
+    {
+     "code": "002493",
+     "name": "荣盛石化",
+     "asof": "2026-09-04",
+     "score": 88,
+     "signal": "强烈买入",
+     "close": 14.4,
+     "buy_below": 14.328,
+     "stop_atr": 13.16,
+     "stop_ma": null,
+     "tp": 17.28,
+     "trail": 0.1,
+     "be_at": null,
+     "gate": "block",
+     "budget": 11000.0,
+     "status": "wait",
+     "reason": "强烈买入(88分) 回踩≤14.33 ATR止损13.16"
+    },
+    {
+     "code": "002430",
+     "name": "杭氧股份",
+     "asof": "2026-09-04",
+     "score": 86,
+     "signal": "强烈买入",
+     "close": 27.26,
+     "buy_below": 27.124,
+     "stop_atr": 25.38,
+     "stop_ma": null,
+     "tp": 32.712,
+     "trail": 0.1,
+     "be_at": null,
+     "gate": "block",
+     "budget": 11000.0,
+     "status": "wait",
+     "reason": "强烈买入(86分) 回踩≤27.12 ATR止损25.38"
+    },
+    {
+     "code": "600486",
+     "name": "扬农化工",
+     "asof": "2026-09-04",
+     "score": 85,
+     "signal": "强烈买入",
+     "close": 55.87,
+     "buy_below": 55.36,
+     "stop_atr": 51.54,
+     "stop_ma": null,
+     "tp": 67.044,
+     "trail": 0.1,
+     "be_at": null,
+     "gate": "block",
+     "budget": 11000.0,
+     "status": "wait",
+     "reason": "强烈买入(85分) 回踩≤55.36 ATR止损51.54"
+    },
+    {
+     "code": "601233",
+     "name": "桐昆股份",
+     "asof": "2026-09-04",
+     "score": 84,
+     "signal": "强烈买入",
+     "close": 25.99,
+     "buy_below": 25.86,
+     "stop_atr": 23.35,
+     "stop_ma": null,
+     "tp": 31.188,
+     "trail": 0.1,
+     "be_at": null,
+     "gate": "block",
+     "budget": 11000.0,
+     "status": "wait",
+     "reason": "强烈买入(84分) 回踩≤25.86 ATR止损23.35"
+    },
+    {
+     "code": "600346",
+     "name": "恒力石化",
+     "asof": "2026-09-04",
+     "score": 83,
+     "signal": "强烈买入",
+     "close": 19.03,
+     "buy_below": 18.935,
+     "stop_atr": 17.38,
+     "stop_ma": null,
+     "tp": 22.836,
+     "trail": 0.1,
+     "be_at": null,
+     "gate": "block",
+     "budget": 11000.0,
+     "status": "wait",
+     "reason": "强烈买入(83分) 回踩≤18.93 ATR止损17.38"
+    },
     {
      "code": "600900",
      "name": "长江电力",
@@ -55,22 +145,22 @@
      "reason": "强烈买入(82分) 回踩≤34.26 ATR止损33.09"
     },
     {
-     "code": "600309",
-     "name": "万华化学",
+     "code": "601766",
+     "name": "中国中车",
      "asof": "2026-09-04",
-     "score": 73,
-     "signal": "买入",
-     "close": 77.58,
-     "buy_below": 76.7,
-     "stop_atr": 72.58,
+     "score": 82,
+     "signal": "强烈买入",
+     "close": 6.24,
+     "buy_below": 6.209,
+     "stop_atr": 6.0,
      "stop_ma": null,
-     "tp": 93.096,
+     "tp": 7.488,
      "trail": 0.1,
      "be_at": null,
      "gate": "block",
      "budget": 11000.0,
      "status": "wait",
-     "reason": "买入(73分) 回踩≤76.70 ATR止损72.58"
+     "reason": "强烈买入(82分) 回踩≤6.21 ATR止损6.0"
     }
    ],
    "trades": [],
@@ -148,6 +238,36 @@
      "date": "2026-09-04",
      "kind": "plan",
      "note": "激进：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "激进：8 单待盘中触发（大盘闸门挡）"
     }
    ],
    "review_log": []
@@ -159,6 +279,96 @@
    "cash": 50000.0,
    "positions": [],
    "plan": [
+    {
+     "code": "002493",
+     "name": "荣盛石化",
+     "asof": "2026-09-04",
+     "score": 88,
+     "signal": "强烈买入",
+     "close": 14.4,
+     "buy_below": 14.112,
+     "stop_atr": 13.16,
+     "stop_ma": 13.68,
+     "tp": 16.56,
+     "trail": null,
+     "be_at": null,
+     "gate": "block",
+     "budget": 9000.0,
+     "status": "wait",
+     "reason": "强烈买入(88分) 回踩≤14.11 ATR止损13.16"
+    },
+    {
+     "code": "002430",
+     "name": "杭氧股份",
+     "asof": "2026-09-04",
+     "score": 86,
+     "signal": "强烈买入",
+     "close": 27.26,
+     "buy_below": 26.715,
+     "stop_atr": 25.38,
+     "stop_ma": 24.63,
+     "tp": 31.349,
+     "trail": null,
+     "be_at": null,
+     "gate": "block",
+     "budget": 9000.0,
+     "status": "wait",
+     "reason": "强烈买入(86分) 回踩≤26.71 ATR止损25.38"
+    },
+    {
+     "code": "600486",
+     "name": "扬农化工",
+     "asof": "2026-09-04",
+     "score": 85,
+     "signal": "强烈买入",
+     "close": 55.87,
+     "buy_below": 54.753,
+     "stop_atr": 51.54,
+     "stop_ma": 54.88,
+     "tp": 64.25,
+     "trail": null,
+     "be_at": null,
+     "gate": "block",
+     "budget": 9000.0,
+     "status": "wait",
+     "reason": "强烈买入(85分) 回踩≤54.75 ATR止损51.54"
+    },
+    {
+     "code": "601233",
+     "name": "桐昆股份",
+     "asof": "2026-09-04",
+     "score": 84,
+     "signal": "强烈买入",
+     "close": 25.99,
+     "buy_below": 25.47,
+     "stop_atr": 23.35,
+     "stop_ma": 24.77,
+     "tp": 29.888,
+     "trail": null,
+     "be_at": null,
+     "gate": "block",
+     "budget": 9000.0,
+     "status": "wait",
+     "reason": "强烈买入(84分) 回踩≤25.47 ATR止损23.35"
+    },
+    {
+     "code": "600346",
+     "name": "恒力石化",
+     "asof": "2026-09-04",
+     "score": 83,
+     "signal": "强烈买入",
+     "close": 19.03,
+     "buy_below": 18.649,
+     "stop_atr": 17.38,
+     "stop_ma": 18.46,
+     "tp": 21.884,
+     "trail": null,
+     "be_at": null,
+     "gate": "block",
+     "budget": 9000.0,
+     "status": "wait",
+     "reason": "强烈买入(83分) 回踩≤18.65 ATR止损17.38"
+    },
     {
      "code": "600900",
      "name": "长江电力",
@@ -196,22 +406,22 @@
      "reason": "强烈买入(82分) 回踩≤33.74 ATR止损33.09"
     },
     {
-     "code": "600309",
-     "name": "万华化学",
+     "code": "601766",
+     "name": "中国中车",
      "asof": "2026-09-04",
-     "score": 73,
-     "signal": "买入",
-     "close": 77.58,
-     "buy_below": 76.028,
-     "stop_atr": 72.58,
-     "stop_ma": 75.11,
-     "tp": 89.217,
+     "score": 82,
+     "signal": "强烈买入",
+     "close": 6.24,
+     "buy_below": 6.115,
+     "stop_atr": 6.0,
+     "stop_ma": 6.08,
+     "tp": 7.176,
      "trail": null,
      "be_at": null,
      "gate": "block",
      "budget": 9000.0,
      "status": "wait",
-     "reason": "买入(73分) 回踩≤76.03 ATR止损72.58"
+     "reason": "强烈买入(82分) 回踩≤6.12 ATR止损6.0"
     }
    ],
    "trades": [],
@@ -289,6 +499,36 @@
      "date": "2026-09-04",
      "kind": "plan",
      "note": "稳健：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：3 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "稳健：8 单待盘中触发（大盘闸门挡）"
     }
    ],
    "review_log": []
@@ -300,6 +540,96 @@
    "cash": 50000.0,
    "positions": [],
    "plan": [
+    {
+     "code": "002493",
+     "name": "荣盛石化",
+     "asof": "2026-09-04",
+     "score": 88,
+     "signal": "强烈买入",
+     "close": 14.4,
+     "buy_below": 13.968,
+     "stop_atr": 13.16,
+     "stop_ma": null,
+     "tp": 15.84,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(88分) 回踩≤13.97 ATR止损13.16（保本+5%%）"
+    },
+    {
+     "code": "002430",
+     "name": "杭氧股份",
+     "asof": "2026-09-04",
+     "score": 86,
+     "signal": "强烈买入",
+     "close": 27.26,
+     "buy_below": 26.442,
+     "stop_atr": 25.38,
+     "stop_ma": null,
+     "tp": 29.986,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(86分) 回踩≤26.44 ATR止损25.38（保本+5%%）"
+    },
+    {
+     "code": "600486",
+     "name": "扬农化工",
+     "asof": "2026-09-04",
+     "score": 85,
+     "signal": "强烈买入",
+     "close": 55.87,
+     "buy_below": 54.194,
+     "stop_atr": 51.54,
+     "stop_ma": null,
+     "tp": 61.457,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(85分) 回踩≤54.19 ATR止损51.54（保本+5%%）"
+    },
+    {
+     "code": "601233",
+     "name": "桐昆股份",
+     "asof": "2026-09-04",
+     "score": 84,
+     "signal": "强烈买入",
+     "close": 25.99,
+     "buy_below": 25.21,
+     "stop_atr": 23.35,
+     "stop_ma": null,
+     "tp": 28.589,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(84分) 回踩≤25.21 ATR止损23.35（保本+5%%）"
+    },
+    {
+     "code": "600346",
+     "name": "恒力石化",
+     "asof": "2026-09-04",
+     "score": 83,
+     "signal": "强烈买入",
+     "close": 19.03,
+     "buy_below": 18.459,
+     "stop_atr": 17.38,
+     "stop_ma": null,
+     "tp": 20.933,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(83分) 回踩≤18.46 ATR止损17.38（保本+5%%）"
+    },
     {
      "code": "600900",
      "name": "长江电力",
@@ -335,6 +665,24 @@
      "budget": 7000.0,
      "status": "wait",
      "reason": "强烈买入(82分) 回踩≤33.40 ATR止损33.09（保本+5%%）"
+    },
+    {
+     "code": "601766",
+     "name": "中国中车",
+     "asof": "2026-09-04",
+     "score": 82,
+     "signal": "强烈买入",
+     "close": 6.24,
+     "buy_below": 6.053,
+     "stop_atr": 6.0,
+     "stop_ma": null,
+     "tp": 6.864,
+     "trail": null,
+     "be_at": 0.05,
+     "gate": "block",
+     "budget": 7000.0,
+     "status": "wait",
+     "reason": "强烈买入(82分) 回踩≤6.05 ATR止损6.0（保本+5%%）"
     }
    ],
    "trades": [],
@@ -407,6 +755,36 @@
      "date": "2026-09-04",
      "kind": "plan",
      "note": "严守纪律：2 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：2 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：2 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：8 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：2 单待盘中触发（大盘闸门挡）"
+    },
+    {
+     "date": "2026-09-04",
+     "kind": "plan",
+     "note": "严守纪律：8 单待盘中触发（大盘闸门挡）"
     }
    ],
    "review_log": []
