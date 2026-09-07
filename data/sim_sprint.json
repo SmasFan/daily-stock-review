@@ -25,9 +25,10 @@
    "cost": 37.99,
    "buy_time": "2026-09-07 14:44:18",
    "peak": 38.15,
-   "last": 38.15,
+   "last": 38.14,
    "last_chg": 2.647933,
-   "stop": 35.521
+   "stop": 35.521,
+   "last_close": 38.14
   }
  ],
  "trades": [
@@ -41,7 +42,15 @@
    "reason": "AI冲刺建仓"
   }
  ],
- "equity_curve": [],
+ "equity_curve": [
+  {
+   "date": "2026-09-07",
+   "equity": 49993.16,
+   "cash": 27199.16,
+   "daily_return": -0.014,
+   "pos": 1
+  }
+ ],
  "log": [],
  "signals": []
 }

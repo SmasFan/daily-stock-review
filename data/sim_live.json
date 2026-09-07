@@ -39,9 +39,10 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.98,
-       "last_chg": -2.78,
-       "last_ts": "14:52:20"
+       "last": 13.99,
+       "last_chg": -2.71,
+       "last_ts": "14:57:24",
+       "last_close": 13.99
       },
       {
        "code": "002430",
@@ -60,9 +61,10 @@
        "prev_close": 27.29,
        "score": 86,
        "signal": "强烈买入",
-       "last": 26.61,
-       "last_chg": -2.49,
-       "last_ts": "14:52:20"
+       "last": 26.6,
+       "last_chg": -2.46,
+       "last_ts": "14:57:24",
+       "last_close": 26.6
       },
       {
        "code": "601233",
@@ -81,9 +83,10 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.89,
-       "last_chg": -4.27,
-       "last_ts": "14:52:20"
+       "last": 24.92,
+       "last_chg": -4.15,
+       "last_ts": "14:57:24",
+       "last_close": 24.92
       },
       {
        "code": "600346",
@@ -102,9 +105,10 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.23,
+       "last": 18.24,
        "last_chg": -4.15,
-       "last_ts": "14:52:20"
+       "last_ts": "14:57:24",
+       "last_close": 18.24
       },
       {
        "code": "600900",
@@ -123,125 +127,18 @@
        "prev_close": 28.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 27.87,
-       "last_chg": -1.94,
-       "last_ts": "14:52:20"
+       "last": 27.88,
+       "last_chg": -2.01,
+       "last_ts": "14:57:24",
+       "last_close": 27.88
       }
      ],
      "plan": [
       {
-       "code": "600391",
-       "name": "航发科技",
-       "asof": "2026-09-07",
-       "score": 86,
-       "signal": "强烈买入",
-       "close": 36.67,
-       "buy_below": 36.13,
-       "stop_atr": 33.48,
-       "stop_ma": null,
-       "tp": 44.004,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(86分) 回踩≤36.13 ATR止损33.48"
-      },
-      {
-       "code": "600486",
-       "name": "扬农化工",
-       "asof": "2026-09-07",
-       "score": 85,
-       "signal": "强烈买入",
-       "close": 55.86,
-       "buy_below": 55.36,
-       "stop_atr": 51.53,
-       "stop_ma": null,
-       "tp": 67.032,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(85分) 回踩≤55.36 ATR止损51.53"
-      },
-      {
-       "code": "000301",
-       "name": "东方盛虹",
-       "asof": "2026-09-07",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 14.15,
-       "buy_below": 14.079,
-       "stop_atr": 12.85,
-       "stop_ma": null,
-       "tp": 16.98,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(84分) 回踩≤14.08 ATR止损12.85"
-      },
-      {
-       "code": "603618",
-       "name": "杭电股份",
-       "asof": "2026-09-07",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 36.28,
-       "buy_below": 36.099,
-       "stop_atr": 30.95,
-       "stop_ma": null,
-       "tp": 43.536,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(83分) 回踩≤36.10 ATR止损30.95"
-      },
-      {
-       "code": "600036",
-       "name": "招商银行",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 41.29,
-       "buy_below": 41.084,
-       "stop_atr": 39.98,
-       "stop_ma": null,
-       "tp": 49.548,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(82分) 回踩≤41.08 ATR止损39.98"
-      },
-      {
-       "code": "600172",
-       "name": "黄河旋风",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 15.41,
-       "buy_below": 15.3,
-       "stop_atr": 13.16,
-       "stop_ma": null,
-       "tp": 18.492,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(82分) 回踩≤15.30 ATR止损13.16"
-      },
-      {
        "code": "002116",
        "name": "中国海诚",
        "asof": "2026-09-07",
-       "score": 82,
+       "score": 84,
        "signal": "强烈买入",
        "close": 7.36,
        "buy_below": 7.31,
@@ -252,26 +149,116 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(82分) 回踩≤7.31 ATR止损7.07"
+       "status": "expired",
+       "reason": "强烈买入(84分) 回踩≤7.31 ATR止损7.07；LLM:基建政策利好，技术形态健康"
       },
       {
-       "code": "002396",
-       "name": "星网锐捷",
+       "code": "600036",
+       "name": "招商银行",
        "asof": "2026-09-07",
-       "score": 80,
+       "score": 82,
        "signal": "强烈买入",
-       "close": 36.72,
-       "buy_below": 36.536,
-       "stop_atr": 31.47,
+       "close": 41.19,
+       "buy_below": 40.984,
+       "stop_atr": 39.85,
        "stop_ma": null,
-       "tp": 44.064,
+       "tp": 49.428,
        "trail": 0.1,
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
-       "reason": "强烈买入(80分) 回踩≤36.54 ATR止损31.47"
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤40.98 ATR止损39.85；LLM:银行获注资直接利好，低乖离"
+      },
+      {
+       "code": "601766",
+       "name": "中国中车",
+       "asof": "2026-09-07",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 6.24,
+       "buy_below": 6.209,
+       "stop_atr": 6.0,
+       "stop_ma": null,
+       "tp": 7.488,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤6.21 ATR止损6.0；LLM:基建与轨交政策受益，走势平稳"
+      },
+      {
+       "code": "603618",
+       "name": "杭电股份",
+       "asof": "2026-09-07",
+       "score": 81,
+       "signal": "强烈买入",
+       "close": 36.89,
+       "buy_below": 36.706,
+       "stop_atr": 31.49,
+       "stop_ma": null,
+       "tp": 44.268,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "强烈买入(81分) 回踩≤36.71 ATR止损31.49；LLM:通信电子非高位，无显著冲突"
+      },
+      {
+       "code": "600309",
+       "name": "万华化学",
+       "asof": "2026-09-07",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 76.69,
+       "buy_below": 76.307,
+       "stop_atr": 71.78,
+       "stop_ma": null,
+       "tp": 92.028,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "强烈买入(80分) 回踩≤76.31 ATR止损71.78；LLM:周期资源无冲突，乖离适中"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.93,
+       "stop_atr": 32.75,
+       "stop_ma": null,
+       "tp": 40.92,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.93 ATR止损32.75；LLM:银行板块政策利好，可参与"
+      },
+      {
+       "code": "601216",
+       "name": "君正集团",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 4.78,
+       "buy_below": 4.756,
+       "stop_atr": 4.54,
+       "stop_ma": null,
+       "tp": 5.736,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤4.76 ATR止损4.54；LLM:低位周期，无宏观逆风压制"
       }
      ],
      "trades": [
@@ -343,6 +330,13 @@
        "cash": 50000.0,
        "daily_return": 0.0,
        "pos_count": 0
+      },
+      {
+       "date": "2026-09-07",
+       "equity": 49558.51,
+       "cash": 1673.51,
+       "daily_return": -0.883,
+       "pos_count": 5
       }
      ],
      "daily_log": [
@@ -490,6 +484,16 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[全池]激进：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[全池]激进：星网锐捷 LLM技术回避(60日涨117%乖离巨大，美债压科技)"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[全池]激进：7 单待盘中触发"
       }
      ],
      "review_log": []
@@ -517,9 +521,10 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.98,
-       "last_chg": -2.78,
-       "last_ts": "14:52:20"
+       "last": 13.99,
+       "last_chg": -2.71,
+       "last_ts": "14:57:24",
+       "last_close": 13.99
       },
       {
        "code": "601233",
@@ -538,9 +543,10 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.89,
-       "last_chg": -4.27,
-       "last_ts": "14:52:20"
+       "last": 24.92,
+       "last_chg": -4.15,
+       "last_ts": "14:57:24",
+       "last_close": 24.92
       },
       {
        "code": "600346",
@@ -559,143 +565,18 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.23,
+       "last": 18.24,
        "last_chg": -4.15,
-       "last_ts": "14:52:20"
+       "last_ts": "14:57:24",
+       "last_close": 18.24
       }
      ],
      "plan": [
       {
-       "code": "600391",
-       "name": "航发科技",
-       "asof": "2026-09-07",
-       "score": 86,
-       "signal": "强烈买入",
-       "close": 36.67,
-       "buy_below": 35.937,
-       "stop_atr": 33.48,
-       "stop_ma": 32.71,
-       "tp": 42.17,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(86分) 回踩≤35.94 ATR止损33.48"
-      },
-      {
-       "code": "600486",
-       "name": "扬农化工",
-       "asof": "2026-09-07",
-       "score": 85,
-       "signal": "强烈买入",
-       "close": 55.86,
-       "buy_below": 54.743,
-       "stop_atr": 51.53,
-       "stop_ma": 54.88,
-       "tp": 64.239,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(85分) 回踩≤54.74 ATR止损51.53"
-      },
-      {
-       "code": "000301",
-       "name": "东方盛虹",
-       "asof": "2026-09-07",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 14.15,
-       "buy_below": 13.867,
-       "stop_atr": 12.85,
-       "stop_ma": 13.54,
-       "tp": 16.273,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(84分) 回踩≤13.87 ATR止损12.85"
-      },
-      {
-       "code": "002430",
-       "name": "杭氧股份",
-       "asof": "2026-09-07",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 26.89,
-       "buy_below": 26.352,
-       "stop_atr": 25.03,
-       "stop_ma": 24.78,
-       "tp": 30.923,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(83分) 回踩≤26.35 ATR止损25.03"
-      },
-      {
-       "code": "603618",
-       "name": "杭电股份",
-       "asof": "2026-09-07",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 36.28,
-       "buy_below": 35.554,
-       "stop_atr": 30.95,
-       "stop_ma": 31.66,
-       "tp": 41.722,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(83分) 回踩≤35.55 ATR止损30.95"
-      },
-      {
-       "code": "600036",
-       "name": "招商银行",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 41.29,
-       "buy_below": 40.464,
-       "stop_atr": 39.98,
-       "stop_ma": 39.6,
-       "tp": 47.483,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤40.46 ATR止损39.98"
-      },
-      {
-       "code": "600172",
-       "name": "黄河旋风",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 15.41,
-       "buy_below": 15.102,
-       "stop_atr": 13.16,
-       "stop_ma": 13.96,
-       "tp": 17.721,
-       "trail": null,
-       "be_at": null,
-       "gate": "open",
-       "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤15.10 ATR止损13.16"
-      },
-      {
        "code": "002116",
        "name": "中国海诚",
        "asof": "2026-09-07",
-       "score": 82,
+       "score": 84,
        "signal": "强烈买入",
        "close": 7.36,
        "buy_below": 7.213,
@@ -706,8 +587,134 @@
        "be_at": null,
        "gate": "open",
        "budget": 9000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤7.21 ATR止损7.07"
+       "status": "expired",
+       "reason": "强烈买入(84分) 回踩≤7.21 ATR止损7.07；LLM:基建政策利好，技术形态健康"
+      },
+      {
+       "code": "002430",
+       "name": "杭氧股份",
+       "asof": "2026-09-07",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 26.6,
+       "buy_below": 26.068,
+       "stop_atr": 24.69,
+       "stop_ma": 24.77,
+       "tp": 30.59,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "强烈买入(83分) 回踩≤26.07 ATR止损24.69；LLM:周期资源无宏观冲突，位置合理"
+      },
+      {
+       "code": "600036",
+       "name": "招商银行",
+       "asof": "2026-09-07",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 41.19,
+       "buy_below": 40.366,
+       "stop_atr": 39.85,
+       "stop_ma": 39.59,
+       "tp": 47.368,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤40.37 ATR止损39.85；LLM:银行获注资直接利好，低乖离"
+      },
+      {
+       "code": "601766",
+       "name": "中国中车",
+       "asof": "2026-09-07",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 6.24,
+       "buy_below": 6.115,
+       "stop_atr": 6.0,
+       "stop_ma": 6.1,
+       "tp": 7.176,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤6.12 ATR止损6.0；LLM:基建与轨交政策受益，走势平稳"
+      },
+      {
+       "code": "603618",
+       "name": "杭电股份",
+       "asof": "2026-09-07",
+       "score": 81,
+       "signal": "强烈买入",
+       "close": 36.89,
+       "buy_below": 36.152,
+       "stop_atr": 31.49,
+       "stop_ma": 31.69,
+       "tp": 42.423,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "强烈买入(81分) 回踩≤36.15 ATR止损31.49；LLM:通信电子非高位，无显著冲突"
+      },
+      {
+       "code": "600309",
+       "name": "万华化学",
+       "asof": "2026-09-07",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 76.69,
+       "buy_below": 75.156,
+       "stop_atr": 71.78,
+       "stop_ma": 75.05,
+       "tp": 88.193,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "强烈买入(80分) 回踩≤75.16 ATR止损71.78；LLM:周期资源无冲突，乖离适中"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.418,
+       "stop_atr": 32.75,
+       "stop_ma": 33.47,
+       "tp": 39.215,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.42 ATR止损32.75；LLM:银行板块政策利好，可参与"
+      },
+      {
+       "code": "601216",
+       "name": "君正集团",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 4.78,
+       "buy_below": 4.684,
+       "stop_atr": 4.54,
+       "stop_ma": 4.59,
+       "tp": 5.497,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤4.68 ATR止损4.54；LLM:低位周期，无宏观逆风压制"
       }
      ],
      "trades": [
@@ -755,6 +762,13 @@
        "cash": 50000.0,
        "daily_return": 0.0,
        "pos_count": 0
+      },
+      {
+       "date": "2026-09-07",
+       "equity": 49708.96,
+       "cash": 26542.97,
+       "daily_return": -0.582,
+       "pos_count": 3
       }
      ],
      "daily_log": [
@@ -902,6 +916,11 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[全池]稳健：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发"
       }
      ],
      "review_log": []
@@ -914,136 +933,10 @@
      "positions": [],
      "plan": [
       {
-       "code": "600391",
-       "name": "航发科技",
-       "asof": "2026-09-07",
-       "score": 86,
-       "signal": "强烈买入",
-       "close": 36.67,
-       "buy_below": 35.57,
-       "stop_atr": 33.48,
-       "stop_ma": null,
-       "tp": 40.337,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(86分) 回踩≤35.57 ATR止损33.48（保本+5%%）"
-      },
-      {
-       "code": "600486",
-       "name": "扬农化工",
-       "asof": "2026-09-07",
-       "score": 85,
-       "signal": "强烈买入",
-       "close": 55.86,
-       "buy_below": 54.184,
-       "stop_atr": 51.53,
-       "stop_ma": null,
-       "tp": 61.446,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(85分) 回踩≤54.18 ATR止损51.53（保本+5%%）"
-      },
-      {
-       "code": "000301",
-       "name": "东方盛虹",
-       "asof": "2026-09-07",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 14.15,
-       "buy_below": 13.726,
-       "stop_atr": 12.85,
-       "stop_ma": null,
-       "tp": 15.565,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(84分) 回踩≤13.73 ATR止损12.85（保本+5%%）"
-      },
-      {
-       "code": "002430",
-       "name": "杭氧股份",
-       "asof": "2026-09-07",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 26.89,
-       "buy_below": 26.083,
-       "stop_atr": 25.03,
-       "stop_ma": null,
-       "tp": 29.579,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(83分) 回踩≤26.08 ATR止损25.03（保本+5%%）"
-      },
-      {
-       "code": "603618",
-       "name": "杭电股份",
-       "asof": "2026-09-07",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 36.28,
-       "buy_below": 35.192,
-       "stop_atr": 30.95,
-       "stop_ma": null,
-       "tp": 39.908,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(83分) 回踩≤35.19 ATR止损30.95（保本+5%%）"
-      },
-      {
-       "code": "600036",
-       "name": "招商银行",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 41.29,
-       "buy_below": 40.051,
-       "stop_atr": 39.98,
-       "stop_ma": null,
-       "tp": 45.419,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤40.05 ATR止损39.98（保本+5%%）"
-      },
-      {
-       "code": "600172",
-       "name": "黄河旋风",
-       "asof": "2026-09-07",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 15.41,
-       "buy_below": 14.948,
-       "stop_atr": 13.16,
-       "stop_ma": null,
-       "tp": 16.951,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "open",
-       "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤14.95 ATR止损13.16（保本+5%%）"
-      },
-      {
        "code": "002116",
        "name": "中国海诚",
        "asof": "2026-09-07",
-       "score": 82,
+       "score": 84,
        "signal": "强烈买入",
        "close": 7.36,
        "buy_below": 7.139,
@@ -1054,14 +947,147 @@
        "be_at": 0.05,
        "gate": "open",
        "budget": 7000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤7.14 ATR止损7.07（保本+5%%）"
+       "status": "expired",
+       "reason": "强烈买入(84分) 回踩≤7.14 ATR止损7.07（保本+5%%）；LLM:基建政策利好，技术形态健康"
+      },
+      {
+       "code": "002430",
+       "name": "杭氧股份",
+       "asof": "2026-09-07",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 26.6,
+       "buy_below": 25.802,
+       "stop_atr": 24.69,
+       "stop_ma": null,
+       "tp": 29.26,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(83分) 回踩≤25.80 ATR止损24.69（保本+5%%）；LLM:周期资源无宏观冲突，位置合理"
+      },
+      {
+       "code": "600036",
+       "name": "招商银行",
+       "asof": "2026-09-07",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 41.19,
+       "buy_below": 39.954,
+       "stop_atr": 39.85,
+       "stop_ma": null,
+       "tp": 45.309,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤39.95 ATR止损39.85（保本+5%%）；LLM:银行获注资直接利好，低乖离"
+      },
+      {
+       "code": "601766",
+       "name": "中国中车",
+       "asof": "2026-09-07",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 6.24,
+       "buy_below": 6.053,
+       "stop_atr": 6.0,
+       "stop_ma": null,
+       "tp": 6.864,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(82分) 回踩≤6.05 ATR止损6.0（保本+5%%）；LLM:基建与轨交政策受益，走势平稳"
+      },
+      {
+       "code": "603618",
+       "name": "杭电股份",
+       "asof": "2026-09-07",
+       "score": 81,
+       "signal": "强烈买入",
+       "close": 36.89,
+       "buy_below": 35.783,
+       "stop_atr": 31.49,
+       "stop_ma": null,
+       "tp": 40.579,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(81分) 回踩≤35.78 ATR止损31.49（保本+5%%）；LLM:通信电子非高位，无显著冲突"
+      },
+      {
+       "code": "600309",
+       "name": "万华化学",
+       "asof": "2026-09-07",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 76.69,
+       "buy_below": 74.389,
+       "stop_atr": 71.78,
+       "stop_ma": null,
+       "tp": 84.359,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(80分) 回踩≤74.39 ATR止损71.78（保本+5%%）；LLM:周期资源无冲突，乖离适中"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.077,
+       "stop_atr": 32.75,
+       "stop_ma": null,
+       "tp": 37.51,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.08 ATR止损32.75（保本+5%%）；LLM:银行板块政策利好，可参与"
+      },
+      {
+       "code": "601216",
+       "name": "君正集团",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 4.78,
+       "buy_below": 4.637,
+       "stop_atr": 4.54,
+       "stop_ma": null,
+       "tp": 5.258,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤4.64 ATR止损4.54（保本+5%%）；LLM:低位周期，无宏观逆风压制"
       }
      ],
      "trades": [],
      "equity_curve": [
       {
        "date": "2026-09-04",
+       "equity": 50000.0,
+       "cash": 50000.0,
+       "daily_return": 0.0,
+       "pos_count": 0
+      },
+      {
+       "date": "2026-09-07",
        "equity": 50000.0,
        "cash": 50000.0,
        "daily_return": 0.0,
@@ -1208,6 +1234,11 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[全池]严守纪律：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1219,6 +1250,12 @@
       "date": "2026-09-04",
       "equity": 50000.0,
       "daily_return": 0.0,
+      "regime": "衡"
+     },
+     {
+      "date": "2026-09-07",
+      "equity": 49744.11,
+      "daily_return": -0.512,
       "regime": "衡"
      }
     ],
@@ -1254,12 +1291,32 @@
        "prev_close": 77.66,
        "score": 73,
        "signal": "买入",
-       "last": 76.67,
-       "last_chg": -1.27,
-       "last_ts": "14:52:20"
+       "last": 76.69,
+       "last_chg": -1.18,
+       "last_ts": "14:57:24",
+       "last_close": 76.69
       }
      ],
-     "plan": [],
+     "plan": [
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.93,
+       "stop_atr": 32.75,
+       "stop_ma": null,
+       "tp": 40.92,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "open",
+       "budget": 11000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.93 ATR止损32.75；LLM:银行受特别国债注资直接利好"
+      }
+     ],
      "trades": [
       {
        "action": "buy",
@@ -1275,7 +1332,15 @@
        "pool": "six"
       }
      ],
-     "equity_curve": [],
+     "equity_curve": [
+      {
+       "date": "2026-09-07",
+       "equity": 50006.7,
+       "cash": 42337.7,
+       "daily_return": 0.013,
+       "pos_count": 1
+      }
+     ],
      "daily_log": [
       {
        "date": "2026-09-07",
@@ -1286,6 +1351,11 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[6股精选]激进：1 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1301,23 +1371,49 @@
        "code": "600309",
        "name": "万华化学",
        "asof": "2026-09-07",
-       "score": 73,
-       "signal": "买入",
-       "close": 77.66,
-       "buy_below": 76.107,
-       "stop_atr": 72.67,
-       "stop_ma": 75.12,
-       "tp": 89.309,
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 76.69,
+       "buy_below": 75.156,
+       "stop_atr": 71.78,
+       "stop_ma": 75.05,
+       "tp": 88.193,
        "trail": null,
        "be_at": null,
        "gate": "open",
        "budget": 9000.0,
-       "status": "wait",
-       "reason": "买入(73分) 回踩≤76.11 ATR止损72.67"
+       "status": "expired",
+       "reason": "强烈买入(80分) 回踩≤75.16 ATR止损71.78；LLM:乖离温和且宏观中性，无方向冲突"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.418,
+       "stop_atr": 32.75,
+       "stop_ma": 33.47,
+       "tp": 39.215,
+       "trail": null,
+       "be_at": null,
+       "gate": "open",
+       "budget": 9000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.42 ATR止损32.75；LLM:银行受特别国债注资直接利好"
       }
      ],
      "trades": [],
-     "equity_curve": [],
+     "equity_curve": [
+      {
+       "date": "2026-09-07",
+       "equity": 50000.0,
+       "cash": 50000.0,
+       "daily_return": 0.0,
+       "pos_count": 0
+      }
+     ],
      "daily_log": [
       {
        "date": "2026-09-07",
@@ -1328,6 +1424,11 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[6股精选]稳健：1 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[6股精选]稳健：2 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1338,9 +1439,54 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [],
+     "plan": [
+      {
+       "code": "600309",
+       "name": "万华化学",
+       "asof": "2026-09-07",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 76.69,
+       "buy_below": 74.389,
+       "stop_atr": 71.78,
+       "stop_ma": null,
+       "tp": 84.359,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "强烈买入(80分) 回踩≤74.39 ATR止损71.78（保本+5%%）；LLM:乖离温和且宏观中性，无方向冲突"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-07",
+       "score": 79,
+       "signal": "买入",
+       "close": 34.1,
+       "buy_below": 33.077,
+       "stop_atr": 32.75,
+       "stop_ma": null,
+       "tp": 37.51,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "open",
+       "budget": 7000.0,
+       "status": "expired",
+       "reason": "买入(79分) 回踩≤33.08 ATR止损32.75（保本+5%%）；LLM:银行受特别国债注资直接利好"
+      }
+     ],
      "trades": [],
-     "equity_curve": [],
+     "equity_curve": [
+      {
+       "date": "2026-09-07",
+       "equity": 50000.0,
+       "cash": 50000.0,
+       "daily_return": 0.0,
+       "pos_count": 0
+      }
+     ],
      "daily_log": [
       {
        "date": "2026-09-07",
@@ -1351,13 +1497,25 @@
        "date": "2026-09-07",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发"
+      },
+      {
+       "date": "2026-09-07",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：2 单待盘中触发"
       }
      ],
      "review_log": []
     }
    },
    "mix": {
-    "equity_curve": [],
+    "equity_curve": [
+     {
+      "date": "2026-09-07",
+      "equity": 50001.68,
+      "daily_return": 0.0,
+      "regime": "衡"
+     }
+    ],
     "daily_log": [],
     "regime": [],
     "meta": {
