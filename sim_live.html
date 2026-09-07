@@ -298,8 +298,8 @@
       <div class="chart-row">
         <div class="sec" data-nav="持仓" data-nav-icon="briefcase">
           <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>当前持仓</div>
-          ${holds.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>买入日</th><th>买入时间</th><th>股数</th><th>成本</th><th>信号分</th><th>止损/止盈</th></tr></thead><tbody>
-            ${holds.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.buy_date}</td><td class="neutral">${p.buy_time || '--'}</td><td>${p.shares}</td><td>${fmt(p.cost)}</td><td>${p.score || '--'}</td><td>${p.stop_atr ? '<span class="down">' + fmt(p.stop_atr) + '</span>' : '--'} / ${p.tp ? '<span class="up">' + fmt(p.tp) + '</span>' : '--'}</td></tr>`).join('')}
+          ${holds.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>成本</th><th>现价</th><th>当日</th><th>收益</th><th>买入</th><th>止损/止盈</th></tr></thead><tbody>
+            ${holds.map(p => { const pxv = p.last != null ? p.last : p.last_close != null ? p.last_close : p.cost; const pnl = (pxv / p.cost - 1) * 100; return `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${fmt(p.cost)}</td><td class="${p.last != null ? pcl((pxv/p.cost-1)*100) : 'neutral'}">${fmt(pxv)}</td><td class="${p.last_chg != null ? pcl(p.last_chg) : 'neutral'}">${p.last_chg != null ? RV.fmt.pct(p.last_chg) : '--'}</td><td class="${pcl(pnl)}">${RV.fmt.pct(pnl)}</td><td>${p.buy_date} ${p.buy_time || ''}</td><td>${p.stop_atr ? '<span class="down">' + fmt(p.stop_atr) + '</span>' : '--'} / ${p.tp ? '<span class="up">' + fmt(p.tp) + '</span>' : '--'}</td></tr>`; }).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等回踩</div>'}
         </div>
         <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">

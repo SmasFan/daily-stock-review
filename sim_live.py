@@ -523,6 +523,10 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
             continue
         prev = pos.get("prev_close") or pos["cost"]
         chg = (px / prev - 1) * 100 if prev else 0
+        # 现价印记：供页面展示个股实时盈亏/当日涨跌
+        pos["last"] = px
+        pos["last_chg"] = round(chg, 2)
+        pos["last_ts"] = hms
         if px > pos.get("peak", pos["cost"]):
             pos["peak"] = px
         gain = (px / pos["cost"] - 1) * 100
@@ -637,6 +641,7 @@ def finalize_pool(state, pool, date):
             it = items.get(pos["code"])
             if it:
                 pos["last_close"] = it.get("close")
+                pos["last"] = it.get("close")
         eq = equity_of(a)
         a["equity_curve"] = [x for x in a["equity_curve"] if x["date"] != date]
         prev = a["equity_curve"][-1]["equity"] if a["equity_curve"] else CASH_START
