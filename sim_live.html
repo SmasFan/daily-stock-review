@@ -104,6 +104,8 @@
     all: { label: '全池', icon: 'layer-group', name: '🗂 全池(36股)', desc: '全量 36 股复盘池' },
   };
   let curPool = 'six';   // 当前查看池（页顶 tab 切换，仅展示层）
+  let selKey = 'balanced';  // 当前选中账户卡
+  let refreshTimer = null;
 
   async function init() {
     try {
@@ -121,6 +123,15 @@
     }
   }
   init();
+  // 自动刷新：每 60s 重拉 sim_live.json → 重渲染，保持当前池/账户视角；页面隐藏时暂停
+  async function autoRefresh() {
+    if (document.hidden) return;
+    try {
+      S = await RV.API.fetch('sim_live.json');
+      render();
+    } catch (e) { /* 网络瞬断跳过本轮 */ }
+  }
+  refreshTimer = setInterval(autoRefresh, 60000);
 
   /* 双池并行：无切换 API（两池常驻并行）。tab 只切查看。 */
   function book() { return (S.pools || {})[curPool] || S; }  // 兼容 v3 单池（顶层 accounts）
@@ -151,6 +162,7 @@
         <span class="sec-title" style="margin:0"><span class="ti">${RV.ui.icon('layer-group')}</span>查看池 <span class="sec-chip" style="font-size:10.5px">双池并行 · 切tab只看数据不动账本</span></span>
         ${Object.keys(POOL_INFO).map(p => `<span class="ps-btn ${p === curPool ? 'on' : ''}" data-pool="${p}">${POOL_INFO[p].name}</span>`).join('')}
         <span class="sec-chip" id="ps-hint" style="font-size:11px">当前查看 <b>${cur.name}</b> · ${cur.desc}</span>
+        <span class="sec-chip" id="ps-upd" style="font-size:10.5px">自动刷新·每60s</span>
       </div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
@@ -198,7 +210,7 @@
         if (p && p !== curPool) { curPool = p; render(); }
       }));
     loadLlmMacro();
-    select('balanced');
+    select(selKey);
   }
 
   /* LLM 宏观消息面观察卡（macro_llm.py 生成 data/macro_llm_data.json） */
@@ -267,6 +279,7 @@
   }
 
   function select(key) {
+    selKey = key;
     document.querySelectorAll('.strat-card').forEach(el => el.classList.remove('active'));
     const el = document.getElementById('sc-' + key);
     if (el) el.classList.add('active');
