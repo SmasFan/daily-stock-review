@@ -64,6 +64,8 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘K线导出失败" >> "$LOG"
   python3 sim_live.py --review --date $(date +%F) >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘复盘失败" >> "$LOG"
+  python3 sim_sprint.py --review --date $(date +%F) >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘收盘失败" >> "$LOG"
 fi
 
 # 提交并推送（数据 + 页面 + 资源 + workflow）

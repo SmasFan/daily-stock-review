@@ -16,9 +16,31 @@
    "hard_stop": -0.065
   }
  },
- "cash": 50000.0,
- "positions": [],
- "trades": [],
+ "cash": 27199.1618,
+ "positions": [
+  {
+   "code": "002396",
+   "name": "002396",
+   "shares": 600,
+   "cost": 37.99,
+   "buy_time": "2026-09-07 14:44:18",
+   "peak": 37.99,
+   "last": 37.99,
+   "last_chg": 2.647933,
+   "stop": 35.521
+  }
+ ],
+ "trades": [
+  {
+   "action": "buy",
+   "ts": "2026-09-07 14:44:18",
+   "code": "002396",
+   "name": "002396",
+   "price": 37.99,
+   "shares": 600,
+   "reason": "AI冲刺建仓"
+  }
+ ],
  "equity_curve": [],
  "log": [],
  "signals": []

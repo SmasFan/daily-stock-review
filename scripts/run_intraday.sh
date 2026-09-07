@@ -73,6 +73,10 @@ if [ "$IN_TRADING" = "1" ]; then
   python3 sim_live.py --intraday >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘盘中巡检失败" >> data/auto_run.log
 
+  # 一周冲刺模拟盘：AI选股重仓，自动扫止盈/止损（每5分钟）
+  python3 sim_sprint.py --scan >> data/auto_run.log 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘巡检失败" >> data/auto_run.log
+
   # 每 30 分钟：资金数据 + 回测 + 期货（含当天 K 线）
   if [ $((MM % 30)) -eq 0 ]; then
     python3 run_review.py --mode institution >> data/auto_run.log 2>&1 \
