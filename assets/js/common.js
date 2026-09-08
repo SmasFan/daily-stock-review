@@ -81,6 +81,7 @@
         ['metals', '期货', 'coins', 'metals.html'],
         ['sim', '模拟盘', 'gamepad', 'sim.html'],
         ['simlive', '实时模拟', 'stopwatch', 'sim_live.html'],
+        ['binance', '币安Bot', 'wallet', 'binance.html'],
         ['docs', '说明', 'book-open', 'docs.html'],
       ];
       const html = `

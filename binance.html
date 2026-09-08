@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>币安Bot 状态 · 每日复盘工作台</title>
+<link rel="stylesheet" href="assets/css/common.css?v=3">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+  .bn-tip { font-size: 12px; color: var(--text-2); background: var(--surface); border: 1px dashed var(--border); border-radius: 8px; padding: 6px 10px; margin: 10px 0 6px; line-height: 1.7; }
+  .bn-tip i { color: var(--accent); margin-right: 4px; }
+  #bn-frame { flex: 1; width: 100%; border: 1px solid var(--border); border-radius: 10px; background: #fff; min-height: 60vh; }
+  .bn-fail { padding: 40px 16px; text-align: center; color: var(--text-2); }
+  .bn-fail i { font-size: 40px; margin-bottom: 10px; color: var(--down, #dc2626); }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js?v=2"></script>
+<script src="assets/js/rvui.js?v=2"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  const TIP = '<div class="bn-tip"><i class="fa-solid fa-circle-info"></i>币安模拟盘交易Bot状态（由 binance-llm-bot/status_page.py 每 30 秒自动生成，页面内自动刷新）。数据仅供参考，不构成投资建议。</div>';
+
+  // 页面骨架：header + 内容
+  app.innerHTML = RV.ui.header('币安Bot 状态', 'binance-llm-bot · 每 30 秒自动刷新', 'binance') + TIP + '<div class="loading" id="bn-load">状态加载中…</div>';
+
+  const loadEl = document.getElementById('bn-load');
+
+  // 探测镜像文件是否存在，失败给提示而非空 iframe
+  try {
+    const r = await fetch('data/binance_status.html', { method: 'HEAD' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const iframe = document.createElement('iframe');
+    iframe.id = 'bn-frame';
+    iframe.src = 'data/binance_status.html';
+    // 同源：读内容高度撑开，避免双重滚动条
+    const fit = () => {
+      try {
+        const h = iframe.contentDocument ? iframe.contentDocument.documentElement.scrollHeight : 0;
+        if (h > 100) iframe.style.height = h + 'px';
+      } catch (e) { /* 跨域/加载中忽略 */ }
+    };
+    iframe.onload = fit;
+    window.addEventListener('resize', fit);
+    setInterval(fit, 4000);
+    loadEl.replaceWith(iframe);
+  } catch (e) {
+    loadEl.outerHTML = `<div class="bn-fail"><div><i class="fa-solid fa-triangle-exclamation"></i></div>
+      状态镜像 data/binance_status.html 未生成。<br>请确认 binance-llm-bot 的 status_page.py 进程在运行（watchdog 自动管理）。<br><small>${e.message}</small></div>`;
+  }
+})();
+</script>
+</body>
+</html>
