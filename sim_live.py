@@ -705,11 +705,14 @@ def do_review(state, pool, date):
         a["daily_log"].append({"date": date, "kind": "review", "note": note})
 
 
-def expiry_plan(state, pool):
-    """收盘后：当日未触发 wait 单标记 expired（次日 --plan 重建）。"""
+def expiry_plan(state, pool, date):
+    """收盘后：过期旧计划单标 expired。
+    判据：asof < 结算日 —— 即该计划对应的信号日是过去交易日、当日未触发，已无用。
+    刚生成的次日计划 asof == date（同轮 plan→review）或未来日会保留到次日盘中触发。
+    """
     for k in REAL_ACCOUNTS:
         for p in accts(state, pool)[k]["plan"]:
-            if p.get("status", "wait") == "wait":
+            if p.get("status", "wait") == "wait" and (p.get("asof") or "") < date:
                 p["status"] = "expired"
 
 
@@ -882,7 +885,7 @@ def main():
         for pool in target_pools:
             regims.append((pool, finalize_pool(state, pool, date)))
             do_review(state, pool, date)
-            expiry_plan(state, pool)
+            expiry_plan(state, pool, date)
             for k in REAL_ACCOUNTS:
                 a = accts(state, pool)[k]
                 ec = a["equity_curve"]
