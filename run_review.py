@@ -21,6 +21,7 @@ import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -139,11 +140,31 @@ def build_names_from_quotes(codes, offline):
     return {c: (quotes.get(c) or {}).get("name") or name_map.get(c) or c for c in codes}, quotes
 
 
+def _etf_extra(offline=False):
+    """自选 ETF 前5成分(不在自选内) -> (codes, sector_map)。
+    由 scripts/etf_components.py 每周生成 data/etf_components.json;
+    成分随复盘一起打分, 使实时模拟盘全池 = 全部自选 ∪ ETF成分。"""
+    try:
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "etf_components.json")
+        d = json.load(open(p, encoding="utf-8"))
+        extra = d.get("extra") or {}
+        if not extra or d.get("fetchedAt", "")[:10] != time.strftime("%Y-%m-%d"):
+            pass  # 非今日缓存也放行(季报数据, 周频足够), 数据新鲜度由 etf_components.py 刷新
+        codes = list(extra.keys())
+        sec = {c: (v.get("sector") or "") for c, v in extra.items()}
+        print(f"   ETF成分扩展: +{len(codes)} 只(自选ETF前5重仓, 季报口径)")
+        return codes, sec
+    except Exception as e:
+        return [], {}
+
+
 def run_review(args):
     print("== 拉取自选股数据并技术分析 ==")
-    names, quotes = build_names_from_quotes(WATCHLIST_CODES, args.offline)
-    pool = analyze_codes(WATCHLIST_CODES, names, args.offline)
-    print(f"   自选池成功分析 {len(pool)} / {len(WATCHLIST_CODES)} 只")
+    extra_codes, extra_sector = _etf_extra(args.offline)
+    scope = list(WATCHLIST_CODES) + [c for c in extra_codes if c not in WATCHLIST_CODES]
+    names, quotes = build_names_from_quotes(scope, args.offline)
+    pool = analyze_codes(scope, names, args.offline)
+    print(f"   自选池成功分析 {len(pool)} / {len(scope)} 只 (自选{len(WATCHLIST_CODES)}+ETF成分{len(extra_codes)})")
 
     # 大盘模块：指数 + 大盘池
     print("== 大盘模块 ==")
@@ -161,6 +182,7 @@ def run_review(args):
 
     # 板块映射（复盘按板块分组展示）
     sector_map = sp.get_code_sector()
+    sector_map.update(extra_sector)
     for code, v in pool.items():
         v[2].sector = sector_map.get(code, "")
     for code, v in market_pool.items():

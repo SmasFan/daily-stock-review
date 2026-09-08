@@ -101,7 +101,7 @@
   };
   const POOL_INFO = {
     six: { label: '6股精选', icon: 'bullseye', name: '🎯 6股精选', desc: '工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔' },
-    all: { label: '全池', icon: 'layer-group', name: '🗂 全池(36股)', desc: '全量 36 股复盘池' },
+    all: { label: '全池', icon: 'layer-group', name: '🗂 全池', desc: '全部自选 + ETF成分(复盘动态扩容)' },
     sprint: { label: '一周冲刺', icon: 'rocket', name: '🚀 一周冲刺', desc: 'AI主动选股 · 集中重仓 ≤2只 · 目标周+10%' },
   };
   let curPool = 'six';   // 当前查看池/盘（页顶 tab，仅展示层）
@@ -185,7 +185,7 @@
       <div class="sec" data-nav="操作逻辑" data-nav-icon="magnifying-glass-chart">
         <div class="sec-title"><span class="ti">${RV.ui.icon('magnifying-glass-chart')}</span>操作逻辑 · 分析点</div>
         <div style="font-size:12px;line-height:1.9">
-          <div>· <b>双池并行：</b>页顶 tab 切换查看 <b>6股精选</b>（工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔，抓个股新闻+消息面评审）与 <b>全池</b>（36 股复盘池，宏观闸门）——<b>两池常驻并行</b>，各持独立 5万×3 策略账户，互不共享资金/计划/持仓，盘中同步触发成交。切 tab 只看数据，不动账本。</div>
+          <div>· <b>双池并行：</b>页顶 tab 切换查看 <b>6股精选</b>（工业富联/长江电力/紫金矿业/万华化学/宁波银行/雅戈尔，抓个股新闻+消息面评审）与 <b>全池</b>（全部自选股 + 自选ETF前5成分股拆入，每日复盘动态；宏观闸门）——<b>两池常驻并行</b>，各持独立 5万×3 策略账户，互不共享资金/计划/持仓，盘中同步触发成交。切 tab 只看数据，不动账本。</div>
           <div>· <b>何时买：</b>现价回踩到计划买点才触发；高开冲高 &gt;3% 不追</div>
           <div>· <b>何时卖：</b>破 ATR/保本止损、到止盈价、峰值回落8%（曾+8%以上，激进账户）</div>
           <div>· <b>风控：</b>大盘空头/普涨过热日不加新仓；每账户独立 5万、100股整倍数</div>

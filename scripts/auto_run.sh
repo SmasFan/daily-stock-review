@@ -14,6 +14,15 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   python3 scripts/update_sector_valuation.py >> "$LOG" 2>&1 || echo "[warn] 板块估值更新失败" >> "$LOG"
 fi
 
+# ETF 成分刷新（自选ETF前5重仓; 季报口径 周频足够; 供复盘把成分并入全池）——须在 run_review 前
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
+  ETF_CACHE=data/etf_components.json
+  if [ ! -f "$ETF_CACHE" ] || [ $(( $(date +%s) - $(stat -c %Y "$ETF_CACHE") )) -gt 604800 ]; then
+    python3 scripts/etf_components.py >> "$LOG" 2>&1 \
+      || echo "[warn] ETF成分刷新失败，沿用上次缓存" >> "$LOG"
+  fi
+fi
+
 # 运行分析（股票分析需在交易时段；盘后复盘建议 15:30 后）
 python3 run_review.py --mode "$MODE" --top 10 >> "$LOG" 2>&1 || {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] 分析失败，跳过提交" >> "$LOG"

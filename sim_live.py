@@ -391,7 +391,7 @@ def make_plan(state, review, asof, pool, skip_llm=False):
         held = {p["code"] for p in acct["positions"]}
         cands = []
         for it in items:
-            if _is_etf(it.get("code")) or it.get("code") in held:
+            if it.get("code") in held:
                 continue
             if pool == "six" and it.get("code") not in SIX_POOL:
                 continue
