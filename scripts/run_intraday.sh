@@ -77,6 +77,10 @@ if [ "$IN_TRADING" = "1" ]; then
   python3 sim_sprint.py --scan >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘巡检失败" >> data/auto_run.log
 
+  # 空转守卫：盘中双池无待触发单(计划过期/未生成) → 自动重建修复（每5分钟）
+  python3 scripts/sim_live_guard.py >> data/auto_run.log 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘空转守卫失败" >> data/auto_run.log
+
   # 每 30 分钟：资金数据 + 回测 + 期货（含当天 K 线）
   if [ $((MM % 30)) -eq 0 ]; then
     python3 run_review.py --mode institution >> data/auto_run.log 2>&1 \
