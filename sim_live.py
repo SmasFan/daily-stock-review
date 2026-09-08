@@ -376,6 +376,95 @@ def market_gate(review):
     return gate, ("；".join(why) if why else "open")
 
 
+def _strategy_bonus(key, it):
+    """策略偏好评分（v3.2）: 各策略候选排序差异化。
+    激进=收益最大化（强动量/高趋势强度/量能/温和正乖离）;
+    稳健=胜率优先（趋势多头+回调到位+主力进场，不追高不接飞刀）;
+    严守=最保守（深度回踩到位才认可，过热/破位重罚）。
+    只影响入池排序，不改 review 全局分。
+    """
+    def num(x):
+        return x if isinstance(x, (int, float)) else 0.0
+    b = 0.0
+    chg60 = num(it.get("change_60d"))
+    bias5 = num(it.get("bias_ma5"))
+    rsi6 = num(it.get("rsi6"))
+    ts = num(it.get("trend_strength"))
+    vr = num(it.get("volume_ratio"))
+    ff = it.get("fund_flow")
+    main_net = num(ff.get("main_net")) if isinstance(ff, dict) else 0.0
+    if key == "aggressive":
+        # 收益优先：动量 + 趋势强度 + 放量 + 温和正乖离；但主力大幅出逃/极端涨幅重罚（防接盘）
+        if chg60 > 0:
+            b += min(chg60 * 0.12, 10.0)
+            if chg60 > 80:
+                b -= 5                      # 翻倍高位=离场风险
+        b += max(ts - 70, 0) * 0.15
+        if vr >= 1.0:
+            b += 2.0
+        if 0 < bias5 < 6:
+            b += bias5 * 0.4
+        if main_net > 0:
+            b += 1.5
+        elif main_net < -10000e4:
+            b -= 4.0
+        b -= max(rsi6 - 85, 0) * 0.3
+    elif key == "balanced":
+        # 胜率优先：回调到位 + 主力进场；过热/破位/主力出逃重罚
+        if 5 <= chg60 <= 45:
+            b += 4
+        elif chg60 > 60:
+            b -= 6
+        elif chg60 < -10:
+            b -= 4
+        if -3 <= bias5 <= 1:
+            b += 4
+        elif bias5 > 5:
+            b -= 5
+        elif bias5 < -4:
+            b -= 3
+        if main_net > 0:
+            b += 2.5
+        elif main_net < -8000e4:
+            b -= 6.0                       # 主力大幅出逃(万元)
+        elif main_net < -2000e4:
+            b -= 3.0
+        if ts >= 60:
+            b += 1.5
+        if rsi6 > 75:
+            b -= 3
+        if vr > 2.5:
+            b -= 1.5
+    else:  # disciplined 严守纪律：只认可深度回踩企稳+主力不撤，过热重罚
+        if 5 <= chg60 <= 35:
+            b += 5
+        elif chg60 > 50:
+            b -= 8
+        elif chg60 < -5:
+            b -= 6
+        if -4 <= bias5 <= 0:
+            b += 6                        # 深度回踩至均线(买点质量最高)
+        elif bias5 <= 2:
+            b += 2
+        else:
+            b -= 9                        # 偏高乖离拒买(严守不追)
+        if main_net > 0:
+            b += 3
+        elif main_net < -5000e4:
+            b -= 7
+        elif main_net < -1000e4:
+            b -= 3.5
+        if rsi6 > 75:
+            b -= 8                        # 纪律账户显著厌恶过热
+        elif rsi6 > 68:
+            b -= 4
+        if ts < 65:
+            b -= 4
+        if vr > 2.0:
+            b -= 2
+    return b
+
+
 def make_plan(state, review, asof, pool, skip_llm=False):
     """对单个池生成 3 账户回踩买点计划。"""
     items = review.get("items", []) or []
@@ -402,7 +491,8 @@ def make_plan(state, review, asof, pool, skip_llm=False):
             if it.get("trend_status") not in ("强势多头", "多头排列"):
                 continue
             cands.append(it)
-        cands.sort(key=lambda x: -x.get("score", 0))
+        # 策略差异化排序：原始分 + 策略偏好分（v3.2）
+        cands.sort(key=lambda x: -(x.get("score", 0) + _strategy_bonus(key, x)))
         per_key[key] = cands
         for it in cands:
             cand_pool.setdefault(it.get("code"), it)
