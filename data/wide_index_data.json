@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-09 09:33:53",
+  "generatedAt": "2026-09-09 09:43:33",
   "items": [
     {
       "code": "sh000300",
       "name": "沪深300",
       "kind": "A股宽基",
-      "close": 4565.92,
-      "change_pct": 0.16,
+      "close": 4559.07,
+      "change_pct": 0.01,
       "prev_close": 4558.74,
       "factors": {
         "trend_status": "空头排列",
@@ -51,7 +51,7 @@
       "code": "sh000905",
       "name": "中证500",
       "kind": "A股宽基",
-      "close": 7798.61,
+      "close": 7798.59,
       "change_pct": 0.36,
       "prev_close": 7770.73,
       "factors": {
@@ -97,8 +97,8 @@
       "code": "sh000510",
       "name": "中证A500",
       "kind": "A股宽基",
-      "close": 5643.24,
-      "change_pct": 0.23,
+      "close": 5637.33,
+      "change_pct": 0.13,
       "prev_close": 5630.04,
       "factors": {
         "trend_status": "空头排列",
@@ -133,15 +133,15 @@
         "boll_pos": 0.267
       },
       "price_ma20": 5713.23,
-      "pe": 16.05,
+      "pe": 16.03,
       "pe_source": "腾讯"
     },
     {
       "code": "sh000688",
       "name": "科创50",
       "kind": "A股宽基",
-      "close": 1607.34,
-      "change_pct": 1.03,
+      "close": 1601.02,
+      "change_pct": 0.63,
       "prev_close": 1591.0,
       "factors": {
         "trend_status": "空头排列",
@@ -186,8 +186,8 @@
       "code": "hkHSTECH",
       "name": "恒生科技",
       "kind": "港股",
-      "close": 4454.85,
-      "change_pct": 0.0,
+      "close": 4459.27,
+      "change_pct": 0.1,
       "prev_close": 4454.85,
       "factors": {
         "trend_status": "空头排列",
@@ -232,8 +232,8 @@
       "code": "sh513120",
       "name": "港股创新药",
       "kind": "港股",
-      "close": 1.296,
-      "change_pct": -1.22,
+      "close": 1.299,
+      "change_pct": -0.99,
       "prev_close": 1.312,
       "factors": {
         "trend_status": "弱势空头",
@@ -273,8 +273,8 @@
       "code": "sh513050",
       "name": "中概互联",
       "kind": "海外中概",
-      "close": 1.033,
-      "change_pct": -0.86,
+      "close": 1.038,
+      "change_pct": -0.38,
       "prev_close": 1.042,
       "factors": {
         "trend_status": "空头排列",
@@ -452,8 +452,8 @@
       "code": "sh513290",
       "name": "纳指生物",
       "kind": "美股生物",
-      "close": 1.769,
-      "change_pct": -1.72,
+      "close": 1.765,
+      "change_pct": -1.94,
       "prev_close": 1.8,
       "factors": {
         "trend_status": "弱势空头",

@@ -52,9 +52,9 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.42,
-       "last_chg": 0.28,
-       "last_ts": "09:34:11",
+       "last": 14.21,
+       "last_chg": -1.18,
+       "last_ts": "09:43:37",
        "last_close": 14.49
       },
       {
@@ -74,9 +74,9 @@
        "prev_close": 27.29,
        "score": 86,
        "signal": "强烈买入",
-       "last": 27.17,
-       "last_chg": -0.44,
-       "last_ts": "09:34:11",
+       "last": 27.31,
+       "last_chg": 0.07,
+       "last_ts": "09:43:37",
        "last_close": 27.47
       },
       {
@@ -96,9 +96,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.75,
-       "last_chg": -4.81,
-       "last_ts": "09:34:11",
+       "last": 24.54,
+       "last_chg": -5.62,
+       "last_ts": "09:43:37",
        "last_close": 25.01
       },
       {
@@ -118,9 +118,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.78,
-       "last_chg": -1.26,
-       "last_ts": "09:34:11",
+       "last": 18.46,
+       "last_chg": -2.94,
+       "last_ts": "09:43:37",
        "last_close": 18.85
       },
       {
@@ -140,9 +140,9 @@
        "prev_close": 28.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 27.73,
-       "last_chg": -2.43,
-       "last_ts": "09:34:11",
+       "last": 27.77,
+       "last_chg": -2.29,
+       "last_ts": "09:43:37",
        "last_close": 27.85
       }
      ],
@@ -162,7 +162,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(86分) 回踩≤14.97 ATR止损14.4"
       },
       {
@@ -180,7 +180,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(81分) 回踩≤1.40 ATR止损1.35"
       },
       {
@@ -198,7 +198,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(83分) 回踩≤7.78 ATR止损7.42"
       },
       {
@@ -216,7 +216,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(84分) 回踩≤40.70 ATR止损39.57"
       },
       {
@@ -234,7 +234,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(81分) 回踩≤19.87 ATR止损18.4"
       },
       {
@@ -252,7 +252,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(82分) 回踩≤2.17 ATR止损2.15"
       },
       {
@@ -270,7 +270,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(82分) 回踩≤1.12 ATR止损1.1"
       },
       {
@@ -288,7 +288,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "skip_full",
+       "status": "wait",
        "reason": "强烈买入(82分) 回踩≤4.80 ATR止损4.59"
       }
      ],
@@ -562,6 +562,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[全池]激进：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发"
       }
      ],
      "review_log": []
@@ -589,9 +594,9 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.42,
-       "last_chg": 0.28,
-       "last_ts": "09:34:11",
+       "last": 14.21,
+       "last_chg": -1.18,
+       "last_ts": "09:43:37",
        "last_close": 14.49
       },
       {
@@ -611,9 +616,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.75,
-       "last_chg": -4.81,
-       "last_ts": "09:34:11",
+       "last": 24.54,
+       "last_chg": -5.62,
+       "last_ts": "09:43:37",
        "last_close": 25.01
       },
       {
@@ -633,9 +638,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.78,
-       "last_chg": -1.26,
-       "last_ts": "09:34:11",
+       "last": 18.46,
+       "last_chg": -2.94,
+       "last_ts": "09:43:37",
        "last_close": 18.85
       }
      ],
@@ -1026,6 +1031,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[全池]稳健：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1381,6 +1391,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[全池]严守纪律：8 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1420,7 +1435,7 @@
      "key": "aggressive",
      "label": "激进",
      "start_cash": 50000.0,
-     "cash": 34016.206300000005,
+     "cash": 23699.112100000006,
      "positions": [
       {
        "code": "600309",
@@ -1439,9 +1454,9 @@
        "prev_close": 77.66,
        "score": 73,
        "signal": "买入",
-       "last": 78.0,
-       "last_chg": 0.44,
-       "last_ts": "09:34:11",
+       "last": 77.22,
+       "last_chg": -0.57,
+       "last_ts": "09:43:37",
        "last_close": 78.1
       },
       {
@@ -1457,50 +1472,34 @@
        "trail": 0.1,
        "be_at": null,
        "be_on": false,
-       "peak": 27.73,
+       "peak": 27.77,
        "prev_close": 27.87,
        "score": 70,
-       "signal": "买入"
-      }
-     ],
-     "plan": [
+       "signal": "买入",
+       "last": 27.77,
+       "last_chg": -0.36,
+       "last_ts": "09:43:37"
+      },
       {
        "code": "002142",
        "name": "宁波银行",
-       "asof": "2026-09-08",
-       "score": 82,
-       "signal": "强烈买入",
-       "close": 34.66,
-       "buy_below": 34.4,
+       "shares": 300,
+       "cost": 34.38,
+       "buy_date": "2026-09-09",
+       "buy_time": "09:43:37",
        "stop_atr": 33.29,
        "stop_ma": null,
        "tp": 41.592,
        "trail": 0.1,
        "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤34.40 ATR止损33.29；LLM:获注资利好支撑，估值稳健，可持有"
-      },
-      {
-       "code": "600900",
-       "name": "长江电力",
-       "asof": "2026-09-08",
-       "score": 70,
-       "signal": "买入",
-       "close": 27.87,
-       "buy_below": 27.731,
-       "stop_atr": 27.01,
-       "stop_ma": null,
-       "tp": 33.444,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "open",
-       "budget": 11000.0,
-       "status": "filled",
-       "reason": "买入(70分) 回踩≤27.73 ATR止损27.01；LLM:防御属性契合中性环境，无高位风险"
+       "be_on": false,
+       "peak": 34.38,
+       "prev_close": 34.66,
+       "score": 82,
+       "signal": "强烈买入"
       }
      ],
+     "plan": [],
      "trades": [
       {
        "action": "buy",
@@ -1525,6 +1524,19 @@
        "shares": 300,
        "chg_at_fill": -0.5,
        "reason": "买入(70分) 回踩≤27.73 ATR止损27.01；LLM:防御属性契合中性环境，无高位风险",
+       "strategy": "aggressive",
+       "pool": "six"
+      },
+      {
+       "action": "buy",
+       "date": "2026-09-09",
+       "time": "09:43:37",
+       "code": "002142",
+       "name": "宁波银行",
+       "price": 34.38,
+       "shares": 300,
+       "chg_at_fill": -0.81,
+       "reason": "强烈买入(82分) 回踩≤34.40 ATR止损33.29；LLM:获注资利好支撑，估值稳健，可持有",
        "strategy": "aggressive",
        "pool": "six"
       }
@@ -1590,6 +1602,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[6股精选]激进：2 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1617,7 +1634,7 @@
        "gate": "open",
        "budget": 9000.0,
        "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤33.97 ATR止损33.29；LLM:获注资利好支撑，估值稳健，可持有"
+       "reason": "强烈买入(82分) 回踩≤33.97 ATR止损33.29"
       },
       {
        "code": "600309",
@@ -1635,7 +1652,7 @@
        "gate": "open",
        "budget": 9000.0,
        "status": "wait",
-       "reason": "买入(78分) 回踩≤76.53 ATR止损73.17；LLM:涨幅温和无追高风险，周期中性"
+       "reason": "买入(78分) 回踩≤76.53 ATR止损73.17"
       },
       {
        "code": "600900",
@@ -1653,7 +1670,7 @@
        "gate": "open",
        "budget": 9000.0,
        "status": "wait",
-       "reason": "买入(70分) 回踩≤27.31 ATR止损27.01；LLM:防御属性契合中性环境，无高位风险"
+       "reason": "买入(70分) 回踩≤27.31 ATR止损27.01"
       }
      ],
      "trades": [],
@@ -1718,6 +1735,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[6股精选]稳健：3 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[6股精选]稳健：3 单待盘中触发"
       }
      ],
      "review_log": []
@@ -1745,7 +1767,7 @@
        "gate": "open",
        "budget": 7000.0,
        "status": "wait",
-       "reason": "买入(78分) 回踩≤75.75 ATR止损73.17（保本+5%%）；LLM:涨幅温和无追高风险，周期中性"
+       "reason": "买入(78分) 回踩≤75.75 ATR止损73.17（保本+5%%）"
       },
       {
        "code": "002142",
@@ -1763,7 +1785,7 @@
        "gate": "open",
        "budget": 7000.0,
        "status": "wait",
-       "reason": "强烈买入(82分) 回踩≤33.62 ATR止损33.29（保本+5%%）；LLM:获注资利好支撑，估值稳健，可持有"
+       "reason": "强烈买入(82分) 回踩≤33.62 ATR止损33.29（保本+5%%）"
       }
      ],
      "trades": [],
@@ -1813,6 +1835,11 @@
        "date": "2026-09-08",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发"
+      },
+      {
+       "date": "2026-09-08",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：2 单待盘中触发"
       },
       {
        "date": "2026-09-08",
