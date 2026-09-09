@@ -1,7 +1,7 @@
 {
  "meta": {
   "created": "2026-09-05 10:12:21",
-  "strategy_version": "v3.3",
+  "strategy_version": "v3.4",
   "accounts": [
    "aggressive",
    "balanced",
@@ -30,6 +30,12 @@
    "from": "v3.2",
    "to": "v3.3",
    "change": "v3.3 盘中整点复盘找买点: 原计划仅收盘auto_run生成一次, 盘中被动等触发; 现交易时段每整点(run_intraday MM%60 review后)用最新全量成分版复盘(326)重建双池待触发计划 --intraday-plan: 未成交wait单按最新信号/价格刷新回踩买点, 新走强信号股盘中即入计划可触发; 跳过LLM评审(skip), 幂等仅记录新增diff日志; recommend版(256无成分)自动跳过。动机: 用户要求盘中也要复盘找买点。9/9实盘验证: 激进盘中新增长高电气/世纪华通/纳指ETF/中航沈飞"
+  },
+  {
+   "date": "2026-09-09",
+   "from": "v3.3",
+   "to": "v3.4",
+   "change": "v3.4 盘中复盘刷新频率 60分钟→30分钟: run_intraday.sh MM%30 轮先跑全量成分版review再 sim_live --intraday-plan(与资金/回测/期货同轮), 盘中待触发买点每30分钟更新一次(10:00-15:00), 新信号股最快30分钟内入计划。动机: 用户要求30分钟粒度"
   }
  ],
  "pools": {

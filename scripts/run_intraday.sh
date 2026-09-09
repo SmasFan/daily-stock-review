@@ -2,8 +2,7 @@
 # 盘中任务（crontab */5 触发）：
 # - 每 5 分钟：生成本地推荐+趋势数据
 # - 每 10 分钟（MM%10==0）：跟踪数据 + 提交推送 GitHub
-# - 每 30 分钟（MM%30==0）：资金（institution）+ 回测（含当天）
-# - 每 60 分钟（MM%60==0 / 整点）：复盘分析；10/14 点推盘中播报
+# - 每 30 分钟（MM%30==0）：全量复盘(review 含ETF成分) + 模拟盘盘中重建 + 资金 + 回测
 # - 12:00（午休）：只跑复盘 + 推「午间大盘分析」（大盘/自选/资金/宏观综合，单条）
 # - flock 防重叠：上次任务未完成时跳过本轮
 #   2026-09 加固：等锁最长 90 秒（避免整天跳过）；锁龄 >35 分钟视为死锁，强制接管
@@ -81,8 +80,13 @@ if [ "$IN_TRADING" = "1" ]; then
   python3 scripts/sim_live_guard.py >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘空转守卫失败" >> data/auto_run.log
 
-  # 每 30 分钟：资金数据 + 回测 + 期货（含当天 K 线）
+  # 每 30 分钟：全量复盘(成分版) → 模拟盘盘中重建买点(v3.3) → 资金/回测/期货/主线
   if [ $((MM % 30)) -eq 0 ]; then
+    python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+    # 盘中复盘重建：用刚生成的全量成分版复盘刷新双池待触发买点/补新信号
+    python3 sim_live.py --intraday-plan >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘盘中重建失败" >> data/auto_run.log
     python3 run_review.py --mode institution >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中资金数据生成失败" >> data/auto_run.log
     python3 scripts/build_backtest.py >> data/auto_run.log 2>&1 \
@@ -93,13 +97,8 @@ if [ "$IN_TRADING" = "1" ]; then
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中主线数据生成失败" >> data/auto_run.log
   fi
 
-  # 每 60 分钟（整点）：复盘分析（含当天盘中数据；回测由 build_backtest.py 单独跑）
+  # 每 60 分钟（整点）：盘中播报推送（复盘数据由每 30 分钟刷新提供）
   if [ $((MM % 60)) -eq 0 ]; then
-    python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
-      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
-    # 盘中整点复盘重建（v3.3）：用刚生成的全量成分版复盘刷新双池待触发买点/补新信号
-    python3 sim_live.py --intraday-plan >> data/auto_run.log 2>&1 \
-      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中复盘重建失败" >> data/auto_run.log
     # 微信推送（Server酱）：盘中播报（回测+推荐+资金合并 1 条；10:00/14:00，
     # 12:00 走上方午间块，加盘后复盘 1 条 = 每日 4 条，在免费版 5 条限额内）
     if [ "$HOUR" = "10" ] || [ "$HOUR" = "14" ]; then
