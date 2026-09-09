@@ -60,13 +60,13 @@
        "trail": 0.1,
        "be_at": null,
        "be_on": false,
-       "peak": 14.87,
+       "peak": 14.91,
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.87,
-       "last_chg": 3.41,
-       "last_ts": "13:03:24",
+       "last": 14.86,
+       "last_chg": 3.34,
+       "last_ts": "13:22:43",
        "last_close": 14.49
       },
       {
@@ -86,9 +86,9 @@
        "prev_close": 27.29,
        "score": 86,
        "signal": "强烈买入",
-       "last": 27.08,
-       "last_chg": -0.77,
-       "last_ts": "13:03:24",
+       "last": 27.01,
+       "last_chg": -1.03,
+       "last_ts": "13:22:43",
        "last_close": 27.47
       },
       {
@@ -108,9 +108,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.73,
-       "last_chg": -4.88,
-       "last_ts": "13:03:24",
+       "last": 24.53,
+       "last_chg": -5.65,
+       "last_ts": "13:22:43",
        "last_close": 25.01
       },
       {
@@ -130,9 +130,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.83,
-       "last_chg": -1.0,
-       "last_ts": "13:03:24",
+       "last": 18.76,
+       "last_chg": -1.37,
+       "last_ts": "13:22:43",
        "last_close": 18.85
       },
       {
@@ -152,9 +152,9 @@
        "prev_close": 28.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.0,
-       "last_chg": -1.48,
-       "last_ts": "13:03:24",
+       "last": 27.99,
+       "last_chg": -1.51,
+       "last_ts": "13:22:43",
        "last_close": 27.85
       }
      ],
@@ -174,7 +174,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(88分) 回踩≤42.99 ATR止损41.06"
       },
       {
@@ -192,7 +192,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(86分) 回踩≤15.07 ATR止损14.35"
       },
       {
@@ -210,7 +210,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(86分) 回踩≤15.69 ATR止损14.64"
       },
       {
@@ -228,7 +228,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(85分) 回踩≤9.73 ATR止损9.29"
       },
       {
@@ -246,7 +246,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤0.88 ATR止损0.85"
       },
       {
@@ -264,7 +264,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤14.51 ATR止损13.92"
       },
       {
@@ -282,7 +282,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(83分) 回踩≤33.40 ATR止损31.07"
       },
       {
@@ -300,7 +300,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤12.03 ATR止损11.4"
       }
      ],
@@ -637,13 +637,13 @@
        "trail": null,
        "be_at": null,
        "be_on": false,
-       "peak": 14.87,
+       "peak": 14.91,
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.87,
-       "last_chg": 3.41,
-       "last_ts": "13:03:24",
+       "last": 14.86,
+       "last_chg": 3.34,
+       "last_ts": "13:22:43",
        "last_close": 14.49
       },
       {
@@ -663,9 +663,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.73,
-       "last_chg": -4.88,
-       "last_ts": "13:03:24",
+       "last": 24.53,
+       "last_chg": -5.65,
+       "last_ts": "13:22:43",
        "last_close": 25.01
       },
       {
@@ -685,9 +685,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.83,
-       "last_chg": -1.0,
-       "last_ts": "13:03:24",
+       "last": 18.76,
+       "last_chg": -1.37,
+       "last_ts": "13:22:43",
        "last_close": 18.85
       }
      ],
@@ -1571,9 +1571,9 @@
        "prev_close": 77.66,
        "score": 73,
        "signal": "买入",
-       "last": 78.09,
-       "last_chg": 0.55,
-       "last_ts": "13:03:24",
+       "last": 77.97,
+       "last_chg": 0.4,
+       "last_ts": "13:22:43",
        "last_close": 78.1
       },
       {
@@ -1593,9 +1593,9 @@
        "prev_close": 27.87,
        "score": 70,
        "signal": "买入",
-       "last": 28.0,
-       "last_chg": 0.47,
-       "last_ts": "13:03:24"
+       "last": 27.99,
+       "last_chg": 0.43,
+       "last_ts": "13:22:43"
       },
       {
        "code": "002142",
@@ -1614,9 +1614,9 @@
        "prev_close": 34.66,
        "score": 82,
        "signal": "强烈买入",
-       "last": 34.78,
-       "last_chg": 0.35,
-       "last_ts": "13:03:24"
+       "last": 34.61,
+       "last_chg": -0.14,
+       "last_ts": "13:22:43"
       }
      ],
      "plan": [
