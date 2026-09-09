@@ -12,6 +12,7 @@
 命令（默认作用于双池，--pool 可限定单池）：
   python3 sim_live.py --init                 # 初始化（双池 × 3 账户）
   python3 sim_live.py --plan [--pool six|all]   # 重建计划（默认双池；收盘 auto_run 调用）
+  python3 sim_live.py --intraday-plan         # 盘中整点复盘重建(刷新买点/补新信号, 需全量成分版review)
   python3 sim_live.py --intraday [--pool ...]   # 盘中巡检触发成交（cron 每5分钟，双池）
   python3 sim_live.py --review [--date D]       # 收盘复盘 + 自学习
   python3 sim_live.py --plan-date 2026-09-04 --pool six   # 6股池历史日K信号重建
@@ -465,7 +466,7 @@ def _strategy_bonus(key, it):
     return b
 
 
-def make_plan(state, review, asof, pool, skip_llm=False):
+def make_plan(state, review, asof, pool, skip_llm=False, log=True):
     """对单个池生成 3 账户回踩买点计划。"""
     items = review.get("items", []) or []
     pool_b = books(state, pool)
@@ -564,10 +565,11 @@ def make_plan(state, review, asof, pool, skip_llm=False):
                     ("；LLM:" + _rv.get("note", "")) if _rv else ""),
             })
         acct["plan"] = plan
-        acct["daily_log"].append({"date": asof, "kind": "plan",
-                                  "note": "[%s]%s：%d 单待盘中触发%s" % (
-                                      POOL_LABEL[pool], cfg["label"], len(plan),
-                                      ("（大盘闸门挡）" if gate == "block" else ""))})
+        if log:
+            acct["daily_log"].append({"date": asof, "kind": "plan",
+                                      "note": "[%s]%s：%d 单待盘中触发%s" % (
+                                          POOL_LABEL[pool], cfg["label"], len(plan),
+                                          ("（大盘闸门挡）" if gate == "block" else ""))})
     return {k: len(acc_b[k]["plan"]) for k in REAL_ACCOUNTS}
 
 
@@ -812,6 +814,8 @@ def main():
     ap.add_argument("--init", action="store_true")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--intraday", action="store_true")
+    ap.add_argument("--intraday-plan", action="store_true",
+                    help="盘中整点用最新全量复盘刷新双池计划(成分版, items>300 才执行)")
     ap.add_argument("--replay", default=None)
     ap.add_argument("--review", action="store_true")
     ap.add_argument("--finalize", action="store_true")
@@ -889,6 +893,38 @@ def main():
                     print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"],
                                                        p.get("gate")))
         save(state)
+        return
+
+    if args.intraday_plan:
+        # 盘中整点复盘重建：用最新全量复盘(含ETF成分, items>300)刷新双池待触发计划
+        review = load_json("review_data.json")
+        if not review:
+            print("无 review_data")
+            return
+        items = review.get("items") or []
+        if len(items) < 300:
+            print("盘中 review 非全量(成分版, items=%d)，跳过盘中重建" % len(items))
+            return
+        date = (review.get("generatedAt") or "")[:10]
+        changed = 0
+        for pool in target_pools:
+            before = {k: {p["code"] for p in accts(state, pool)[k].get("plan", [])}
+                      for k in REAL_ACCOUNTS}
+            res = make_plan(state, review, date, pool, skip_llm=True, log=False)
+            after = {k: {p["code"] for p in accts(state, pool)[k].get("plan", [])}
+                     for k in REAL_ACCOUNTS}
+            for k in REAL_ACCOUNTS:
+                newc = after[k] - before[k]
+                if newc:
+                    nm = {p["code"]: p.get("name") for p in accts(state, pool)[k]["plan"]}
+                    accts(state, pool)[k]["daily_log"].append({
+                        "date": date, "kind": "plan",
+                        "note": "[%s]%s 盘中复盘刷新: 新增 %s" % (
+                            POOL_LABEL[pool], ACCOUNTS[k]["label"],
+                            ",".join(nm.get(c, c) for c in sorted(newc)))})
+                    changed += 1
+        save(state)
+        print("盘中复盘重建 %s：双池计划已按最新信号刷新，变更账户 %d" % (date, changed))
         return
 
     if args.intraday:

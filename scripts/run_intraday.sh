@@ -97,6 +97,9 @@ if [ "$IN_TRADING" = "1" ]; then
   if [ $((MM % 60)) -eq 0 ]; then
     python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+    # 盘中整点复盘重建（v3.3）：用刚生成的全量成分版复盘刷新双池待触发买点/补新信号
+    python3 sim_live.py --intraday-plan >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中复盘重建失败" >> data/auto_run.log
     # 微信推送（Server酱）：盘中播报（回测+推荐+资金合并 1 条；10:00/14:00，
     # 12:00 走上方午间块，加盘后复盘 1 条 = 每日 4 条，在免费版 5 条限额内）
     if [ "$HOUR" = "10" ] || [ "$HOUR" = "14" ]; then

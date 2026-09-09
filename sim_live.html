@@ -174,7 +174,7 @@
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
         <div class="timeline">
-          <div class="tl-step"><span class="tl-idx">①</span><span>双池（6股+全池）各自 <code>--plan</code> 按最近收盘信号生成各账户<b>回踩买点/止损/止盈</b>（激进回踩少、稳健2%、纪律3%）</span></div>
+          <div class="tl-step"><span class="tl-idx">①</span><span>双池（6股+全池）各自 <code>--plan</code> 按最近收盘信号生成各账户<b>回踩买点/止损/止盈</b>（激进回踩少、稳健2%、纪律3%）；<b>盘中整点（10/11/13/14/15点）复盘刷新</b>：最新信号/价格重算待触发买点，新走强股盘中即时入计划（v3.3）</span></div>
           <div class="tl-step"><span class="tl-idx">②</span><span>盘中每5分钟 <code>--intraday</code> 拉实时快照，<b>两池并行</b>巡检：现价 ≤ 买点即买，破止损/到止盈即卖</span></div>
           <div class="tl-step"><span class="tl-idx">③</span><span>每笔记 <b>真实时分秒 + 成交价 + 当时涨跌幅 + 触发理由</b>，100 股整</span></div>
           <div class="tl-step"><span class="tl-idx">④</span><span>收盘 <code>--review</code> 市值按收盘更新 + 每账户自动自我复盘</span></div>
