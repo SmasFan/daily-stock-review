@@ -52,9 +52,9 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.49,
-       "last_chg": 0.9,
-       "last_ts": "14:57:31",
+       "last": 14.42,
+       "last_chg": 0.28,
+       "last_ts": "09:34:11",
        "last_close": 14.49
       },
       {
@@ -74,9 +74,9 @@
        "prev_close": 27.29,
        "score": 86,
        "signal": "强烈买入",
-       "last": 27.47,
-       "last_chg": 0.7,
-       "last_ts": "14:57:31",
+       "last": 27.17,
+       "last_chg": -0.44,
+       "last_ts": "09:34:11",
        "last_close": 27.47
       },
       {
@@ -96,9 +96,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 25.01,
-       "last_chg": -3.58,
-       "last_ts": "14:57:31",
+       "last": 24.75,
+       "last_chg": -4.81,
+       "last_ts": "09:34:11",
        "last_close": 25.01
       },
       {
@@ -118,9 +118,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.85,
-       "last_chg": -1.0,
-       "last_ts": "14:57:31",
+       "last": 18.78,
+       "last_chg": -1.26,
+       "last_ts": "09:34:11",
        "last_close": 18.85
       },
       {
@@ -140,9 +140,9 @@
        "prev_close": 28.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 27.85,
-       "last_chg": -1.9,
-       "last_ts": "14:57:31",
+       "last": 27.73,
+       "last_chg": -2.43,
+       "last_ts": "09:34:11",
        "last_close": 27.85
       }
      ],
@@ -162,7 +162,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(86分) 回踩≤14.97 ATR止损14.4"
       },
       {
@@ -180,7 +180,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(81分) 回踩≤1.40 ATR止损1.35"
       },
       {
@@ -198,7 +198,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(83分) 回踩≤7.78 ATR止损7.42"
       },
       {
@@ -216,7 +216,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(84分) 回踩≤40.70 ATR止损39.57"
       },
       {
@@ -234,7 +234,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(81分) 回踩≤19.87 ATR止损18.4"
       },
       {
@@ -252,7 +252,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤2.17 ATR止损2.15"
       },
       {
@@ -270,7 +270,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤1.12 ATR止损1.1"
       },
       {
@@ -288,7 +288,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "skip_full",
        "reason": "强烈买入(82分) 回踩≤4.80 ATR止损4.59"
       }
      ],
@@ -589,9 +589,9 @@
        "prev_close": 14.38,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.49,
-       "last_chg": 0.9,
-       "last_ts": "14:57:31",
+       "last": 14.42,
+       "last_chg": 0.28,
+       "last_ts": "09:34:11",
        "last_close": 14.49
       },
       {
@@ -611,9 +611,9 @@
        "prev_close": 26.0,
        "score": 84,
        "signal": "强烈买入",
-       "last": 25.01,
-       "last_chg": -3.58,
-       "last_ts": "14:57:31",
+       "last": 24.75,
+       "last_chg": -4.81,
+       "last_ts": "09:34:11",
        "last_close": 25.01
       },
       {
@@ -633,9 +633,9 @@
        "prev_close": 19.02,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.85,
-       "last_chg": -1.0,
-       "last_ts": "14:57:31",
+       "last": 18.78,
+       "last_chg": -1.26,
+       "last_ts": "09:34:11",
        "last_close": 18.85
       }
      ],
@@ -1420,7 +1420,7 @@
      "key": "aggressive",
      "label": "激进",
      "start_cash": 50000.0,
-     "cash": 42337.702000000005,
+     "cash": 34016.206300000005,
      "positions": [
       {
        "code": "600309",
@@ -1439,10 +1439,28 @@
        "prev_close": 77.66,
        "score": 73,
        "signal": "买入",
-       "last": 78.1,
-       "last_chg": 0.55,
-       "last_ts": "14:57:31",
+       "last": 78.0,
+       "last_chg": 0.44,
+       "last_ts": "09:34:11",
        "last_close": 78.1
+      },
+      {
+       "code": "600900",
+       "name": "长江电力",
+       "shares": 300,
+       "cost": 27.73,
+       "buy_date": "2026-09-09",
+       "buy_time": "09:34:11",
+       "stop_atr": 27.01,
+       "stop_ma": null,
+       "tp": 33.444,
+       "trail": 0.1,
+       "be_at": null,
+       "be_on": false,
+       "peak": 27.73,
+       "prev_close": 27.87,
+       "score": 70,
+       "signal": "买入"
       }
      ],
      "plan": [
@@ -1479,7 +1497,7 @@
        "be_at": null,
        "gate": "open",
        "budget": 11000.0,
-       "status": "wait",
+       "status": "filled",
        "reason": "买入(70分) 回踩≤27.73 ATR止损27.01；LLM:防御属性契合中性环境，无高位风险"
       }
      ],
@@ -1494,6 +1512,19 @@
        "shares": 100,
        "chg_at_fill": -1.36,
        "reason": "买入(73分) 回踩≤76.71 ATR止损72.67",
+       "strategy": "aggressive",
+       "pool": "six"
+      },
+      {
+       "action": "buy",
+       "date": "2026-09-09",
+       "time": "09:34:11",
+       "code": "600900",
+       "name": "长江电力",
+       "price": 27.73,
+       "shares": 300,
+       "chg_at_fill": -0.5,
+       "reason": "买入(70分) 回踩≤27.73 ATR止损27.01；LLM:防御属性契合中性环境，无高位风险",
        "strategy": "aggressive",
        "pool": "six"
       }
