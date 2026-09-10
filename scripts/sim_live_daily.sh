@@ -4,7 +4,7 @@
 #   --plan 重建双池（6股+全池）各账户回踩买点计划
 #   build_kline_export.py 导出个股K线（页面弹层绘图）
 #   --review 收盘市值+复盘（双池）
-# 盘中触发由 run_intraday.sh 每5分钟自动 --intraday（双池并行）。
+# 盘中触发由 scripts/sim_intraday_scan.sh 每2分钟独立锁自动 --intraday（双池并行，与复盘重块解耦）。
 set -u
 cd "$(dirname "$0")/.."
 LOG="data/auto_run.log"

@@ -65,7 +65,8 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 低估值选股生成失败" >> "$LOG"
 fi
 
-# 实时模拟盘（v3 四账户盘中触发）：收盘后重建计划 + 导出个股K线 + 收盘复盘（盘中由 run_intraday 每5分钟巡检成交）
+# 实时模拟盘（v4 双池三账户盘中触发）：收盘后重建计划 + 导出个股K线 + 收盘复盘
+# （盘中巡检由 scripts/sim_intraday_scan.sh 每2分钟独立锁执行）
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   python3 sim_live.py --plan >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘计划失败" >> "$LOG"

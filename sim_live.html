@@ -24,6 +24,7 @@
   .tag { display:inline-block; font-size:10.5px; font-weight:700; border-radius:6px; padding:1px 7px; }
   .tag-buy{background:#fef2f2;color:#dc2626;} .tag-sell{background:#f0fdf4;color:#16a34a;}
   .tag-wait{background:#fffbeb;color:#d97706;} .tag-block{background:#f1f5f9;color:#64748b;}
+  .tag-miss{background:#fff7ed;color:#c2410c;}
   .reason { font-size:11px; color:var(--text-2); line-height:1.5; }
   .chart-box { height:320px; }
   .strat-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:16px 0; }
@@ -175,7 +176,7 @@
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
         <div class="timeline">
           <div class="tl-step"><span class="tl-idx">①</span><span>双池（6股+全池）各自 <code>--plan</code> 按最近收盘信号生成各账户<b>回踩买点/止损/止盈</b>（激进回踩少、稳健2%、纪律3%）；<b>盘中每 30 分钟复盘刷新</b>（10:00–15:00）：最新信号/价格重算待触发买点，新走强股盘中即时入计划（v3.3/30min）</span></div>
-          <div class="tl-step"><span class="tl-idx">②</span><span>盘中每5分钟 <code>--intraday</code> 拉实时快照，<b>两池并行</b>巡检：现价 ≤ 买点即买，破止损/到止盈即卖</span></div>
+          <div class="tl-step"><span class="tl-idx">②</span><span>盘中<b>每 2 分钟</b>（独立锁，不再被复盘重块排队）<code>--intraday</code> 拉实时快照，<b>两池并行</b>巡检：现价 ≤ 买点×(1+0.2%) 即买，破止损/到止盈即卖；盘中最低已触及但采样未抓到的买点 → <b>漏单留痕</b>（页面「漏单」标签 + 账本 miss_log）</span></div>
           <div class="tl-step"><span class="tl-idx">③</span><span>每笔记 <b>真实时分秒 + 成交价 + 当时涨跌幅 + 触发理由</b>，100 股整</span></div>
           <div class="tl-step"><span class="tl-idx">④</span><span>收盘 <code>--review</code> 市值按收盘更新 + 每账户自动自我复盘</span></div>
         </div>
@@ -283,7 +284,7 @@
           <div>· <b>仓位：</b>集中 ≤${rule.max_pos||2} 只，单笔 ≤ 现金 ${Math.round((rule.max_frac||0.5)*100)}%（重仓搏击）</div>
           <div>· <b>止盈：</b>单票 +${Math.round((rule.tp_pct||0.18)*100)}% 目标止盈；峰值 ≥+${Math.round((rule.trail_peak||0.08)*100)}% 后回落 ${Math.round((rule.trail_drop||0.06)*100)}% → 移动止盈锁利</div>
           <div>· <b>止损：</b>成本 -${Math.round((rule.hard_stop||-0.065)*-100)}% 硬止损（留本再战）</div>
-          <div>· <b>巡检：</b>cron 每5分钟自动扫止盈/止损；每交易日收盘结算净值</div>
+          <div>· <b>巡检：</b>cron 每 2 分钟独立锁自动扫止盈/止损（漏单留痕）；每交易日收盘结算净值</div>
           <div>· <b>目标：</b>一周 ≥+10%；市场不给机会时保本空仓等待，不硬亏、不造假</div>
         </div>
       </div>`}
@@ -396,6 +397,10 @@
     const a = acct(key); const m = META[key];
     const holds = a.positions || []; const plan = a.plan || [];
     const waitPlan = plan.filter(p => p.status === 'wait');
+    // 漏单留痕：与计划同交易日(asof)的 miss_log 条目
+    const asofs = [...plan.map(p => p.asof), ...holds.map(h => h.buy_date)].filter(Boolean).sort();
+    const asof = asofs[asofs.length - 1] || (a.miss_log || []).slice(-1).map(m => m.date)[0] || '';
+    const missToday = (a.miss_log || []).filter(m => m.date === asof);
     const trades = a.trades || [];
     const realized = trades.filter(t => t.action === 'sell').reduce((x, t) => x + (t.pnl || 0), 0);
     document.getElementById('detail').innerHTML = `
@@ -420,9 +425,9 @@
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等回踩</div>'}
         </div>
         <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点</div>
+          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点${missToday ? `<span class="sec-chip">今日漏单 ${missToday.length}</span>` : ''}</div>
           ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>分</th><th>回踩≤</th><th>闸门</th><th>触发逻辑</th></tr></thead><tbody>
-            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}</td><td class="reason">${(p.reason || '').slice(0, 42)}</td></tr>`).join('')}
+            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}${p.miss ? `<span class="tag tag-miss" title="盘中最低已触及买点，巡检采样未抓到">漏单</span>` : ''}</td><td class="reason">${(p.reason || '').slice(0, 42)}${p.miss ? `<br>⚠️ 盘中最低 ${fmt(p.miss.low)} 曾触过（${p.miss.first_ts || ''}${p.miss.count > 1 ? ' 共' + p.miss.count + '次' : ''}${p.miss.caught ? ' · 后于 ' + p.miss.caught + ' 成交' : ''}）` : ''}</td></tr>`).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发（收盘 --plan 重建）</div>'}
         </div>
       </div>

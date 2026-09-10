@@ -882,7 +882,7 @@ def main():
         st["version_history"].append({"date": now_ts()[:10], "from": v, "to": nv,
                                       "change": args.strategy_log})
         save(st)
-        print("策略 v%s → v%s：%s" % (v, nv, args.strategy_log))
+        print("策略 %s → %s：%s" % (v, nv, args.strategy_log))
         return
 
     if args.init or not load_state():
