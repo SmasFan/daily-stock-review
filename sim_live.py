@@ -1383,9 +1383,7 @@ def main():
         from src import data_provider as dp
         pool = args.pool or "all"
         tot = 0
-        for k in REAL_ACCOUNTS:
-            a = accts(state, pool)[k]
-            cfg = ACCOUNTS[k]
+        for k, a, cfg in all_books(state, pool):
             for pl in a.get("plan", []):
                 if pl.get("status", "wait") != "wait" or pl.get("gate") == "block":
                     continue
@@ -1452,11 +1450,10 @@ def main():
             regims.append((pool, finalize_pool(state, pool, date)))
             do_review(state, pool, date)
             expiry_plan(state, pool, date)
-            for k in REAL_ACCOUNTS:
-                a = accts(state, pool)[k]
+            for k, a, cfg in all_books(state, pool):
                 ec = a["equity_curve"]
                 print("  [%s]%s 净值%.0f（%+.2f%%）持仓%d" % (
-                    POOL_LABEL[pool], ACCOUNTS[k]["label"],
+                    POOL_LABEL[pool], cfg["label"],
                     ec[-1]["equity"] if ec else 0,
                     ec[-1].get("daily_return", 0) if ec else 0,
                     len(a["positions"])))
