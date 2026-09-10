@@ -77,6 +77,14 @@ ACCOUNTS = {
 
 REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
 
+# 合并账户（共识策略 A）：真账户 5 万独立下单，不自建计划，而是汇总三个子策略的计划：
+#   入场：任一子策略出价即挂单（取最浅回踩线）；仓位按「共识数」加权（1个8% / 2个13% / 3个20%）
+#   风控：止損取最严（最高）、止盈取最先到（最低）、任一子策略大盘闸门 block 则不开新仓
+MIX_KEY = "mix"
+MIX_CFG = {"key": MIX_KEY, "label": "合并·共识", "max_pos": 6}
+MIX_SIZE = {1: 0.08, 2: 0.13, 3: 0.20}
+SUB_ACCOUNTS = list(REAL_ACCOUNTS)
+
 # 精选 6 股池（6c：资源/制造龙头+银行+防守）
 SIX_POOL = {
     "601138": "工业富联", "600900": "长江电力", "601899": "紫金矿业",
@@ -139,10 +147,25 @@ def normalize_state(st):
             else:
                 acc[k] = normalize_account(k, acc[k])
         mx = b.setdefault("mix", {})
-        mx.setdefault("equity_curve", [])
-        mx.setdefault("daily_log", [])
-        mx.setdefault("regime", [])
-        mx.setdefault("meta", {"start_cash": CASH_START})
+        # 旧版 mix = 被动加权指数（只有 equity_curve/daily_log/regime/meta，无现金）
+        # → 归档为 meta.index_archive，本账户改为真实 5 万共识账户（与三子账户平行独立）
+        if "cash" not in mx:
+            archive = {"equity_curve": mx.get("equity_curve") or [],
+                       "daily_log": mx.get("daily_log") or [],
+                       "regime": mx.get("regime") or [],
+                       "note": "旧版被动加权指数（三账户按档位权重合成），非真实账户；新版起独立 5 万共识账户"}
+            fresh = new_account(MIX_KEY, MIX_CFG)
+            fresh["label"] = MIX_CFG["label"]
+            fresh["meta"] = dict(mx.get("meta") or {})
+            fresh["meta"]["index_archive"] = archive
+            fresh["regime"] = list(mx.get("regime") or [])
+            b["mix"] = fresh
+        else:
+            mx = normalize_account(MIX_KEY, mx)
+            mx["label"] = MIX_CFG["label"]
+            mx.setdefault("regime", [])
+            mx.setdefault("meta", {"start_cash": CASH_START})
+            b["mix"] = mx
     return st
 
 
@@ -178,12 +201,12 @@ def new_account(key, cfg):
 
 
 def pool_books():
-    """单个池的三账户账本 + 合成账户骨架。"""
-    return {
-        "accounts": {k: new_account(k, ACCOUNTS[k]) for k in REAL_ACCOUNTS},
-        "mix": {"equity_curve": [], "daily_log": [], "regime": [],
-                "meta": {"start_cash": CASH_START}},
-    }
+    """单个池的三账户账本 + 合并共识账户（真账户，同构）。"""
+    mx = new_account(MIX_KEY, MIX_CFG)
+    mx["label"] = MIX_CFG["label"]
+    mx["regime"] = []
+    return {"accounts": {k: new_account(k, ACCOUNTS[k]) for k in REAL_ACCOUNTS},
+            "mix": mx}
 
 
 def new_state():
@@ -201,6 +224,14 @@ def books(state, pool):
 
 def accts(state, pool):
     return books(state, pool)["accounts"]
+
+
+def all_books(state, pool):
+    """巡检/结算用：三子账户 + 合并共识账户（键、账本、配置）列表。"""
+    ac = accts(state, pool)
+    out = [(k, ac[k], ACCOUNTS[k]) for k in REAL_ACCOUNTS]
+    out.append((MIX_KEY, books(state, pool)["mix"], MIX_CFG))
+    return out
 
 
 def _is_etf(code):
@@ -572,7 +603,69 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                                       "note": "[%s]%s：%d 单待盘中触发%s" % (
                                           POOL_LABEL[pool], cfg["label"], len(plan),
                                           ("（大盘闸门挡）" if gate == "block" else ""))})
+    make_mix_plan(state, pool, asof, gate, log)
     return {k: len(acc_b[k]["plan"]) for k in REAL_ACCOUNTS}
+
+
+def make_mix_plan(state, pool, asof, gate, log=True):
+    """合并共识账户计划 = 汇总三子策略计划（A 方案）。
+
+    - 候选：任一子策略 wait 单中的股票（合并账户已持仓的排除）
+    - 共识数 n = 同时给出该股 wait 单的子策略个数 → 仓位 MIX_SIZE[n]（1→8% / 2→13% / 3→20%）
+    - 入场线取「最浅」（max buy_below，任一策略回踩即接）；
+      止損取最严（max stop_atr，最早离场）；止盈取最先到（min tp）；保本/移动止盈取最保守（取有值的）
+    - 闸门：任一子策略该股 gate=block → 合并也不开（最保守）
+    """
+    mix = books(state, pool)["mix"]
+    held = {p["code"] for p in mix["positions"]}
+    groups = {}
+    for k in REAL_ACCOUNTS:
+        for pl in accts(state, pool)[k].get("plan", []):
+            if pl.get("status", "wait") != "wait":
+                continue
+            if pl["code"] in held:
+                continue
+            groups.setdefault(pl["code"], []).append((k, pl))
+    plan = []
+    for code, lst in groups.items():
+        n = len(lst)
+        src = [pl for _, pl in lst]
+        budget = round(CASH_START * MIX_SIZE.get(n, MIX_SIZE[1]), 2)
+        stops = [pl["stop_atr"] for pl in src if pl.get("stop_atr")]
+        tps = [pl["tp"] for pl in src if pl.get("tp")]
+        blocked = any(pl.get("gate") == "block" for pl in src)
+        plan.append({
+            "code": code, "name": src[0].get("name"), "asof": asof,
+            "score": max((pl.get("score") or 0) for pl in src),
+            "signal": src[0].get("signal"),
+            "close": max((pl.get("close") or 0) for pl in src),
+            "buy_below": round(max(pl["buy_below"] for pl in src), 3),
+            "stop_atr": round(max(stops), 3) if stops else None,
+            "stop_ma": None,
+            "tp": round(min(tps), 3) if tps else None,
+            "trail": next((pl.get("trail") for pl in src if pl.get("trail")), None),
+            "be_at": next((pl.get("be_at") for pl in src if pl.get("be_at")), None),
+            "gate": "block" if blocked else (gate or "open"),
+            "budget": budget, "status": "wait", "consensus": n,
+            "from": [k for k, _ in lst],
+            "reason": "共识%d/3（%s）仓位%.0f%% 回踩≤%.2f 止損%s 止盈%s" % (
+                n, "/".join(ACCOUNTS[k]["label"] for k, _ in lst), MIX_SIZE[n] * 100,
+                max(pl["buy_below"] for pl in src),
+                "%.2f" % max(stops) if stops else "--",
+                "%.2f" % min(tps) if tps else "--"),
+        })
+    # 共识数降序（三策略共振优先），再按分
+    plan.sort(key=lambda x: (-x["consensus"], -(x.get("score") or 0)))
+    mix["plan"] = plan[:12]
+    if log:
+        mix["daily_log"].append({"date": asof, "kind": "plan",
+                                  "note": "[%s]%s：%d 单待触发（共识3:%d 共识2:%d 共识1:%d）%s" % (
+                                      POOL_LABEL[pool], MIX_CFG["label"], len(mix["plan"]),
+                                      sum(1 for p in mix["plan"] if p["consensus"] == 3),
+                                      sum(1 for p in mix["plan"] if p["consensus"] == 2),
+                                      sum(1 for p in mix["plan"] if p["consensus"] == 1),
+                                      "（大盘闸门挡）" if gate == "block" else "")})
+    return len(mix["plan"])
 
 
 # ---------------- 盘中巡检（双池并行） ----------------
@@ -580,8 +673,7 @@ def intraday_scan(state, date, hms):
     from src import data_provider as dp
     all_codes = set()
     for pool in POOLS:
-        for key in REAL_ACCOUNTS:
-            a = accts(state, pool)[key]
+        for _k, a, _cfg in all_books(state, pool):
             all_codes |= {p["code"] for p in a["plan"] if p.get("status", "wait") == "wait"}
             all_codes |= {p["code"] for p in a["positions"]}
     if not all_codes:
@@ -594,9 +686,7 @@ def intraday_scan(state, date, hms):
     total_fill = 0
     all_notes = []
     for pool in POOLS:
-        for key in REAL_ACCOUNTS:
-            cfg = ACCOUNTS[key]
-            a = accts(state, pool)[key]
+        for key, a, cfg in all_books(state, pool):
             n, notes = _scan_account(pool, a, cfg, quotes, date, hms)
             total_fill += n
             all_notes.extend(notes)
@@ -722,6 +812,8 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
                 "tp": pl.get("tp"), "trail": pl.get("trail"), "be_at": pl.get("be_at"),
                 "be_on": False, "peak": px, "prev_close": q.get("prevClose"),
                 "score": pl.get("score"), "signal": pl.get("signal"),
+                # 合并共识账户专用：共识数与来源子策略（页面展示买入依据）
+                "consensus": pl.get("consensus"), "from": pl.get("from"),
             })
             acct["trades"].append({
                 "action": "buy", "date": date, "time": hms, "code": pl["code"],
@@ -795,40 +887,42 @@ def finalize_pool(state, pool, date):
                                   "cash": round(a["cash"], 2),
                                   "daily_return": round((eq / prev - 1) * 100, 3),
                                   "pos_count": len(a["positions"])})
-    # mix：以上证斜率定档，三账户日收益加权复利（首日直接取三账户加权净值）
+    # 合并共识账户：真实账户，与三子账户同法结算；同时记当日档位（供页面展示）
     slope = sh_slope(date)
     regs = [0.25, 0.5, 0.25]
     if slope is not None and slope > 2.5:
         regs = [0.7, 0.2, 0.1]
     elif slope is not None and slope < -2.5:
         regs = [0.1, 0.2, 0.7]
-    curves = [acc_b[k]["equity_curve"] for k in REAL_ACCOUNTS]
-    mc = pool_b["mix"]["equity_curve"]
-    if all(c for c in curves):
-        # 首日：无 c[-2] → 直接取各账户当前净值加权
-        if len(curves[0]) == 1:
-            eq_mix = sum(curves[i][-1]["equity"] * regs[i] for i in range(3))
-            r_day = 0.0
-        else:
-            rets = []
-            for c in curves:
-                if len(c) >= 2 and c[-2].get("equity"):
-                    rets.append(c[-1]["equity"] / c[-2]["equity"] - 1)
-                else:
-                    rets.append(0.0)
-            prev_mix = mc[-1]["equity"] if mc else CASH_START
-            eq_mix = prev_mix * (1 + sum(r * w for r, w in zip(rets, regs)))
-            r_day = sum(r * w for r, w in zip(rets, regs)) * 100
-        mc = [x for x in mc if x["date"] != date]  # 幂等
-        pool_b["mix"]["equity_curve"] = mc
-        mc.append({"date": date, "equity": round(eq_mix, 2), "daily_return": round(r_day, 3),
-                   "regime": "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")})
-    return "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")
+    regime = "攻" if regs[0] >= 0.7 else ("守" if regs[2] >= 0.7 else "衡")
+    mx = pool_b["mix"]
+    for pos in mx["positions"]:
+        it = items.get(pos["code"])
+        if it:
+            pos["last_close"] = it.get("close")
+            pos["last"] = it.get("close")
+            c0, cpct = it.get("close"), it.get("change_pct")
+            if c0 and cpct is not None and (1 + cpct / 100) > 0:
+                pc = round(c0 / (1 + cpct / 100), 3)
+                if pc > 0:
+                    pos["prev_close"] = pc
+                    pos["last_chg"] = round(cpct, 2)
+                    pos["last_ts"] = "close"
+    eq_mx = equity_of(mx)
+    mx["equity_curve"] = [x for x in mx["equity_curve"] if x["date"] != date]
+    prev_mx = mx["equity_curve"][-1]["equity"] if mx["equity_curve"] else CASH_START
+    mx["equity_curve"].append({"date": date, "equity": round(eq_mx, 2),
+                               "cash": round(mx["cash"], 2),
+                               "daily_return": round((eq_mx / prev_mx - 1) * 100, 3),
+                               "pos_count": len(mx["positions"]), "regime": regime})
+    mx.setdefault("regime", [])
+    mx["regime"] = [x for x in mx["regime"] if x.get("date") != date]
+    mx["regime"].append({"date": date, "regime": regime})
+    return regime
 
 
 def do_review(state, pool, date):
-    for key in REAL_ACCOUNTS:
-        a = accts(state, pool)[key]
+    for key, a, _cfg in all_books(state, pool):
         sells = [t for t in a["trades"] if t["action"] == "sell"]
         if not sells:
             continue
@@ -856,8 +950,8 @@ def expiry_plan(state, pool, date):
     判据：asof < 结算日 —— 即该计划对应的信号日是过去交易日、当日未触发，已无用。
     刚生成的次日计划 asof == date（同轮 plan→review）或未来日会保留到次日盘中触发。
     """
-    for k in REAL_ACCOUNTS:
-        for p in accts(state, pool)[k]["plan"]:
+    for _k, a, _cfg in all_books(state, pool):
+        for p in a["plan"]:
             if p.get("status", "wait") == "wait" and (p.get("asof") or "") < date:
                 p["status"] = "expired"
 
@@ -946,6 +1040,15 @@ def main():
                 for p in a["plan"][:5]:
                     print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"],
                                                        p.get("gate")))
+            mx = books(state, pool)["mix"]
+            print("  [%s] %d 单%s" % (MIX_CFG["label"], len(mx["plan"]),
+                                    "（%s）" % "/".join(
+                                        "共识%s×%d" % (c, sum(1 for p in mx["plan"] if p.get("consensus") == c))
+                                        for c in (3, 2, 1) if any(p.get("consensus") == c for p in mx["plan"]))
+                                    if mx["plan"] else ""))
+            for p in mx["plan"][:5]:
+                print("    [共识%d] %s 分%s 回踩≤%.2f %s" % (
+                    p.get("consensus", 0), p["name"], p["score"], p["buy_below"], p.get("gate")))
         save(state)
         return
 
@@ -964,6 +1067,7 @@ def main():
         for pool in target_pools:
             before = {k: {p["code"] for p in accts(state, pool)[k].get("plan", [])}
                       for k in REAL_ACCOUNTS}
+            before_mix = {p["code"] for p in books(state, pool)["mix"].get("plan", [])}
             res = make_plan(state, review, date, pool, skip_llm=True, log=False)
             after = {k: {p["code"] for p in accts(state, pool)[k].get("plan", [])}
                      for k in REAL_ACCOUNTS}
@@ -977,6 +1081,15 @@ def main():
                             POOL_LABEL[pool], ACCOUNTS[k]["label"],
                             ",".join(nm.get(c, c) for c in sorted(newc)))})
                     changed += 1
+            mx = books(state, pool)["mix"]
+            newm = {p["code"] for p in mx["plan"]} - before_mix
+            if newm:
+                nm = {p["code"]: p.get("name") for p in mx["plan"]}
+                mx["daily_log"].append({"date": date, "kind": "plan",
+                                         "note": "[%s]%s 盘中复盘刷新: 新增 %s" % (
+                                             POOL_LABEL[pool], MIX_CFG["label"],
+                                             ",".join(nm.get(c, c) for c in sorted(newm)))})
+                changed += 1
         save(state)
         print("盘中复盘重建 %s：双池计划已按最新信号刷新，变更账户 %d" % (date, changed))
         return
