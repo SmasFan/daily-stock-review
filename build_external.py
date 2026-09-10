@@ -209,7 +209,8 @@ FACTOR_RULES = {
     "dxy":     {"label": "美元指数", "bull": {}, "bear": {"周期资源": 0.6, "贵金属": 0.8}},
     "nasdaq":  {"label": "纳指(隔夜/期指)", "bull": {"AI算力": 1.0, "半导体": 0.9, "CPO/光模块": 1.0,
                                                  "科技-通信电子": 0.9, "机器人": 0.6},
-                "bear": {"红利银行": 0.6, "公用事业": 0.5, "大消费": 0.4}},
+                # 大消费已删除：回测显示纳指涨/跌日大消费差 -0.09%（纯噪音）
+                "bear": {"红利银行": 0.6, "公用事业": 0.5}},
     "vix":     {"label": "VIX恐慌", "bull": {"红利银行": 0.5, "公用事业": 0.5},
                 "bear": {"AI算力": 0.8, "半导体": 0.7, "机器人": 0.7, "军工": 0.5}},
     "sp500":   {"label": "标普期指", "bull": {"AI算力": 0.6, "半导体": 0.5, "周期资源": 0.4},
@@ -313,9 +314,16 @@ def _effect_text(key, chg, lvl, sina):
     return ""
 
 
+# 商品金属因子互相关极高（金/银/铜对 A股金属股多空差 3.7%~6.4%，但方向几乎同步），
+# 因此三者 **取平均合成一个 metals 因子**，避免同一波商品行情被计三次分。
+METAL_KEYS = ("gold", "silver", "copper")
+METAL_MIX = {"gold": 0.45, "silver": 0.2, "copper": 0.35}   # 权重按对 A股金属股的解释力
+
+
 def build_bias(quotes, sina, domestic):
     """产出 factors / sector_bias / link_bias / summary。"""
     factors, bias, details, summary = {}, {}, {}, []
+    metal_lvls = []
 
     for key, rule in FACTOR_RULES.items():
         chg, note = _chg_of(quotes, sina, domestic, key)
@@ -336,9 +344,13 @@ def build_bias(quotes, sina, domestic):
                     lvl = max(lvl, 1)
         factors[key] = {"label": rule["label"], "chg": round(chg, 2), "level": lvl, "note": note,
                         "market_effect": _effect_text(key, chg, lvl, sina)}
+        if key in METAL_KEYS:
+            metal_lvls.append((key, lvl))
         if lvl == 0:
             continue
         sign = "+" if lvl > 0 else "-"
+        if key in METAL_KEYS:
+            continue          # 金属三因子改由下方 metals 合成计分，避免重复
         mag = abs(lvl)
         if lvl > 0:
             # 因子涨：bull 板块加分，bear 板块减分
@@ -364,20 +376,45 @@ def build_bias(quotes, sina, domestic):
             details[key] = {"bull": rule["bull"] if lvl > 0 else rule["bear"],
                             "bear": rule["bear"] if lvl > 0 else rule["bull"]}
 
+    # ---- 商品金属合成：加权平均后只计一次分 ----
+    if metal_lvls:
+        wsum = sum(METAL_MIX.get(k, 0.2) for k, _ in metal_lvls)
+        mix = sum(METAL_MIX.get(k, 0.2) * l for k, l in metal_lvls) / (wsum or 1)
+        mix_lvl = int(round(mix))
+        factors["metals"] = {
+            "label": "商品金属(金银铜合成)", "chg": None, "level": mix_lvl,
+            "note": " ".join("%s%+d" % (k, l) for k, l in metal_lvls),
+            "market_effect": ("贵金属/工业金属共振上行" if mix_lvl > 0 else
+                              "贵金属/工业金属共振下行" if mix_lvl < 0 else "金属分化")}
+        if mix_lvl:
+            for sec in ("周期资源", "贵金属", "黄金"):
+                bias[sec] = round(bias.get(sec, 0) + 1.0 * mix_lvl, 2)
+            summary.append("商品金属合成 %s → %s 周期资源/贵金属" % (
+                factors["metals"]["note"], "利好" if mix_lvl > 0 else "利空"))
+
     # ---- 个股级偏好：用 metals_data 的「个股→期货 link」精确映射 ----
     # 池子里中国石化/中国石油被归为"周期资源"，板块分吃不到油价利好；
     # 这里按名称关键词二次匹配，保证油价/金价/铜价能落到具体股票
+    # 回测结论（299 交易日、23393 样本）：
+    #   上游油气（海油/油服）油涨日 +1.02% vs 油跌日 -1.03% → 强正向
+    #   炼化化纤（恒力/恒逸/荣盛石化）油价涨 = 原料成本涨 → **负向**
+    #   故必须拆开，否则两类混在一起 IC 为负（-0.039）
     kw_rules = [
-        ("oil", r"石化|石油|海油|油气|油服|能源|煤"),          # 油价↑受益（能源类）
-        ("gold", r"黄金|金矿|贵金属"),                        # 金价↑受益
-        ("silver", r"白银|银泰|盛达"),                        # 银价↑受益
-        ("copper", r"铜|有色|铝|稀土|矿业"),                   # 铜价↑受益
+        ("oil", r"海油|油气|油服|采掘|石油ETF|油气ETF"),        # 上游/油服/油气ETF：油价↑受益
+        ("oilref", r"石化|化纤"),                            # 炼化/化纤：油价↑受损
+        ("gold", r"黄金|金矿|贵金属"),
+        ("silver", r"白银|银泰|盛达"),
+        ("copper", r"铜|有色|铝|稀土|矿业"),
     ]
     for key, pat in kw_rules:
-        lvl = (factors.get(key) or {}).get("level") or 0
+        # 金属类关键词用合成后的 metals level（避免金银铜重复计分）
+        src_key = "metals" if key in METAL_KEYS else ("oil" if key == "oilref" else key)
+        lvl = (factors.get(src_key) or {}).get("level") or 0
+        if key == "oilref":
+            lvl = -lvl          # 炼化：油价涨=成本涨 → 反向
         if lvl == 0:
             continue
-        w = {"oil": 1.0, "gold": 1.2, "silver": 1.0, "copper": 0.8}[key]
+        w = {"oil": 1.6, "oilref": 0.9, "gold": 1.2, "silver": 1.0, "copper": 1.0}[key]
         sc = w * lvl
         # 注意：板块分已在主循环算过，这里只生成个股名关键词分，勿重复累加
         # keyword → 供 sim_live 按股票名匹配（板块映射不到的石油/矿业股靠这个）

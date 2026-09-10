@@ -195,6 +195,7 @@
         <span class="sec-chip" id="ps-upd" style="font-size:10.5px">自动刷新·每60s</span>
       </div>
       <div id="ext-factors" class="sec" data-nav="外部市场因子" data-nav-icon="globe" style="display:none"></div>
+      <div id="ext-shadow" class="sec" data-nav="外部因子统计" data-nav-icon="chart-line" style="display:none"></div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
@@ -245,6 +246,7 @@
       }));
     loadLlmMacro();
     loadExternal();
+    loadExtShadow();
     select(selKey);
   }
 
@@ -338,6 +340,40 @@
       series:[{ type:'line', data:mc.map(x=>x.equity), showSymbol:false, lineStyle:{width:2.4,color:'#f59e0b'}, areaStyle:{opacity:0.12,color:'#f59e0b'} }]
     });
     window.addEventListener('resize',()=>c.resize());
+  }
+
+  /* 外部因子自动统计卡（scripts/ext_shadow.py 生成 data/ext_shadow.json）
+     回答：我给的外部分到底有没有用 */
+  async function loadExtShadow() {
+    const box = document.getElementById('ext-shadow');
+    if (!box) return;
+    try {
+      const d = await RV.API.fetch('ext_shadow.json');
+      const v = d.verdict || {};
+      const lvColor = { effective: 'var(--up)', weak: '#d97706', neutral: 'var(--text-2)', wrong: 'var(--down)', insufficient: 'var(--text-2)' }[v.level] || 'var(--text-2)';
+      const lvIcon = { effective: 'circle-check', weak: 'circle-half-stroke', neutral: 'equals', wrong: 'triangle-exclamation', insufficient: 'hourglass' }[v.level] || 'chart-line';
+      const blk = (title, o) => {
+        if (!o || !o.n) return `<div class="kpi"><div class="k-label">${title}</div><div class="k-val neutral">—</div><div class="k-sub">样本不足</div></div>`;
+        const rows = Object.entries(o.buckets || {}).map(([k2, b]) =>
+          `<tr><td>${k2}</td><td>${b.n}</td><td class="${b.avg > 0 ? 'up' : 'down'}">${RV.fmt.pct(b.avg)}</td><td class="neutral">${b.win}%</td></tr>`).join('');
+        return `<div style="flex:1;min-width:260px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">${title} <span class="sec-chip">n=${o.n}${o.ic != null ? ' · IC ' + o.ic : ''}</span></div>
+          <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>外部分档</th><th>样本</th><th>平均收益</th><th>胜率</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+      };
+      box.style.display = 'block';
+      box.style.borderLeft = '4px solid ' + lvColor;
+      box.innerHTML = `
+        <div class="sec-title"><span class="ti">${RV.ui.icon('chart-line')}</span>外部因子有效性统计
+          <span class="sec-chip" style="background:${lvColor};color:#fff;font-weight:800">${RV.ui.icon(lvIcon)} ${({effective:'有效',weak:'弱有效',neutral:'无关',wrong:'可能写反',insufficient:'样本不足'})[v.level] || v.level}</span>
+          <span class="sec-chip">计划 ${(d.plan||{}).n || 0} 单</span>
+          <span class="sec-chip">更新 ${(d.generatedAt || '').slice(5,16)}</span>
+        </div>
+        <div class="reason" style="margin-bottom:8px">${v.note || ''}</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          ${blk('持仓浮盈（外部分档）', d.hold)}
+          ${blk('已平仓收益（外部分档）', d.closed)}
+        </div>
+        <div class="reason" style="margin-top:8px;font-size:11px">外部分 = 板块偏好×1.5（限幅±8）。回测基准：299 交易日个股级 IC ≈ 0.12，强利好 胜率 55.8% / 强利空 41.0%。本卡为实盘积累统计（<code>scripts/ext_shadow.py</code>）。</div>`;
+    } catch (e) { /* 无文件则隐藏 */ }
   }
 
   /* 外部市场因子卡（build_external.py 生成 data/external_data.json）

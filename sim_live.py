@@ -862,6 +862,8 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
                 "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
                 "gate": gate, "budget": budget, "status": "wait",
+                # 外部因子结构化分（供统计：ext 分档 vs 实际收益）
+                "ext": {"score": round(_eb, 2), "why": _eb_why} if _eb else None,
                 "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s%s%s" % (
                     it.get("signal"), it.get("score"), buy_below,
                     it.get("atr_stop") if it.get("atr_stop") else "--",
@@ -1142,6 +1144,7 @@ def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
         acct["trades"].append({
             "action": "sell", "date": date, "time": hms, "code": pos["code"],
             "name": pos["name"], "price": round(px, 3), "shares": shares,
+            "ext": pos.get("ext"),
             "chg_at_fill": round(s["chg"], 2), "pnl": round(pnl, 2),
             "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
             "reason": s["why"], "strategy": acct["key"], "pool": pool,
@@ -1193,6 +1196,7 @@ def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
             "score": pl.get("score"), "signal": pl.get("signal"),
             # 合并共识账户专用：共识数与来源子策略（页面展示买入依据）
             "consensus": pl.get("consensus"), "from": pl.get("from"),
+            "ext": pl.get("ext"),
             "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
                     "src": d.get("src")},
         })
@@ -1201,6 +1205,7 @@ def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
             "name": pl["name"], "price": round(px, 3), "shares": shares,
             "chg_at_fill": round(b["chg"], 2),
             "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
+            "ext": pl.get("ext"),
             "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
                     "src": d.get("src")},
         })
