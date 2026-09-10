@@ -76,9 +76,9 @@
        "prev_close": 15.14,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.35,
-       "last_chg": -5.22,
-       "last_ts": "14:48:01",
+       "last": 14.37,
+       "last_chg": -5.09,
+       "last_ts": "14:54:02",
        "last_close": 15.14
       },
       {
@@ -100,7 +100,7 @@
        "signal": "强烈买入",
        "last": 27.15,
        "last_chg": 0.22,
-       "last_ts": "14:48:01",
+       "last_ts": "14:54:02",
        "last_close": 27.09
       },
       {
@@ -120,9 +120,9 @@
        "prev_close": 24.97,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.46,
-       "last_chg": -2.04,
-       "last_ts": "14:48:01",
+       "last": 24.4,
+       "last_chg": -2.28,
+       "last_ts": "14:54:02",
        "last_close": 24.92
       },
       {
@@ -144,7 +144,7 @@
        "signal": "强烈买入",
        "last": 18.4,
        "last_chg": -3.66,
-       "last_ts": "14:48:01",
+       "last_ts": "14:54:02",
        "last_close": 19.1
       },
       {
@@ -164,9 +164,9 @@
        "prev_close": 28.05,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.08,
-       "last_chg": 0.11,
-       "last_ts": "14:48:01",
+       "last": 28.07,
+       "last_chg": 0.07,
+       "last_ts": "14:54:02",
        "last_close": 28.03
       }
      ],
@@ -726,9 +726,9 @@
        "prev_close": 15.14,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.35,
-       "last_chg": -5.22,
-       "last_ts": "14:48:01",
+       "last": 14.37,
+       "last_chg": -5.09,
+       "last_ts": "14:54:02",
        "last_close": 15.14
       },
       {
@@ -748,9 +748,9 @@
        "prev_close": 24.97,
        "score": 84,
        "signal": "强烈买入",
-       "last": 24.46,
-       "last_chg": -2.04,
-       "last_ts": "14:48:01",
+       "last": 24.4,
+       "last_chg": -2.28,
+       "last_ts": "14:54:02",
        "last_close": 24.92
       },
       {
@@ -772,7 +772,7 @@
        "signal": "强烈买入",
        "last": 18.4,
        "last_chg": -3.66,
-       "last_ts": "14:48:01",
+       "last_ts": "14:54:02",
        "last_close": 19.1
       },
       {
@@ -792,9 +792,9 @@
        "prev_close": 23.53,
        "score": 86,
        "signal": "强烈买入",
-       "last": 22.44,
-       "last_chg": -4.63,
-       "last_ts": "14:48:01"
+       "last": 22.45,
+       "last_chg": -4.59,
+       "last_ts": "14:54:02"
       }
      ],
      "plan": [
@@ -1445,7 +1445,15 @@
        "gate": "open",
        "budget": 7000.0,
        "status": "wait",
-       "reason": "强烈买入(86分) 回踩≤87.40 ATR止损73.58（保本+5%%）"
+       "reason": "强烈买入(86分) 回踩≤87.40 ATR止损73.58（保本+5%%）",
+       "miss": {
+        "date": "2026-09-10",
+        "first_ts": "14:50:01",
+        "low": 87.24,
+        "count": 2,
+        "caught": null,
+        "last_ts": "14:52:01"
+       }
       },
       {
        "code": "002116",
@@ -1775,7 +1783,18 @@
       }
      ],
      "review_log": [],
-     "miss_log": []
+     "miss_log": [
+      {
+       "date": "2026-09-10",
+       "code": "920725",
+       "name": "惠丰钻石",
+       "buy_below": 87.397,
+       "trigger": 87.572,
+       "day_low": 87.24,
+       "first_ts": "14:50:01",
+       "note": "盘中最低87.24 已≤买点87.40（含0.2%容差），巡检未采到 → 漏单留痕"
+      }
+     ]
     }
    },
    "mix": {
@@ -1797,14 +1816,17 @@
       "trail": 0.1,
       "be_at": null,
       "be_on": false,
-      "peak": 15.45,
+      "peak": 15.66,
       "prev_close": 16.93,
       "score": 83,
       "signal": "强烈买入",
       "consensus": 1,
       "from": [
        "aggressive"
-      ]
+      ],
+      "last": 15.64,
+      "last_chg": -7.62,
+      "last_ts": "14:54:02"
      }
     ],
     "plan": [
@@ -1835,8 +1857,9 @@
        "date": "2026-09-10",
        "first_ts": "14:48:01",
        "low": 1.196,
-       "count": 1,
-       "caught": null
+       "count": 4,
+       "caught": null,
+       "last_ts": "14:54:02"
       }
      },
      {
@@ -1866,8 +1889,9 @@
        "date": "2026-09-10",
        "first_ts": "14:48:01",
        "low": 14.85,
-       "count": 1,
-       "caught": null
+       "count": 4,
+       "caught": null,
+       "last_ts": "14:54:02"
       }
      },
      {
@@ -1897,8 +1921,9 @@
        "date": "2026-09-10",
        "first_ts": "14:48:01",
        "low": 3.19,
-       "count": 1,
-       "caught": null
+       "count": 4,
+       "caught": null,
+       "last_ts": "14:54:02"
       }
      },
      {
@@ -1952,8 +1977,9 @@
        "date": "2026-09-10",
        "first_ts": "14:48:01",
        "low": 7.43,
-       "count": 1,
-       "caught": null
+       "count": 4,
+       "caught": null,
+       "last_ts": "14:54:02"
       }
      },
      {
@@ -2050,8 +2076,9 @@
        "date": "2026-09-10",
        "first_ts": "14:48:01",
        "low": 22.0,
-       "count": 1,
-       "caught": null
+       "count": 4,
+       "caught": null,
+       "last_ts": "14:54:02"
       }
      },
      {
@@ -2237,9 +2264,9 @@
        "prev_close": 78.87,
        "score": 73,
        "signal": "买入",
-       "last": 77.13,
-       "last_chg": -2.21,
-       "last_ts": "14:48:01",
+       "last": 77.06,
+       "last_chg": -2.29,
+       "last_ts": "14:54:02",
        "last_close": 78.8
       },
       {
@@ -2259,9 +2286,9 @@
        "prev_close": 28.05,
        "score": 70,
        "signal": "买入",
-       "last": 28.08,
-       "last_chg": 0.11,
-       "last_ts": "14:48:01",
+       "last": 28.07,
+       "last_chg": 0.07,
+       "last_ts": "14:54:02",
        "last_close": 28.03
       },
       {
@@ -2281,9 +2308,9 @@
        "prev_close": 34.66,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.88,
-       "last_chg": 3.52,
-       "last_ts": "14:48:01",
+       "last": 35.87,
+       "last_chg": 3.49,
+       "last_ts": "14:54:02",
        "last_close": 34.7
       },
       {
@@ -2303,9 +2330,9 @@
        "prev_close": 65.24,
        "score": 74,
        "signal": "买入",
-       "last": 63.99,
-       "last_chg": -1.92,
-       "last_ts": "14:48:01"
+       "last": 63.91,
+       "last_chg": -2.04,
+       "last_ts": "14:54:02"
       }
      ],
      "plan": [
