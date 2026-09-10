@@ -42,6 +42,11 @@ REDUCE_BREADTH = float(os.environ.get("SIM_REDUCE_BREADTH", "25"))      # 涨占
 REDUCE_MIN_SCORE_BONUS = float(os.environ.get("SIM_REDUCE_SCORE", "6"))  # 买入门槛上调
 REDUCE_BUDGET_FACTOR = float(os.environ.get("SIM_REDUCE_BUDGET", "0.6"))  # 仓位打折
 MACRO_STALE_HOURS = float(os.environ.get("SIM_MACRO_STALE_H", "20"))     # 宏观数据超过则视为过期
+# 外部市场因子（build_external.py 产出）：原油/黄金/白银/铜/美债收益率/美元/纳指/VIX/标普
+# → 板块偏好分。选股时按 板块 或 个股名关键词 折算成加/减分，影响候选排序与门槛。
+EXT_WEIGHT = float(os.environ.get("SIM_EXT_WEIGHT", "1.5"))    # 偏好分 → 选股分 的放大系数
+EXT_CAP = float(os.environ.get("SIM_EXT_CAP", "8"))            # 单个股外部加减分上限
+EXT_MAX_AGE_H = float(os.environ.get("SIM_EXT_STALE_H", "14"))  # 外部数据过期小时数
 
 # 双池
 POOLS = ("six", "all")
@@ -607,6 +612,55 @@ def market_gate(review):
     return gate, ("；".join(why) if why else "open")
 
 
+def load_external():
+    """读外部因子数据；过期（>EXT_MAX_AGE_H）视为不可用。返回 dict 或 {}。"""
+    try:
+        e = load_json("external_data.json") or {}
+    except Exception:
+        return {}
+    gen = (e.get("generatedAt") or "")[:19]
+    if not gen:
+        return {}
+    try:
+        age = (time.time() - time.mktime(time.strptime(gen, "%Y-%m-%d %H:%M:%S"))) / 3600.0
+    except Exception:
+        return {}
+    e["_age_h"] = round(age, 2)
+    e["_stale"] = age > EXT_MAX_AGE_H
+    return e
+
+
+def _ext_score_of(it, ext):
+    """个股的外部因子偏好（原始分，未乘权重）。返回 (score, 理由) 或 (0, '').
+
+    优先用个股名关键词（板块映射不到的石油/矿业股），其次用板块偏好。
+    """
+    if not ext or ext.get("_stale"):
+        return 0.0, ""
+    name = it.get("name") or ""
+    kw = ext.get("keyword_bias") or {}
+    import re as _re
+    for pat, sc in kw.items():
+        try:
+            if _re.search(pat, name):
+                return float(sc), "外部:" + pat.split("|")[0]
+        except Exception:
+            continue
+    sec = it.get("sector") or ""
+    bias = ext.get("sector_bias") or {}
+    if sec in bias:
+        return float(bias[sec]), "外部:" + sec
+    return 0.0, ""
+
+
+def ext_bonus(it, ext):
+    """外部因子 → 选股加分（已乘权重并限幅）。"""
+    sc, _why = _ext_score_of(it, ext)
+    if not sc:
+        return 0.0
+    return max(-EXT_CAP, min(EXT_CAP, sc * EXT_WEIGHT))
+
+
 def _strategy_bonus(key, it):
     """策略偏好评分（v3.2）: 各策略候选排序差异化。
     激进=收益最大化（强动量/高趋势强度/量能/温和正乖离）;
@@ -702,6 +756,15 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
     pool_b = books(state, pool)
     acc_b = pool_b["accounts"]
     gate, gate_why = market_gate(review)
+    ext = load_external()
+    if ext and not ext.get("_stale"):
+        print("  [ext][%s] 风险偏好 %s(%+d)；板块偏好 %s" % (
+            pool, (ext.get("risk_pref") or {}).get("tone"),
+            (ext.get("risk_pref") or {}).get("score") or 0,
+            ", ".join("%s%+.1f" % (k, v) for k, v in list((ext.get("sector_bias") or {}).items())[:5])))
+    elif ext:
+        print("  [ext] 外部因子过期 %.1fh（>%.0fh），本次不参与选股" % (
+            ext.get("_age_h", 0), EXT_MAX_AGE_H))
     _reduce = (gate == "reduce")
     _score_bonus = REDUCE_MIN_SCORE_BONUS if _reduce else 0.0
     _budget_mul = REDUCE_BUDGET_FACTOR if _reduce else 1.0
@@ -722,13 +785,16 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 continue
             if it.get("signal_key") not in ("strong_buy", "buy"):
                 continue
-            if (it.get("score") or 0) < cfg["min_score"] + _score_bonus:
+            _eb = ext_bonus(it, ext)
+            # 外部强烈利空（≤-4.5，如"纳指跌+收益率升+VIX涨"三杀 AI算力）→ 个股门槛额外 +4
+            if (it.get("score") or 0) < cfg["min_score"] + _score_bonus + (-4 if _eb <= -4.5 else 0):
                 continue
             if it.get("trend_status") not in ("强势多头", "多头排列"):
                 continue
             cands.append(it)
-        # 策略差异化排序：原始分 + 策略偏好分（v3.2）
-        cands.sort(key=lambda x: -(x.get("score", 0) + _strategy_bonus(key, x)))
+        # 排序 = 原始分 + 策略偏好分（v3.2）+ 外部市场因子分（v3.9）
+        cands.sort(key=lambda x: -(x.get("score", 0) + _strategy_bonus(key, x)
+                                   + ext_bonus(x, ext)))
         per_key[key] = cands
         for it in cands:
             cand_pool.setdefault(it.get("code"), it)
@@ -776,6 +842,9 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                                               POOL_LABEL[pool], cfg["label"],
                                               it.get("name"), _nr)})
                 continue
+            # 注意：_eb 须在本循环内重算（过滤循环里的值会残留，导致所有计划显示同一分数）
+            _eb = ext_bonus(it, ext)
+            _eb_why = _ext_score_of(it, ext)[1]
             close = it.get("close") or 0
             ma10 = it.get("ma10") or close
             ideal = it.get("ideal_buy") or it.get("secondary_buy") or close
@@ -793,12 +862,13 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
                 "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
                 "gate": gate, "budget": budget, "status": "wait",
-                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s%s" % (
+                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s%s%s" % (
                     it.get("signal"), it.get("score"), buy_below,
                     it.get("atr_stop") if it.get("atr_stop") else "--",
                     "（保本+5%%）" if cfg.get("be_at") else "",
                     ("；LLM:" + _rv.get("note", "")) if _rv else "",
-                    ("（背离降档×%.1f）" % _budget_mul) if _reduce else ""),
+                    ("（背离降档×%.1f）" % _budget_mul) if _reduce else "",
+                    ("（%s%+.1f）" % (_eb_why, _eb)) if _eb else ""),
             })
         acct["plan"] = plan
         if log:

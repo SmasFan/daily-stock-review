@@ -80,6 +80,9 @@ if [ "$IN_TRADING" = "1" ]; then
   if [ $((MM % 30)) -eq 0 ]; then
     python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+    # 外部市场因子刷新（外盘盘中在变；--intraday-plan 会重算选股偏好，须用最新）
+    timeout 90 python3 build_external.py >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中外部因子刷新失败，沿用上次" >> data/auto_run.log
     # 宏观 LLM 消息面刷新（盘中新闻在变；--intraday-plan 会重算闸门，须用最新判断）
     timeout 240 python3 macro_llm.py >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中宏观LLM刷新失败，沿用上次" >> data/auto_run.log

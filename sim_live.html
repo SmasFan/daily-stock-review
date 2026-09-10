@@ -194,6 +194,7 @@
         <span class="sec-chip" id="ps-hint" style="font-size:11px">当前查看 <b>${cur.name}</b> · ${cur.desc}</span>
         <span class="sec-chip" id="ps-upd" style="font-size:10.5px">自动刷新·每60s</span>
       </div>
+      <div id="ext-factors" class="sec" data-nav="外部市场因子" data-nav-icon="globe" style="display:none"></div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
@@ -243,6 +244,7 @@
         if (p && p !== curPool) { curPool = p; render(); }
       }));
     loadLlmMacro();
+    loadExternal();
     select(selKey);
   }
 
@@ -336,6 +338,54 @@
       series:[{ type:'line', data:mc.map(x=>x.equity), showSymbol:false, lineStyle:{width:2.4,color:'#f59e0b'}, areaStyle:{opacity:0.12,color:'#f59e0b'} }]
     });
     window.addEventListener('resize',()=>c.resize());
+  }
+
+  /* 外部市场因子卡（build_external.py 生成 data/external_data.json）
+     原油/黄金/白银/铜/美债收益率/美元/纳指/VIX → A股板块偏好分 */
+  async function loadExternal() {
+    const box = document.getElementById('ext-factors');
+    if (!box) return;
+    try {
+      const e = await RV.API.fetch('external_data.json');
+      const f = e.factors || {};
+      const bias = e.sector_bias || {};
+      const rp = e.risk_pref || {};
+      const gen = (e.generatedAt || '').slice(0, 16);
+      const ageH = gen ? (Date.now() - new Date(gen.replace(' ', 'T')).getTime()) / 3600000 : 0;
+      const stale = ageH > 14;
+      const toneColor = { risk_on: 'var(--up)', risk_off: 'var(--down)', neutral: 'var(--text-2)' }[rp.tone] || 'var(--text-2)';
+      const order = ['oil','gold','silver','copper','yield','dxy','nasdaq','vix','sp500'];
+      const rows = order.filter(k => f[k]).map(k => {
+        const v = f[k], lv = v.level || 0;
+        const col = lv > 0 ? 'var(--up)' : (lv < 0 ? 'var(--down)' : 'var(--text-2)');
+        const tag = lv > 0 ? '利好' : (lv < 0 ? '利空' : '中性');
+        const dir = (v.chg || 0) > 0 ? '↑' : ((v.chg || 0) < 0 ? '↓' : '→');
+        return `<tr><td>${v.label || k}</td><td class="${lv>0?'up':(lv<0?'down':'neutral')}">${dir} ${v.chg != null ? RV.fmt.pct(v.chg) : '--'}</td>
+          <td class="neutral" style="font-size:11px">${v.note || ''}</td>
+          <td style="color:${col};font-weight:700;font-size:11px">${v.market_effect || tag}</td></tr>`;
+      }).join('');
+      const bs = Object.entries(bias).slice(0, 16).map(([sec, sc]) =>
+        `<span class="tag" style="background:${sc>0?'#f0fdf4':'#fef2f2'};color:${sc>0?'#16a34a':'#dc2626'};margin:2px 3px 0 0">${sec} ${sc>0?'+':''}${sc.toFixed(1)}</span>`).join('');
+      box.style.display = 'block';
+      box.style.borderLeft = '4px solid ' + toneColor;
+      box.innerHTML = `
+        <div class="sec-title"><span class="ti">${RV.ui.icon('globe')}</span>外部市场因子
+          <span class="sec-chip" style="background:${toneColor};color:#fff;font-weight:800">${rp.note || '—'} (${rp.score != null && rp.score > 0 ? '+' : ''}${rp.score != null ? rp.score : 0})</span>
+          <span class="sec-chip" ${stale ? 'style="background:#fff7ed;color:#9a3412;font-weight:800"' : ''}>更新 ${gen || '未知'}</span>
+        </div>
+        ${stale ? '<div class="revbox" style="margin:0 0 8px;background:#fff7ed;border-color:#fed7aa;color:#9a3412">⚠ 外部因子<b>已过期</b>（' + Math.round(ageH) + ' 小时）→ 选股未采用，请检查 build_external 是否执行</div>' : ''}
+        <div class="chart-row">
+          <div>
+            <div style="font-size:12px;font-weight:800;margin-bottom:4px">隔夜/实时行情因子</div>
+            <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>因子</th><th>涨跌</th><th>行情</th><th>对A股</th></tr></thead><tbody>${rows}</tbody></table></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;margin-bottom:4px">板块偏好（正=受益 / 负=受损）</div>
+            <div style="line-height:1.9">${bs || '<span class="neutral">暂无</span>'}</div>
+            ${(e.summary || []).length ? '<div class="reason" style="margin-top:8px;font-size:11px">' + e.summary.map(x => '· ' + x).join('<br>') + '</div>' : ''}
+          </div>
+        </div>`;
+    } catch (err) { /* 无文件则隐藏 */ }
   }
 
   /* LLM 宏观消息面观察卡（macro_llm.py 生成 data/macro_llm_data.json） */

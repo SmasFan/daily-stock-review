@@ -35,6 +35,13 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; t
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 宏观数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 外部市场因子（build_external.py）：原油/黄金/白银/铜/美债收益率/美元/纳指/VIX → 板块偏好
+# 供 sim_live 选股加分与门槛调整；必须在 sim_live --plan 之前
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; then
+  timeout 90 python3 build_external.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 外部因子生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 宏观 LLM 消息面（macro_llm.py）：新闻 → LLM 多空判断 + 6股池逐股消息面
 # 供 sim_live --plan 的宏观闸门（空头/防御→block）与个股回避；必须在 sim_live --plan 之前
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; then
