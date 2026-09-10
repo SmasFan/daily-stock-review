@@ -449,17 +449,54 @@
     RVX.enableCardTables('#detail');
   }
 
+  /* 合并账户 = 三账户按当日档位权重合成的「虚拟净值」（自身不持现金/不持仓/不成交，故无独立仓位）。
+     持仓与成交在此按三账户并集展示，标明归属账户与当日权重，不伪造 mix 自己的仓位。 */
+  function mixWeights() {
+    const mc = mixBook().equity_curve || [];
+    const rg = mc.length ? mc[mc.length - 1].regime : '衡';
+    if (rg === '攻') return { aggressive: 0.7, balanced: 0.2, disciplined: 0.1 };
+    if (rg === '守') return { aggressive: 0.1, balanced: 0.2, disciplined: 0.7 };
+    return { aggressive: 0.25, balanced: 0.5, disciplined: 0.25 };
+  }
+
   function renderMix() {
     const mc = mixBook().equity_curve || [];
+    const W = mixWeights();
+    const rg = mc.length ? mc[mc.length - 1].regime : '衡';
+    const keys = ORDER.filter(k => k !== 'mix');
+    const holds = [], trades = [];
+    let cashSum = 0, holdEqSum = 0;
+    keys.forEach(k => {
+      const a = acct(k);
+      cashSum += a.cash || 0;
+      (a.positions || []).forEach(p => {
+        holdEqSum += p.shares * (p.last != null ? p.last : p.last_close != null ? p.last_close : p.cost);
+        holds.push({ k: k, p: p });
+      });
+      (a.trades || []).forEach(t => trades.push({ k: k, t: t }));
+    });
+    const uniq = new Set(holds.map(h => h.p.code)).size;
+    trades.sort((x, y) => (y.t.date + (y.t.time || '')).localeCompare(x.t.date + (x.t.time || '')));
+    const wTxt = keys.map(k => META[k].label + (W[k] * 100).toFixed(0) + '%').join(' / ');
+
     document.getElementById('detail').innerHTML = `
       <div class="sec" data-nav="合并净值" data-nav-icon="layer-group">
-        <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>合并账户净值 <span class="sec-chip">三策略权重合成</span></div>
+        <div class="sec-title"><span class="ti">${RV.ui.icon('layer-group')}</span>合并账户净值 <span class="sec-chip">三策略权重合成 · 虚拟指数</span></div>
         <div class="chart-box" id="mx-chart"></div>
         <div class="reason">动态权重：上证20日斜率 &gt;2.5% 攻(激70/稳20/纪10)；&lt;-2.5% 守(10/20/70)；中间衡(25/50/25)。橙虚线=等权(1/3 各)。</div>
       </div>
       <div class="kpis">
-        <div class="kpi"><div class="k-label">合并净值</div><div class="k-val">¥${fmt(eqOf('mix'))}</div><div class="k-sub">${RV.fmt.pct(retOf('mix'))}</div></div>
-        ${ORDER.filter(k => k !== 'mix').map(k => { const c = acct(k).equity_curve; return `<div class="kpi"><div class="k-label">${META[k].label}</div><div class="k-val">¥${fmt(c.length ? c[c.length - 1].equity : 50000)}</div><div class="k-sub">${RV.fmt.pct((c.length ? c[c.length - 1].equity : 50000) / 50000 * 100 - 100)}</div></div>`; }).join('')}
+        <div class="kpi"><div class="k-label">合并净值</div><div class="k-val">¥${fmt(eqOf('mix'))}</div><div class="k-sub">${RV.fmt.pct(retOf('mix'))} · 当前档位 ${rg}</div></div>
+        <div class="kpi"><div class="k-label">合计现金</div><div class="k-val">¥${fmt(cashSum)}</div><div class="k-sub">三账户现金之和</div></div>
+        <div class="kpi"><div class="k-label">合并持仓</div><div class="k-val">${holds.length}笔</div><div class="k-sub">${uniq} 只（去重）· 市值¥${fmt(holdEqSum)}</div></div>
+        <div class="kpi"><div class="k-label">合并成交</div><div class="k-val">${trades.length}笔</div><div class="k-sub">三账户合计</div></div>
+        ${keys.map(k => { const c = acct(k).equity_curve; return `<div class="kpi"><div class="k-label">${META[k].label}</div><div class="k-val">¥${fmt(c.length ? c[c.length - 1].equity : 50000)}</div><div class="k-sub">权重 ${(W[k] * 100).toFixed(0)}% · ${RV.fmt.pct((c.length ? c[c.length - 1].equity : 50000) / 50000 * 100 - 100)}</div></div>`; }).join('')}
+      </div>
+      <div class="sec" data-nav="合并持仓" data-nav-icon="briefcase">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('briefcase')}</span>合并持仓 <span class="sec-chip">三账户并集 · 标归属与权重（同一只可被多账户同时持有）</span></div>
+        ${holds.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>账户</th><th>权重</th><th>股票</th><th>数量</th><th>成本</th><th>现价</th><th>当日</th><th>收益</th><th>金额</th><th>买入</th></tr></thead><tbody>
+          ${holds.map(h => { const p = h.p; const pxv = p.last != null ? p.last : p.last_close != null ? p.last_close : p.cost; const pnl = (pxv / p.cost - 1) * 100; return `<tr><td><span class="tag" style="background:${META[h.k].badge}1a;color:${META[h.k].badge}">${META[h.k].label}</span></td><td class="neutral">${(W[h.k] * 100).toFixed(0)}%</td><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.shares}股</td><td>${fmt(p.cost)}</td><td class="${pcl(p.last_chg)}">${fmt(pxv)}</td><td class="${pcl(p.last_chg)}">${p.last_chg != null ? RV.fmt.pct(p.last_chg) : '--'}</td><td class="${pcl(pnl)}">${RV.fmt.pct(pnl)}</td><td>¥${fmt(p.shares * pxv)}</td><td>${p.buy_date} ${p.buy_time || ''}</td></tr>`; }).join('')}
+        </tbody></table></div>` : '<div class="neutral" style="padding:8px">三账户均空仓</div>'}
       </div>
       <div class="chart-row">
         <div class="sec" data-nav="档位记录" data-nav-icon="flag">
@@ -468,8 +505,14 @@
         </div>
         <div class="sec" data-nav="合成逻辑" data-nav-icon="book">
           <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>合成逻辑</div>
-          <div class="logic" style="font-size:12px;line-height:1.9">合并=激进/稳健/严守纪律三账户按当日档位加权；档位由上证 20 日斜率决定（无前视）。若要独立资金账户逐笔操作，可后续把 mix 扩展为真实第4账户。</div>
+          <div class="logic" style="font-size:12px;line-height:1.9">合并净值 = 激进/稳健/严守纪律三账户<b>按当日档位权重</b>加权复利（档位由上证 20 日斜率决定，无前视），是<b>虚拟指数</b>——自身不持现金、不持仓、不成交，所以没有独立仓位；<b>持仓与成交见上方「合并持仓」与下方「合并成交流水」（三账户并集）</b>。当前权重：${wTxt}。若要独立资金账户逐笔操作，可后续把 mix 扩展为真实第4账户。</div>
         </div>
+      </div>
+      <div class="sec" data-nav="合并成交" data-nav-icon="receipt">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('receipt')}</span>合并成交流水 <span class="sec-chip">${trades.length} 笔 · 三账户合并按时间倒序</span></div>
+        ${trades.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>日期</th><th>时分秒</th><th>账户</th><th>方向</th><th>股票</th><th>价格</th><th>数量</th><th>金额</th><th>盈亏</th><th>触发原因</th></tr></thead><tbody>
+          ${trades.slice(0, 120).map(x => { const t = x.t; return `<tr><td>${t.date}</td><td class="neutral">${t.time || '--'}</td><td><span class="tag" style="background:${META[x.k].badge}1a;color:${META[x.k].badge}">${META[x.k].label}</span></td><td>${t.action === 'buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${t.code}')">${t.name}</td><td>${fmt(t.price)}</td><td>${t.shares}股</td><td>¥${fmt((t.price || 0) * (t.shares || 0))}</td><td class="${t.action === 'sell' ? pcl(t.pnl) : 'neutral'}">${t.action === 'sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td><td class="reason">${(t.reason || '').slice(0, 55)}</td></tr>`; }).join('')}
+        </tbody></table></div>${trades.length > 120 ? `<div class="reason">仅显示最近 120 笔（共 ${trades.length} 笔），各账户完整流水见对应账户页。</div>` : ''}` : '<div class="neutral" style="padding:8px">三账户暂无成交</div>'}
       </div>`;
     drawMixChart();
     RVX.enableCardTables('#detail');
