@@ -20,6 +20,16 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
+# 腾讯日K多域名回退：web.ifzq 的 /fqkline/get 会被腾讯 WAF 拦（HTTP 501），newfqkline 与
+# proxy.finance.qq.com 镜像可用，依次尝试。
+TENCENT_DAILY_URLS = (
+    "https://web.ifzq.gtimg.cn/appstock/app/newfqkline/get?param={sym},day,,,{count},qfq",
+    "https://proxy.finance.qq.com/ifzqgtimg/appstock/app/newfqkline/get?param={sym},day,,,{count},qfq",
+    "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={sym},day,,,{count},qfq",
+)
+_WAF_LOGGED = set()   # 已报过失败的代码（避免刷屏）
+WAF_HITS = 0          # 本次进程内 501 次数（供批量任务汇总）
+
 # K 线缓存最大存活小时数，可用环境变量 CACHE_MAX_AGE_HOURS 覆盖（如 99999 表示只用缓存）。
 CACHE_MAX_AGE_HOURS = float(os.environ.get("CACHE_MAX_AGE_HOURS", "20"))
 
@@ -39,6 +49,23 @@ def _get(url: str, timeout: int = 20, encoding: str = "utf-8") -> str:
     req = urllib.request.Request(url, headers=UA)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode(encoding, errors="ignore")
+
+
+def _tencent_daily_rows(sym: str, count: int):
+    """腾讯前复权日K，多域名依次回退；全失败返回 None（501=被 WAF 拦，自动换域名）。"""
+    global WAF_HITS
+    for tmpl in TENCENT_DAILY_URLS:
+        try:
+            data = json.loads(_get(tmpl.format(sym=sym, count=count)))
+            node = (data.get("data") or {}).get(sym) or {}
+            rows = node.get("qfqday") or node.get("day") or []
+            if rows:
+                return rows
+        except Exception as e:
+            if "501" in str(e):
+                WAF_HITS += 1
+            continue
+    return None
 
 
 # ---------------- 实时快照 ----------------
@@ -148,7 +175,11 @@ def fetch_daily_kline(code: str, count: int = 320, use_cache: bool = True,
     sym = tencent_symbol(code)
     # 同花顺官方优先（需 API Key）；仅 A 股 6 位代码适用，指数/基金/港股走腾讯
     if ths_api.available() and code.isdigit() and len(code) == 6:
-        k = ths_api.fetch_daily_kline(code, days=max(count, 60))
+        k = None
+        try:
+            k = ths_api.fetch_daily_kline(code, days=max(count, 60))
+        except Exception:
+            k = None
         if k and len(k.get("dates") or []) >= 30:
             out = k
             try:
@@ -157,43 +188,50 @@ def fetch_daily_kline(code: str, count: int = 320, use_cache: bool = True,
             except Exception:
                 pass
             return out
-    url = (f"https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
-           f"?param={sym},day,,,{count},qfq")
-    try:
-        raw = _get(url)
-        data = json.loads(raw)
-        node = data["data"][sym]
-        rows = node.get("qfqday") or node.get("day") or []
-        dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
-        for r in rows:
-            # r: [date, open, close, high, low, volume, ...]
-            dates.append(r[0])
-            opens.append(float(r[1]))
-            closes.append(float(r[2]))
-            highs.append(float(r[3]))
-            lows.append(float(r[4]))
-            vols.append(float(r[5]) if len(r) > 5 else 0.0)
-        out = {"dates": dates, "opens": opens, "closes": closes,
-               "highs": highs, "lows": lows, "volumes": vols}
-        try:
-            with open(cp, "w", encoding="utf-8") as fp:
-                json.dump(out, fp)
-        except Exception:
-            pass
-        return out
-    except Exception as e:
-        print(f"[data] {code} 日K拉取失败: {e}")
+    rows = _tencent_daily_rows(sym, count)
+    if not rows:
+        # 同花顺失败 + 腾讯三域名都没数据：只报一次，不再逐轮刷屏
+        if code not in _WAF_LOGGED:
+            _WAF_LOGGED.add(code)
+            print(f"[data] {code} 日K拉取失败: 同花顺无数据且腾讯多域名无返回(WAF/不支持该标的)")
         return None
+    dates, opens, closes, highs, lows, vols = [], [], [], [], [], []
+    for r in rows:
+        # r: [date, open, close, high, low, volume, ...]
+        dates.append(r[0])
+        opens.append(float(r[1]))
+        closes.append(float(r[2]))
+        highs.append(float(r[3]))
+        lows.append(float(r[4]))
+        vols.append(float(r[5]) if len(r) > 5 else 0.0)
+    out = {"dates": dates, "opens": opens, "closes": closes,
+           "highs": highs, "lows": lows, "volumes": vols}
+    try:
+        with open(cp, "w", encoding="utf-8") as fp:
+            json.dump(out, fp)
+    except Exception:
+        pass
+    return out
 
 
 def fetch_daily_kline_batch(codes, count: int = 320, sleep: float = 0.3):
-    """批量拉取，带限速防反爬。返回 {code: kline_dict}。"""
+    """批量拉取，带限速防反爬。返回 {code: kline_dict}。失败清单在末尾汇总一条。"""
     out = {}
+    failed = []
+    before = WAF_HITS
     for c in codes:
         k = fetch_daily_kline(c, count=count)
         if k and len(k["closes"]) >= 30:
             out[c] = k
+        else:
+            failed.append(c)
         time.sleep(sleep)
+    if failed:
+        print("[data] 日K失败 %d/%d 只: %s%s" % (
+            len(failed), len(codes), ",".join(failed[:12]),
+            " …" if len(failed) > 12 else ""))
+        if WAF_HITS > before:
+            print("[data] 其中腾讯 WAF 拦截(501) %d 次，已自动切换备用域名" % (WAF_HITS - before))
     return out
 
 

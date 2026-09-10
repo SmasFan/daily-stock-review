@@ -43,8 +43,13 @@ def api_key():
     return ""
 
 
-def _get(path, params=None):
-    """GET 请求，返回 data 字段；失败/无 key 返回 None。"""
+def _get(path, params=None, retries=3, backoff=0.6):
+    """GET 请求，返回 data 字段；失败/无 key 返回 None。
+
+    网络异常/限流（429、5xx、超时）自动重试 retries 次（退避 0.6s/1.2s/2.4s），
+    避免批量拉取时个别股票因瞬时限流掉到腾讯回退（腾讯日K 现在会被 WAF 拦）。
+    业务错误（code != 0，如无此标的）不重试。
+    """
     key = api_key()
     if not key:
         return None
@@ -52,14 +57,21 @@ def _get(path, params=None):
     if params:
         qs = urllib.parse.urlencode(params)
         url = url + "?" + qs
-    try:
-        resp = requests.get(url, headers={"X-api-key": key}, timeout=TIMEOUT)
-        data = resp.json()
-    except Exception:
-        return None
-    if not isinstance(data, dict) or data.get("code") != 0:
-        return None
-    return data.get("data")
+    for attempt in range(max(1, retries)):
+        try:
+            resp = requests.get(url, headers={"X-api-key": key}, timeout=TIMEOUT)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                raise RuntimeError("http %d" % resp.status_code)
+            data = resp.json()
+        except Exception:
+            if attempt + 1 < retries:
+                time.sleep(backoff * (2 ** attempt))
+                continue
+            return None
+        if not isinstance(data, dict) or data.get("code") != 0:
+            return None
+        return data.get("data")
+    return None
 
 
 def _code_to_thscode(code):

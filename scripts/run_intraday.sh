@@ -3,6 +3,7 @@
 # - 每 5 分钟：生成本地推荐+趋势数据
 # - 每 10 分钟（MM%10==0）：跟踪数据 + 提交推送 GitHub
 # - 每 30 分钟（MM%30==0）：全量复盘(review 含ETF成分) + 模拟盘盘中重建 + 资金 + 回测
+#   注：盘中触发巡检（sim_live --intraday / sim_sprint --scan）已独立到 sim_intraday_scan.sh（cron */2）
 # - 12:00（午休）：只跑复盘 + 推「午间大盘分析」（大盘/自选/资金/宏观综合，单条）
 # - flock 防重叠：上次任务未完成时跳过本轮
 #   2026-09 加固：等锁最长 90 秒（避免整天跳过）；锁龄 >35 分钟视为死锁，强制接管
@@ -68,13 +69,8 @@ if [ "$IN_TRADING" = "1" ]; then
   python3 build_uptrend.py >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中趋势数据生成失败" >> data/auto_run.log
 
-  # 实时模拟盘盘中巡检：现价触发买点/止损即成交（每5分钟，幂等）
-  python3 sim_live.py --intraday >> data/auto_run.log 2>&1 \
-    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘盘中巡检失败" >> data/auto_run.log
-
-  # 一周冲刺模拟盘：AI选股重仓，自动扫止盈/止损（每5分钟）
-  python3 sim_sprint.py --scan >> data/auto_run.log 2>&1 \
-    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘巡检失败" >> data/auto_run.log
+  # 实时模拟盘盘中巡检 / 一周冲刺盘巡检已解耦到 scripts/sim_intraday_scan.sh
+  # （独立锁 + cron */2 交易时段），不再排在本重块后面被锁挡掉。
 
   # 空转守卫：盘中双池无待触发单(计划过期/未生成) → 自动重建修复（每5分钟）
   python3 scripts/sim_live_guard.py >> data/auto_run.log 2>&1 \

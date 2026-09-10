@@ -13,7 +13,7 @@
   python3 sim_live.py --init                 # 初始化（双池 × 3 账户）
   python3 sim_live.py --plan [--pool six|all]   # 重建计划（默认双池；收盘 auto_run 调用）
   python3 sim_live.py --intraday-plan         # 盘中整点复盘重建(刷新买点/补新信号, 需全量成分版review)
-  python3 sim_live.py --intraday [--pool ...]   # 盘中巡检触发成交（cron 每5分钟，双池）
+  python3 sim_live.py --intraday [--pool ...]   # 盘中巡检触发成交（cron 每2分钟独立锁，双池）
   python3 sim_live.py --review [--date D]       # 收盘复盘 + 自学习
   python3 sim_live.py --plan-date 2026-09-04 --pool six   # 6股池历史日K信号重建
   python3 sim_live.py --strategy-log "msg"   # 策略版本变更
@@ -34,6 +34,8 @@ sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 STATE_FILE = os.path.join(DATA_DIR, "sim_live.json")
 CASH_START = 50000.0
+# 触碰容差：现价 ≤ 买点×(1+容差) 即视为回踩触发（避免差一分钱漏单），可用 SIM_TOUCH_TOL 覆盖
+TOUCH_TOL = float(os.environ.get("SIM_TOUCH_TOL", "0.002"))
 
 # 双池
 POOLS = ("six", "all")
@@ -146,7 +148,7 @@ def normalize_state(st):
 
 def normalize_account(key, a):
     for f in ("key", "label", "start_cash", "cash", "positions", "plan",
-              "trades", "equity_curve", "daily_log", "review_log"):
+              "trades", "equity_curve", "daily_log", "review_log", "miss_log"):
         if f not in a:
             if f == "key":
                 a[f] = key
@@ -157,7 +159,7 @@ def normalize_account(key, a):
             elif f == "cash":
                 a[f] = CASH_START
             elif f in ("positions", "plan", "trades", "equity_curve",
-                       "daily_log", "review_log"):
+                       "daily_log", "review_log", "miss_log"):
                 a[f] = []
     return a
 
@@ -171,7 +173,7 @@ def new_account(key, cfg):
     return {
         "key": key, "label": cfg["label"], "start_cash": CASH_START,
         "cash": CASH_START, "positions": [], "plan": [], "trades": [],
-        "equity_curve": [], "daily_log": [], "review_log": [],
+        "equity_curve": [], "daily_log": [], "review_log": [], "miss_log": [],
     }
 
 
@@ -601,6 +603,33 @@ def intraday_scan(state, date, hms):
     return total_fill, all_notes
 
 
+def _mark_miss(pool, acct, pl, low, date, hms, tol):
+    """漏单留痕：盘中最低已触及买点，但巡检采样点没抓到（采样间隔/锁排队）。
+
+    首次发现写 acct['miss_log'] + 返回 True（用于打日志）；同日重复触碰只累加计数。
+    """
+    m = pl.get("miss") or {}
+    if m.get("date") != date:
+        m = {"date": date, "first_ts": hms, "low": low, "count": 1, "caught": None}
+        first = True
+    else:
+        m["count"] = int(m.get("count", 0)) + 1
+        m["low"] = min(m.get("low") or low, low)
+        m["last_ts"] = hms
+        first = False
+    pl["miss"] = m
+    if first:
+        acct.setdefault("miss_log", []).append({
+            "date": date, "code": pl["code"], "name": pl.get("name"),
+            "buy_below": pl["buy_below"],
+            "trigger": round(pl["buy_below"] * (1 + tol), 3),
+            "day_low": low, "first_ts": hms,
+            "note": ("盘中最低%.2f 已≤买点%.2f（含%.1f%%容差），巡检未采到 → 漏单留痕"
+                     % (low, pl["buy_below"], tol * 100)),
+        })
+    return first
+
+
 def _scan_account(pool, acct, cfg, quotes, date, hms):
     filled = 0
     notes = []
@@ -671,7 +700,8 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
             continue
         if px > (pl.get("close") or 0) * 1.03:
             continue  # 高开冲高不追
-        if px <= pl["buy_below"]:
+        trigger = round(pl["buy_below"] * (1 + TOUCH_TOL), 3)
+        if px <= trigger:
             budget = min(pl["budget"], acct["cash"] * 0.98)
             shares = int(budget / px / 100) * 100
             if shares <= 0:
@@ -694,8 +724,18 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
                 "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
             })
             pl["status"] = "filled"
+            if pl.get("miss"):
+                # 先漏后抓到：保留漏单痕迹，标记实际成交时刻
+                pl["miss"]["caught"] = hms
             filled += 1
             notes.append("[%s] 买入 %s @%.2f 回踩触发" % (acct["label"], pl["name"], px))
+        else:
+            # 采样价没到买点，但当日最低已跌破 → 记为漏单（透明可查，便于评估采样频率）
+            low = q.get("low") or 0
+            if low and low <= trigger:
+                if _mark_miss(pool, acct, pl, low, date, hms, TOUCH_TOL):
+                    notes.append("⚠️[%s] %s 错过买点：盘中最低%.2f≤%.2f（买点%s），巡检未采到" % (
+                        acct["label"], pl["name"], low, trigger, pl["buy_below"]))
     return filled, notes
 
 
