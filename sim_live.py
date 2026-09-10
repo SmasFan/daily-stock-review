@@ -171,7 +171,7 @@ def normalize_state(st):
 
 def normalize_account(key, a):
     for f in ("key", "label", "start_cash", "cash", "positions", "plan",
-              "trades", "equity_curve", "daily_log", "review_log", "miss_log"):
+              "trades", "equity_curve", "daily_log", "review_log", "miss_log", "llm_log"):
         if f not in a:
             if f == "key":
                 a[f] = key
@@ -182,7 +182,7 @@ def normalize_account(key, a):
             elif f == "cash":
                 a[f] = CASH_START
             elif f in ("positions", "plan", "trades", "equity_curve",
-                       "daily_log", "review_log", "miss_log"):
+                       "daily_log", "review_log", "miss_log", "llm_log"):
                 a[f] = []
     return a
 
@@ -196,7 +196,7 @@ def new_account(key, cfg):
     return {
         "key": key, "label": cfg["label"], "start_cash": CASH_START,
         "cash": CASH_START, "positions": [], "plan": [], "trades": [],
-        "equity_curve": [], "daily_log": [], "review_log": [], "miss_log": [],
+        "equity_curve": [], "daily_log": [], "review_log": [], "miss_log": [], "llm_log": [],
     }
 
 
@@ -282,19 +282,7 @@ def _llm_chat_cc(system, user, timeout=120):
     return (d["choices"][0]["message"]["content"] or "").strip()
 
 
-def _llm_chat(system, user, timeout=480):
-    """commandcode 优先 → ollama 降级；空返回自动重试。"""
-    errs = []
-    import time as _t
-    for attempt in range(3):
-        try:
-            c = _llm_chat_cc(system, user, timeout=min(timeout, 120))
-            if c.strip():
-                return c
-            errs.append("cc 空返回(第%d次)" % (attempt + 1))
-        except Exception as e:
-            errs.append("cc: %s" % e)
-        _t.sleep(1.5 * (attempt + 1))
+def _llm_chat_ollama(system, user, timeout=480):
     import urllib.request
     body = json.dumps({
         "model": LLM_MODEL, "stream": False,
@@ -311,6 +299,22 @@ def _llm_chat(system, user, timeout=480):
     if not content.strip():
         raise RuntimeError("ollama 空返回")
     return content
+
+
+def _llm_chat(system, user, timeout=480):
+    """commandcode 优先 → ollama 降级；空返回自动重试。"""
+    errs = []
+    import time as _t
+    for attempt in range(3):
+        try:
+            c = _llm_chat_cc(system, user, timeout=min(timeout, 120))
+            if c.strip():
+                return c
+            errs.append("cc 空返回(第%d次)" % (attempt + 1))
+        except Exception as e:
+            errs.append("cc: %s" % e)
+        _t.sleep(1.5 * (attempt + 1))
+    return _llm_chat_ollama(system, user, timeout=timeout)
 
 
 def llm_review_candidates(cands, macro_llm=None):
@@ -352,6 +356,163 @@ def llm_review_candidates(cands, macro_llm=None):
     except Exception as e:
         print("  [llm] 个股评审失败(放行): %s" % e)
         return {}
+
+
+# ---------------- 盘中 LLM 风控闸门（成交前批量评审） ----------------
+# 每次真正成交前（买入触发 / 卖出触发）先问 LLM：allow 执行，avoid 放弃。
+# 约束：
+#   - 一次巡环只发 1 个请求（本轮所有买卖候选合并批量），短超时（默认 25s）
+#   - 同日同标的同方向结果缓存（state.meta.llm_gate），不重复问
+#   - 失败/超时 → 全部放行（不能因 LLM 挂掉而停盘）；连错 3 次熔断 10 分钟
+#   - 硬止損（ATR/保本保命单）不被 avoid 否决，只记录 LLM 意见（风控优先）
+LLM_GATE_ON = os.environ.get("SIM_LLM_GATE", "1").lower() not in ("0", "false", "off", "no")
+GATE_TIMEOUT = float(os.environ.get("SIM_LLM_GATE_TIMEOUT", "25"))
+GATE_FAIL_LIMIT = 3
+GATE_COOLDOWN_MIN = 10
+
+
+def _json_of(text):
+    """从 LLM 返回里提取 JSON（容错 ```json 包围 / 前后废话）。"""
+    if not text or not text.strip():
+        raise ValueError("空返回")
+    t = text.strip()
+    if t.startswith("```"):
+        parts = t.split("```")
+        if len(parts) > 1:
+            t = parts[1]
+            if t.lower().startswith("json"):
+                t = t[4:]
+    i, j = t.find("{"), t.rfind("}")
+    if i < 0 or j <= i:
+        raise ValueError("无 JSON")
+    return json.loads(t[i:j + 1])
+
+
+def _llm_chat_fast(system, user):
+    """盘中短超时调用：cc 一次 → ollama 一次，不重试。"""
+    errs = []
+    try:
+        c = _llm_chat_cc(system, user, timeout=GATE_TIMEOUT)
+        if c.strip():
+            return c
+        errs.append("cc 空返回")
+    except Exception as e:
+        errs.append("cc: %s" % e)
+    c = _llm_chat_ollama(system, user, timeout=GATE_TIMEOUT * 2)
+    if c.strip():
+        return c
+    raise RuntimeError("全部通道空返回 %s" % errs)
+
+
+def _hhmm_add(hms, minutes):
+    """'HH:MM:SS' + N 分钟 → 'HH:MM:SS'（超 24h 截断）。"""
+    try:
+        p = [int(x) for x in hms.split(":")]
+    except Exception:
+        return hms
+    total = (p[0] * 3600 + p[1] * 60 + p[2] + int(minutes * 60)) % 86400
+    return "%02d:%02d:%02d" % (total // 3600, total % 3600 // 60, total % 60)
+
+
+def _llm_gate_call(tasks):
+    """一次批量评审买卖候选，返回 {id: {verdict,note}}；失败/未解析 → None。
+
+    发给 LLM 的 id 用短号 t1/t2...（长 id 会被模型改写成代码/别名），返回后按短号映射，
+    认不出短号时再用股票代码兜底匹配。
+    """
+    short, lines = {}, []
+    for i, t in enumerate(tasks, 1):
+        sid = "t%d" % i
+        short[sid] = t
+        if t["action"] == "buy":
+            lines.append(
+                "%s | 买 %s(%s) | 现价%.2f 当日%+.2f%% | 买点%.2f | %s分 %s | %s | 板块%s | 已触发:%s" % (
+                    sid, t["name"], t["code"], t["px"], t.get("chg") or 0,
+                    t.get("buy_below") or 0, t.get("score") or "?", t.get("signal") or "",
+                    t.get("trend") or "", t.get("sector") or "-", t.get("why") or ""))
+        else:
+            lines.append(
+                "%s | 卖 %s(%s) | 现价%.2f 当日%+.2f%% | 成本%.2f 浮盈%+.2f%% 峰值%+.2f%% | %s | 类型=%s" % (
+                    sid, t["name"], t["code"], t["px"], t.get("chg") or 0,
+                    t.get("cost") or 0, t.get("gain") or 0, t.get("peak_gain") or 0,
+                    t.get("why") or "", "硬止损(不可否决)" if t.get("hard") else "软止盈(可否决)"))
+    sysp = """你是A股盘中实时交易风控员，在成交前复核系统触发。
+买入判断：回踩买点触发通常是机会；但当日大幅杀跌(跌幅≤-5%)、明显弱势下杀、宏观逆风追高时给 avoid。
+卖出判断：硬止损由系统强制执行（你只能确认）；软止盈/移动止盈若个股当日强势上攻(红盘)且趋势未破，可给 avoid 表示继续持有。
+只依据给定数据判断，不臆造新闻。宁少误杀，不放过明显风险。
+输出严格 JSON：{"decisions":[{"id":"t1","verdict":"allow|avoid","note":"≤20字理由"}]}
+id 必须原样照抄（t1/t2/...），不得替换成股票代码；逐一回答所有 id。"""
+    user = "【待复核触发】\n%s\n\n逐个给出 allow/avoid，id 原样返回。" % "\n".join(lines)
+    try:
+        j = _json_of(_llm_chat_fast(sysp, user))
+    except Exception as e:
+        print("  [llm][gate] 评审失败(放行): %s" % e)
+        return None
+    out = {}
+    for r in (j.get("decisions") or []):
+        raw = str(r.get("id") or "").strip()
+        t = short.get(raw)
+        if t is None:
+            hits = [x for x in short.values() if x.get("code") and x["code"] in raw]
+            if len(hits) == 1:
+                t = hits[0]
+        if t is None:
+            continue
+        out[t["id"]] = {"verdict": "avoid" if str(r.get("verdict")).lower() == "avoid" else "allow",
+                        "note": (r.get("note") or "")[:40]}
+    return out or None
+
+
+def llm_trade_gate(state, date, hms, tasks):
+    """成交前 LLM 闸门。返回 {id: {verdict, note, src}}。
+
+    src: llm=本次评审 / cache=同日已评 / fallback=LLM不可用放行 / off=闸门关闭
+    """
+    meta = state.setdefault("meta", {})
+    cache = meta.get("llm_gate")
+    if not cache or cache.get("date") != date:
+        cache = {"date": date, "items": {}}
+        meta["llm_gate"] = cache
+    items = cache.setdefault("items", {})
+    out, fresh = {}, []
+    for t in tasks:
+        c = items.get(t["id"])
+        if c:
+            out[t["id"]] = {"verdict": c.get("verdict"), "note": c.get("note"),
+                            "src": "cache", "ts": c.get("ts")}
+        else:
+            fresh.append(t)
+    if not fresh:
+        return out
+    if not LLM_GATE_ON:
+        for t in fresh:
+            out[t["id"]] = {"verdict": "allow", "note": "闸门关闭", "src": "off"}
+        return out
+    cb = meta.get("llm_gate_cb") or {}
+    if cb.get("until") and hms < cb["until"]:
+        for t in fresh:
+            out[t["id"]] = {"verdict": "allow",
+                            "note": "LLM熔断至%s" % cb["until"], "src": "fallback"}
+        return out
+    dec = _llm_gate_call(fresh)
+    if dec is None:
+        cb["streak"] = int(cb.get("streak") or 0) + 1
+        if cb["streak"] >= GATE_FAIL_LIMIT:
+            cb["until"] = _hhmm_add(hms, GATE_COOLDOWN_MIN)
+            cb["streak"] = 0
+            print("  [llm][gate] 连续失败 → 熔断至 %s" % cb["until"])
+        meta["llm_gate_cb"] = cb
+        for t in fresh:
+            out[t["id"]] = {"verdict": "allow", "note": "LLM不可用，放行", "src": "fallback"}
+        return out
+    meta.pop("llm_gate_cb", None)
+    for t in fresh:
+        d = dec.get(t["id"]) or {"verdict": "allow", "note": "LLM未逐条返回，放行"}
+        d["src"] = "llm"
+        d["ts"] = hms
+        out[t["id"]] = d
+        items[t["id"]] = {"verdict": d["verdict"], "note": d.get("note"), "ts": hms}
+    return out
 
 
 def review_from_kline(code, name, date):
@@ -669,7 +830,14 @@ def make_mix_plan(state, pool, asof, gate, log=True):
 
 
 # ---------------- 盘中巡检（双池并行） ----------------
+def _review_ctx():
+    """review_data 索引（板块/趋势/评分），供 LLM 闸门补充上下文。"""
+    rev = load_json("review_data.json") or {}
+    return {x.get("code"): x for x in (rev.get("items") or [])}
+
+
 def intraday_scan(state, date, hms):
+    """盘中巡检两阶段：先只读扫描出买卖候选 → 一次批量 LLM 风控复核 → 落账。"""
     from src import data_provider as dp
     all_codes = set()
     for pool in POOLS:
@@ -683,13 +851,31 @@ def intraday_scan(state, date, hms):
         quotes = dp.fetch_quotes(sorted(all_codes))
     except Exception as e:
         return 0, ["快照失败 %s" % e]
-    total_fill = 0
-    all_notes = []
+    ctx = _review_ctx()
+    # 第一遍：只读扫描，收集候选（不落账）
+    probes, tasks = {}, []
     for pool in POOLS:
         for key, a, cfg in all_books(state, pool):
-            n, notes = _scan_account(pool, a, cfg, quotes, date, hms)
+            sells, buys, pnotes = _probe_account(pool, a, cfg, quotes, date, hms, ctx)
+            probes[(pool, key)] = (a, cfg, sells, buys, pnotes)
+            tasks.extend(sells)
+            tasks.extend(buys)
+    # 第二遍：成交前 LLM 风控（本轮候选合并 1 次请求）
+    decisions = llm_trade_gate(state, date, hms, tasks) if tasks else {}
+    total_fill, all_notes, veto_n = 0, [], 0
+    for pool in POOLS:
+        for key, a, cfg in all_books(state, pool):
+            ac, cfg2, sells, buys, pnotes = probes[(pool, key)]
+            n, notes, v = _apply_account(pool, ac, cfg2, quotes, date, hms,
+                                         sells, buys, decisions)
             total_fill += n
+            veto_n += v
+            all_notes.extend(pnotes)
             all_notes.extend(notes)
+    if tasks:
+        srcs = ",".join(sorted({(d or {}).get("src", "?") for d in decisions.values()})) or "-"
+        print("  [llm][gate] 候选%d → 成交%d 否决%d（来源:%s）" % (
+            len(tasks), total_fill, veto_n, srcs))
     return total_fill, all_notes
 
 
@@ -720,11 +906,10 @@ def _mark_miss(pool, acct, pl, low, date, hms, tol):
     return first
 
 
-def _scan_account(pool, acct, cfg, quotes, date, hms):
-    filled = 0
-    notes = []
-    # 卖出
-    sell_codes = []
+def _probe_account(pool, acct, cfg, quotes, date, hms, ctx=None):
+    """第一遍：只读扫描（刷新持仓现价印记/漏单留痕），产出卖出与买入候选。"""
+    ctx = ctx or {}
+    sells, buys, notes = [], [], []
     for pos in acct["positions"]:
         q = quotes.get(pos["code"])
         if not q:
@@ -740,7 +925,6 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
             pos["prev_close"] = live_pc
             prev = live_pc
         chg = (px / prev - 1) * 100 if prev else 0
-        # 现价印记：供页面展示个股实时盈亏/当日涨跌
         pos["last"] = px
         pos["last_chg"] = round(chg, 2)
         pos["last_ts"] = hms
@@ -748,6 +932,7 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
             pos["peak"] = px
         gain = (px / pos["cost"] - 1) * 100
         reason = None
+        hard = False
         if pos.get("tp") and px >= pos["tp"]:
             reason = "止盈：现价%.2f≥目标%.2f（+%.1f%%）" % (px, pos["tp"], gain)
         elif pos.get("be_at") and gain >= pos["be_at"] * 100 and not pos.get("be_on"):
@@ -757,36 +942,28 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
                 POOL_LABEL[pool], acct["label"], pos["name"], gain))
         elif pos.get("stop_atr") and px <= pos["stop_atr"]:
             reason = "破ATR/保本止损 %.2f" % pos["stop_atr"]
+            hard = True
         elif pos.get("peak") and pos.get("trail") and pos["peak"] > pos["cost"] * 1.08 \
                 and px / pos["peak"] - 1 <= -pos["trail"]:
             reason = "移动止盈（峰值%+.1f%%回落%.0f%%）" % ((pos["peak"] / pos["cost"] - 1) * 100,
                                                       pos["trail"] * 100)
         if reason:
-            shares = pos["shares"]
-            proceeds = shares * px
-            fee = proceeds * (0.0003 + 0.0005)
-            pnl = proceeds - shares * pos["cost"]
-            acct["cash"] += proceeds - fee
-            acct["trades"].append({
-                "action": "sell", "date": date, "time": hms, "code": pos["code"],
-                "name": pos["name"], "price": round(px, 3), "shares": shares,
-                "chg_at_fill": round(chg, 2), "pnl": round(pnl, 2),
-                "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
-                "reason": reason, "strategy": acct["key"], "pool": pool,
+            it = ctx.get(pos["code"]) or {}
+            sells.append({
+                "id": "%s|%s|%s|sell" % (pool, acct["key"], pos["code"]),
+                "action": "sell", "code": pos["code"], "name": pos["name"],
+                "px": px, "chg": chg, "cost": pos["cost"], "gain": gain,
+                "peak_gain": (pos.get("peak", px) / pos["cost"] - 1) * 100,
+                "why": reason, "hard": hard, "pos": pos,
+                "sector": it.get("sector"), "trend": it.get("trend_status"),
+                "score": it.get("score") or pos.get("score"),
             })
-            sell_codes.append(pos["code"])
-            filled += 1
-            notes.append("[%s] 卖出 %s @%.2f（%+.2f%%）%s" % (acct["label"], pos["name"], px, chg, reason))
-    acct["positions"] = [p for p in acct["positions"] if p["code"] not in sell_codes]
-    # 买入
     for pl in acct.get("plan", []):
         if pl.get("status", "wait") != "wait":
             continue
         if pl.get("gate") == "block":
-            pl["status"] = "skip_gate"
             continue
         if len(acct["positions"]) >= cfg["max_pos"]:
-            pl["status"] = "skip_full"
             continue
         q = quotes.get(pl["code"])
         if not q:
@@ -796,45 +973,134 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
             continue
         if px > (pl.get("close") or 0) * 1.03:
             continue  # 高开冲高不追
+        pc = q.get("prevClose") or pl.get("close")
+        chg = (px / pc - 1) * 100 if pc else 0
         trigger = round(pl["buy_below"] * (1 + TOUCH_TOL), 3)
         if px <= trigger:
-            budget = min(pl["budget"], acct["cash"] * 0.98)
-            shares = int(budget / px / 100) * 100
-            if shares <= 0:
-                continue
-            cost = shares * px
-            fee = cost * 0.0003
-            acct["cash"] -= cost + fee
-            acct["positions"].append({
-                "code": pl["code"], "name": pl["name"], "shares": shares,
-                "cost": round(px, 3), "buy_date": date, "buy_time": hms,
-                "stop_atr": pl.get("stop_atr"), "stop_ma": pl.get("stop_ma"),
-                "tp": pl.get("tp"), "trail": pl.get("trail"), "be_at": pl.get("be_at"),
-                "be_on": False, "peak": px, "prev_close": q.get("prevClose"),
+            it = ctx.get(pl["code"]) or {}
+            buys.append({
+                "id": "%s|%s|%s|buy" % (pool, acct["key"], pl["code"]),
+                "action": "buy", "code": pl["code"], "name": pl["name"],
+                "px": px, "chg": chg, "buy_below": pl["buy_below"],
+                "why": pl.get("reason", ""), "pl": pl,
+                "sector": it.get("sector"),
+                "trend": it.get("trend_status") or pl.get("signal"),
                 "score": pl.get("score"), "signal": pl.get("signal"),
-                # 合并共识账户专用：共识数与来源子策略（页面展示买入依据）
-                "consensus": pl.get("consensus"), "from": pl.get("from"),
             })
-            acct["trades"].append({
-                "action": "buy", "date": date, "time": hms, "code": pl["code"],
-                "name": pl["name"], "price": round(px, 3), "shares": shares,
-                "chg_at_fill": round((px / (q.get("prevClose") or pl["close"]) - 1) * 100, 2),
-                "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
-            })
-            pl["status"] = "filled"
-            if pl.get("miss"):
-                # 先漏后抓到：保留漏单痕迹，标记实际成交时刻
-                pl["miss"]["caught"] = hms
-            filled += 1
-            notes.append("[%s] 买入 %s @%.2f 回踩触发" % (acct["label"], pl["name"], px))
         else:
-            # 采样价没到买点，但当日最低已跌破 → 记为漏单（透明可查，便于评估采样频率）
             low = q.get("low") or 0
             if low and low <= trigger:
                 if _mark_miss(pool, acct, pl, low, date, hms, TOUCH_TOL):
                     notes.append("⚠️[%s] %s 错过买点：盘中最低%.2f≤%.2f（买点%s），巡检未采到" % (
                         acct["label"], pl["name"], low, trigger, pl["buy_below"]))
-    return filled, notes
+    return sells, buys, notes
+
+
+def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
+    """第二遍：按 LLM 决策落账。返回 (成交数, 日志, 被否决策数)。"""
+    filled, notes, veto_n = 0, [], 0
+    # ---- 卖出 ----
+    sell_codes = []
+    for s in sells:
+        pos = s["pos"]
+        d = decisions.get(s["id"]) or {}
+        if d.get("verdict") == "avoid" and not s["hard"]:
+            # 软止盈被 LLM 否决 → 继续持有（改由移动止盈/止损兜底）
+            veto_n += 1
+            pos["llm_hold"] = {"date": date, "ts": hms, "note": d.get("note")}
+            acct.setdefault("llm_log", []).append({
+                "date": date, "ts": hms, "pool": pool, "action": "hold",
+                "code": s["code"], "name": s["name"],
+                "note": "LLM 否决卖出，继续持有：%s（%s）" % (d.get("note") or "", s["why"])})
+            notes.append("🧠[%s] %s LLM否决卖出→继续持有：%s" % (
+                acct["label"], s["name"], d.get("note") or ""))
+            continue
+        px = s["px"]
+        shares = pos["shares"]
+        proceeds = shares * px
+        fee = proceeds * (0.0003 + 0.0005)
+        pnl = proceeds - shares * pos["cost"]
+        acct["cash"] += proceeds - fee
+        acct["trades"].append({
+            "action": "sell", "date": date, "time": hms, "code": pos["code"],
+            "name": pos["name"], "price": round(px, 3), "shares": shares,
+            "chg_at_fill": round(s["chg"], 2), "pnl": round(pnl, 2),
+            "pnl_pct": round((px / pos["cost"] - 1) * 100, 2),
+            "reason": s["why"], "strategy": acct["key"], "pool": pool,
+            "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
+                    "src": d.get("src")},
+        })
+        sell_codes.append(pos["code"])
+        filled += 1
+        notes.append("[%s] 卖出 %s @%.2f（%+.2f%%）%s%s" % (
+            acct["label"], pos["name"], px, s["chg"], s["why"],
+            "｜LLM:%s" % (d.get("note") or "") if d.get("note") else ""))
+    acct["positions"] = [p for p in acct["positions"] if p["code"] not in sell_codes]
+    # ---- 买入 ----
+    for b in buys:
+        pl = b["pl"]
+        if pl.get("status", "wait") != "wait":
+            continue
+        d = decisions.get(b["id"]) or {}
+        if d.get("verdict") == "avoid":
+            veto_n += 1
+            pl["llm_veto"] = {"date": date, "ts": hms, "note": d.get("note")}
+            acct.setdefault("llm_log", []).append({
+                "date": date, "ts": hms, "pool": pool, "action": "skip_buy",
+                "code": b["code"], "name": b["name"],
+                "note": "LLM 否决买入：%s" % (d.get("note") or "")})
+            notes.append("🧠[%s] %s LLM否决买入：%s" % (
+                acct["label"], b["name"], d.get("note") or ""))
+            continue
+        if pl.get("gate") == "block":
+            pl["status"] = "skip_gate"
+            continue
+        if len(acct["positions"]) >= cfg["max_pos"]:
+            pl["status"] = "skip_full"
+            continue
+        px = b["px"]
+        budget = min(pl["budget"], acct["cash"] * 0.98)
+        shares = int(budget / px / 100) * 100
+        if shares <= 0:
+            continue
+        cost = shares * px
+        fee = cost * 0.0003
+        acct["cash"] -= cost + fee
+        acct["positions"].append({
+            "code": pl["code"], "name": pl["name"], "shares": shares,
+            "cost": round(px, 3), "buy_date": date, "buy_time": hms,
+            "stop_atr": pl.get("stop_atr"), "stop_ma": pl.get("stop_ma"),
+            "tp": pl.get("tp"), "trail": pl.get("trail"), "be_at": pl.get("be_at"),
+            "be_on": False, "peak": px, "prev_close": quotes.get(pl["code"], {}).get("prevClose"),
+            "score": pl.get("score"), "signal": pl.get("signal"),
+            # 合并共识账户专用：共识数与来源子策略（页面展示买入依据）
+            "consensus": pl.get("consensus"), "from": pl.get("from"),
+            "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
+                    "src": d.get("src")},
+        })
+        acct["trades"].append({
+            "action": "buy", "date": date, "time": hms, "code": pl["code"],
+            "name": pl["name"], "price": round(px, 3), "shares": shares,
+            "chg_at_fill": round(b["chg"], 2),
+            "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
+            "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
+                    "src": d.get("src")},
+        })
+        pl["status"] = "filled"
+        if pl.get("miss"):
+            pl["miss"]["caught"] = hms
+        filled += 1
+        notes.append("[%s] 买入 %s @%.2f 回踩触发%s" % (
+            acct["label"], pl["name"], px,
+            "｜LLM:%s" % (d.get("note") or "") if d.get("note") else ""))
+    return filled, notes, veto_n
+
+
+def _scan_account(pool, acct, cfg, quotes, date, hms, decisions=None):
+    """兼容封装：单账户一轮巡检（无 LLM 决策时等价于全放行）。"""
+    sells, buys, pnotes = _probe_account(pool, acct, cfg, quotes, date, hms)
+    n, notes, _v = _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions or {})
+    return n, pnotes + notes
 
 
 def chg(px, q):
@@ -971,6 +1237,8 @@ def main():
     ap.add_argument("--pool", default=None, help="six=6股精选 / all=全池（默认双池并行）")
     ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03，仅six)")
     ap.add_argument("--no-llm", action="store_true", help="跳过LLM个股评审(快速重建用)")
+    ap.add_argument("--force", action="store_true",
+                    help="--intraday 在非交易时段也执行（默认拒绝，避免拿收盘价当盘中成交）")
     ap.add_argument("--date", default=None)
     args = ap.parse_args()
 
@@ -1098,6 +1366,11 @@ def main():
         now = time.localtime()
         date = time.strftime("%Y-%m-%d", now)
         hms = time.strftime("%H:%M:%S", now)
+        hhmm = now.tm_hour * 100 + now.tm_min
+        in_session = now.tm_wday < 5 and ((930 <= hhmm <= 1130) or (1300 <= hhmm <= 1500))
+        if not in_session and not args.force:
+            print("非交易时段(%s %s)，跳过盘中巡检（需强制执行加 --force）" % (date, hms))
+            return
         n, notes = intraday_scan(state, date, hms)
         save(state)
         print("盘中巡检 %s %s：成交%d" % (date, hms, n))

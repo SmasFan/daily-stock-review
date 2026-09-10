@@ -46,6 +46,37 @@ RULE = {
 }
 
 
+# 成交前 LLM 风控闸门：复用 sim_live 的实现（缓存/熔断/失败放行同源）
+try:
+    from sim_live import llm_trade_gate as _llm_gate
+except Exception:          # sim_live 不可用时退化为全放行
+    _llm_gate = None
+
+
+def _ctx(code):
+    """review_data 上下文（板块/趋势/评分），供 LLM 闸门判断。"""
+    try:
+        with open(os.path.join(DATA_DIR, "review_data.json"), encoding="utf-8") as f:
+            rev = json.load(f)
+        for x in (rev.get("items") or []):
+            if x.get("code") == code:
+                return x
+    except Exception:
+        pass
+    return {}
+
+
+def gate(st, date, hms, tasks):
+    """跑 LLM 闸门；不可用时全放行。返回 {id: 决策}。"""
+    if not tasks or _llm_gate is None:
+        return {}
+    try:
+        return _llm_gate(st, date, hms, tasks)
+    except Exception as e:
+        print("  [llm][gate] 异常(放行): %s" % e)
+        return {}
+
+
 def now_ts():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -92,7 +123,7 @@ def _quote(codes):
         return {}
 
 
-def do_buy(st, code, frac):
+def do_buy(st, code, frac, llm=None):
     q = _quote([code]).get(code)
     if not q or not q.get("price"):
         print("无行情", code)
@@ -115,11 +146,11 @@ def do_buy(st, code, frac):
     })
     st["trades"].append({"action": "buy", "ts": now_ts(), "code": code,
                          "name": q.get("name") or code, "price": round(px, 3),
-                         "shares": shares, "reason": "AI冲刺建仓"})
+                         "shares": shares, "reason": "AI冲刺建仓", "llm": llm})
     print("买入 %s %s股 @%.2f 现金剩余%.0f" % (code, shares, px, st["cash"]))
 
 
-def do_sell(st, code, reason, px=None):
+def do_sell(st, code, reason, px=None, llm=None):
     pos = next((p for p in st["positions"] if p["code"] == code), None)
     if not pos:
         return
@@ -135,17 +166,23 @@ def do_sell(st, code, reason, px=None):
     st["trades"].append({"action": "sell", "ts": now_ts(), "code": code,
                          "name": pos["name"], "price": round(px, 3),
                          "shares": pos["shares"], "pnl": round(pnl, 2),
-                         "pnl_pct": round(pnl_pct, 2), "reason": reason})
+                         "pnl_pct": round(pnl_pct, 2), "reason": reason, "llm": llm})
     print("卖出 %s @%.2f (%+.2f%%) %s" % (pos["name"], px, pnl_pct, reason))
 
 
 def do_scan(st):
-    """巡检持仓：移动止盈/目标止盈/硬止损。"""
+    """巡检持仓两阶段：先扫出卖出候选 → LLM 复核 → 落账。
+
+    硬止损强制成交（LLM 只能确认）；目标止盈/移动止盈可被 LLM 否决改为继续持有。
+    """
     if not st["positions"]:
         print("sprint 无持仓")
         return
     codes = [p["code"] for p in st["positions"]]
     quotes = _quote(codes)
+    date = time.strftime("%Y-%m-%d")
+    hms = time.strftime("%H:%M:%S")
+    cands = []          # (pos, px, gain, reason, hard)
     for pos in list(st["positions"]):
         q = quotes.get(pos["code"])
         if not q or not q.get("price"):
@@ -155,19 +192,50 @@ def do_scan(st):
         if px > pos["peak"]:
             pos["peak"] = px
         gain = (px / pos["cost"] - 1) * 100
-        # 目标止盈
-        if gain >= RULE["tp_pct"] * 100:
-            do_sell(st, pos["code"], "目标止盈 +%.0f%%" % gain, px)
-            continue
-        # 硬止损
-        if px <= pos["cost"] * (1 + RULE["hard_stop"]):
-            do_sell(st, pos["code"], "硬止损 %.1f%%" % gain, px)
-            continue
-        # 移动止盈：曾 +8% 且从峰值回落 6%
         peak_gain = (pos["peak"] / pos["cost"] - 1) * 100
-        if peak_gain >= RULE["trail_peak"] * 100:
-            if pos["peak"] - px >= pos["peak"] * RULE["trail_drop"]:
-                do_sell(st, pos["code"], "移动止盈(峰值%+.1f%%回落)" % peak_gain, px)
+        reason, hard = None, False
+        if gain >= RULE["tp_pct"] * 100:
+            reason = "目标止盈 +%.0f%%" % gain
+        elif px <= pos["cost"] * (1 + RULE["hard_stop"]):
+            reason = "硬止损 %.1f%%" % gain
+            hard = True
+        elif peak_gain >= RULE["trail_peak"] * 100 and \
+                pos["peak"] - px >= pos["peak"] * RULE["trail_drop"]:
+            reason = "移动止盈(峰值%+.1f%%回落)" % peak_gain
+        if reason:
+            cands.append({"pos": pos, "px": px, "gain": gain, "reason": reason, "hard": hard})
+    if not cands:
+        save(st)
+        print("sprint 巡检 %s：无触发" % hms)
+        return
+    # LLM 风控复核（一次批量）
+    tasks = []
+    for c in cands:
+        pos = c["pos"]
+        it = _ctx(pos["code"])
+        tasks.append({
+            "id": "sprint|sprint|%s|sell" % pos["code"],
+            "action": "sell", "code": pos["code"], "name": pos["name"],
+            "px": c["px"], "chg": quotes.get(pos["code"], {}).get("change"),
+            "cost": pos["cost"], "gain": c["gain"],
+            "peak_gain": (pos["peak"] / pos["cost"] - 1) * 100,
+            "why": c["reason"], "hard": c["hard"],
+            "sector": it.get("sector"), "trend": it.get("trend_status"),
+            "score": it.get("score"),
+        })
+    dec = gate(st, date, hms, tasks)
+    for c in cands:
+        pos = c["pos"]
+        d = dec.get("sprint|sprint|%s|sell" % pos["code"]) or {}
+        if d.get("verdict") == "avoid" and not c["hard"]:
+            pos["llm_hold"] = {"date": date, "ts": hms, "note": d.get("note")}
+            st.setdefault("log", []).append({
+                "ts": now_ts(), "msg": "🧠 LLM 否决卖出 %s：%s（%s）" % (
+                    pos["name"], d.get("note") or "", c["reason"])})
+            print("🧠 LLM否决卖出 %s：%s（继续持有）" % (pos["name"], d.get("note") or ""))
+            continue
+        note = "｜LLM:%s" % (d.get("note") or "") if d.get("note") else ""
+        do_sell(st, pos["code"], c["reason"] + note, c["px"], llm=d)
     save(st)
 
 
@@ -224,7 +292,26 @@ def main():
         if len(st["positions"]) >= RULE["max_pos"]:
             print("已达持仓上限%d只，先卖再买" % RULE["max_pos"])
             return
-        do_buy(st, args.buy, args.frac)
+        _d = time.strftime("%Y-%m-%d"); _t = time.strftime("%H:%M:%S")
+        _q = _quote([args.buy]).get(args.buy) or {}
+        _it = _ctx(args.buy)
+        _tid = "sprint|sprint|%s|buy" % args.buy
+        _dec = gate(st, _d, _t, [{
+            "id": _tid, "action": "buy", "code": args.buy,
+            "name": _q.get("name") or args.buy, "px": _q.get("price") or 0,
+            "chg": _q.get("change"), "buy_below": _q.get("price") or 0,
+            "why": "冲刺盘市价建仓(现金%.0f%%)" % (args.frac * 100),
+            "sector": _it.get("sector"), "trend": _it.get("trend_status"),
+            "score": _it.get("score"), "signal": _it.get("signal"),
+        }]).get(_tid) or {}
+        if _dec.get("verdict") == "avoid":
+            st.setdefault("log", []).append({
+                "ts": now_ts(), "msg": "🧠 LLM 否决买入 %s：%s" % (
+                    _q.get("name") or args.buy, _dec.get("note") or "")})
+            save(st)
+            print("🧠 LLM 否决买入：%s（不建仓）" % (_dec.get("note") or ""))
+            return
+        do_buy(st, args.buy, args.frac, llm=_dec or None)
         save(st)
         do_status(st)
         return
