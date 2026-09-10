@@ -36,6 +36,12 @@ STATE_FILE = os.path.join(DATA_DIR, "sim_live.json")
 CASH_START = 50000.0
 # 触碰容差：现价 ≤ 买点×(1+容差) 即视为回踩触发（避免差一分钱漏单），可用 SIM_TOUCH_TOL 覆盖
 TOUCH_TOL = float(os.environ.get("SIM_TOUCH_TOL", "0.002"))
+# 宏观利多但市场宽度极弱 → 背离降档（政策面与盘面背离，追多风险高）：
+#   不直接 block（利多是真实的，超卖可能是机会），而是抬门槛 + 缩仓位
+REDUCE_BREADTH = float(os.environ.get("SIM_REDUCE_BREADTH", "25"))      # 涨占比 ≤ 此值算极弱
+REDUCE_MIN_SCORE_BONUS = float(os.environ.get("SIM_REDUCE_SCORE", "6"))  # 买入门槛上调
+REDUCE_BUDGET_FACTOR = float(os.environ.get("SIM_REDUCE_BUDGET", "0.6"))  # 仓位打折
+MACRO_STALE_HOURS = float(os.environ.get("SIM_MACRO_STALE_H", "20"))     # 宏观数据超过则视为过期
 
 # 双池
 POOLS = ("six", "all")
@@ -543,24 +549,50 @@ def review_from_kline(code, name, date):
 
 
 # ---------------- 计划（每池每账户独立） ----------------
+def _macro_age_hours(macro):
+    """宏观 LLM 数据距今小时数；无数据返回 None。"""
+    gen = ((macro or {}).get("generatedAt") or "")[:19]
+    if not gen:
+        return None
+    try:
+        return (time.time() - time.mktime(time.strptime(gen, "%Y-%m-%d %H:%M:%S"))) / 3600.0
+    except Exception:
+        return None
+
+
 def market_gate(review):
-    """大盘闸门：上证空头 / 普涨过热 / LLM宏观防御 → block。返回 (gate, 说明)。"""
+    """大盘闸门。返回 (gate, 说明)，gate ∈ {open, reduce, block}。
+
+    block : 上证空头 / 普涨过热 / LLM宏观防御 → 不开新仓
+    reduce: 宏观利多但市场宽度极弱（政策面与盘面背离）→ 抬买入门槛 + 缩仓位
+            （不 block：利多真实、超卖可能是机会，只是不该满仓追）
+    """
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
     sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
     mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
     breadth = (review.get("temperature") or {}).get("breadth") or 0
     overheat = breadth >= 65
-    llm_def = False
+    llm_def, llm_bull, macro_age = False, False, None
     try:
         _llm = load_json("macro_llm_data.json") or {}
         _ll = (_llm.get("llm") or {})
         _llm_sent = _ll.get("sentiment")
-        llm_def = _llm_sent in ("空头", "防御")
-        _llm_weak = _llm_sent == "中性" and (_ll.get("score") or 50) < 40
-        llm_def = llm_def or _llm_weak
+        _score = _ll.get("score") or 50
+        llm_def = _llm_sent in ("空头", "防御") or (_llm_sent == "中性" and _score < 40)
+        macro_age = _macro_age_hours(_llm)
+        # 宏观的"多头"只在新鲜时可信（过期数据不该主导降档判断）
+        fresh = macro_age is None or macro_age <= MACRO_STALE_HOURS
+        llm_bull = fresh and _llm_sent == "多头" and _score >= 60
     except Exception:
         pass
-    gate = "block" if (mkt_bear or overheat or llm_def) else "open"
+    # 背离：政策面利多，但个股普跌（涨占比极低）→ 降档而非禁开仓
+    diverge = llm_bull and breadth <= REDUCE_BREADTH
+    if mkt_bear or overheat or llm_def:
+        gate = "block"
+    elif diverge:
+        gate = "reduce"
+    else:
+        gate = "open"
     why = []
     if mkt_bear:
         why.append("上证空头")
@@ -568,6 +600,10 @@ def market_gate(review):
         why.append("普涨过热(广度%d%%)" % int(breadth))
     if llm_def:
         why.append("LLM宏观防御")
+    if diverge:
+        why.append("宏观利多×宽度极弱(涨占比%.1f%%≤%.0f%%)背离→降档" % (breadth, REDUCE_BREADTH))
+    if macro_age is not None and macro_age > MACRO_STALE_HOURS:
+        why.append("宏观数据过期%.0fh(已不参与多头判断)" % macro_age)
     return gate, ("；".join(why) if why else "open")
 
 
@@ -666,6 +702,11 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
     pool_b = books(state, pool)
     acc_b = pool_b["accounts"]
     gate, gate_why = market_gate(review)
+    _reduce = (gate == "reduce")
+    _score_bonus = REDUCE_MIN_SCORE_BONUS if _reduce else 0.0
+    _budget_mul = REDUCE_BUDGET_FACTOR if _reduce else 1.0
+    if gate != "open":
+        print("  [gate][%s] %s" % (pool, gate_why))
     # 候选：池过滤
     cand_pool = {}   # code -> item
     per_key = {}     # key -> [item]
@@ -681,7 +722,7 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 continue
             if it.get("signal_key") not in ("strong_buy", "buy"):
                 continue
-            if (it.get("score") or 0) < cfg["min_score"]:
+            if (it.get("score") or 0) < cfg["min_score"] + _score_bonus:
                 continue
             if it.get("trend_status") not in ("强势多头", "多头排列"):
                 continue
@@ -742,7 +783,7 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
             floor = min(ideal, close * (1 - cfg["buy_bias"]))
             buy_below = min(close * (1 - cfg["buy_bias"]), max(floor, close * 0.96))
             buy_below = round(buy_below, 3)
-            budget = round(CASH_START * cfg["budget_frac"], 2)
+            budget = round(CASH_START * cfg["budget_frac"] * _budget_mul, 2)
             plan.append({
                 "code": it["code"], "name": it.get("name"), "asof": asof,
                 "score": it.get("score"), "signal": it.get("signal"),
@@ -752,18 +793,21 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
                 "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
                 "gate": gate, "budget": budget, "status": "wait",
-                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s" % (
+                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s%s" % (
                     it.get("signal"), it.get("score"), buy_below,
                     it.get("atr_stop") if it.get("atr_stop") else "--",
                     "（保本+5%%）" if cfg.get("be_at") else "",
-                    ("；LLM:" + _rv.get("note", "")) if _rv else ""),
+                    ("；LLM:" + _rv.get("note", "")) if _rv else "",
+                    ("（背离降档×%.1f）" % _budget_mul) if _reduce else ""),
             })
         acct["plan"] = plan
         if log:
             acct["daily_log"].append({"date": asof, "kind": "plan",
                                       "note": "[%s]%s：%d 单待盘中触发%s" % (
                                           POOL_LABEL[pool], cfg["label"], len(plan),
-                                          ("（大盘闸门挡）" if gate == "block" else ""))})
+                                          ("（大盘闸门挡）" if gate == "block" else
+                                           ("（背离降档：门槛+%.0f分 仓位×%.1f）" % (
+                                               _score_bonus, _budget_mul) if _reduce else "")))})
     make_mix_plan(state, pool, asof, gate, log)
     return {k: len(acc_b[k]["plan"]) for k in REAL_ACCOUNTS}
 
@@ -791,7 +835,8 @@ def make_mix_plan(state, pool, asof, gate, log=True):
     for code, lst in groups.items():
         n = len(lst)
         src = [pl for _, pl in lst]
-        budget = round(CASH_START * MIX_SIZE.get(n, MIX_SIZE[1]), 2)
+        _bf = REDUCE_BUDGET_FACTOR if gate == "reduce" else 1.0
+        budget = round(CASH_START * MIX_SIZE.get(n, MIX_SIZE[1]) * _bf, 2)
         stops = [pl["stop_atr"] for pl in src if pl.get("stop_atr")]
         tps = [pl["tp"] for pl in src if pl.get("tp")]
         blocked = any(pl.get("gate") == "block" for pl in src)
@@ -809,8 +854,9 @@ def make_mix_plan(state, pool, asof, gate, log=True):
             "gate": "block" if blocked else (gate or "open"),
             "budget": budget, "status": "wait", "consensus": n,
             "from": [k for k, _ in lst],
-            "reason": "共识%d/3（%s）仓位%.0f%% 回踩≤%.2f 止損%s 止盈%s" % (
+            "reason": "共识%d/3（%s）仓位%.0f%%%s 回踩≤%.2f 止損%s 止盈%s" % (
                 n, "/".join(ACCOUNTS[k]["label"] for k, _ in lst), MIX_SIZE[n] * 100,
+                ("×%.1f降档" % REDUCE_BUDGET_FACTOR) if gate == "reduce" else "",
                 max(pl["buy_below"] for pl in src),
                 "%.2f" % max(stops) if stops else "--",
                 "%.2f" % min(tps) if tps else "--"),
@@ -825,7 +871,9 @@ def make_mix_plan(state, pool, asof, gate, log=True):
                                       sum(1 for p in mix["plan"] if p["consensus"] == 3),
                                       sum(1 for p in mix["plan"] if p["consensus"] == 2),
                                       sum(1 for p in mix["plan"] if p["consensus"] == 1),
-                                      "（大盘闸门挡）" if gate == "block" else "")})
+                                      ("（大盘闸门挡）" if gate == "block" else
+                                       ("（背离降档：仓位×%.1f）" % REDUCE_BUDGET_FACTOR
+                                        if gate == "reduce" else "")))})
     return len(mix["plan"])
 
 

@@ -26,6 +26,7 @@
   .tag-wait{background:#fffbeb;color:#d97706;} .tag-block{background:#f1f5f9;color:#64748b;}
   .tag-miss{background:#fff7ed;color:#c2410c;}
   .tag-llm{background:#f5f3ff;color:#6d28d9;}
+  .tag-reduce{background:#fef3c7;color:#b45309;}
   .reason { font-size:11px; color:var(--text-2); line-height:1.5; }
   .chart-box { height:320px; }
   .strat-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin:16px 0; }
@@ -144,6 +145,14 @@
   function book() { return (S.pools || {})[curPool] || S; }  // 兼容 v3 单池（顶层 accounts）
   function acct(key) { const b = book(); return (b.accounts && b.accounts[key]) || (key === 'mix' ? b.mix : null); }
   function mixAcct() { return book().mix || {}; }
+  /* 闸门标签：open=等触发 / reduce=背离降档 / block=防守 */
+  function gateTag(g) {
+    if (g === 'block') return '<span class="tag tag-block" title="大盘闸门：不开新仓">防守</span>';
+    if (g === 'reduce') return '<span class="tag tag-reduce" title="宏观利多但市场宽度极弱（背离）→ 买入门槛提高、仓位打折">降档</span>';
+    return '<span class="tag tag-wait">等触发</span>';
+  }
+  window.gateTag = gateTag;
+
   /* 成交流水的 LLM 风控单元格：allow=通过 / avoid=否决 / fallback=LLM不可用放行 */
   function llmCell(l) {
     if (!l || !l.verdict) return '<span class="neutral" title="本笔未经过 LLM 闸门（历史成交）">--</span>';
@@ -189,6 +198,7 @@
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
         <div class="sec-title"><span class="ti">${RV.ui.icon('timeline')}</span>盘中触发运行机制 <span class="sec-chip">不做盘后挂单</span></div>
         <div class="timeline">
+          <div class="tl-step"><span class="tl-idx">①</span><span><b>大盘闸门三态</b>：<b>block</b>（上证空头/普涨过热/LLM宏观防御）不开新仓；<b>reduce 背离降档</b>（宏观利多 score≥60 但涨占比≤25%，政策面与盘面背离）→ 买入门槛 +6 分、仓位 ×0.6；否则 open。宏观数据过期（&gt;20h）不再参与多头判断</span></div>
           <div class="tl-step"><span class="tl-idx">①</span><span>双池（6股+全池）各自 <code>--plan</code> 按最近收盘信号生成各账户<b>回踩买点/止损/止盈</b>（激进回踩少、稳健2%、纪律3%）；<b>盘中每 30 分钟复盘刷新</b>（10:00–15:00）：最新信号/价格重算待触发买点，新走强股盘中即时入计划（v3.3/30min）</span></div>
           <div class="tl-step"><span class="tl-idx">②</span><span>盘中<b>每 2 分钟</b>（独立锁，不再被复盘重块排队）<code>--intraday</code> 拉实时快照，<b>两池并行</b>巡检：现价 ≤ 买点×(1+0.2%) 即买，破止损/到止盈即卖；盘中最低已触及但采样未抓到的买点 → <b>漏单留痕</b>（页面「漏单」标签 + 账本 miss_log）</span></div>
           <div class="tl-step"><span class="tl-idx">③</span><span><b>成交前 LLM 风控复核</b>（每轮候选合并 1 次请求，短超时 25s）：<b>买入</b> — 当日大幅杀跌/弱势下杀/逆风追高 → 否决；<b>卖出</b> — 硬止损强制成交（LLM 只能确认），软止盈/移动止盈若个股强势未破位 → 否决改为<b>继续持有</b>。同日同标的只评一次（缓存），LLM 不可用自动放行并熔断 10 分钟（不停盘）</span></div>
@@ -451,9 +461,9 @@
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等回踩</div>'}
         </div>
         <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点${missToday ? `<span class="sec-chip">今日漏单 ${missToday.length}</span>` : ''}</div>
+          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点${(() => { const gs = [...new Set(waitPlan.map(p => p.gate).filter(Boolean))]; return gs.length ? `<span class="sec-chip">闸门 ${gs.map(g => g === 'reduce' ? '背离降档' : g === 'block' ? '防守' : '开放').join('/')}</span>` : ''; })()}${missToday ? `<span class="sec-chip">今日漏单 ${missToday.length}</span>` : ''}</div>
           ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>分</th><th>回踩≤</th><th>闸门</th><th>触发逻辑</th></tr></thead><tbody>
-            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}${p.miss ? `<span class="tag tag-miss" title="盘中最低已触及买点，巡检采样未抓到">漏单</span>` : ''}${p.llm_veto ? `<span class="tag tag-llm" title="成交前 LLM 风控否决：${(p.llm_veto.note || '')}（${p.llm_veto.ts || ''}）">LLM否决</span>` : ''}</td><td class="reason">${(p.reason || '').slice(0, 42)}${p.miss ? `<br>⚠️ 盘中最低 ${fmt(p.miss.low)} 曾触过（${p.miss.first_ts || ''}${p.miss.count > 1 ? ' 共' + p.miss.count + '次' : ''}${p.miss.caught ? ' · 后于 ' + p.miss.caught + ' 成交' : ''}）` : ''}</td></tr>`).join('')}
+            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${p.score}</td><td class="up">${fmt(p.buy_below)}</td><td>${gateTag(p.gate)}${p.miss ? `<span class="tag tag-miss" title="盘中最低已触及买点，巡检采样未抓到">漏单</span>` : ''}${p.llm_veto ? `<span class="tag tag-llm" title="成交前 LLM 风控否决：${(p.llm_veto.note || '')}（${p.llm_veto.ts || ''}）">LLM否决</span>` : ''}</td><td class="reason">${(p.reason || '').slice(0, 42)}${p.miss ? `<br>⚠️ 盘中最低 ${fmt(p.miss.low)} 曾触过（${p.miss.first_ts || ''}${p.miss.count > 1 ? ' 共' + p.miss.count + '次' : ''}${p.miss.caught ? ' · 后于 ' + p.miss.caught + ' 成交' : ''}）` : ''}</td></tr>`).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发（收盘 --plan 重建）</div>'}
         </div>
       </div>
@@ -515,9 +525,9 @@
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">空仓 · 等共识触发</div>'}
         </div>
         <div class="sec" data-nav="待触发" data-nav-icon="crosshairs">
-          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点 <span class="sec-chip">共识越多仓位越重</span></div>
+          <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>待触发买点 <span class="sec-chip">共识越多仓位越重</span>${(() => { const gs = [...new Set(waitPlan.map(p => p.gate).filter(Boolean))]; return gs.length ? `<span class="sec-chip">闸门 ${gs.map(g => g === 'reduce' ? '背离降档' : g === 'block' ? '防守' : '开放').join('/')}</span>` : ''; })()}</div>
           ${waitPlan.length ? `<div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>共识</th><th>仓位</th><th>回踩≤</th><th>闸门</th><th>来源</th></tr></thead><tbody>
-            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${consensusChip(p.consensus || 0)}</td><td>¥${fmt(p.budget)}</td><td class="up">${fmt(p.buy_below)}</td><td>${p.gate === 'block' ? '<span class="tag tag-block">防守</span>' : '<span class="tag tag-wait">等触发</span>'}${p.miss ? '<span class="tag tag-miss">漏单</span>' : ''}${p.llm_veto ? `<span class="tag tag-llm" title="成交前 LLM 否决：${(p.llm_veto.note || '')}">LLM否决</span>` : ''}</td><td class="neutral">${(p.from || []).map(k => META[k].label).join('+')}</td></tr>`).join('')}
+            ${waitPlan.map(p => `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${p.code}')">${p.name}</td><td>${consensusChip(p.consensus || 0)}</td><td>¥${fmt(p.budget)}</td><td class="up">${fmt(p.buy_below)}</td><td>${gateTag(p.gate)}${p.miss ? '<span class="tag tag-miss">漏单</span>' : ''}${p.llm_veto ? `<span class="tag tag-llm" title="成交前 LLM 否决：${(p.llm_veto.note || '')}">LLM否决</span>` : ''}</td><td class="neutral">${(p.from || []).map(k => META[k].label).join('+')}</td></tr>`).join('')}
           </tbody></table></div>` : '<div class="neutral" style="padding:8px">无待触发（子策略均无买点）</div>'}
         </div>
       </div>
