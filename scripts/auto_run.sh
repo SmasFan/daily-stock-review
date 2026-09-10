@@ -35,6 +35,13 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; t
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 宏观数据生成失败，沿用上次数据" >> "$LOG"
 fi
 
+# 宏观 LLM 消息面（macro_llm.py）：新闻 → LLM 多空判断 + 6股池逐股消息面
+# 供 sim_live --plan 的宏观闸门（空头/防御→block）与个股回避；必须在 sim_live --plan 之前
+if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; then
+  timeout 240 python3 macro_llm.py >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 宏观LLM消息面生成失败，沿用上次数据" >> "$LOG"
+fi
+
 # 股票跟踪（推荐 Top10 持久化 + 收益/稳定榜，依赖当日 recommend 快照；盘后跑，失败不阻断主流程）
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   python3 run_review.py --mode tracking >> "$LOG" 2>&1 \

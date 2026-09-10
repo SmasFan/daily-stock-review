@@ -91,24 +91,63 @@ def _call_ollama(system, user, timeout=240):
     return content
 
 
-def call_llm(system, user, timeout=240):
-    # 返回 (content, backend)。commandcode 优先 → ollama 降级；空返回自动重试。
-    errs = []
-    for attempt in range(3):
+def call_llm(system, user, timeout=240, expect_json=False):
+    """返回 (content, backend)。commandcode 优先 → ollama 降级。
+
+    expect_json=True 时校验返回可解析为 JSON，失败视为无效并重试
+    （云端通道偶发非法 JSON：字符串未转义/缺逗号，只看"非空"会直接炸到调用方）。
+    """
+    def _ok(c):
+        if not c or not c.strip():
+            return False, "空返回"
+        if not expect_json:
+            return True, ""
         try:
-            c = _call_cc(system, user, timeout=min(timeout, 120))
-            if c.strip():
-                return c, "commandcode"
-            errs.append("cc 空返回(第%d次)" % (attempt + 1))
+            _json_of(c)          # 注意：_json_of 已返回解析后的对象，不要再 json.loads 一次
+            return True, ""
         except Exception as e:
-            errs.append("cc: %s" % e)
+            return False, "JSON非法(%s)" % str(e)[:60]
+
+    errs = []
+    for attempt in range(2):
+        try:
+            c = _call_cc(system, user, timeout=min(timeout, 60))
+            good, why = _ok(c)
+            if good:
+                return c, "commandcode"
+            errs.append("cc %s(第%d次)" % (why, attempt + 1))
+        except Exception as e:
+            errs.append("cc: %s" % str(e)[:80])
         import time as _t
         _t.sleep(1.5 * (attempt + 1))
     try:
-        return _call_ollama(system, user, timeout=timeout), "ollama"
+        c = _call_ollama(system, user, timeout=timeout)
+        good, why = _ok(c)
+        if good:
+            return c, "ollama"
+        errs.append("ollama %s" % why)
     except Exception as e:
-        errs.append("ollama: %s" % e)
+        errs.append("ollama: %s" % str(e)[:80])
     raise RuntimeError("LLM 全部失败: " + "; ".join(errs))
+
+
+def _json_of(text):
+    """从 LLM 返回里抠出 JSON 对象（容错 ```json 包裹 / 前后废话 / 多对象）。
+
+    直接 json.loads 在云端模型偶发非纯 JSON 时会炸（实测个股评审因此长期失败）。
+    """
+    import re as _re
+    if not text or not text.strip():
+        raise ValueError("空返回")
+    t = text.strip()
+    if "```" in t:
+        m = _re.search(r"```(?:json)?\s*([\s\S]*?)```", t)
+        if m:
+            t = m.group(1).strip()
+    i, j = t.find("{"), t.rfind("}")
+    if i < 0 or j <= i:
+        raise ValueError("无 JSON")
+    return json.loads(t[i:j + 1])
 
 
 SYSTEM = """你是A股宏观策略分析师。输入一批当日财经新闻标题+摘要（含政策/央行动向/经济数据/产业/外围）。
@@ -185,8 +224,8 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
         return {}
     user = "【宏观】%s\n【个股新闻】\n%s\n逐只给出消息面 sentiment/score/note。" % (macro_txt, "\n".join(lines))
     try:
-        content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout)
-        j = _json.loads(content)
+        content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout, expect_json=True)
+        j = _json_of(content)
         out = {}
         for r in j.get("stocks", []):
             code = str(r.get("code", "")).strip()
@@ -221,15 +260,12 @@ def main():
     if args.offline and os.path.exists(OUT):
         print("离线模式: 沿用 %s" % OUT)
         return
-    # 池模式：--pool > sim_live.json meta.pool_mode > all
-    pmode = args.pool
-    if not pmode:
-        try:
-            _st = json.load(open(os.path.join(BASE_DIR, "data", "sim_live.json")))
-            pmode = (_st.get("meta") or {}).get("pool_mode", "all")
-        except Exception:
-            pmode = "all"
-    print("池模式:", "6股精选" if pmode == "six" else "全池")
+    # 池模式：--pool > 默认 six（v4 双池后 meta.pool_mode 已废弃，恒为 all 导致
+    # 个股消息面评审从未生效；six 池固定 6 只、成本低，默认就抓）
+    pmode = args.pool or "six"
+    if pmode not in ("six", "all"):
+        pmode = "six"
+    print("池模式:", "6股精选(含个股消息面)" if pmode == "six" else "全池(仅宏观)")
     news = mc.fetch_news(use_cache=not args.no_cache)
     try:
         intl = mc.fetch_news_international(page_size=50)
@@ -253,12 +289,22 @@ def main():
     date = args.date or (news[0].get("show_time") or time.strftime("%Y-%m-%d"))[:10]
     print("新闻 %d 条（截至 %s），调用 %s ..." % (len(news), date, MODEL))
     try:
-        content, _bk = call_llm(SYSTEM, build_user(news, date))
-        j = json.loads(content)
+        content, _bk = call_llm(SYSTEM, build_user(news, date), expect_json=True)
+        j = _json_of(content)
         j["_backend"] = _bk
     except Exception as e:
         print("LLM 失败: %s（回退词典法温度）" % e)
-        # 回退: macro 词典净分 → 近似
+        # 回退前先看旧数据：LLM 偶发失败不该把之前一份有效判断冲成"中性50"
+        # （否则闸门会在无声无息中从"多头/防御"退化成永远中性）
+        try:
+            old = json.load(open(OUT, encoding="utf-8"))
+            old_ll = (old.get("llm") or {})
+            if old_ll.get("sentiment") and not old_ll.get("_fallback"):
+                print("→ 保留上次有效宏观判断（%s %s，%s），本次不写盘" % (
+                    old_ll.get("sentiment"), old_ll.get("score"), old.get("date")))
+                return
+        except Exception:
+            pass
         j = {"sentiment": "中性", "score": 50, "title": "LLM不可用,回退中性",
              "summary": str(e)[:100], "drivers": [], "risks": [], "sectors": [],
              "stance": "均衡", "_fallback": True}

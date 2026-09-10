@@ -341,19 +341,29 @@
       const c = colors[sent] || '#d97706';
       const icon = { '多头': 'arrow-trend-up', '中性': 'equals', '空头': 'arrow-trend-down', '防御': 'shield' }[sent] || 'brain';
       const def = (sent === '空头' || sent === '防御' || (sent === '中性' && (ll.score || 50) < 40));
+      // 新鲜度检查：宏观判断过期（非当日）时高亮告警，避免闸门用陈旧消息面而不自知
+      const gen = (r.generatedAt || '').slice(0, 16);
+      const ageH = gen ? ((Date.now() - new Date(gen.replace(' ', 'T')).getTime()) / 3600000) : 0;
+      const stale = !!gen && ageH > 20;   // 超过 20h 未更新（跨过一个交易日）
       box.style.display = 'block';
       box.style.borderLeft = '4px solid ' + c;
       box.innerHTML = `
         <div class="sec-title"><span class="ti">${RV.ui.icon('brain')}</span>LLM 宏观消息面观察
           <span class="sec-chip" style="background:${c};color:#fff;font-weight:800">${RV.ui.icon(icon)} ${sent} ${ll.score != null ? ll.score : ''}</span>
           <span class="sec-chip">stance: ${st}</span>
-          <span class="sec-chip">${ll.backend || 'LLM'} · ${r.date || ''}</span>
+          <span class="sec-chip">${ll.backend || 'LLM'} · 新闻${r.date || ''}</span>
+          <span class="sec-chip" style="${stale ? 'background:#fff7ed;color:#9a3412;font-weight:800' : ''}">更新 ${gen || '未知'}</span>
         </div>
         <div style="font-size:13px;font-weight:800;margin-bottom:4px">${ll.title || ''}</div>
         <div class="reason" style="font-size:12px;line-height:1.7">${ll.summary || ''}</div>
         ${(ll.drivers || []).length ? '<div style="margin-top:6px;font-size:12px"><span style="color:#dc2626;font-weight:700">利好</span> ' + ll.drivers.join('；') + '</div>' : ''}
         ${(ll.risks || []).length ? '<div style="font-size:12px"><span style="color:#16a34a;font-weight:700">风险</span> ' + ll.risks.join('；') + '</div>' : ''}
         ${(ll.sectors || []).length ? '<div style="font-size:12px;margin-top:2px"><b>关注板块</b> ' + ll.sectors.join('、') + '</div>' : ''}
+        ${stale ? '<div class="revbox" style="margin:8px 0 0;background:#fff7ed;border-color:#fed7aa;color:#9a3412">⚠ 宏观消息面<b>非当日</b>（数据 ' + gen + '，距今 ' + Math.round(ageH) + ' 小时）→ 闸门与个股回避可能失效，请检查 macro_llm 是否成功执行</div>' : ''}
+        ${(r.stocks || []).length ? `<div style="margin-top:8px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">6股池个股消息面 <span class="sec-chip">利空/score&lt;45 将被排除出计划</span></div>
+          <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>股票</th><th>消息面</th><th>分</th><th>依据</th></tr></thead><tbody>
+          ${(r.stocks || []).map(s0 => { const col = s0.sentiment === '利好' ? 'var(--up)' : (s0.sentiment === '利空' ? 'var(--down)' : 'var(--text-2)'); const veto = (s0.sentiment === '利空' || s0.sentiment === '防御' || (s0.score || 50) < 45); return `<tr><td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${s0.code}')">${s0.name || s0.code}</td><td style="color:${col};font-weight:700">${s0.sentiment || '--'}</td><td style="color:${col}">${s0.score != null ? s0.score : '--'}</td><td class="reason">${s0.note || ''}${veto ? ' <span class="tag tag-block">回避</span>' : ''}</td></tr>`; }).join('')}
+          </tbody></table></div></div>` : ''}
         ${(r.events || []).map(ev => `
           <div style="margin-top:8px;border:1px dashed var(--border);border-left:3px solid #7c3aed;border-radius:8px;padding:8px 10px;background:var(--surface-2)">
             <div style="font-size:12px;font-weight:800">${RV.ui.icon('flag')} 事件追踪 · ${ev.date} · ${ev.title}</div>
