@@ -643,6 +643,12 @@ def _scan_account(pool, acct, cfg, quotes, date, hms):
         if not px:
             continue
         prev = pos.get("prev_close") or pos["cost"]
+        # 当日涨跌基准随行情刷新：pos.prev_close 建仓时记的是「买入日的前收」，
+        # 跨日不更新会把多日涨跌当成当日（曾出现涨跌符号都反了的显示）。
+        live_pc = q.get("prevClose")
+        if live_pc and live_pc > 0:
+            pos["prev_close"] = live_pc
+            prev = live_pc
         chg = (px / prev - 1) * 100 if prev else 0
         # 现价印记：供页面展示个股实时盈亏/当日涨跌
         pos["last"] = px
@@ -774,6 +780,14 @@ def finalize_pool(state, pool, date):
             if it:
                 pos["last_close"] = it.get("close")
                 pos["last"] = it.get("close")
+                # 收盘后当日涨跌基准 = 上一交易日收盘（review item: close 与 change_pct 反推）
+                c0, cpct = it.get("close"), it.get("change_pct")
+                if c0 and cpct is not None and (1 + cpct / 100) > 0:
+                    pc = round(c0 / (1 + cpct / 100), 3)
+                    if pc > 0:
+                        pos["prev_close"] = pc
+                        pos["last_chg"] = round(cpct, 2)
+                        pos["last_ts"] = "close"
         eq = equity_of(a)
         a["equity_curve"] = [x for x in a["equity_curve"] if x["date"] != date]
         prev = a["equity_curve"][-1]["equity"] if a["equity_curve"] else CASH_START
