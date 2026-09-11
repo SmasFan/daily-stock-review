@@ -3,8 +3,9 @@
 """一周冲刺模拟盘（sim_sprint）· 单账户激进短线
 
 目标：一周 ≥ +10%（尽力而为，市场不保证）。
-玩法：AI 主动选股重仓（市价进），cron 每2分钟（sim_intraday_scan.sh）自动 scan 执行
-      移动止盈/目标止盈/硬止损；AI 每日收盘后主动调仓。
+玩法：自动选股重仓（--auto，市价进），cron 每2分钟（sim_intraday_scan.sh）自动 scan 执行
+      移动止盈/目标止盈/硬止损；盘前/收盘自动跑 --auto 补仓。
+建仓闸门：大盘闸门 block 时不建仓；个股消息面回避、外部强利空不碰；LLM 成交前复核。
 
 规则（冲刺激进档）：
   - 单笔 ≤ 现金 50%，最多 2 只并行（集中）
@@ -13,7 +14,9 @@
        现价 ≤ 成本 -6.5% → 硬止损
 命令：
   python3 sim_sprint.py --init
-  python3 sim_sprint.py --buy 601138 [frac=0.5]     # 市价买（现金×frac）
+  python3 sim_sprint.py --auto                       # 自动选股建仓（推荐，过大盘闸门+LLM复核）
+  python3 sim_sprint.py --auto --dry                 # 演练：只打印不下单
+  python3 sim_sprint.py --buy 601138 [frac=0.5]     # 市价买（现金×frac，手工）
   python3 sim_sprint.py --sell 601138                # 市价全清
   python3 sim_sprint.py --scan                       # 巡检执行止盈/止损（cron 每5分）
   python3 sim_sprint.py --review [--date D]          # 收盘净值曲线
@@ -170,6 +173,138 @@ def do_sell(st, code, reason, px=None, llm=None):
     print("卖出 %s @%.2f (%+.2f%%) %s" % (pos["name"], px, pnl_pct, reason))
 
 
+def _gate():
+    """大盘闸门（复用 sim_live 的 market_gate）。返回 (gate, why)。"""
+    try:
+        import sim_live as S
+        st = S.load_state()
+        return S.market_gate(S.load_json("review_data.json") or {},
+                             state=st, date=time.strftime("%Y-%m-%d"))
+    except Exception as e:
+        print("  [gate] 读取失败(按 open 处理): %s" % str(e)[:80])
+        return "open", "闸门不可用"
+
+
+def _ext_score(name, sector):
+    """外部因子分（复用 sim_live）。"""
+    try:
+        import sim_live as S
+        return S.ext_bonus({"name": name, "sector": sector}, S.load_external())
+    except Exception:
+        return 0.0
+
+
+def _news_avoid():
+    """宏观 LLM 的个股消息面回避名单（利空/防御/score<45）。"""
+    try:
+        with open(os.path.join(DATA_DIR, "macro_llm_data.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        out = {}
+        for s in (d.get("stocks") or []):
+            if s.get("sentiment") in ("利空", "防御") or (s.get("score") or 50) < 45:
+                out[s.get("code")] = s
+        return out
+    except Exception:
+        return {}
+
+
+def auto_pick(st, dry=False):
+    """自动选股建仓：冲刺盘此前只有人工 --buy，平仓后永久空转。
+
+    选股口径（激进：取最强）：
+      review 候选（strong_buy/buy + 强势多头/多头排列）→ 评分 + 外部因子 排序
+      → 过滤消息面回避 → 过大盘闸门 → LLM 成交前复核 → 市价建仓
+    约束：最多 max_pos(2) 只、单笔 ≤ 现金 50%
+    """
+    if len(st["positions"]) >= RULE["max_pos"]:
+        print("已有 %d 只持仓（上限%d），不新建" % (len(st["positions"]), RULE["max_pos"]))
+        return 0
+    gate, gwhy = _gate()
+    if gate == "block":
+        print("  [gate] 大盘闸门 block（%s）→ 冲刺盘不建仓" % gwhy[:60])
+        _msg = "闸门 block（%s）→ 跳过自动建仓" % gwhy[:60]
+        _logs = st.setdefault("log", [])
+        _today = time.strftime("%Y-%m-%d")
+        if not any(l.get("msg") == _msg and str(l.get("ts", "")).startswith(_today) for l in _logs):
+            _logs.append({"ts": now_ts(), "msg": _msg})
+        return 0
+    try:
+        with open(os.path.join(DATA_DIR, "review_data.json"), encoding="utf-8") as f:
+            items = (json.load(f).get("items") or [])
+    except Exception as e:
+        print("无 review_data:", str(e)[:60]); return 0
+    held = {p["code"] for p in st["positions"]}
+    avoid = _news_avoid()
+    cands = []
+    for it in items:
+        c = it.get("code")
+        if not c or c in held or c in avoid:
+            continue
+        if it.get("signal_key") not in ("strong_buy", "buy"):
+            continue
+        if it.get("trend_status") not in ("强势多头", "多头排列"):
+            continue
+        if str(c).startswith(("5", "1")):     # 冲刺盘只做个股，跳过 ETF
+            continue
+        sc = (it.get("score") or 0)
+        eb = _ext_score(it.get("name"), it.get("sector"))
+        if eb <= -4.5:                        # 外部强利空（如三杀成长）不碰
+            continue
+        cands.append({**it, "_rank": sc + eb, "_eb": eb})
+    cands.sort(key=lambda x: -x["_rank"])
+    if not cands:
+        print("  [auto] 无合格候选（信号/趋势/消息面/外部因子过滤后）")
+        return 0
+    slots = RULE["max_pos"] - len(st["positions"])
+    picks = cands[:slots]
+    print("  [auto] 候选 %d 只 → 取前 %d：%s" % (
+        len(cands), len(picks), ", ".join("%s(%d分 外部%+.1f)" % (
+            p.get("name"), p.get("score") or 0, p["_eb"]) for p in picks)))
+    # LLM 成交前复核（复用 sim_live 闸门）
+    _d = time.strftime("%Y-%m-%d"); _t = time.strftime("%H:%M:%S")
+    tasks = []
+    for p in picks:
+        q = _quote([p["code"]]).get(p["code"]) or {}
+        tasks.append({"id": "sprint|auto|%s|buy" % p["code"], "action": "buy",
+                      "code": p["code"], "name": p.get("name"),
+                      "px": q.get("price") or p.get("close") or 0,
+                      "chg": q.get("change"),
+                      "buy_below": q.get("price") or p.get("close") or 0,
+                      "why": "冲刺盘自动选股（%d分 %s 趋势%s 外部%+.1f）" % (
+                          p.get("score") or 0, p.get("signal"), p.get("trend_status"), p["_eb"]),
+                      "sector": p.get("sector"), "trend": p.get("trend_status"),
+                      "score": p.get("score"), "signal": p.get("signal")})
+    dec = gate_dec = {}
+    try:
+        if tasks and _llm_gate is not None:
+            dec = _llm_gate(st, _d, _t, tasks)
+    except Exception as e:
+        print("  [llm][gate] 异常(放行): %s" % str(e)[:80])
+    done = 0
+    for p in picks:
+        d = dec.get("sprint|auto|%s|buy" % p["code"]) or {}
+        if d.get("verdict") == "avoid":
+            print("  🧠 LLM否决建仓 %s：%s" % (p.get("name"), d.get("note") or ""))
+            st.setdefault("log", []).append({"ts": now_ts(),
+                                            "msg": "LLM 否决建仓 %s：%s" % (
+                                                p.get("name"), d.get("note") or "")})
+            continue
+        if dry:
+            print("  [dry] 建仓 %s（%d分）" % (p.get("name"), p.get("score") or 0))
+            done += 1
+            continue
+        before = st["cash"]
+        do_buy(st, p["code"], RULE["max_frac"], llm=d)
+        if st["cash"] < before:
+            done += 1
+            st.setdefault("signals", []).append({
+                "ts": now_ts(), "code": p["code"], "name": p.get("name"),
+                "score": p.get("score"), "signal": p.get("signal"),
+                "trend": p.get("trend_status"), "ext": round(p["_eb"], 2),
+                "llm": d.get("note"), "why": "自动选股建仓"})
+    return done
+
+
 def do_scan(st):
     """巡检持仓两阶段：先扫出卖出候选 → LLM 复核 → 落账。
 
@@ -277,6 +412,8 @@ def main():
     ap.add_argument("--buy", default=None, help="code 市价买入")
     ap.add_argument("--frac", type=float, default=0.5, help="买入仓位比例(默认0.5)")
     ap.add_argument("--sell", default=None, help="code 市价卖出")
+    ap.add_argument("--auto", action="store_true", help="自动选股建仓（过大盘闸门+LLM复核）")
+    ap.add_argument("--dry", action="store_true", help="--auto 演练：只打印不下单")
     ap.add_argument("--scan", action="store_true")
     ap.add_argument("--review", action="store_true")
     ap.add_argument("--date", default=None)
@@ -318,6 +455,12 @@ def main():
     if args.sell:
         do_sell(st, args.sell, "AI主动卖出")
         save(st)
+        do_status(st)
+        return
+    if args.auto:
+        n = auto_pick(st, dry=args.dry)
+        save(st)
+        print("自动建仓 %d 笔" % n)
         do_status(st)
         return
     if args.scan:

@@ -88,6 +88,10 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘K线导出失败" >> "$LOG"
   python3 sim_live.py --review --date $(date +%F) >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 实时模拟盘复盘失败" >> "$LOG"
+  # 一周冲刺盘：自动选股建仓（此前只有人工 --buy，平仓后永久空转）
+  # 过大盘闸门 + 消息面回避 + 外部强利空过滤 + LLM 成交前复核
+  python3 sim_sprint.py --auto >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘自动建仓失败" >> "$LOG"
   # 外部因子有效性统计（外部分档 vs 实际收益；供页面卡片）
   python3 scripts/ext_shadow.py >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 外部因子统计失败" >> "$LOG"

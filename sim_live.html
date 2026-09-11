@@ -305,6 +305,17 @@
           ${trades.slice().reverse().map(t => `<tr><td>${(t.ts||'').slice(5,19)}</td><td>${t.action==='buy' ? '<span class="tag tag-buy">买</span>' : '<span class="tag tag-sell">卖</span>'}</td><td class="sname" style="font-weight:700;cursor:pointer" onclick="window.__stock('${t.code}')">${t.name||t.code}</td><td>${fmt(t.price)}</td><td>${t.shares}股</td><td>¥${fmt((t.price||0)*(t.shares||0))}</td><td class="${t.action==='sell' ? pcl(t.pnl_pct) : 'neutral'}">${t.action==='sell' ? RV.fmt.pct(t.pnl_pct) : '--'}</td><td>${llmCell(t.llm)}</td><td class="reason">${(t.reason||'').slice(0,40)}</td></tr>`).join('')}
         </tbody></table></div>` : '<div class="neutral">暂无成交</div>'}
       </div>
+      ${(SP.signals || []).length ? `<div class="sec" data-nav="自动选股" data-nav-icon="crosshairs">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('crosshairs')}</span>自动选股记录 <span class="sec-chip">--auto 建仓依据（评分+外部因子+LLM复核）</span></div>
+        <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>时间</th><th>股票</th><th>评分</th><th>信号</th><th>趋势</th><th>外部分</th><th>LLM复核</th></tr></thead><tbody>
+          ${(SP.signals || []).slice().reverse().slice(0, 15).map(g => `<tr><td class="neutral">${(g.ts || '').slice(5, 16)}</td>
+            <td class="sname" style="font-weight:700;cursor:pointer" onclick="window.__stock('${g.code}')">${g.name || g.code}</td>
+            <td>${g.score != null ? g.score : '--'}</td><td class="neutral">${g.signal || '--'}</td><td class="neutral">${g.trend || '--'}</td>
+            <td class="${g.ext > 0 ? 'up' : (g.ext < 0 ? 'down' : 'neutral')}">${g.ext != null ? (g.ext > 0 ? '+' : '') + g.ext : '--'}</td>
+            <td class="reason">${g.llm || '--'}</td></tr>`).join('')}
+        </tbody></table></div>
+        <div class="reason" style="margin-top:6px;font-size:11px">自动选股：过大盘闸门 → 过滤消息面回避与外部强利空（≤-4.5）→ 按 评分+外部分 排序取最强 → LLM 成交前复核。</div>
+      </div>` : ''}
       <div class="sec" data-nav="运行日志" data-nav-icon="book">
         <div class="sec-title"><span class="ti">${RV.ui.icon('book')}</span>AI 决策日志</div>
         ${logs.length ? logs.map(l => `<div class="note-item"><span class="nd">${l.ts.slice(5,19)}</span> ${l.msg}</div>`).join('') : '<div class="neutral">暂无</div>'}
