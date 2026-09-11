@@ -10,7 +10,38 @@
   "pools": [
    "six",
    "all"
-  ]
+  ],
+  "llm_gate": {
+   "date": "2026-09-11",
+   "items": {
+    "all|mix|516910|buy": {
+     "verdict": "allow",
+     "note": "回踩买点，共识一致",
+     "ts": "09:32:01"
+    },
+    "all|mix|600036|buy": {
+     "verdict": "allow",
+     "note": "回踩到位，未明显弱势",
+     "ts": "09:32:01"
+    },
+    "all|aggressive|601233|sell": {
+     "verdict": "allow",
+     "note": "硬止损不可否决，确认执行",
+     "ts": "09:38:01"
+    },
+    "all|balanced|601233|sell": {
+     "verdict": "allow",
+     "note": "硬止损不可否决，确认执行",
+     "ts": "09:38:01"
+    }
+   },
+   "stat": {
+    "llm": 2,
+    "cache": 0,
+    "fallback": 0,
+    "off": 0
+   }
+  }
  },
  "version_history": [
   {
@@ -81,7 +112,7 @@
      "key": "aggressive",
      "label": "激进",
      "start_cash": 50000.0,
-     "cash": 1673.5063999999966,
+     "cash": 10986.050399999996,
      "positions": [
       {
        "code": "002493",
@@ -97,12 +128,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 15.15,
-       "prev_close": 15.14,
+       "prev_close": 14.37,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.36,
-       "last_chg": -5.15,
-       "last_ts": "close",
+       "last": 13.92,
+       "last_chg": -3.13,
+       "last_ts": "09:38:01",
        "last_close": 14.36,
        "ext": {
         "score": 4.8,
@@ -124,35 +155,13 @@
        "be_at": null,
        "be_on": false,
        "peak": 27.6,
-       "prev_close": 27.09,
+       "prev_close": 27.15,
        "score": 86,
        "signal": "强烈买入",
-       "last": 27.15,
-       "last_chg": 0.22,
-       "last_ts": "close",
+       "last": 26.62,
+       "last_chg": -1.95,
+       "last_ts": "09:38:01",
        "last_close": 27.15
-      },
-      {
-       "code": "601233",
-       "name": "桐昆股份",
-       "shares": 400,
-       "cost": 25.24,
-       "buy_date": "2026-09-07",
-       "buy_time": "10:45:47",
-       "stop_atr": 23.35,
-       "stop_ma": null,
-       "tp": 31.188,
-       "trail": 0.1,
-       "be_at": null,
-       "be_on": false,
-       "peak": 25.24,
-       "prev_close": 24.969,
-       "score": 84,
-       "signal": "强烈买入",
-       "last": 24.39,
-       "last_chg": -2.32,
-       "last_ts": "close",
-       "last_close": 24.39
       },
       {
        "code": "600346",
@@ -168,12 +177,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 19.14,
-       "prev_close": 19.099,
+       "prev_close": 18.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.41,
-       "last_chg": -3.61,
-       "last_ts": "close",
+       "last": 17.76,
+       "last_chg": -3.58,
+       "last_ts": "09:38:01",
        "last_close": 18.41,
        "ext": {
         "score": 4.8,
@@ -195,12 +204,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 28.12,
-       "prev_close": 28.05,
+       "prev_close": 28.09,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.07,
-       "last_chg": 0.07,
-       "last_ts": "close",
+       "last": 28.04,
+       "last_chg": -0.18,
+       "last_ts": "09:38:01",
        "last_close": 28.07
       }
      ],
@@ -380,6 +389,27 @@
        "chg_at_fill": -1.69,
        "reason": "强烈买入(83分) 回踩≤28.28 ATR止损27.57",
        "strategy": "aggressive"
+      },
+      {
+       "action": "sell",
+       "date": "2026-09-11",
+       "time": "09:38:01",
+       "code": "601233",
+       "name": "桐昆股份",
+       "price": 23.3,
+       "shares": 400,
+       "ext": null,
+       "chg_at_fill": -4.59,
+       "pnl": -776.0,
+       "pnl_pct": -7.69,
+       "reason": "破ATR/保本止损 23.35",
+       "strategy": "aggressive",
+       "pool": "all",
+       "llm": {
+        "verdict": "allow",
+        "note": "硬止损不可否决，确认执行",
+        "src": "llm"
+       }
       }
      ],
      "equity_curve": [
@@ -769,7 +799,7 @@
      "key": "balanced",
      "label": "稳健",
      "start_cash": 50000.0,
-     "cash": 17660.301,
+     "cash": 24644.709,
      "positions": [
       {
        "code": "002493",
@@ -785,40 +815,18 @@
        "be_at": null,
        "be_on": false,
        "peak": 15.15,
-       "prev_close": 15.14,
+       "prev_close": 14.37,
        "score": 88,
        "signal": "强烈买入",
-       "last": 14.36,
-       "last_chg": -5.15,
-       "last_ts": "close",
+       "last": 13.92,
+       "last_chg": -3.13,
+       "last_ts": "09:38:01",
        "last_close": 14.36,
        "ext": {
         "score": 4.8,
         "why": "外部:石化",
         "backfill": true
        }
-      },
-      {
-       "code": "601233",
-       "name": "桐昆股份",
-       "shares": 300,
-       "cost": 25.24,
-       "buy_date": "2026-09-07",
-       "buy_time": "10:45:47",
-       "stop_atr": 23.35,
-       "stop_ma": 24.77,
-       "tp": 29.888,
-       "trail": null,
-       "be_at": null,
-       "be_on": false,
-       "peak": 25.24,
-       "prev_close": 24.969,
-       "score": 84,
-       "signal": "强烈买入",
-       "last": 24.39,
-       "last_chg": -2.32,
-       "last_ts": "close",
-       "last_close": 24.39
       },
       {
        "code": "600346",
@@ -834,12 +842,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 19.14,
-       "prev_close": 19.099,
+       "prev_close": 18.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 18.41,
-       "last_chg": -3.61,
-       "last_ts": "close",
+       "last": 17.76,
+       "last_chg": -3.58,
+       "last_ts": "09:38:01",
        "last_close": 18.41,
        "ext": {
         "score": 4.8,
@@ -861,12 +869,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 22.5,
-       "prev_close": 23.53,
+       "prev_close": 22.39,
        "score": 86,
        "signal": "强烈买入",
-       "last": 22.45,
-       "last_chg": -4.59,
-       "last_ts": "close",
+       "last": 21.58,
+       "last_chg": -3.62,
+       "last_ts": "09:38:01",
        "last_close": 22.45
       }
      ],
@@ -988,14 +996,26 @@
        "tp": 8.567,
        "trail": null,
        "be_at": null,
-       "gate": "reduce",
+       "gate": "block",
        "budget": 5400.0,
        "status": "wait",
        "ext": {
         "score": 1.2,
         "why": "外部:基建交通"
        },
-       "reason": "强烈买入(84分) 回踩≤7.30 ATR止损7.15；LLM:基建工程链受重大工程融资政策提振（背离降档×0.6）（外部:基建交通+1.2）"
+       "reason": "强烈买入(84分) 回踩≤7.30 ATR止损7.15；LLM:基建工程链受重大工程融资政策提振（背离降档×0.6）（外部:基建交通+1.2）",
+       "miss": {
+        "date": "2026-09-11",
+        "first_ts": "09:36:01",
+        "low": 7.3,
+        "count": 1,
+        "caught": null
+       },
+       "gate_live": {
+        "date": "2026-09-11",
+        "ts": "09:38:01",
+        "why": "LLM宏观防御"
+       }
       }
      ],
      "trades": [
@@ -1057,6 +1077,27 @@
        "reason": "强烈买入(86分) 回踩≤22.16 ATR止损19.88",
        "strategy": "balanced",
        "pool": "all"
+      },
+      {
+       "action": "sell",
+       "date": "2026-09-11",
+       "time": "09:38:01",
+       "code": "601233",
+       "name": "桐昆股份",
+       "price": 23.3,
+       "shares": 300,
+       "ext": null,
+       "chg_at_fill": -4.59,
+       "pnl": -582.0,
+       "pnl_pct": -7.69,
+       "reason": "破ATR/保本止损 23.35",
+       "strategy": "balanced",
+       "pool": "all",
+       "llm": {
+        "verdict": "allow",
+        "note": "硬止损不可否决，确认执行",
+        "src": "llm"
+       }
       }
      ],
      "equity_curve": [
@@ -1424,7 +1465,18 @@
       }
      ],
      "review_log": [],
-     "miss_log": [],
+     "miss_log": [
+      {
+       "date": "2026-09-11",
+       "code": "002116",
+       "name": "中国海诚",
+       "buy_below": 7.301,
+       "trigger": 7.316,
+       "day_low": 7.3,
+       "first_ts": "09:36:01",
+       "note": "盘中最低7.30 已≤买点7.30（含0.2%容差），巡检未采到 → 漏单留痕"
+      }
+     ],
      "llm_log": []
     },
     "disciplined": {
@@ -1957,16 +2009,16 @@
       "be_at": null,
       "be_on": false,
       "peak": 15.66,
-      "prev_close": 16.931,
+      "prev_close": 15.36,
       "score": 83,
       "signal": "强烈买入",
       "consensus": 1,
       "from": [
        "aggressive"
       ],
-      "last": 15.6,
-      "last_chg": -7.86,
-      "last_ts": "close",
+      "last": 15.07,
+      "last_chg": -1.89,
+      "last_ts": "09:38:01",
       "last_close": 15.6
      }
     ],
@@ -1984,7 +2036,7 @@
       "tp": 1.327,
       "trail": 0.1,
       "be_at": 0.05,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 6000.0,
       "status": "wait",
       "consensus": 3,
@@ -1993,7 +2045,12 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.20 止損1.16 止盈1.33"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.20 止損1.16 止盈1.33",
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:34:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "300498",
@@ -2017,7 +2074,15 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤14.82 止損14.10 止盈16.39"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤14.82 止損14.10 止盈16.39",
+      "miss": {
+       "date": "2026-09-11",
+       "first_ts": "09:34:01",
+       "low": 14.81,
+       "count": 3,
+       "caught": null,
+       "last_ts": "09:38:01"
+      }
      },
      {
       "code": "600028",
@@ -2032,7 +2097,7 @@
       "tp": 6.138,
       "trail": 0.1,
       "be_at": 0.05,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 6000.0,
       "status": "wait",
       "consensus": 3,
@@ -2041,7 +2106,19 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤5.53 止損5.33 止盈6.14"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤5.53 止損5.33 止盈6.14",
+      "miss": {
+       "date": "2026-09-11",
+       "first_ts": "09:36:01",
+       "low": 5.54,
+       "count": 1,
+       "caught": null
+      },
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:38:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "561360",
@@ -2056,7 +2133,7 @@
       "tp": 1.668,
       "trail": 0.1,
       "be_at": 0.05,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 6000.0,
       "status": "wait",
       "consensus": 3,
@@ -2065,7 +2142,12 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.51 止損1.45 止盈1.67"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.51 止損1.45 止盈1.67",
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:36:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "002116",
@@ -2080,7 +2162,7 @@
       "tp": 8.195,
       "trail": null,
       "be_at": 0.05,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 3900.0,
       "status": "wait",
       "consensus": 2,
@@ -2088,7 +2170,19 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13%×0.6降档 回踩≤7.30 止損7.15 止盈8.20"
+      "reason": "共识2/3（稳健/严守纪律）仓位13%×0.6降档 回踩≤7.30 止損7.15 止盈8.20",
+      "miss": {
+       "date": "2026-09-11",
+       "first_ts": "09:36:01",
+       "low": 7.3,
+       "count": 1,
+       "caught": null
+      },
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:38:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "002602",
@@ -2125,14 +2219,19 @@
       "tp": 49.848,
       "trail": 0.1,
       "be_at": null,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 2400.0,
       "status": "wait",
       "consensus": 1,
       "from": [
        "aggressive"
       ],
-      "reason": "共识1/3（激进）仓位8%×0.6降档 回踩≤41.24 止損40.21 止盈49.85"
+      "reason": "共识1/3（激进）仓位8%×0.6降档 回踩≤41.24 止損40.21 止盈49.85",
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:34:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "159588",
@@ -2207,6 +2306,16 @@
       "date": "2026-09-10",
       "kind": "plan",
       "note": "[全池]合并·共识：8 单待触发（共识3:4 共识2:1 共识1:3）（背离降档：仓位×0.6）"
+     },
+     {
+      "date": "2026-09-11",
+      "kind": "rollback",
+      "note": "⛔ 回滚 09:30-09:32 误成交：温氏股份 400股@14.85（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 3→2 | 退回现金 ¥5942"
+     },
+     {
+      "date": "2026-09-11",
+      "kind": "rollback",
+      "note": "⛔ 回滚 09:30-09:32 误成交：物流ETF富国 5000股@1.20（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 2→1 | 退回现金 ¥5982"
      }
     ],
     "review_log": [],
@@ -2260,6 +2369,36 @@
       "day_low": 22.0,
       "first_ts": "14:48:01",
       "note": "盘中最低22.00 已≤买点22.28（含0.2%容差），巡检未采到 → 漏单留痕"
+     },
+     {
+      "date": "2026-09-11",
+      "code": "300498",
+      "name": "温氏股份",
+      "buy_below": 14.825,
+      "trigger": 14.855,
+      "day_low": 14.81,
+      "first_ts": "09:34:01",
+      "note": "盘中最低14.81 已≤买点14.82（含0.2%容差），巡检未采到 → 漏单留痕"
+     },
+     {
+      "date": "2026-09-11",
+      "code": "600028",
+      "name": "中国石化",
+      "buy_below": 5.53,
+      "trigger": 5.541,
+      "day_low": 5.54,
+      "first_ts": "09:36:01",
+      "note": "盘中最低5.54 已≤买点5.53（含0.2%容差），巡检未采到 → 漏单留痕"
+     },
+     {
+      "date": "2026-09-11",
+      "code": "002116",
+      "name": "中国海诚",
+      "buy_below": 7.301,
+      "trigger": 7.316,
+      "day_low": 7.3,
+      "first_ts": "09:36:01",
+      "note": "盘中最低7.30 已≤买点7.30（含0.2%容差），巡检未采到 → 漏单留痕"
      }
     ],
     "meta": {
@@ -2327,12 +2466,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 78.99,
-       "prev_close": 78.87,
+       "prev_close": 76.34,
        "score": 73,
        "signal": "买入",
-       "last": 77.08,
-       "last_chg": -2.27,
-       "last_ts": "close",
+       "last": 74.8,
+       "last_chg": -2.02,
+       "last_ts": "09:38:01",
        "last_close": 77.08
       },
       {
@@ -2349,12 +2488,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 28.12,
-       "prev_close": 28.05,
+       "prev_close": 28.09,
        "score": 70,
        "signal": "买入",
-       "last": 28.07,
-       "last_chg": 0.07,
-       "last_ts": "close",
+       "last": 28.04,
+       "last_chg": -0.18,
+       "last_ts": "09:38:01",
        "last_close": 28.07
       },
       {
@@ -2371,12 +2510,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 36.01,
-       "prev_close": 34.66,
+       "prev_close": 35.87,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.87,
-       "last_chg": 3.49,
-       "last_ts": "close",
+       "last": 35.57,
+       "last_chg": -0.84,
+       "last_ts": "09:38:01",
        "last_close": 35.87
       },
       {
@@ -2393,12 +2532,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 64.55,
-       "prev_close": 65.241,
+       "prev_close": 63.91,
        "score": 74,
        "signal": "买入",
-       "last": 63.91,
-       "last_chg": -2.04,
-       "last_ts": "close",
+       "last": 62.99,
+       "last_chg": -1.44,
+       "last_ts": "09:38:01",
        "last_close": 63.91
       }
      ],
@@ -2416,14 +2555,19 @@
        "tp": 40.968,
        "trail": 0.1,
        "be_at": null,
-       "gate": "reduce",
+       "gate": "block",
        "budget": 6600.0,
        "status": "wait",
        "ext": {
         "score": -3.6,
         "why": "外部:黄金"
        },
-       "reason": "强烈买入(83分) 回踩≤33.72 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）"
+       "reason": "强烈买入(83分) 回踩≤33.72 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
+       "gate_live": {
+        "date": "2026-09-11",
+        "ts": "09:34:01",
+        "why": "LLM宏观防御"
+       }
       }
      ],
      "trades": [
@@ -2625,6 +2769,11 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[6股精选]激进：1 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "rollback",
+       "note": "⛔ 回滚 09:30-09:32 误成交：紫金矿业 200股@32.50（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 5→4 | 退回现金 ¥6502"
       }
      ],
      "review_log": [],
@@ -2651,14 +2800,19 @@
        "tp": 39.261,
        "trail": null,
        "be_at": null,
-       "gate": "reduce",
+       "gate": "block",
        "budget": 5400.0,
        "status": "wait",
        "ext": {
         "score": -3.6,
         "why": "外部:黄金"
        },
-       "reason": "强烈买入(83分) 回踩≤33.46 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）"
+       "reason": "强烈买入(83分) 回踩≤33.46 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
+       "gate_live": {
+        "date": "2026-09-11",
+        "ts": "09:34:01",
+        "why": "LLM宏观防御"
+       }
       },
       {
        "code": "601138",
@@ -2680,7 +2834,15 @@
         "score": -5.7,
         "why": "外部:AI算力"
        },
-       "reason": "买入(75分) 回踩≤62.63 ATR止损58.69；LLM:AI算力属政策硬科技方向，回调后未过度乖离（背离降档×0.6）（外部:AI算力-5.7）"
+       "reason": "买入(75分) 回踩≤62.63 ATR止损58.69；LLM:AI算力属政策硬科技方向，回调后未过度乖离（背离降档×0.6）（外部:AI算力-5.7）",
+       "miss": {
+        "date": "2026-09-11",
+        "first_ts": "09:32:01",
+        "low": 62.5,
+        "count": 4,
+        "caught": null,
+        "last_ts": "09:38:01"
+       }
       }
      ],
      "trades": [],
@@ -2834,10 +2996,26 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[6股精选]稳健：2 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "rollback",
+       "note": "⛔ 回滚 09:30-09:32 误成交：紫金矿业 100股@32.50（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 1→0 | 退回现金 ¥3251"
       }
      ],
      "review_log": [],
-     "miss_log": [],
+     "miss_log": [
+      {
+       "date": "2026-09-11",
+       "code": "601138",
+       "name": "工业富联",
+       "buy_below": 62.632,
+       "trigger": 62.757,
+       "day_low": 62.5,
+       "first_ts": "09:32:01",
+       "note": "盘中最低62.50 已≤买点62.63（含0.2%容差），巡检未采到 → 漏单留痕"
+      }
+     ],
      "llm_log": []
     },
     "disciplined": {
@@ -2860,14 +3038,19 @@
        "tp": 37.554,
        "trail": null,
        "be_at": 0.05,
-       "gate": "reduce",
+       "gate": "block",
        "budget": 4200.0,
        "status": "wait",
        "ext": {
         "score": -3.6,
         "why": "外部:黄金"
        },
-       "reason": "强烈买入(83分) 回踩≤33.12 ATR止损31.78（保本+5%%）；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）"
+       "reason": "强烈买入(83分) 回踩≤33.12 ATR止损31.78（保本+5%%）；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
+       "gate_live": {
+        "date": "2026-09-11",
+        "ts": "09:34:01",
+        "why": "LLM宏观防御"
+       }
       }
      ],
      "trades": [],
@@ -3026,6 +3209,11 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[6股精选]严守纪律：1 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "rollback",
+       "note": "⛔ 回滚 09:30-09:32 误成交：紫金矿业 100股@32.50（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 1→0 | 退回现金 ¥3251"
       }
      ],
      "review_log": [],
@@ -3053,7 +3241,7 @@
       "tp": 37.554,
       "trail": 0.1,
       "be_at": 0.05,
-      "gate": "reduce",
+      "gate": "block",
       "budget": 6000.0,
       "status": "wait",
       "consensus": 3,
@@ -3062,7 +3250,12 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤33.72 止損31.78 止盈37.55"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤33.72 止損31.78 止盈37.55",
+      "gate_live": {
+       "date": "2026-09-11",
+       "ts": "09:34:01",
+       "why": "LLM宏观防御"
+      }
      },
      {
       "code": "601138",
@@ -3084,7 +3277,15 @@
       "from": [
        "balanced"
       ],
-      "reason": "共识1/3（稳健）仓位8%×0.6降档 回踩≤62.63 止損58.69 止盈73.50"
+      "reason": "共识1/3（稳健）仓位8%×0.6降档 回踩≤62.63 止損58.69 止盈73.50",
+      "miss": {
+       "date": "2026-09-11",
+       "first_ts": "09:32:01",
+       "low": 62.5,
+       "count": 4,
+       "caught": null,
+       "last_ts": "09:38:01"
+      }
      }
     ],
     "trades": [],
@@ -3123,10 +3324,26 @@
       "date": "2026-09-10",
       "kind": "plan",
       "note": "[6股精选]合并·共识：2 单待触发（共识3:1 共识2:0 共识1:1）（背离降档：仓位×0.6）"
+     },
+     {
+      "date": "2026-09-11",
+      "kind": "rollback",
+      "note": "⛔ 回滚 09:30-09:32 误成交：紫金矿业 100股@32.50（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 1→0 | 退回现金 ¥3251"
      }
     ],
     "review_log": [],
-    "miss_log": [],
+    "miss_log": [
+     {
+      "date": "2026-09-11",
+      "code": "601138",
+      "name": "工业富联",
+      "buy_below": 62.632,
+      "trigger": 62.757,
+      "day_low": 62.5,
+      "first_ts": "09:32:01",
+      "note": "盘中最低62.50 已≤买点62.63（含0.2%容差），巡检未采到 → 漏单留痕"
+     }
+    ],
     "meta": {
      "start_cash": 50000.0,
      "index_archive": {

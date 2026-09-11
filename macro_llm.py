@@ -226,17 +226,30 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
     try:
         content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout, expect_json=True)
         j = _json_of(content)
+        raw = j.get("stocks")
+        # 模型偶发返回非 list 结构（如 {"0": {...}} 或 [123]）→ 归一化，逐条校验类型
+        if isinstance(raw, dict):
+            raw = list(raw.values())
+        if not isinstance(raw, list):
+            raw = []
         out = {}
-        for r in j.get("stocks", []):
-            code = str(r.get("code", "")).strip()
-            if code:
-                out[code] = {"sentiment": r.get("sentiment", "中性"),
-                             "score": r.get("score", 50),
-                             "note": (r.get("note") or "")[:40]}
-        return out
+        for r in raw:
+            if not isinstance(r, dict):
+                continue
+            code = str(r.get("code") or "").strip()
+            if not code:
+                continue
+            try:
+                sc = int(r.get("score", 50))
+            except (TypeError, ValueError):
+                sc = 50
+            out[code] = {"sentiment": r.get("sentiment") or "中性",
+                         "score": sc,
+                         "note": (r.get("note") or "")[:40]}
+        return out or None
     except Exception as e:
         print("  [llm] 个股新闻评审失败: %s" % e)
-        return {}
+        return None
 
 
 def build_user(news, date):
@@ -323,11 +336,23 @@ def main():
             stock_news[code] = sn
             print("  %s %s: %d 条新闻" % (code, name, len(sn)))
         srev = llm_review_stocks(macro_txt, stock_news)
-        out["stocks"] = [{"code": c, "name": SIX_POOL[c][0], **r}
-                         for c, r in srev.items()]
-        for s in out["stocks"]:
-            print("  [股] %s %s %s score=%s %s" % (s["code"], s["name"], s["sentiment"],
-                                                  s["score"], s.get("note", "")))
+        if srev:
+            out["stocks"] = [{"code": c, "name": SIX_POOL[c][0], **r}
+                             for c, r in srev.items()]
+            for s in out["stocks"]:
+                print("  [股] %s %s %s score=%s %s" % (s["code"], s["name"], s["sentiment"],
+                                                      s["score"], s.get("note", "")))
+        else:
+            # 评审失败：沿用上次有效的个股消息面（否则会写空 → sim_live 静默失去个股回避能力）
+            prev = []
+            try:
+                with open(OUT, encoding="utf-8") as f:
+                    prev = (json.load(f).get("stocks") or [])
+            except Exception:
+                pass
+            out["stocks"] = prev
+            out["stocks_stale"] = True
+            print("  [warn] 个股消息面评审失败 → 沿用上次 %d 只（标记 stocks_stale）" % len(prev))
     print("\n[%s][%s] %s  %s  score=%s  stance=%s" % (date, ll.get("backend", "?"),
           ll["sentiment"], ll["title"], ll["score"], ll["stance"]))
     print("逻辑:", ll.get("summary"))

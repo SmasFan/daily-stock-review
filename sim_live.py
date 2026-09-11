@@ -377,7 +377,7 @@ def llm_review_candidates(cands, macro_llm=None):
 #   - 失败/超时 → 全部放行（不能因 LLM 挂掉而停盘）；连错 3 次熔断 10 分钟
 #   - 硬止損（ATR/保本保命单）不被 avoid 否决，只记录 LLM 意见（风控优先）
 LLM_GATE_ON = os.environ.get("SIM_LLM_GATE", "1").lower() not in ("0", "false", "off", "no")
-GATE_TIMEOUT = float(os.environ.get("SIM_LLM_GATE_TIMEOUT", "25"))
+GATE_TIMEOUT = float(os.environ.get("SIM_LLM_GATE_TIMEOUT", "30"))
 GATE_FAIL_LIMIT = 3
 GATE_COOLDOWN_MIN = 10
 
@@ -400,7 +400,11 @@ def _json_of(text):
 
 
 def _llm_chat_fast(system, user):
-    """盘中短超时调用：cc 一次 → ollama 一次，不重试。"""
+    """盘中调用：cc 一次 → ollama 一次，不重试。
+
+    cc 首次失败（含超时）后同样给 ollama 机会：重块抢 CPU 时云端会偶发超时，
+    此时本地模型往往还能答（实测 cc 2.3s / ollama 7.7s 空闲时）。
+    """
     errs = []
     try:
         c = _llm_chat_cc(system, user, timeout=GATE_TIMEOUT)
@@ -408,11 +412,15 @@ def _llm_chat_fast(system, user):
             return c
         errs.append("cc 空返回")
     except Exception as e:
-        errs.append("cc: %s" % e)
-    c = _llm_chat_ollama(system, user, timeout=GATE_TIMEOUT * 2)
-    if c.strip():
-        return c
-    raise RuntimeError("全部通道空返回 %s" % errs)
+        errs.append("cc: %s" % str(e)[:60])
+    try:
+        c = _llm_chat_ollama(system, user, timeout=GATE_TIMEOUT * 2)
+        if c.strip():
+            return c
+        errs.append("ollama 空返回")
+    except Exception as e:
+        errs.append("ollama: %s" % str(e)[:60])
+    raise RuntimeError("；".join(errs))
 
 
 def _hhmm_add(hms, minutes):
@@ -515,8 +523,13 @@ def llm_trade_gate(state, date, hms, tasks):
         meta["llm_gate_cb"] = cb
         for t in fresh:
             out[t["id"]] = {"verdict": "allow", "note": "LLM不可用，放行", "src": "fallback"}
+        # 失败计数（供统计 LLM 复核覆盖率，避免"静默未复核"）
+        st = cache.setdefault("stat", {"llm": 0, "cache": 0, "fallback": 0, "off": 0})
+        st["fallback"] = st.get("fallback", 0) + len(fresh)
         return out
     meta.pop("llm_gate_cb", None)
+    st = cache.setdefault("stat", {"llm": 0, "cache": 0, "fallback": 0, "off": 0})
+    st["llm"] = st.get("llm", 0) + len(fresh)
     for t in fresh:
         d = dec.get(t["id"]) or {"verdict": "allow", "note": "LLM未逐条返回，放行"}
         d["src"] = "llm"
@@ -972,11 +985,29 @@ def intraday_scan(state, date, hms):
     except Exception as e:
         return 0, ["快照失败 %s" % e]
     ctx = _review_ctx()
+    # 实时闸门：计划项的 gate 是【生成时固化】的，盘中宏观/宽度可能已变
+    # （如收盘 gate=reduce，次日开盘前宏观转"防御"→ 应变 block 停止开新仓）。
+    # 因此买入前用当前 review + 最新宏观重新评估。
+    live_gate, live_why = market_gate(load_json("review_data.json") or {})
+    gate_changed = False
     # 第一遍：只读扫描，收集候选（不落账）
     probes, tasks = {}, []
     for pool in POOLS:
         for key, a, cfg in all_books(state, pool):
             sells, buys, pnotes = _probe_account(pool, a, cfg, quotes, date, hms, ctx)
+            if live_gate == "block" and buys:
+                # 闸门关闭：丢弃全部买入候选（卖出/止损照常执行）
+                n_buys = len(buys)
+                stale = sorted({(b["pl"].get("gate") or "?") for b in buys})
+                if any(g != "block" for g in stale):
+                    gate_changed = True
+                for b in buys:
+                    pl = b["pl"]
+                    pl["gate"] = "block"          # 同步为实时闸门，避免下次再触发
+                    pl["gate_live"] = {"date": date, "ts": hms, "why": live_why}
+                buys = []
+                pnotes = list(pnotes) + ["⛔[%s]%s 实时闸门 block（%s）→ 拦截 %d 个买入候选（计划原 gate=%s）" % (
+                    POOL_LABEL[pool], cfg["label"], live_why, n_buys, ",".join(stale))]
             probes[(pool, key)] = (a, cfg, sells, buys, pnotes)
             tasks.extend(sells)
             tasks.extend(buys)
@@ -996,6 +1027,8 @@ def intraday_scan(state, date, hms):
         srcs = ",".join(sorted({(d or {}).get("src", "?") for d in decisions.values()})) or "-"
         print("  [llm][gate] 候选%d → 成交%d 否决%d（来源:%s）" % (
             len(tasks), total_fill, veto_n, srcs))
+    print("  [gate] 实时闸门 %s（%s）%s" % (
+        live_gate, live_why, "← 与计划不一致，已拦截买入" if gate_changed else ""))
     return total_fill, all_notes
 
 
