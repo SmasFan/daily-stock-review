@@ -185,6 +185,7 @@
 
   function render() {
     if (curPool === 'sprint') return renderSprint();
+    try { loadGateHist(); } catch (e) {}
     const cur = POOL_INFO[curPool];
     const cards = ORDER.map(k => card(k)).join('');
     content.innerHTML = `
@@ -195,6 +196,7 @@
         <span class="sec-chip" id="ps-upd" style="font-size:10.5px">自动刷新·每60s</span>
       </div>
       <div id="ext-factors" class="sec" data-nav="外部市场因子" data-nav-icon="globe" style="display:none"></div>
+      <div id="gate-hist" class="sec" data-nav="闸门历史" data-nav-icon="traffic-light" style="display:none"></div>
       <div id="ext-shadow" class="sec" data-nav="外部因子统计" data-nav-icon="chart-line" style="display:none"></div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
       <div class="sec" style="padding:13px 18px;background:linear-gradient(90deg,var(--surface),#faf5ef)" data-nav="机制" data-nav-icon="timeline">
@@ -247,6 +249,7 @@
     loadLlmMacro();
     loadExternal();
     loadExtShadow();
+    loadGateHist();
     select(selKey);
   }
 
@@ -340,6 +343,37 @@
       series:[{ type:'line', data:mc.map(x=>x.equity), showSymbol:false, lineStyle:{width:2.4,color:'#f59e0b'}, areaStyle:{opacity:0.12,color:'#f59e0b'} }]
     });
     window.addEventListener('resize',()=>c.resize());
+  }
+
+  /* 闸门历史卡：按日闸门 + 连续 block 告警（宏观卡防御会导致长期不交易） */
+  function loadGateHist() {
+    const box = document.getElementById('gate-hist');
+    if (!box) return;
+    const gh = (S.meta || {}).gate_history || {};
+    const days = Object.keys(gh).sort();
+    if (!days.length) { return; }
+    // 连续 block 天数（从最近往前数）
+    let streak = 0;
+    for (let i = days.length - 1; i >= 0; i--) {
+      if (gh[days[i]].gate === 'block') streak++; else break;
+    }
+    const label = { open: '开放', reduce: '降档', block: '防守' };
+    const color = { open: 'var(--up)', reduce: '#d97706', block: 'var(--down)' };
+    const rows = days.slice(-14).reverse().map(d => {
+      const g = gh[d];
+      return `<tr><td>${d}</td><td style="color:${color[g.gate] || 'var(--text-2)'};font-weight:700">${label[g.gate] || g.gate}</td>
+        <td class="neutral">${g.ts || ''}</td><td class="reason">${(g.why || '').slice(0, 70)}</td></tr>`;
+    }).join('');
+    box.style.display = 'block';
+    if (streak >= 3) box.style.borderLeft = '4px solid var(--down)';
+    box.innerHTML = `
+      <div class="sec-title"><span class="ti">${RV.ui.icon('traffic-light')}</span>大盘闸门历史
+        <span class="sec-chip" style="background:${color[gh[days[days.length - 1]].gate]};color:#fff;font-weight:800">今日 ${label[gh[days[days.length - 1]].gate]}</span>
+        ${streak >= 3 ? `<span class="sec-chip" style="background:#fef2f2;color:#dc2626;font-weight:800">⚠ 连续 ${streak} 天防守</span>` : ''}
+      </div>
+      ${streak >= 3 ? '<div class="revbox" style="margin:0 0 8px;background:#fef2f2;border-color:#fecaca;color:#991b1b">⚠ 已连续 <b>' + streak + ' 个交易日</b>处于「防守」闸门（不开新仓）→ 请检查宏观 LLM 是否卡在防御判断（<code>macro_llm_data.json</code>），或市场确实处于弱势。</div>' : ''}
+      <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>日期</th><th>闸门</th><th>判定时间</th><th>依据</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="reason" style="margin-top:6px;font-size:11px">日内棘轮：当天一旦 block 即维持到收盘（避免 LLM 宏观判断抖动导致闸门反复开关）。</div>`;
   }
 
   /* 外部因子自动统计卡（scripts/ext_shadow.py 生成 data/ext_shadow.json）

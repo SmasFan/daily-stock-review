@@ -578,12 +578,17 @@ def _macro_age_hours(macro):
         return None
 
 
-def market_gate(review):
+def market_gate(review, state=None, date=None):
     """大盘闸门。返回 (gate, 说明)，gate ∈ {open, reduce, block}。
 
     block : 上证空头 / 普涨过热 / LLM宏观防御 → 不开新仓
     reduce: 宏观利多但市场宽度极弱（政策面与盘面背离）→ 抬买入门槛 + 缩仓位
             （不 block：利多真实、超卖可能是机会，只是不该满仓追）
+
+    日内棘轮（传 state 时生效）：LLM 宏观判断在一天内会抖动
+    （实测同一交易日同一批新闻：09:09 多头64 → 09:23 防御44，跨越 60/40 两阈值），
+    导致闸门 open↔block 反复。风控上「误 block」只错过机会、「误解除」会逆势开仓，
+    故当天一旦 block 即维持到收盘（次日重新评估）。
     """
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
     sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
@@ -622,6 +627,32 @@ def market_gate(review):
         why.append("宏观利多×宽度极弱(涨占比%.1f%%≤%.0f%%)背离→降档" % (breadth, REDUCE_BREADTH))
     if macro_age is not None and macro_age > MACRO_STALE_HOURS:
         why.append("宏观数据过期%.0fh(已不参与多头判断)" % macro_age)
+
+    # 日内棘轮：当天已 block 则维持（避免 LLM 宏观判断抖动导致闸门反复开关）
+    if state is not None and date:
+        try:
+            dg = state.setdefault("meta", {}).setdefault("daily_gate", {})
+            if dg.get("date") == date and dg.get("gate") == "block" and gate != "block":
+                why.append("日内棘轮（今日 %s 已触发 block：%s）" % (
+                    dg.get("ts", ""), dg.get("why") or ""))
+                gate = "block"
+            elif gate == "block" and dg.get("date") != date:
+                dg.update({"date": date, "gate": "block",
+                           "why": "；".join(why) or "block",
+                           "ts": time.strftime("%H:%M:%S")})
+        except Exception:
+            pass
+    # 闸门历史（按日，供"连续 block 天数"告警：宏观卡防御会导致长期不交易）
+    if state is not None and date:
+        try:
+            gh = state.setdefault("meta", {}).setdefault("gate_history", {})
+            gh[date] = {"gate": gate, "why": "；".join(why) or "open",
+                        "ts": time.strftime("%H:%M:%S")}
+            if len(gh) > 90:
+                for k in sorted(gh)[:-90]:
+                    gh.pop(k, None)
+        except Exception:
+            pass
     return gate, ("；".join(why) if why else "open")
 
 
@@ -768,7 +799,7 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
     items = review.get("items", []) or []
     pool_b = books(state, pool)
     acc_b = pool_b["accounts"]
-    gate, gate_why = market_gate(review)
+    gate, gate_why = market_gate(review, state=state, date=asof)
     ext = load_external()
     if ext and not ext.get("_stale"):
         print("  [ext][%s] 风险偏好 %s(%+d)；板块偏好 %s" % (
@@ -988,7 +1019,8 @@ def intraday_scan(state, date, hms):
     # 实时闸门：计划项的 gate 是【生成时固化】的，盘中宏观/宽度可能已变
     # （如收盘 gate=reduce，次日开盘前宏观转"防御"→ 应变 block 停止开新仓）。
     # 因此买入前用当前 review + 最新宏观重新评估。
-    live_gate, live_why = market_gate(load_json("review_data.json") or {})
+    live_gate, live_why = market_gate(load_json("review_data.json") or {},
+                                      state=state, date=date)
     gate_changed = False
     # 第一遍：只读扫描，收集候选（不落账）
     probes, tasks = {}, []
