@@ -92,6 +92,11 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   # 过大盘闸门 + 消息面回避 + 外部强利空过滤 + LLM 成交前复核
   python3 sim_sprint.py --auto >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘自动建仓失败" >> "$LOG"
+  # 量化痕迹识别（quant_filter.py）：60日窗口，每天算一次
+  # 供 screen_pool 硬过滤（量化度≥75 剔除）+ sim_live 选股参考；
+  # 必须早于任何使用 quant_filter.json 的环节
+  timeout 400 python3 scripts/quant_filter.py --pool >> "$LOG" 2>&1 \
+    || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 量化痕迹识别失败，沿用上次数据" >> "$LOG"
   # 外部因子有效性统计（外部分档 vs 实际收益；供页面卡片）
   python3 scripts/ext_shadow.py >> "$LOG" 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 外部因子统计失败" >> "$LOG"

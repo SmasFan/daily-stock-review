@@ -80,6 +80,12 @@ if [ "$IN_TRADING" = "1" ]; then
   if [ $((MM % 30)) -eq 0 ]; then
     python3 run_review.py --mode review --no-backtest >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中复盘生成失败" >> data/auto_run.log
+    # 量化痕迹：60日窗口属慢变量，全池重算需~110s 会抢 CPU（拖慢巡检/复盘）
+    # → 盘中不重算，仅在当日缺数据时补一次（收盘由 auto_run.sh 日更）
+    if [ ! -f data/quant_filter.json ] || [ "$(date -r data/quant_filter.json +%F)" != "$(date +%F)" ]; then
+      timeout 400 python3 scripts/quant_filter.py --pool >> data/auto_run.log 2>&1 \
+        || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 量化痕迹补算失败，沿用上次" >> data/auto_run.log
+    fi
     # 外部市场因子刷新（外盘盘中在变；--intraday-plan 会重算选股偏好，须用最新）
     timeout 90 python3 build_external.py >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中外部因子刷新失败，沿用上次" >> data/auto_run.log

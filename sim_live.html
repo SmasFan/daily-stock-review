@@ -196,6 +196,7 @@
         <span class="sec-chip" id="ps-upd" style="font-size:10.5px">自动刷新·每60s</span>
       </div>
       <div id="ext-factors" class="sec" data-nav="外部市场因子" data-nav-icon="globe" style="display:none"></div>
+      <div id="quant-card" class="sec" data-nav="量化痕迹" data-nav-icon="microchip" style="display:none"></div>
       <div id="gate-hist" class="sec" data-nav="闸门历史" data-nav-icon="traffic-light" style="display:none"></div>
       <div id="ext-shadow" class="sec" data-nav="外部因子统计" data-nav-icon="chart-line" style="display:none"></div>
       <div id="llm-macro" class="sec" data-nav="LLM宏观观察" data-nav-icon="brain" style="display:none"></div>
@@ -250,6 +251,7 @@
     loadExternal();
     loadExtShadow();
     loadGateHist();
+    loadQuant();
     select(selKey);
   }
 
@@ -354,6 +356,50 @@
       series:[{ type:'line', data:mc.map(x=>x.equity), showSymbol:false, lineStyle:{width:2.4,color:'#f59e0b'}, areaStyle:{opacity:0.12,color:'#f59e0b'} }]
     });
     window.addEventListener('resize',()=>c.resize());
+  }
+
+  /* 量化痕迹卡（scripts/quant_filter.py 生成 data/quant_filter.json）
+     识别被量化/做市资金主导的标的：日内振幅被压平、跳空≈0、无趋势动量 */
+  async function loadQuant() {
+    const box = document.getElementById('quant-card');
+    if (!box) return;
+    try {
+      const d = await RV.API.fetch('quant_filter.json');
+      const it = d.items || {};
+      const th = d.threshold || 75;
+      const gen = (d.generatedAt || '').slice(0, 16);
+      const ageH = gen ? (Date.now() - new Date(gen.replace(' ', 'T')).getTime()) / 3600000 : 0;
+      const stale = ageH > 30;
+      const arr = Object.entries(it).map(([c, v]) => ({ code: c, ...v }));
+      const high = arr.filter(x => (x.quant || 0) >= th).sort((a, b) => b.quant - a.quant);
+      const low = arr.slice().sort((a, b) => (a.quant || 0) - (b.quant || 0));
+      const row = x => `<tr><td>${x.code}</td>
+        <td class="sname" style="font-weight:700;color:var(--accent);cursor:pointer" onclick="window.__stock('${x.code}')">${x.name || x.code}</td>
+        <td style="font-weight:700;color:${(x.quant||0)>=th?'var(--down)':'var(--up)'}">${(x.quant||0).toFixed(0)}</td>
+        <td class="neutral">${(x.amp||0).toFixed(2)}%</td><td class="neutral">${(x.gap||0).toFixed(2)}%</td>
+        <td class="neutral">${(x.vcv||0).toFixed(2)}</td><td class="${x.ac1>0.1?'up':(x.ac1<-0.1?'down':'neutral')}">${x.ac1>0?'+':''}${(x.ac1||0).toFixed(3)}</td>
+        <td class="neutral">${(x.sector || '-')}</td></tr>`;
+      box.style.display = 'block';
+      if (stale) box.style.borderLeft = '4px solid #d97706';
+      box.innerHTML = `
+        <div class="sec-title"><span class="ti">${RV.ui.icon('microchip')}</span>量化交易痕迹识别
+          <span class="sec-chip">共 ${arr.length} 只 · 剔除线 ≥${th}</span>
+          <span class="sec-chip" style="background:#fef2f2;color:#dc2626;font-weight:800">量化嫌疑 ${high.length} 只</span>
+          <span class="sec-chip" ${stale?'style="background:#fff7ed;color:#9a3412;font-weight:800"':''}>更新 ${gen || '未知'}</span>
+        </div>
+        ${stale ? '<div class="revbox" style="margin:0 0 8px;background:#fff7ed;border-color:#fed7aa;color:#9a3412">⚠ 量化特征库超过 30 小时未更新（' + Math.round(ageH) + 'h）→ 选股过滤可能失效</div>' : ''}
+        <div class="reason" style="margin-bottom:8px">日内振幅被套利压平 + 跳空≈0 + 量能/振幅变异小 + 收益自相关≈0（无趋势动量）→ 判为量化/做市主导。这类标的技术评分虚高（低波动→形态"干净"）但赔率差、资金流多为对冲流量，<b>选股时硬剔除</b>。</div>
+        <div class="chart-row">
+          <div>
+            <div style="font-size:12px;font-weight:800;margin-bottom:4px;color:var(--down)">🚫 量化嫌疑（选股剔除）</div>
+            <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>代码</th><th>名称</th><th>量化度</th><th>振幅</th><th>跳空</th><th>量CV</th><th>自相关</th><th>板块</th></tr></thead><tbody>${high.slice(0,12).map(row).join('')}</tbody></table></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;margin-bottom:4px;color:var(--up)">✓ 真实资金博弈（可交易）</div>
+            <div style="overflow-x:auto"><table class="data-table card-table"><thead><tr><th>代码</th><th>名称</th><th>量化度</th><th>振幅</th><th>跳空</th><th>量CV</th><th>自相关</th><th>板块</th></tr></thead><tbody>${low.slice(0,12).map(row).join('')}</tbody></table></div>
+          </div>
+        </div>`;
+    } catch (e) { /* 无文件则隐藏 */ }
   }
 
   /* 闸门历史卡：按日闸门 + 连续 block 告警（宏观卡防御会导致长期不交易） */
