@@ -33,6 +33,10 @@ COIN_COLOR = {'TSLA': '#e82127', 'COIN': '#0f6ee2', 'PLTR': '#1f1f1f', 'MSTR': '
 CN_NAMES = {'TSLA/USDT:USDT': '特斯拉', 'COIN/USDT:USDT': 'Coinbase', 'PLTR/USDT:USDT': 'Palantir',
             'MSTR/USDT:USDT': '微策略', 'HOOD/USDT:USDT': 'Robinhood'}
 
+# 利润保护下一动作 → 徽章文案
+PG_TAG = {'close': ('待止盈', 'b-err'), 'trim': ('待减仓', 'b-warn'),
+          'be_lock': ('待保本', 'b-info'), 'hold': ('持有', 'b-info')}
+
 
 def make_fex():
     ex = ccxt.binance({
@@ -59,7 +63,28 @@ def proc_status():
     return rows
 
 
-def positions(ex, syms, names, cn_map, pool_start=100.0):
+def load_state(fname):
+    """读 bot 状态 json（失败返回空 dict，状态页绝不能因为读不到就挂）"""
+    if not fname:
+        return {}
+    try:
+        return json.load(open(os.path.join(BASE, fname)))
+    except Exception:
+        return {}
+
+
+def positions(ex, syms, names, cn_map, pool_start=100.0, profile='daily', state_file=None):
+    """取持仓 + 利润保护状态。
+
+    peak/trimmed/sl 来自 profit_guard 写进 state 的字段；
+    下一步动作直接复用 profit_guard.plan()，保证「页面显示」与「bot 实际行为」一致。
+    """
+    pstate = (load_state(state_file).get('real_pos') or {})
+    try:
+        import profit_guard
+        pcfg = profit_guard.cfg(profile)
+    except Exception:
+        profit_guard, pcfg = None, None
     pos_list = []
     total_pnl = 0.0
     for s in syms:
@@ -77,10 +102,26 @@ def positions(ex, syms, names, cn_map, pool_start=100.0):
             init_margin = float(info.get('positionInitialMargin') or info.get('initialMargin') or 0)
             lev = round(notional / init_margin, 1) if init_margin > 0 else 0
             total_pnl += pnl
+            # ---- T+0 利润保护状态 ----
+            ps = pstate.get(s) or {}
+            trimmed = bool(ps.get('trimmed'))
+            peak = max(float(ps.get('peak') or 0), mark)      # state 每轮更新，取不到时用现价兜底
+            peak_pct = (peak / entry - 1) * 100 if entry else 0.0
+            dd_peak = (1 - mark / peak) * 100 if peak else 0.0
+            sl_default = entry * (1 - (0.03 if s in SYMBOLS_SHORT else 0.12))
+            sl = float(ps.get('sl') or 0) or sl_default        # 保本上移后会写进 state['sl']
+            act = 'hold'
+            if profit_guard and pcfg:
+                try:
+                    act = profit_guard.plan(entry, mark, peak, pcfg, trimmed=trimmed)['act']
+                except Exception:
+                    act = 'hold'
             pos_list.append({
                 'sym': names.get(s, s), 'cn': cn_map.get(s, ''), 'amt': amt, 'entry': entry, 'mark': mark,
-                'pnl': pnl, 'pct': pct, 'liq': liq, 'sl': entry * (1 - (0.03 if s in SYMBOLS_SHORT else 0.12)),
+                'pnl': pnl, 'pct': pct, 'liq': liq, 'sl': sl, 'sl_default': sl_default,
                 'lev': lev, 'notional': notional,
+                'peak': peak, 'peak_pct': peak_pct, 'dd_peak': dd_peak,
+                'trimmed': trimmed, 'pg_act': act,
             })
     return pos_list, total_pnl
 
@@ -153,39 +194,47 @@ def build_html(procs, pos_list, total_pnl, bal, trades, tstats,
         f'<tr><td><span class="mono">{n}</span></td><td>'
         f'{"<span class=\"pill ok\"></span><span>运行中</span>" if "✅" in st else "<span class=\"pill dead\"></span><span style=\"color:var(--down)\u003e挂掉</span>"}'
         f'</td><td class="pid">{pids}</td></tr>' for n, st, pids in procs)
-    if pos_list:
-        rows_c = ''
-        for p in pos_list:
+    HDR = ('<tr><th>标的</th><th>持仓量</th><th>入场价</th><th>Mark 价</th><th>杠杆</th><th>名义</th>'
+           '<th>盈亏</th><th>盈亏额</th><th title="持仓期间最高价对应的浮盈">峰值浮盈</th>'
+           '<th title="利润保护下一步动作">保护状态</th><th>止损价</th><th>爆仓价</th></tr>')
+
+    def pos_rows(lst):
+        """持仓行：额外渲染 T+0 利润保护的 峰值/回撤/下一步动作"""
+        out = ''
+        for p in lst:
             cls = 'up' if p['pct'] > 0 else 'down'
             cc = COIN_COLOR.get(p['sym'], '#888')
-            rows_c += (f'<tr><td><span class="coin"><span class="cdot" style="background:{cc}">{p["sym"][0]}</span>{p["cn"]} <span class="dim" style="font-size:12px">{p["sym"]}</span></span></td>'
-                       f'<td>{p["amt"]:.4f}<br><span class="dim" style="font-size:11px">≈${p["notional"]:,.1f}</span></td>'
-                       f'<td>{p["entry"]:,.2f}</td><td>{p["mark"]:,.2f}</td>'
-                       f'<td><span class="badge b-info">{p["lev"]}x</span></td>'
-                       f'<td class="dim">{p["notional"]:,.1f}</td>'
-                       f'<td class="{cls}">{p["pct"]:+.2f}%</td>'
-                       f'<td class="{cls}">{p["pnl"]:+.2f} U</td>'
-                       f'<td class="dim">{p["sl"]:,.2f}</td>'
-                       f'<td class="dim">{p["liq"]:,.0f}</td></tr>')
+            act = p.get('pg_act', 'hold')
+            tag, bc = PG_TAG.get(act, ('持有', 'b-info'))
+            badge_html = (f'<span class="badge {bc}">{tag}</span>' if act != 'hold'
+                          else '<span class="dim">持有</span>')
+            if p.get('trimmed'):
+                badge_html += '<br><span class="dim" style="font-size:11px">已减半</span>'
+            # 止损价已上移到保本以上 → 用金色标出来（盈利单不会再变亏损单）
+            sl_cls = 'gold' if p['sl'] > p['sl_default'] * 1.0001 else 'dim'
+            out += (f'<tr><td><span class="coin"><span class="cdot" style="background:{cc}">{p["sym"][0]}</span>{p["cn"]} <span class="dim" style="font-size:12px">{p["sym"]}</span></span></td>'
+                    f'<td>{p["amt"]:.4f}<br><span class="dim" style="font-size:11px">≈${p["notional"]:,.1f}</span></td>'
+                    f'<td>{p["entry"]:,.2f}</td><td>{p["mark"]:,.2f}</td>'
+                    f'<td><span class="badge b-info">{p["lev"]}x</span></td>'
+                    f'<td class="dim">{p["notional"]:,.1f}</td>'
+                    f'<td class="{cls}">{p["pct"]:+.2f}%</td>'
+                    f'<td class="{cls}">{p["pnl"]:+.2f} U</td>'
+                    f'<td class="{"up" if p["peak_pct"] > 0 else "dim"}">{p["peak_pct"]:+.2f}%'
+                    f'<br><span class="dim" style="font-size:11px">回撤 {p["dd_peak"]:.2f}%</span></td>'
+                    f'<td>{badge_html}</td>'
+                    f'<td class="{sl_cls}">{p["sl"]:,.2f}</td>'
+                    f'<td class="dim">{p["liq"]:,.0f}</td></tr>')
+        return out
+
+    if pos_list:
+        rows_c = pos_rows(pos_list)
     else:
-        rows_c = '<tr><td colspan=10 class="dim">空仓 — 等待趋势信号</td></tr>'
+        rows_c = '<tr><td colspan=12 class="dim">空仓 — 等待趋势信号</td></tr>'
     # 短线池持仓行
     if short_pos:
-        rows_s = ''
-        for p in short_pos:
-            cls = 'up' if p['pct'] > 0 else 'down'
-            cc = COIN_COLOR.get(p['sym'], '#888')
-            rows_s += (f'<tr><td><span class="coin"><span class="cdot" style="background:{cc}">{p["sym"][0]}</span>{p["cn"]} <span class="dim" style="font-size:12px">{p["sym"]}</span></span></td>'
-                       f'<td>{p["amt"]:.4f}<br><span class="dim" style="font-size:11px">≈${p["notional"]:,.1f}</span></td>'
-                       f'<td>{p["entry"]:,.2f}</td><td>{p["mark"]:,.2f}</td>'
-                       f'<td><span class="badge b-info">{p["lev"]}x</span></td>'
-                       f'<td class="dim">{p["notional"]:,.1f}</td>'
-                       f'<td class="{cls}">{p["pct"]:+.2f}%</td>'
-                       f'<td class="{cls}">{p["pnl"]:+.2f} U</td>'
-                       f'<td class="dim">{p["sl"]:,.2f}</td>'
-                       f'<td class="dim">{p["liq"]:,.0f}</td></tr>')
+        rows_s = pos_rows(short_pos)
     else:
-        rows_s = '<tr><td colspan=10 class="dim">空仓 — 等待趋势信号</td></tr>'
+        rows_s = '<tr><td colspan=12 class="dim">空仓 — 等待趋势信号</td></tr>'
     pool_cls = 'up' if total_pnl > 0 else 'down'
     rev_html = latest_review_html()
     gate_html = llm_gate_html()
@@ -290,10 +339,16 @@ tr:hover td{{background:#161b29}}
 {gate_html}
 {shadow}
 <div class="card"><h2>日线持仓 (SMA50 日线 3x -12%)</h2>
-<div class="tblwrap"><table><tr><th>标的</th><th>持仓量</th><th>入场价</th><th>Mark 价</th><th>杠杆</th><th>名义</th><th>盈亏</th><th>盈亏额</th><th>止损价</th><th>爆仓价</th></tr>{rows_c}</table></div></div>
+<div class="tblwrap"><table>{HDR}{rows_c}</table></div>
+<div style="font-size:11px;color:var(--dim);margin-top:8px;line-height:1.7">
+  T+0 利润保护：峰值浮盈 ≥4% → 止损上移保本（<span class="gold">止损价转金色</span>）；
+  浮盈 ≥7% → 先平一半；回吐超过峰值浮盈的 50% 或赚够 12% 破 SMA20 → 落袋。
+  「保护状态」= 下一轮扫描的动作，<span class="gold">待保本/待减仓/待止盈</span>均需 LLM 复核后执行。</div></div>
 
 <div class="card"><h2>短线持仓 (SMA50 1h 3x -3%)</h2>
-<div class="tblwrap"><table><tr><th>标的</th><th>持仓量</th><th>入场价</th><th>Mark 价</th><th>杠杆</th><th>名义</th><th>盈亏</th><th>盈亏额</th><th>止损价</th><th>爆仓价</th></tr>{rows_s}</table></div></div>
+<div class="tblwrap"><table>{HDR}{rows_s}</table></div>
+<div style="font-size:11px;color:var(--dim);margin-top:8px;line-height:1.7">
+  短线阈值更紧：峰值 ≥2.5% 上移保本；浮盈 ≥3% 平一半；回吐超峰值一半（至少 1.5%）或 ≥5% 破 SMA20 → 落袋。</div></div>
 
 <div class="card"><h2>交易记录</h2>
 <div class="tblwrap"><table><tr><th>时间</th><th>类型</th><th>标的</th><th>数量</th><th>价格</th><th>杠杆</th><th>盈亏</th><th>说明</th></tr>{rows_t}</table></div></div>
@@ -458,9 +513,13 @@ def main():
         try:
             procs = proc_status()
             # 日线池
-            pos_list, total_pnl = positions(ex, SYMBOLS, NAMES, CN_NAMES, pool_start=float(os.environ.get('POOL_START', '100')))
+            pos_list, total_pnl = positions(ex, SYMBOLS, NAMES, CN_NAMES,
+                                            pool_start=float(os.environ.get('POOL_START', '100')),
+                                            profile='daily', state_file='state_pool.json')
             # 短线池
-            short_pos, short_pnl = positions(ex, SYMBOLS_SHORT, NAMES_SHORT, CN_SHORT, pool_start=float(os.environ.get('SHORT_POOL', '100')))
+            short_pos, short_pnl = positions(ex, SYMBOLS_SHORT, NAMES_SHORT, CN_SHORT,
+                                             pool_start=float(os.environ.get('SHORT_POOL', '100')),
+                                             profile='short', state_file='state_short.json')
             bal = float(ex.fetch_balance()['info'].get('totalWalletBalance', 0))
             from trade_log import read_trades
             trades = read_trades(100)
