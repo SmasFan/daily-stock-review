@@ -41,6 +41,19 @@
     "fallback": 0,
     "off": 0
    }
+  },
+  "daily_gate": {
+   "date": "2026-09-11",
+   "gate": "block",
+   "why": "LLM宏观防御",
+   "ts": "09:40:02"
+  },
+  "gate_history": {
+   "2026-09-11": {
+    "gate": "block",
+    "why": "宏观利多×宽度极弱(涨占比7.5%≤25%)背离→降档；日内棘轮（今日 09:40:02 已触发 block：LLM宏观防御）",
+    "ts": "09:46:02"
+   }
   }
  },
  "version_history": [
@@ -137,9 +150,9 @@
        "prev_close": 14.37,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.92,
-       "last_chg": -3.13,
-       "last_ts": "09:38:01",
+       "last": 13.77,
+       "last_chg": -4.18,
+       "last_ts": "09:46:01",
        "last_close": 14.36,
        "ext": {
         "score": 4.8,
@@ -164,9 +177,9 @@
        "prev_close": 27.15,
        "score": 86,
        "signal": "强烈买入",
-       "last": 26.62,
-       "last_chg": -1.95,
-       "last_ts": "09:38:01",
+       "last": 26.64,
+       "last_chg": -1.88,
+       "last_ts": "09:46:01",
        "last_close": 27.15
       },
       {
@@ -186,9 +199,9 @@
        "prev_close": 18.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 17.76,
-       "last_chg": -3.58,
-       "last_ts": "09:38:01",
+       "last": 17.54,
+       "last_chg": -4.78,
+       "last_ts": "09:46:01",
        "last_close": 18.41,
        "ext": {
         "score": 4.8,
@@ -209,120 +222,189 @@
        "trail": 0.1,
        "be_at": null,
        "be_on": false,
-       "peak": 28.12,
+       "peak": 28.2,
        "prev_close": 28.09,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.04,
-       "last_chg": -0.18,
-       "last_ts": "09:38:01",
+       "last": 28.2,
+       "last_chg": 0.39,
+       "last_ts": "09:46:01",
        "last_close": 28.07
       }
      ],
      "plan": [
       {
-       "code": "600028",
-       "name": "中国石化",
-       "asof": "2026-09-10",
-       "score": 87,
+       "code": "603228",
+       "name": "景旺电子",
+       "asof": "2026-09-11",
+       "score": 86,
        "signal": "强烈买入",
-       "close": 5.58,
-       "buy_below": 5.53,
-       "stop_atr": 5.33,
+       "close": 109.18,
+       "buy_below": 108.34,
+       "stop_atr": 96.43,
        "stop_ma": null,
-       "tp": 6.696,
+       "tp": 131.016,
        "trail": 0.1,
        "be_at": null,
-       "gate": "reduce",
-       "budget": 6600.0,
+       "gate": "block",
+       "budget": 11000.0,
        "status": "wait",
        "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
+        "score": -0.75,
+        "why": "外部:PCB/覆铜板"
        },
-       "reason": "强烈买入(87分) 回踩≤5.53 ATR止损5.33；LLM:石化周期品受益反内卷价格修复（背离降档×0.6）（外部:石化+4.8）"
-      },
-      {
-       "code": "300498",
-       "name": "温氏股份",
-       "asof": "2026-09-10",
-       "score": 88,
-       "signal": "强烈买入",
-       "close": 14.9,
-       "buy_below": 14.825,
-       "stop_atr": 14.1,
-       "stop_ma": null,
-       "tp": 17.88,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 6600.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(88分) 回踩≤14.82 ATR止损14.1；LLM:养殖消费回踩不追高，无宏观逆风压制（背离降档×0.6）"
-      },
-      {
-       "code": "516910",
-       "name": "物流ETF富国",
-       "asof": "2026-09-10",
-       "score": 89,
-       "signal": "强烈买入",
-       "close": 1.206,
-       "buy_below": 1.2,
-       "stop_atr": 1.16,
-       "stop_ma": null,
-       "tp": 1.447,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 6600.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(89分) 回踩≤1.20 ATR止损1.16；LLM:物流ETF低乖离温和上行，无宏观方向冲突（背离降档×0.6）"
-      },
-      {
-       "code": "561360",
-       "name": "石油ETF国泰",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 1.516,
-       "buy_below": 1.508,
-       "stop_atr": 1.45,
-       "stop_ma": null,
-       "tp": 1.819,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 6600.0,
-       "status": "wait",
-       "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
-       },
-       "reason": "强烈买入(83分) 回踩≤1.51 ATR止损1.45；LLM:石油ETF顺周期，受益反内卷价格逻辑（背离降档×0.6）（外部:石化+4.8）"
+       "reason": "强烈买入(86分) 回踩≤108.34 ATR止损96.43（外部:PCB/覆铜板-0.8）"
       },
       {
        "code": "600036",
        "name": "招商银行",
-       "asof": "2026-09-10",
-       "score": 82,
+       "asof": "2026-09-11",
+       "score": 87,
        "signal": "强烈买入",
-       "close": 41.54,
-       "buy_below": 41.24,
-       "stop_atr": 40.21,
+       "close": 41.31,
+       "buy_below": 41.103,
+       "stop_atr": 40.0,
        "stop_ma": null,
-       "tp": 49.848,
+       "tp": 49.572,
        "trail": 0.1,
        "be_at": null,
-       "gate": "reduce",
-       "budget": 6600.0,
+       "gate": "block",
+       "budget": 11000.0,
        "status": "wait",
        "ext": {
-        "score": 3.6,
+        "score": 2.7,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(82分) 回踩≤41.24 ATR止损40.21；LLM:银行红利，长钱入市政策直接受益（背离降档×0.6）（外部:红利银行+3.6）"
+       "reason": "强烈买入(87分) 回踩≤41.10 ATR止损40.0（外部:红利银行+2.7）"
+      },
+      {
+       "code": "600256",
+       "name": "广汇能源",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 7.1,
+       "buy_below": 7.064,
+       "stop_atr": 6.57,
+       "stop_ma": null,
+       "tp": 8.52,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(83分) 回踩≤7.06 ATR止损6.57（外部:周期资源-1.5）"
+      },
+      {
+       "code": "300498",
+       "name": "温氏股份",
+       "asof": "2026-09-11",
+       "score": 84,
+       "signal": "强烈买入",
+       "close": 14.86,
+       "buy_below": 14.786,
+       "stop_atr": 14.08,
+       "stop_ma": null,
+       "tp": 17.832,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(84分) 回踩≤14.79 ATR止损14.08"
+      },
+      {
+       "code": "002312",
+       "name": "川发龙蟒",
+       "asof": "2026-09-11",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 9.36,
+       "buy_below": 9.23,
+       "stop_atr": 8.75,
+       "stop_ma": null,
+       "tp": 11.232,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(86分) 回踩≤9.23 ATR止损8.75（外部:周期资源-1.5）"
+      },
+      {
+       "code": "002602",
+       "name": "世纪华通",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 15.53,
+       "buy_below": 15.452,
+       "stop_atr": 14.42,
+       "stop_ma": null,
+       "tp": 18.636,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.2,
+        "why": "外部:科技-互联网传媒"
+       },
+       "reason": "强烈买入(83分) 回踩≤15.45 ATR止损14.42（外部:科技-互联网传媒-1.2）"
+      },
+      {
+       "code": "600028",
+       "name": "中国石化",
+       "asof": "2026-09-11",
+       "score": 87,
+       "signal": "强烈买入",
+       "close": 5.55,
+       "buy_below": 5.522,
+       "stop_atr": 5.3,
+       "stop_ma": null,
+       "tp": 6.66,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(87分) 回踩≤5.52 ATR止损5.3（外部:周期资源-1.5）"
+      },
+      {
+       "code": "600893",
+       "name": "航发动力",
+       "asof": "2026-09-11",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 41.16,
+       "buy_below": 40.89,
+       "stop_atr": 38.46,
+       "stop_ma": null,
+       "tp": 49.392,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -2.25,
+        "why": "外部:军工"
+       },
+       "reason": "强烈买入(86分) 回踩≤40.89 ATR止损38.46（外部:军工-2.2）"
       }
      ],
      "trades": [
@@ -795,10 +877,26 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[全池]激进：5 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "plan",
+       "note": "[全池]激进 盘中复盘刷新: 新增 川发龙蟒,世纪华通,广汇能源,航发动力,景旺电子"
       }
      ],
      "review_log": [],
-     "miss_log": [],
+     "miss_log": [
+      {
+       "date": "2026-09-11",
+       "code": "300498",
+       "name": "温氏股份",
+       "buy_below": 14.825,
+       "trigger": 14.855,
+       "day_low": 14.81,
+       "first_ts": "09:40:02",
+       "note": "盘中最低14.81 已≤买点14.82（含0.2%容差），巡检未采到 → 漏单留痕"
+      }
+     ],
      "llm_log": []
     },
     "balanced": {
@@ -824,9 +922,9 @@
        "prev_close": 14.37,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.92,
-       "last_chg": -3.13,
-       "last_ts": "09:38:01",
+       "last": 13.77,
+       "last_chg": -4.18,
+       "last_ts": "09:46:01",
        "last_close": 14.36,
        "ext": {
         "score": 4.8,
@@ -851,9 +949,9 @@
        "prev_close": 18.42,
        "score": 83,
        "signal": "强烈买入",
-       "last": 17.76,
-       "last_chg": -3.58,
-       "last_ts": "09:38:01",
+       "last": 17.54,
+       "last_chg": -4.78,
+       "last_ts": "09:46:01",
        "last_close": 18.41,
        "ext": {
         "score": 4.8,
@@ -878,150 +976,185 @@
        "prev_close": 22.39,
        "score": 86,
        "signal": "强烈买入",
-       "last": 21.58,
-       "last_chg": -3.62,
-       "last_ts": "09:38:01",
+       "last": 22.09,
+       "last_chg": -1.34,
+       "last_ts": "09:46:01",
        "last_close": 22.45
       }
      ],
      "plan": [
       {
-       "code": "600028",
-       "name": "中国石化",
-       "asof": "2026-09-10",
+       "code": "600036",
+       "name": "招商银行",
+       "asof": "2026-09-11",
        "score": 87,
        "signal": "强烈买入",
-       "close": 5.58,
-       "buy_below": 5.468,
-       "stop_atr": 5.33,
-       "stop_ma": 5.34,
-       "tp": 6.417,
+       "close": 41.31,
+       "buy_below": 40.484,
+       "stop_atr": 40.0,
+       "stop_ma": 40.08,
+       "tp": 47.506,
        "trail": null,
        "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
+       "gate": "block",
+       "budget": 9000.0,
        "status": "wait",
        "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
+        "score": 2.7,
+        "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤5.47 ATR止损5.33；LLM:石化周期品受益反内卷价格修复（背离降档×0.6）（外部:石化+4.8）"
+       "reason": "强烈买入(87分) 回踩≤40.48 ATR止损40.0（外部:红利银行+2.7）"
       },
       {
-       "code": "516910",
-       "name": "物流ETF富国",
-       "asof": "2026-09-10",
-       "score": 89,
+       "code": "600028",
+       "name": "中国石化",
+       "asof": "2026-09-11",
+       "score": 87,
        "signal": "强烈买入",
-       "close": 1.206,
-       "buy_below": 1.182,
-       "stop_atr": 1.16,
-       "stop_ma": 1.19,
-       "tp": 1.387,
+       "close": 5.55,
+       "buy_below": 5.439,
+       "stop_atr": 5.3,
+       "stop_ma": 5.36,
+       "tp": 6.382,
        "trail": null,
        "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
+       "gate": "block",
+       "budget": 9000.0,
        "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(89分) 回踩≤1.18 ATR止损1.16；LLM:物流ETF低乖离温和上行，无宏观方向冲突（背离降档×0.6）"
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(87分) 回踩≤5.44 ATR止损5.3（外部:周期资源-1.5）"
+      },
+      {
+       "code": "603228",
+       "name": "景旺电子",
+       "asof": "2026-09-11",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 109.18,
+       "buy_below": 106.996,
+       "stop_atr": 96.43,
+       "stop_ma": 96.58,
+       "tp": 125.557,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": -0.75,
+        "why": "外部:PCB/覆铜板"
+       },
+       "reason": "强烈买入(86分) 回踩≤107.00 ATR止损96.43（外部:PCB/覆铜板-0.8）"
+      },
+      {
+       "code": "002602",
+       "name": "世纪华通",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 15.53,
+       "buy_below": 15.219,
+       "stop_atr": 14.42,
+       "stop_ma": 14.55,
+       "tp": 17.859,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.2,
+        "why": "外部:科技-互联网传媒"
+       },
+       "reason": "强烈买入(83分) 回踩≤15.22 ATR止损14.42（外部:科技-互联网传媒-1.2）"
       },
       {
        "code": "300498",
        "name": "温氏股份",
-       "asof": "2026-09-10",
-       "score": 88,
-       "signal": "强烈买入",
-       "close": 14.9,
-       "buy_below": 14.602,
-       "stop_atr": 14.1,
-       "stop_ma": 14.28,
-       "tp": 17.135,
-       "trail": null,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(88分) 回踩≤14.60 ATR止损14.1；LLM:养殖消费回踩不追高，无宏观逆风压制（背离降档×0.6）"
-      },
-      {
-       "code": "561360",
-       "name": "石油ETF国泰",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 1.516,
-       "buy_below": 1.486,
-       "stop_atr": 1.45,
-       "stop_ma": 1.49,
-       "tp": 1.743,
-       "trail": null,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
-       "status": "wait",
-       "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
-       },
-       "reason": "强烈买入(83分) 回踩≤1.49 ATR止损1.45；LLM:石油ETF顺周期，受益反内卷价格逻辑（背离降档×0.6）（外部:石化+4.8）"
-      },
-      {
-       "code": "159588",
-       "name": "石油ETF景顺",
-       "asof": "2026-09-10",
-       "score": 78,
-       "signal": "买入",
-       "close": 1.285,
-       "buy_below": 1.259,
-       "stop_atr": 1.23,
-       "stop_ma": 1.27,
-       "tp": 1.478,
-       "trail": null,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
-       "status": "wait",
-       "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
-       },
-       "reason": "买入(78分) 回踩≤1.26 ATR止损1.23（背离降档×0.6）（外部:石化+4.8）"
-      },
-      {
-       "code": "002116",
-       "name": "中国海诚",
-       "asof": "2026-09-10",
+       "asof": "2026-09-11",
        "score": 84,
        "signal": "强烈买入",
-       "close": 7.45,
-       "buy_below": 7.301,
-       "stop_atr": 7.15,
-       "stop_ma": 7.26,
-       "tp": 8.567,
+       "close": 14.86,
+       "buy_below": 14.563,
+       "stop_atr": 14.08,
+       "stop_ma": 14.35,
+       "tp": 17.089,
        "trail": null,
        "be_at": null,
        "gate": "block",
-       "budget": 5400.0,
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(84分) 回踩≤14.56 ATR止损14.08"
+      },
+      {
+       "code": "600256",
+       "name": "广汇能源",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 7.1,
+       "buy_below": 6.958,
+       "stop_atr": 6.57,
+       "stop_ma": 6.55,
+       "tp": 8.165,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
        "status": "wait",
        "ext": {
-        "score": 1.2,
-        "why": "外部:基建交通"
+        "score": -1.5,
+        "why": "外部:周期资源"
        },
-       "reason": "强烈买入(84分) 回踩≤7.30 ATR止损7.15；LLM:基建工程链受重大工程融资政策提振（背离降档×0.6）（外部:基建交通+1.2）",
-       "miss": {
-        "date": "2026-09-11",
-        "first_ts": "09:36:01",
-        "low": 7.3,
-        "count": 1,
-        "caught": null
+       "reason": "强烈买入(83分) 回踩≤6.96 ATR止损6.57（外部:周期资源-1.5）"
+      },
+      {
+       "code": "600893",
+       "name": "航发动力",
+       "asof": "2026-09-11",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 41.16,
+       "buy_below": 40.337,
+       "stop_atr": 38.46,
+       "stop_ma": 38.35,
+       "tp": 47.334,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": -2.25,
+        "why": "外部:军工"
        },
-       "gate_live": {
-        "date": "2026-09-11",
-        "ts": "09:38:01",
-        "why": "LLM宏观防御"
-       }
+       "reason": "强烈买入(86分) 回踩≤40.34 ATR止损38.46（外部:军工-2.2）"
+      },
+      {
+       "code": "600760",
+       "name": "中航沈飞",
+       "asof": "2026-09-11",
+       "score": 87,
+       "signal": "强烈买入",
+       "close": 48.37,
+       "buy_below": 47.403,
+       "stop_atr": 46.01,
+       "stop_ma": 46.27,
+       "tp": 55.625,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": -2.25,
+        "why": "外部:军工"
+       },
+       "reason": "强烈买入(87分) 回踩≤47.40 ATR止损46.01（外部:军工-2.2）"
       }
      ],
      "trades": [
@@ -1468,6 +1601,11 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[全池]稳健：6 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "plan",
+       "note": "[全池]稳健 盘中复盘刷新: 新增 世纪华通,招商银行,广汇能源,中航沈飞,航发动力,景旺电子"
       }
      ],
      "review_log": [],
@@ -1493,130 +1631,177 @@
      "positions": [],
      "plan": [
       {
-       "code": "600028",
-       "name": "中国石化",
-       "asof": "2026-09-10",
+       "code": "600036",
+       "name": "招商银行",
+       "asof": "2026-09-11",
        "score": 87,
        "signal": "强烈买入",
-       "close": 5.58,
-       "buy_below": 5.413,
-       "stop_atr": 5.33,
+       "close": 41.31,
+       "buy_below": 40.071,
+       "stop_atr": 40.0,
        "stop_ma": null,
-       "tp": 6.138,
+       "tp": 45.441,
        "trail": null,
        "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
+       "gate": "block",
+       "budget": 7000.0,
        "status": "wait",
        "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
+        "score": 2.7,
+        "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤5.41 ATR止损5.33（保本+5%%）；LLM:石化周期品受益反内卷价格修复（背离降档×0.6）（外部:石化+4.8）"
-      },
-      {
-       "code": "300498",
-       "name": "温氏股份",
-       "asof": "2026-09-10",
-       "score": 88,
-       "signal": "强烈买入",
-       "close": 14.9,
-       "buy_below": 14.453,
-       "stop_atr": 14.1,
-       "stop_ma": null,
-       "tp": 16.39,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(88分) 回踩≤14.45 ATR止损14.1（保本+5%%）；LLM:养殖消费回踩不追高，无宏观逆风压制（背离降档×0.6）"
-      },
-      {
-       "code": "516910",
-       "name": "物流ETF富国",
-       "asof": "2026-09-10",
-       "score": 89,
-       "signal": "强烈买入",
-       "close": 1.206,
-       "buy_below": 1.17,
-       "stop_atr": 1.16,
-       "stop_ma": null,
-       "tp": 1.327,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(89分) 回踩≤1.17 ATR止损1.16（保本+5%%）；LLM:物流ETF低乖离温和上行，无宏观方向冲突（背离降档×0.6）"
-      },
-      {
-       "code": "561360",
-       "name": "石油ETF国泰",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 1.516,
-       "buy_below": 1.471,
-       "stop_atr": 1.45,
-       "stop_ma": null,
-       "tp": 1.668,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
-       "status": "wait",
-       "ext": {
-        "score": 4.8,
-        "why": "外部:石化"
-       },
-       "reason": "强烈买入(83分) 回踩≤1.47 ATR止损1.45（保本+5%%）；LLM:石油ETF顺周期，受益反内卷价格逻辑（背离降档×0.6）（外部:石化+4.8）"
-      },
-      {
-       "code": "002116",
-       "name": "中国海诚",
-       "asof": "2026-09-10",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 7.45,
-       "buy_below": 7.226,
-       "stop_atr": 7.15,
-       "stop_ma": null,
-       "tp": 8.195,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.2,
-        "why": "外部:基建交通"
-       },
-       "reason": "强烈买入(84分) 回踩≤7.23 ATR止损7.15（保本+5%%）；LLM:基建工程链受重大工程融资政策提振（背离降档×0.6）（外部:基建交通+1.2）"
+       "reason": "强烈买入(87分) 回踩≤40.07 ATR止损40.0（保本+5%%）（外部:红利银行+2.7）"
       },
       {
        "code": "002602",
        "name": "世纪华通",
-       "asof": "2026-09-10",
+       "asof": "2026-09-11",
        "score": 83,
        "signal": "强烈买入",
-       "close": 15.52,
-       "buy_below": 15.054,
-       "stop_atr": 14.35,
+       "close": 15.53,
+       "buy_below": 15.064,
+       "stop_atr": 14.42,
        "stop_ma": null,
-       "tp": 17.072,
+       "tp": 17.083,
        "trail": null,
        "be_at": 0.05,
-       "gate": "reduce",
-       "budget": 4200.0,
+       "gate": "block",
+       "budget": 7000.0,
        "status": "wait",
        "ext": {
         "score": -1.2,
         "why": "外部:科技-互联网传媒"
        },
-       "reason": "强烈买入(83分) 回踩≤15.05 ATR止损14.35（保本+5%%）；LLM:游戏传媒契合硬科技AI政策主线（背离降档×0.6）（外部:科技-互联网传媒-1.2）"
+       "reason": "强烈买入(83分) 回踩≤15.06 ATR止损14.42（保本+5%%）（外部:科技-互联网传媒-1.2）"
+      },
+      {
+       "code": "300498",
+       "name": "温氏股份",
+       "asof": "2026-09-11",
+       "score": 84,
+       "signal": "强烈买入",
+       "close": 14.86,
+       "buy_below": 14.414,
+       "stop_atr": 14.08,
+       "stop_ma": null,
+       "tp": 16.346,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(84分) 回踩≤14.41 ATR止损14.08（保本+5%%）"
+      },
+      {
+       "code": "600028",
+       "name": "中国石化",
+       "asof": "2026-09-11",
+       "score": 87,
+       "signal": "强烈买入",
+       "close": 5.55,
+       "buy_below": 5.383,
+       "stop_atr": 5.3,
+       "stop_ma": null,
+       "tp": 6.105,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(87分) 回踩≤5.38 ATR止损5.3（保本+5%%）（外部:周期资源-1.5）"
+      },
+      {
+       "code": "600256",
+       "name": "广汇能源",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 7.1,
+       "buy_below": 6.887,
+       "stop_atr": 6.57,
+       "stop_ma": null,
+       "tp": 7.81,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(83分) 回踩≤6.89 ATR止损6.57（保本+5%%）（外部:周期资源-1.5）"
+      },
+      {
+       "code": "601015",
+       "name": "陕西黑猫",
+       "asof": "2026-09-11",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 3.88,
+       "buy_below": 3.764,
+       "stop_atr": 3.46,
+       "stop_ma": null,
+       "tp": 4.268,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(80分) 回踩≤3.76 ATR止损3.46（保本+5%%）（外部:周期资源-1.5）"
+      },
+      {
+       "code": "601009",
+       "name": "南京银行",
+       "asof": "2026-09-11",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 12.3,
+       "buy_below": 11.931,
+       "stop_atr": 11.83,
+       "stop_ma": null,
+       "tp": 13.53,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": 1.2,
+        "why": "外部:红利金融"
+       },
+       "reason": "强烈买入(82分) 回踩≤11.93 ATR止损11.83（保本+5%%）（外部:红利金融+1.2）"
+      },
+      {
+       "code": "561360",
+       "name": "石油ETF国泰",
+       "asof": "2026-09-11",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 1.514,
+       "buy_below": 1.469,
+       "stop_atr": 1.45,
+       "stop_ma": null,
+       "tp": 1.665,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": -1.5,
+        "why": "外部:周期资源"
+       },
+       "reason": "强烈买入(83分) 回踩≤1.47 ATR止损1.45（保本+5%%）（外部:周期资源-1.5）"
       }
      ],
      "trades": [],
@@ -1977,6 +2162,11 @@
        "date": "2026-09-10",
        "kind": "plan",
        "note": "[全池]严守纪律：6 单待盘中触发（背离降档：门槛+6分 仓位×0.6）"
+      },
+      {
+       "date": "2026-09-11",
+       "kind": "plan",
+       "note": "[全池]严守纪律 盘中复盘刷新: 新增 招商银行,广汇能源,南京银行,陕西黑猫"
       }
      ],
      "review_log": [],
@@ -2014,7 +2204,7 @@
       "trail": 0.1,
       "be_at": null,
       "be_on": false,
-      "peak": 15.66,
+      "peak": 15.77,
       "prev_close": 15.36,
       "score": 83,
       "signal": "强烈买入",
@@ -2022,28 +2212,28 @@
       "from": [
        "aggressive"
       ],
-      "last": 15.07,
-      "last_chg": -1.89,
-      "last_ts": "09:38:01",
+      "last": 15.57,
+      "last_chg": 1.37,
+      "last_ts": "09:46:01",
       "last_close": 15.6
      }
     ],
     "plan": [
      {
-      "code": "516910",
-      "name": "物流ETF富国",
-      "asof": "2026-09-10",
-      "score": 89,
+      "code": "600036",
+      "name": "招商银行",
+      "asof": "2026-09-11",
+      "score": 87,
       "signal": "强烈买入",
-      "close": 1.206,
-      "buy_below": 1.2,
-      "stop_atr": 1.16,
+      "close": 41.31,
+      "buy_below": 41.103,
+      "stop_atr": 40.0,
       "stop_ma": null,
-      "tp": 1.327,
+      "tp": 45.441,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 6000.0,
+      "budget": 10000.0,
       "status": "wait",
       "consensus": 3,
       "from": [
@@ -2051,60 +2241,23 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.20 止損1.16 止盈1.33",
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:34:01",
-       "why": "LLM宏观防御"
-      }
-     },
-     {
-      "code": "300498",
-      "name": "温氏股份",
-      "asof": "2026-09-10",
-      "score": 88,
-      "signal": "强烈买入",
-      "close": 14.9,
-      "buy_below": 14.825,
-      "stop_atr": 14.1,
-      "stop_ma": null,
-      "tp": 16.39,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "reduce",
-      "budget": 6000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤14.82 止損14.10 止盈16.39",
-      "miss": {
-       "date": "2026-09-11",
-       "first_ts": "09:34:01",
-       "low": 14.81,
-       "count": 3,
-       "caught": null,
-       "last_ts": "09:38:01"
-      }
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤41.10 止損40.00 止盈45.44"
      },
      {
       "code": "600028",
       "name": "中国石化",
-      "asof": "2026-09-10",
+      "asof": "2026-09-11",
       "score": 87,
       "signal": "强烈买入",
-      "close": 5.58,
-      "buy_below": 5.53,
-      "stop_atr": 5.33,
+      "close": 5.55,
+      "buy_below": 5.522,
+      "stop_atr": 5.3,
       "stop_ma": null,
-      "tp": 6.138,
+      "tp": 6.105,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 6000.0,
+      "budget": 10000.0,
       "status": "wait",
       "consensus": 3,
       "from": [
@@ -2112,154 +2265,235 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤5.53 止損5.33 止盈6.14",
-      "miss": {
-       "date": "2026-09-11",
-       "first_ts": "09:36:01",
-       "low": 5.54,
-       "count": 1,
-       "caught": null
-      },
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:38:01",
-       "why": "LLM宏观防御"
-      }
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤5.52 止損5.30 止盈6.11"
      },
      {
-      "code": "561360",
-      "name": "石油ETF国泰",
-      "asof": "2026-09-10",
-      "score": 83,
-      "signal": "强烈买入",
-      "close": 1.516,
-      "buy_below": 1.508,
-      "stop_atr": 1.45,
-      "stop_ma": null,
-      "tp": 1.668,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 6000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤1.51 止損1.45 止盈1.67",
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:36:01",
-       "why": "LLM宏观防御"
-      }
-     },
-     {
-      "code": "002116",
-      "name": "中国海诚",
-      "asof": "2026-09-10",
+      "code": "300498",
+      "name": "温氏股份",
+      "asof": "2026-09-11",
       "score": 84,
       "signal": "强烈买入",
-      "close": 7.45,
-      "buy_below": 7.301,
-      "stop_atr": 7.15,
+      "close": 14.86,
+      "buy_below": 14.786,
+      "stop_atr": 14.08,
       "stop_ma": null,
-      "tp": 8.195,
-      "trail": null,
+      "tp": 16.346,
+      "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 3900.0,
+      "budget": 10000.0,
       "status": "wait",
-      "consensus": 2,
+      "consensus": 3,
       "from": [
+       "aggressive",
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13%×0.6降档 回踩≤7.30 止損7.15 止盈8.20",
-      "miss": {
-       "date": "2026-09-11",
-       "first_ts": "09:36:01",
-       "low": 7.3,
-       "count": 1,
-       "caught": null
-      },
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:38:01",
-       "why": "LLM宏观防御"
-      }
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤14.79 止損14.08 止盈16.35"
+     },
+     {
+      "code": "600256",
+      "name": "广汇能源",
+      "asof": "2026-09-11",
+      "score": 83,
+      "signal": "强烈买入",
+      "close": 7.1,
+      "buy_below": 7.064,
+      "stop_atr": 6.57,
+      "stop_ma": null,
+      "tp": 7.81,
+      "trail": 0.1,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤7.06 止損6.57 止盈7.81"
      },
      {
       "code": "002602",
       "name": "世纪华通",
-      "asof": "2026-09-10",
+      "asof": "2026-09-11",
       "score": 83,
       "signal": "强烈买入",
-      "close": 15.52,
-      "buy_below": 15.054,
-      "stop_atr": 14.35,
+      "close": 15.53,
+      "buy_below": 15.452,
+      "stop_atr": 14.42,
       "stop_ma": null,
-      "tp": 17.072,
-      "trail": null,
+      "tp": 17.083,
+      "trail": 0.1,
       "be_at": 0.05,
-      "gate": "reduce",
-      "budget": 2400.0,
+      "gate": "block",
+      "budget": 10000.0,
       "status": "wait",
-      "consensus": 1,
+      "consensus": 3,
       "from": [
+       "aggressive",
+       "balanced",
        "disciplined"
       ],
-      "reason": "共识1/3（严守纪律）仓位8%×0.6降档 回踩≤15.05 止損14.35 止盈17.07"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤15.45 止損14.42 止盈17.08"
      },
      {
-      "code": "600036",
-      "name": "招商银行",
-      "asof": "2026-09-10",
-      "score": 82,
+      "code": "603228",
+      "name": "景旺电子",
+      "asof": "2026-09-11",
+      "score": 86,
       "signal": "强烈买入",
-      "close": 41.54,
-      "buy_below": 41.24,
-      "stop_atr": 40.21,
+      "close": 109.18,
+      "buy_below": 108.34,
+      "stop_atr": 96.43,
       "stop_ma": null,
-      "tp": 49.848,
+      "tp": 125.557,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
-      "budget": 2400.0,
+      "budget": 6500.0,
       "status": "wait",
-      "consensus": 1,
+      "consensus": 2,
       "from": [
-       "aggressive"
+       "aggressive",
+       "balanced"
       ],
-      "reason": "共识1/3（激进）仓位8%×0.6降档 回踩≤41.24 止損40.21 止盈49.85",
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:34:01",
-       "why": "LLM宏观防御"
-      }
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤108.34 止損96.43 止盈125.56"
      },
      {
-      "code": "159588",
-      "name": "石油ETF景顺",
-      "asof": "2026-09-10",
-      "score": 78,
-      "signal": "买入",
-      "close": 1.285,
-      "buy_below": 1.259,
-      "stop_atr": 1.23,
+      "code": "600893",
+      "name": "航发动力",
+      "asof": "2026-09-11",
+      "score": 86,
+      "signal": "强烈买入",
+      "close": 41.16,
+      "buy_below": 40.89,
+      "stop_atr": 38.46,
       "stop_ma": null,
-      "tp": 1.478,
+      "tp": 47.334,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "aggressive",
+       "balanced"
+      ],
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤40.89 止損38.46 止盈47.33"
+     },
+     {
+      "code": "600760",
+      "name": "中航沈飞",
+      "asof": "2026-09-11",
+      "score": 87,
+      "signal": "强烈买入",
+      "close": 48.37,
+      "buy_below": 47.403,
+      "stop_atr": 46.01,
+      "stop_ma": null,
+      "tp": 55.625,
       "trail": null,
       "be_at": null,
-      "gate": "reduce",
-      "budget": 2400.0,
+      "gate": "block",
+      "budget": 4000.0,
       "status": "wait",
       "consensus": 1,
       "from": [
        "balanced"
       ],
-      "reason": "共识1/3（稳健）仓位8%×0.6降档 回踩≤1.26 止損1.23 止盈1.48"
+      "reason": "共识1/3（稳健）仓位8% 回踩≤47.40 止損46.01 止盈55.62"
+     },
+     {
+      "code": "002312",
+      "name": "川发龙蟒",
+      "asof": "2026-09-11",
+      "score": 86,
+      "signal": "强烈买入",
+      "close": 9.36,
+      "buy_below": 9.23,
+      "stop_atr": 8.75,
+      "stop_ma": null,
+      "tp": 11.232,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "aggressive"
+      ],
+      "reason": "共识1/3（激进）仓位8% 回踩≤9.23 止損8.75 止盈11.23"
+     },
+     {
+      "code": "561360",
+      "name": "石油ETF国泰",
+      "asof": "2026-09-11",
+      "score": 83,
+      "signal": "强烈买入",
+      "close": 1.514,
+      "buy_below": 1.469,
+      "stop_atr": 1.45,
+      "stop_ma": null,
+      "tp": 1.665,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "disciplined"
+      ],
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤1.47 止損1.45 止盈1.67"
+     },
+     {
+      "code": "601009",
+      "name": "南京银行",
+      "asof": "2026-09-11",
+      "score": 82,
+      "signal": "强烈买入",
+      "close": 12.3,
+      "buy_below": 11.931,
+      "stop_atr": 11.83,
+      "stop_ma": null,
+      "tp": 13.53,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "disciplined"
+      ],
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤11.93 止損11.83 止盈13.53"
+     },
+     {
+      "code": "601015",
+      "name": "陕西黑猫",
+      "asof": "2026-09-11",
+      "score": 80,
+      "signal": "强烈买入",
+      "close": 3.88,
+      "buy_below": 3.764,
+      "stop_atr": 3.46,
+      "stop_ma": null,
+      "tp": 4.268,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "disciplined"
+      ],
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤3.76 止損3.46 止盈4.27"
      }
     ],
     "trades": [
@@ -2322,6 +2556,11 @@
       "date": "2026-09-11",
       "kind": "rollback",
       "note": "⛔ 回滚 09:30-09:32 误成交：物流ETF富国 5000股@1.20（实时闸门 block 期间成交，计划 gate 已过期）| 持仓 2→1 | 退回现金 ¥5982"
+     },
+     {
+      "date": "2026-09-11",
+      "kind": "plan",
+      "note": "[全池]合并·共识 盘中复盘刷新: 新增 川发龙蟒,广汇能源,中航沈飞,航发动力,南京银行,陕西黑猫,景旺电子"
      }
     ],
     "review_log": [],
@@ -2475,9 +2714,9 @@
        "prev_close": 76.34,
        "score": 73,
        "signal": "买入",
-       "last": 74.8,
-       "last_chg": -2.02,
-       "last_ts": "09:38:01",
+       "last": 73.91,
+       "last_chg": -3.18,
+       "last_ts": "09:46:01",
        "last_close": 77.08
       },
       {
@@ -2493,13 +2732,13 @@
        "trail": 0.1,
        "be_at": null,
        "be_on": false,
-       "peak": 28.12,
+       "peak": 28.2,
        "prev_close": 28.09,
        "score": 70,
        "signal": "买入",
-       "last": 28.04,
-       "last_chg": -0.18,
-       "last_ts": "09:38:01",
+       "last": 28.2,
+       "last_chg": 0.39,
+       "last_ts": "09:46:01",
        "last_close": 28.07
       },
       {
@@ -2519,9 +2758,9 @@
        "prev_close": 35.87,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.57,
-       "last_chg": -0.84,
-       "last_ts": "09:38:01",
+       "last": 35.6,
+       "last_chg": -0.75,
+       "last_ts": "09:46:01",
        "last_close": 35.87
       },
       {
@@ -2541,41 +2780,13 @@
        "prev_close": 63.91,
        "score": 74,
        "signal": "买入",
-       "last": 62.99,
-       "last_chg": -1.44,
-       "last_ts": "09:38:01",
+       "last": 63.73,
+       "last_chg": -0.28,
+       "last_ts": "09:46:01",
        "last_close": 63.91
       }
      ],
-     "plan": [
-      {
-       "code": "601899",
-       "name": "紫金矿业",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 34.14,
-       "buy_below": 33.72,
-       "stop_atr": 31.78,
-       "stop_ma": null,
-       "tp": 40.968,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 6600.0,
-       "status": "wait",
-       "ext": {
-        "score": -3.6,
-        "why": "外部:黄金"
-       },
-       "reason": "强烈买入(83分) 回踩≤33.72 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
-       "gate_live": {
-        "date": "2026-09-11",
-        "ts": "09:34:01",
-        "why": "LLM宏观防御"
-       }
-      }
-     ],
+     "plan": [],
      "trades": [
       {
        "action": "buy",
@@ -2792,65 +3003,7 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [
-      {
-       "code": "601899",
-       "name": "紫金矿业",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 34.14,
-       "buy_below": 33.457,
-       "stop_atr": 31.78,
-       "stop_ma": 33.66,
-       "tp": 39.261,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 5400.0,
-       "status": "wait",
-       "ext": {
-        "score": -3.6,
-        "why": "外部:黄金"
-       },
-       "reason": "强烈买入(83分) 回踩≤33.46 ATR止损31.78；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
-       "gate_live": {
-        "date": "2026-09-11",
-        "ts": "09:34:01",
-        "why": "LLM宏观防御"
-       }
-      },
-      {
-       "code": "601138",
-       "name": "工业富联",
-       "asof": "2026-09-10",
-       "score": 75,
-       "signal": "买入",
-       "close": 63.91,
-       "buy_below": 62.632,
-       "stop_atr": 58.69,
-       "stop_ma": 63.67,
-       "tp": 73.496,
-       "trail": null,
-       "be_at": null,
-       "gate": "reduce",
-       "budget": 5400.0,
-       "status": "wait",
-       "ext": {
-        "score": -5.7,
-        "why": "外部:AI算力"
-       },
-       "reason": "买入(75分) 回踩≤62.63 ATR止损58.69；LLM:AI算力属政策硬科技方向，回调后未过度乖离（背离降档×0.6）（外部:AI算力-5.7）",
-       "miss": {
-        "date": "2026-09-11",
-        "first_ts": "09:32:01",
-        "low": 62.5,
-        "count": 4,
-        "caught": null,
-        "last_ts": "09:38:01"
-       }
-      }
-     ],
+     "plan": [],
      "trades": [],
      "equity_curve": [
       {
@@ -3030,35 +3183,7 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [
-      {
-       "code": "601899",
-       "name": "紫金矿业",
-       "asof": "2026-09-10",
-       "score": 83,
-       "signal": "强烈买入",
-       "close": 34.14,
-       "buy_below": 33.116,
-       "stop_atr": 31.78,
-       "stop_ma": null,
-       "tp": 37.554,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "block",
-       "budget": 4200.0,
-       "status": "wait",
-       "ext": {
-        "score": -3.6,
-        "why": "外部:黄金"
-       },
-       "reason": "强烈买入(83分) 回踩≤33.12 ATR止损31.78（保本+5%%）；LLM:周期资源契合反内卷主线，乖离低位无追高风险（背离降档×0.6）（外部:黄金-3.6）",
-       "gate_live": {
-        "date": "2026-09-11",
-        "ts": "09:34:01",
-        "why": "LLM宏观防御"
-       }
-      }
-     ],
+     "plan": [],
      "trades": [],
      "equity_curve": [
       {
@@ -3233,67 +3358,7 @@
     "start_cash": 50000.0,
     "cash": 50000.0,
     "positions": [],
-    "plan": [
-     {
-      "code": "601899",
-      "name": "紫金矿业",
-      "asof": "2026-09-10",
-      "score": 83,
-      "signal": "强烈买入",
-      "close": 34.14,
-      "buy_below": 33.72,
-      "stop_atr": 31.78,
-      "stop_ma": null,
-      "tp": 37.554,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 6000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20%×0.6降档 回踩≤33.72 止損31.78 止盈37.55",
-      "gate_live": {
-       "date": "2026-09-11",
-       "ts": "09:34:01",
-       "why": "LLM宏观防御"
-      }
-     },
-     {
-      "code": "601138",
-      "name": "工业富联",
-      "asof": "2026-09-10",
-      "score": 75,
-      "signal": "买入",
-      "close": 63.91,
-      "buy_below": 62.632,
-      "stop_atr": 58.69,
-      "stop_ma": null,
-      "tp": 73.496,
-      "trail": null,
-      "be_at": null,
-      "gate": "reduce",
-      "budget": 2400.0,
-      "status": "wait",
-      "consensus": 1,
-      "from": [
-       "balanced"
-      ],
-      "reason": "共识1/3（稳健）仓位8%×0.6降档 回踩≤62.63 止損58.69 止盈73.50",
-      "miss": {
-       "date": "2026-09-11",
-       "first_ts": "09:32:01",
-       "low": 62.5,
-       "count": 4,
-       "caught": null,
-       "last_ts": "09:38:01"
-      }
-     }
-    ],
+    "plan": [],
     "trades": [],
     "equity_curve": [
      {
