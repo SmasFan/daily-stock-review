@@ -1,7 +1,21 @@
 __pycache__/
 *.pyc
+# 本地临时产物（诊断输出等，勿入库）
+_*.txt
 data/cache/
 *.log
 watchlist.json
 .env
 data/binance_status.html
+
+# ---- 币安 bot（binance-llm-bot）运行时数据：禁止入库 ----
+# 密钥 .env 与 *.log 由上方通用规则覆盖
+binance-llm-bot/.venv/
+binance-llm-bot/state*.json
+binance-llm-bot/trades.jsonl
+binance-llm-bot/evolution.json
+binance-llm-bot/status.html
+binance-llm-bot/watchdog.lock
+binance-llm-bot/*.bak
+binance-llm-bot/reviews/
+binance-llm-bot/backtest/*.csv
