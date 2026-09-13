@@ -4,7 +4,8 @@
 
 ## 1. 工作流文件
 
-- `.github/workflows/daily-review.yml` —— 每日自动复盘 + 手动触发（主工作流）
+- `.github/workflows/daily-review.yml` —— 每日自动复盘 + 手动触发（主工作流，schedule 已停用）
+- `.github/workflows/external-factors.yml` —— 外部市场因子，**24 小时每 3 小时**抓取（仅此一个云端定时任务）
 - `.github/workflows/deploy-pages.yml` —— push 到 `main` 时部署 GitHub Pages（已有）
 
 ## 2. 触发方式
@@ -16,8 +17,29 @@
 | 周一至周五 09:05 | `recommend` | 开盘前生成推荐，含当日买入原因 |
 | 周一至周五 15:40 | `review` | 盘后复盘 + 网格回测 + 板块估值更新 |
 
-> GitHub Actions 的 `schedule` 使用 UTC 时间，本工作流已在 cron 中换算（09:05 北京 = 01:05 UTC，15:40 北京 = 07:40 UTC）。
-> 实际触发时间可能延迟数分钟（Actions 队列繁忙时），且仓库超过 60 天无活动时定时任务会暂停。
+> `daily-review.yml` 的 schedule 已停用（云端跑会覆盖本地盘中数据），定时任务由本地 cron 负责。
+> 唯一保留的云端定时任务是 `external-factors.yml`。
+
+### 2.1.1 外部市场因子（每 3 小时）
+
+| 时间（北京时间） | 运行内容 | 说明 |
+|---|---|---|
+| 每天 0/3/6/9/12/15/18/21 点 | `build_external.py` | 原油/黄金/白银/铜/美债/美元指数/纳指/VIX → 板块偏好分 |
+
+- 与 A 股交易日**无关**：外盘 7×24 在动，周末与夜里同样要抓（原先只在本地工作日 09:05/15:40 顺带跑，周末空窗 60+ 小时）
+- 只提交 `data/external_data.json` 一个文件，不会覆盖本地盘中产生的其它数据
+- 抓取失败则沿用上次数据，绝不写坏文件
+- 时间分段：`0/3/6/9/12/15/18/21` 点各一段，每段只抓一次
+
+**本地侧（两条路，任选或都装，不会重复抓）**
+
+| 方式 | 装法 | 说明 |
+|---|---|---|
+| A. 挂靠 `start_all.sh`（推荐，无需改 crontab） | 已在代码里 —— `scripts/start_all.sh` 每次运行都会调用 `scripts/external_cron.sh` | `start_all.sh` 的 cron 是 `*/30`（24 小时在跑），`external_cron.sh` 自己判断「本 3 小时段是否已抓过」，已抓过就静默退出（几乎零开销）→ 夜里/周末自动补上 |
+| B. crontab 直排 | `crontab -e` 加一行 `7 */3 * * * /mnt/c/Users/z7280/daily-stock-review/scripts/external_cron.sh` | 与 A 等价；同装也不冲突（同一把 `flock` + 同一套分段判定） |
+
+- 手工强制刷新（跳过分段判定）：`EXTERNAL_FORCE=1 bash scripts/external_cron.sh`
+- 本地 `external_cron.sh` 还会顺手补推「已提交但未推送」的积压：在 Windows 侧改代码提交后（那边没有 GitHub 私钥，推不上去），WSL 侧会在下一段抓取时把提交一起推上去，避免云端 Pages 长期落后于本地。
 
 ### 2.2 手动触发（workflow_dispatch）
 

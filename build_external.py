@@ -18,6 +18,19 @@
 用法：
   python3 build_external.py            # 抓取并写盘（约 3~6 秒）
   python3 build_external.py --dry      # 只打印不写盘
+
+调度（24 小时每 3 小时一次，与 A 股工作日无关 —— 外盘 7x24 在动）：
+  时段  0/3/6/9/12/15/18/21 点各一段，每段只抓一次
+  本地  scripts/external_cron.sh
+          · 挂靠 scripts/start_all.sh（cron */30，24 小时在跑）→ 无需改 crontab
+          · 或 crontab 直接排：7 */3 * * *
+          · 脚本自身按「本段是否已抓」判重，两种装法/高频调用都不会重复抓
+          · EXTERNAL_FORCE=1 强制刷新
+  云端  .github/workflows/external-factors.yml（本机关机时兜底）
+  两侧都只提交 external_data.json，失败则沿用上次数据。
+
+注意：auto_run.sh（工作日 09:05/15:40）与 run_intraday.sh（A 股盘中）里也各调了一次，
+那是「交易日更细粒度」的补充，与本模块的分段调度不冲突（越抓越新，判重只作用于本脚本）。
 """
 import argparse
 import json

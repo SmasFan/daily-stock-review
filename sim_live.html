@@ -480,22 +480,17 @@
       const gen = (e.generatedAt || '').slice(0, 16);
       const genTs = gen ? new Date(gen.replace(' ', 'T')).getTime() : 0;
       const ageH = genTs ? (Date.now() - genTs) / 3600000 : 0;
-      // 下次预期刷新时刻：auto_run 调度只在【工作日 09:05 / 15:40】跑，
-      // 周末与休市日不执行 → 用「是否超过下次应刷新时刻」判断过期，
-      // 否则每个周末都会误报（周五 15:40 生成 → 周日就 50+ 小时）。
-      const nextAt = genTs ? (function () {
-        const d = new Date(genTs);
-        d.setHours(9, 5, 0, 0);
-        if (d.getTime() <= genTs) d.setDate(d.getDate() + 1);
-        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
-        return d;
-      })() : null;
+      // 外部因子 24 小时每 3 小时抓一次（scripts/external_cron.sh，cron 每 3 小时），
+      // 不再跟 A 股工作日走 —— 美股/汇率/商品本来就是全天候在动。
+      // 因此过期判定回归「纯年龄」：> 6 小时（连着两轮没抓到）才算异常。
+      const REFRESH_H = 3, STALE_H = 6;
+      const nextAt = genTs ? new Date(genTs + REFRESH_H * 3600000) : null;
       const fmtMD = function (d) {
         return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
           String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
       };
       const nextStr = nextAt ? fmtMD(nextAt) : '';
-      const stale = genTs ? (Date.now() > nextAt.getTime()) : (ageH > 14);
+      const stale = !genTs || ageH > STALE_H;
       const toneColor = { risk_on: 'var(--up)', risk_off: 'var(--down)', neutral: 'var(--text-2)' }[rp.tone] || 'var(--text-2)';
       const order = ['oil','gold','silver','copper','yield','dxy','nasdaq','vix','sp500'];
       const rows = order.filter(k => f[k]).map(k => {
@@ -516,8 +511,8 @@
           <span class="sec-chip" style="background:${toneColor};color:#fff;font-weight:800">${rp.note || '—'} (${rp.score != null && rp.score > 0 ? '+' : ''}${rp.score != null ? rp.score : 0})</span>
           <span class="sec-chip" ${stale ? 'style="background:#fff7ed;color:#9a3412;font-weight:800"' : ''}>更新 ${gen || '未知'}</span>
         </div>
-        ${stale ? '<div class="revbox" style="margin:0 0 8px;background:#fff7ed;border-color:#fed7aa;color:#9a3412">⚠ 外部因子<b>已过期</b>（' + Math.round(ageH) + ' 小时' + (nextStr ? '，应于 ' + nextStr + ' 前刷新' : '') + '）→ 选股未采用，请检查 build_external 是否执行</div>'
-                : (ageH > 14 ? '<div class="revbox" style="margin:0 0 8px;background:#f8fafc;border-color:#e2e8f0;color:#64748b">休市中，外部因子沿用 ' + gen + '（下次刷新 ' + nextStr + '）；开盘前会自动刷新并参与选股</div>' : '')}
+        ${stale ? '<div class="revbox" style="margin:0 0 8px;background:#fff7ed;border-color:#fed7aa;color:#9a3412">⚠ 外部因子<b>已过期</b>（' + Math.round(ageH) + ' 小时未更新，正常应每 ' + REFRESH_H + ' 小时一次）→ 选股未采用，请检查 cron 是否执行 <code>scripts/external_cron.sh</code></div>'
+                : (ageH > REFRESH_H ? '<div class="revbox" style="margin:0 0 8px;background:#f8fafc;border-color:#e2e8f0;color:#64748b">外部因子沿用 ' + gen + '（' + ageH.toFixed(1) + ' 小时前，下次应 ' + nextStr + ' 刷新）</div>' : '')}
         <div class="chart-row">
           <div>
             <div style="font-size:12px;font-weight:800;margin-bottom:4px">隔夜/实时行情因子</div>

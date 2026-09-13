@@ -1,0 +1,85 @@
+name: External Factors
+
+# 外部市场因子（原油/黄金/白银/铜/美债/美元指数/纳指/VIX）每 3 小时抓一次，全天候。
+#
+# 为什么走云端 schedule：
+#   原先只在 scripts/auto_run.sh 里顺带跑（工作日 09:05 / 15:40），周末与夜里完全空窗 ——
+#   周五 15:40 的数据要一直用到周一 09:05，而美股/汇率/商品 7x24 在动（周末常有地缘事件），
+#   页面因此长期挂「外部因子已过期」，选股也确实没用上。
+#   云端 schedule 不受本机开关机影响，正好补上这块。
+#
+# 与 daily-review.yml 的区别：
+#   daily-review 的 schedule 仍保持停用（云端跑会覆盖本地盘中数据）。本工作流
+#   【只写 data/external_data.json 一个文件】，不会污染任何由本地产生的数据。
+#
+# 时间：北京时间 0/3/6/9/12/15/18/21 点 = UTC 16/19/22/1/4/7/10/13，分钟取 7 避开整点排队。
+# 本地 cron（scripts/external_cron.sh）若也在跑，两侧都只提交 external_data.json，
+# 且都带 push 重试，重复不冲突。
+
+"on":
+  schedule:
+    - cron: '7 1,4,7,10,13,16,19,22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: external-factors
+  cancel-in-progress: true
+
+jobs:
+  external:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 抓取外部因子
+        run: |
+          # 抓取失败（网络/限流）不阻断：沿用上次数据，绝不写坏文件
+          python3 build_external.py || echo "[warn] 外部因子抓取失败，沿用上次数据"
+
+      - name: 提交并推送
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/external_data.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "外部因子无变化，跳过提交"
+            exit 0
+          fi
+          git commit -m "external update $(date -u '+%Y-%m-%d %H:%M:%S') UTC"
+          for i in 1 2 3; do
+            git pull --rebase origin main 2>/dev/null || true
+            if git push; then
+              echo "push 成功"
+              break
+            fi
+            echo "push 第${i}次失败，重试..."
+            sleep 5
+          done
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
