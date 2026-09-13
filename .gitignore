@@ -1,7 +1,13 @@
 __pycache__/
 *.pyc
+# 本地工作区数据（记忆/索引等，勿入库）
+.workbuddy/
 # 本地临时产物（诊断输出等，勿入库）
 _*.txt
+_*.py
+_*.html
+# Agent LLM 队列（临时提问/答案，勿入库）
+data/llm_queue/
 data/cache/
 *.log
 watchlist.json

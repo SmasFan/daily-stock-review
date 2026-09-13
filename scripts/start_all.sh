@@ -4,7 +4,7 @@
 # 模式: all(默认: serve+watchdog) | serve_only | watchdog_only
 # 日志: data/startup.log
 BASE_DSR=/mnt/c/Users/z7280/daily-stock-review
-BASE_BN=/mnt/c/Users/z7280/binance-llm-bot
+BASE_BN=/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot
 LOG=$BASE_DSR/data/startup.log
 MODE="${1:-all}"
 
@@ -37,7 +37,7 @@ start_watchdog() {
     LPID=$(cat "$BASE_BN/watchdog.lock" 2>/dev/null)
     kill -0 "$LPID" 2>/dev/null || rm -f "$BASE_BN/watchdog.lock"
   fi
-  cd "$BASE_BN" && setsid nohup python3 watchdog.py >> watchdog_stdout.log 2>&1 < /dev/null &
+  cd "$BASE_BN" && setsid nohup python3 "$BASE_BN/watchdog.py" >> watchdog_stdout.log 2>&1 < /dev/null &
   sleep 1
   pgrep -f "binance-llm-bot/watchdog\.py" > /dev/null && log "watchdog 拉起成功" || log "[warn] watchdog 拉起失败"
 }

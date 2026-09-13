@@ -238,6 +238,7 @@ def build_html(procs, pos_list, total_pnl, bal, trades, tstats,
     pool_cls = 'up' if total_pnl > 0 else 'down'
     rev_html = latest_review_html()
     gate_html = llm_gate_html()
+    agent_queue = agent_queue_html()
     shadow = shadow_html()
 
     # 交易记录表
@@ -337,6 +338,7 @@ tr:hover td{{background:#161b29}}
 
 {rev_html}
 {gate_html}
+{agent_queue}
 {shadow}
 <div class="card"><h2>日线持仓 (SMA50 日线 3x -12%)</h2>
 <div class="tblwrap"><table>{HDR}{rows_c}</table></div>
@@ -420,6 +422,50 @@ def llm_gate_html():
             '规则（收盘价 vs SMA50）先出候选 → LLM 复核通过才下单。买入可否决（跌破SMA20/偏离过大/追高）；'
             '趋势离场属硬规则，LLM 只能确认。LLM 不可用自动放行并熔断 10 分钟，绝不停盘。</div></div>')
     return head + ''.join(blocks)
+
+
+def agent_queue_html():
+    """Agent LLM 队列卡：有多少提问在等我回答（答不上就按规则放行）。"""
+    try:
+        import sys
+        root = os.path.dirname(BASE)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        import llm_agent
+        pend = llm_agent.pending(limit=20)
+        today = time.strftime('%Y-%m-%d')
+        done_dir = os.path.join(llm_agent.qdir(), 'done')
+        n_done = 0
+        try:
+            n_done = sum(1 for f in os.listdir(done_dir)
+                         if f.endswith('.json') and today in f)
+        except Exception:
+            pass
+    except Exception as e:
+        return (f'<div class="card"><h2>🤝 Agent LLM 队列</h2>'
+                f'<div class="dim">读取失败 {html.escape(str(e))}</div></div>')
+
+    if pend:
+        rows = ''
+        for d in pend:
+            prev = html.escape((d.get('user') or '').replace('\n', ' ')[:110])
+            rows += (f'<tr><td class="mono">{html.escape(d.get("id", ""))}</td>'
+                     f'<td>{html.escape(str(d.get("kind", "?")))}</td>'
+                     f'<td class="dim">{html.escape(str(d.get("ts", "?")))}</td>'
+                     f'<td style="text-align:left">{prev}</td></tr>')
+        body = ('<div class="tblwrap"><table><tr><th>问题 ID</th><th>类型</th>'
+                '<th>时间</th><th style="text-align:left">提问预览</th></tr>'
+                f'{rows}</table></div>')
+        tip = (f'<div style="font-size:12px;color:var(--gold);margin-top:6px">'
+               f'⚠ 这 {len(pend)} 条超时未按规则放行了 —— 我来答了之后程序会自动重跑命中。</div>')
+    else:
+        body = '<div class="dim">无待答问题 ✅</div>'
+        tip = ''
+    return (f'<div class="card"><h2>🤝 Agent LLM 队列 <span class="badge b-info">'
+            f'待答 {len(pend)} · 今日已答 {n_done}</span></h2>{body}{tip}'
+            '<div style="font-size:12px;color:var(--dim);margin-top:6px;line-height:1.7">'
+            'LLM 提问先落到 data/llm_queue/pending/，由我（WorkBuddy）免费回答；'
+            '等不到答案则按原规则降级（闸门=放行、复盘=跳过），绝不卡主流程。</div></div>')
 
 
 def shadow_html():

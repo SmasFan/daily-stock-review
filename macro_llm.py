@@ -42,7 +42,7 @@ CC_UA = "OpenAI/Python 1.99.0"
 
 def _cc_key():
     import glob as _g
-    envs = _g.glob("/mnt/c/Users/z7280/binance-llm-bot/.env")
+    envs = _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env")
     for envf in envs:
         try:
             for line in open(envf):
@@ -91,11 +91,28 @@ def _call_ollama(system, user, timeout=240):
     return content
 
 
-def call_llm(system, user, timeout=240, expect_json=False):
-    """返回 (content, backend)。commandcode 优先 → ollama 降级。
+def _agent_ask(kind, system, user, expect_json, meta=None):
+    """优先问「我」（llm_agent 文件队列，免费）。没等到答案返回 None。"""
+    try:
+        import llm_agent
+        a = llm_agent.ask(kind, system, user, expect_json=expect_json, meta=meta)
+        if a is None:
+            return None
+        return a if isinstance(a, str) else json.dumps(a, ensure_ascii=False)
+    except Exception as e:
+        print("  [agent-llm] 不可用(%s)，走降级" % str(e)[:80])
+        return None
 
-    expect_json=True 时校验返回可解析为 JSON，失败视为无效并重试
-    （云端通道偶发非法 JSON：字符串未转义/缺逗号，只看"非空"会直接炸到调用方）。
+
+def call_llm(system, user, timeout=240, expect_json=False, kind="macro", meta=None):
+    """返回 (content, backend)。
+
+    通道优先级（2026-09 起：云端付费停用，改由 Agent 免费接管）：
+      1) agent   —— llm_agent 文件队列，由 WorkBuddy 作答（免费）
+      2) ollama  —— 本地 qwen3-vl（免费离线降级）
+      3) commandcode —— 付费云端，仅 AGENT_LLM_ALLOW_CLOUD=1 时启用
+
+    expect_json=True 时校验返回可解析为 JSON，失败视为无效。
     """
     def _ok(c):
         if not c or not c.strip():
@@ -109,17 +126,12 @@ def call_llm(system, user, timeout=240, expect_json=False):
             return False, "JSON非法(%s)" % str(e)[:60]
 
     errs = []
-    for attempt in range(2):
-        try:
-            c = _call_cc(system, user, timeout=min(timeout, 60))
-            good, why = _ok(c)
-            if good:
-                return c, "commandcode"
-            errs.append("cc %s(第%d次)" % (why, attempt + 1))
-        except Exception as e:
-            errs.append("cc: %s" % str(e)[:80])
-        import time as _t
-        _t.sleep(1.5 * (attempt + 1))
+    c = _agent_ask(kind, system, user, expect_json, meta=meta)
+    if c is not None:
+        good, why = _ok(c)
+        if good:
+            return c, "agent"
+        errs.append("agent %s" % why)
     try:
         c = _call_ollama(system, user, timeout=timeout)
         good, why = _ok(c)
@@ -128,6 +140,18 @@ def call_llm(system, user, timeout=240, expect_json=False):
         errs.append("ollama %s" % why)
     except Exception as e:
         errs.append("ollama: %s" % str(e)[:80])
+    if os.environ.get("AGENT_LLM_ALLOW_CLOUD", "0") in ("1", "true", "yes", "on"):
+        for attempt in range(2):
+            try:
+                c = _call_cc(system, user, timeout=min(timeout, 60))
+                good, why = _ok(c)
+                if good:
+                    return c, "commandcode"
+                errs.append("cc %s(第%d次)" % (why, attempt + 1))
+            except Exception as e:
+                errs.append("cc: %s" % str(e)[:80])
+            import time as _t
+            _t.sleep(1.5 * (attempt + 1))
     raise RuntimeError("LLM 全部失败: " + "; ".join(errs))
 
 
@@ -224,7 +248,8 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
         return {}
     user = "【宏观】%s\n【个股新闻】\n%s\n逐只给出消息面 sentiment/score/note。" % (macro_txt, "\n".join(lines))
     try:
-        content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout, expect_json=True)
+        content, _bk1 = call_llm(STOCK_SYSTEM, user, timeout=timeout, expect_json=True,
+                                 kind="stock_news")
         j = _json_of(content)
         raw = j.get("stocks")
         # 模型偶发返回非 list 结构（如 {"0": {...}} 或 [123]）→ 归一化，逐条校验类型

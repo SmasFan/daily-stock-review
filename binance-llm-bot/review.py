@@ -97,18 +97,17 @@ def stats(trades):
     for t in closed:
         k = t['symbol'].split('/')[0]
         by_sym.setdefault(k, []).append(t['pnl'])
+    win_sum = sum(t['pnl'] for t in wins)
+    loss_sum = abs(sum(t['pnl'] for t in losses))
     return {
         'total_trades': len(closed), 'open_trades': len(opens),
         'wins': len(wins), 'losses': len(losses),
         'win_rate': len(wins) / max(len(closed), 1),
         'total_pnl': sum(t['pnl'] for t in closed),
         'avg_win': avg_win, 'avg_loss': avg_loss,
-        'profit_factor': None,
+        'profit_factor': (round(win_sum / loss_sum, 3) if loss_sum else None),
         'by_symbol': {k: {'n': len(v), 'pnl': round(sum(v), 2)} for k, v in by_sym.items()},
     }
-    st['profit_factor'] = (sum(t['pnl'] for t in wins) / abs(sum(t['pnl'] for t in losses))
-                           if losses and sum(t['pnl'] for t in losses) != 0 else None)
-    return st
 
 
 def load_evo():
@@ -141,41 +140,105 @@ REVIEW_SYSTEM = """你是量化交易策略复盘分析师。基于交易统计�
  "risk_note":"风险提示","action":"hold|adjust|review" }"""
 
 
-def llm_review(client, st, pos, ctx):
-    payload = {'stats': st, 'positions': pos, 'market': ctx}
-    for attempt in range(3):
+REVIEW_FAIL = {'summary': 'LLM 复盘失败, 跳过', 'action': 'review',
+               'market_state': '未知', 'execution_ok': True,
+               'strengths': [], 'weaknesses': [], 'adjustments': []}
+
+# LLM 通道：Agent 文件队列（免费，优先）→ 付费云端（默认关闭）
+# 事后复盘每 6h 一次，等得起 —— 默认 35 分钟，等我来答（等不到就是跳过复盘，不影响交易）
+AGENT_WAIT = float(os.environ.get('BN_REVIEW_WAIT', os.environ.get('AGENT_LLM_WAIT', '2100')))
+ALLOW_CLOUD = os.environ.get('AGENT_LLM_ALLOW_CLOUD', '0').lower() in ('1', 'true', 'yes', 'on')
+
+
+def _agent_mod():
+    """导入仓库根的 llm_agent（本模块在 binance-llm-bot/ 子目录）。"""
+    root = os.path.dirname(BASE)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import llm_agent
+    return llm_agent
+
+
+def _parse_review(text):
+    """从返回里抠出复盘 JSON（容错 ```json 包裹 / 前后废话）。"""
+    if isinstance(text, dict):
+        return text if 'summary' in text else None
+    t = str(text or '').strip()
+    if '```' in t:
+        m = re.search(r'```(?:json)?\s*([\s\S]*?)```', t)
+        if m:
+            t = m.group(1).strip()
+    m = re.search(r'\{[\s\S]*\}', t)
+    if not m:
+        return None
+    d = json.loads(m.group(0))
+    return d if 'summary' in d else None
+
+
+def _review_agent(user, meta=None):
+    try:
+        la = _agent_mod()
+    except Exception as e:
+        print('  [llm][review] Agent 队列不可用: %s' % str(e)[:80])
+        return None
+    try:
+        ans = la.ask('bn_review', REVIEW_SYSTEM, user, expect_json=True,
+                     wait=AGENT_WAIT, meta=meta, schema=REVIEW_SYSTEM.split('只输出 JSON:')[-1].strip())
+    except Exception as e:
+        print('  [llm][review] Agent 队列异常: %s' % str(e)[:80])
+        return None
+    if ans is None:
+        return None
+    try:
+        return _parse_review(ans)
+    except Exception as e:
+        print('  [llm][review] Agent 答案解析失败: %s' % str(e)[:80])
+        return None
+
+
+def _review_cloud(user):
+    try:
+        client = _get_llm()
+    except Exception as e:
+        print('  [llm][review] 云端不可用: %s' % str(e)[:80])
+        return None
+    for _ in range(3):
         try:
             r = client.chat.completions.create(
-                model='deepseek/deepseek-v4-flash',
+                model=os.environ.get('LLM_MODEL', 'deepseek/deepseek-v4-flash'),
                 messages=[{'role': 'system', 'content': REVIEW_SYSTEM},
-                          {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}],
+                          {'role': 'user', 'content': user}],
                 max_tokens=8000, timeout=180)
-            text = (r.choices[0].message.content or '').strip()
-            if '```' in text:
-                m = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
-                if m:
-                    text = m.group(1).strip()
-            # 提取 JSON
-            m = re.search(r'\{[\s\S]*\}', text)
-            if m:
-                d = json.loads(m.group(0))
-                if 'summary' in d:
-                    return d
+            d = _parse_review((r.choices[0].message.content or '').strip())
+            if d:
+                return d
         except Exception as e:
+            print('  [llm][review] 云端调用失败: %s' % str(e)[:80])
             time.sleep(2)
-    return {'summary': 'LLM 复盘失败, 跳过', 'action': 'review',
-            'market_state': '未知', 'execution_ok': True, 'strengths': [], 'weaknesses': [], 'adjustments': []}
+    return None
+
+
+def llm_review(st, pos, ctx):
+    """复盘分析：先问 Agent 队列，等不到再按开关降级到付费云端。"""
+    payload = {'stats': st, 'positions': pos, 'market': ctx}
+    user = json.dumps(payload, ensure_ascii=False)
+    d = _review_agent(user, meta={'n_trades': st.get('total_trades'),
+                                  'n_pos': len(pos or [])})
+    if d is None and ALLOW_CLOUD:
+        d = _review_cloud(user)
+    if d is None:
+        return dict(REVIEW_FAIL, summary='Agent 队列无答案，复盘跳过')
+    return d
 
 
 def run_review():
     ex = make_fex()
     ex.load_markets()
-    client = _get_llm()
     trades = read_trades()
     st = stats(trades)
     pos, u_pnl = position_snapshot(ex)
     ctx = market_context(ex)
-    review = llm_review(client, st, pos, ctx)
+    review = llm_review(st, pos, ctx)
 
     evo = load_evo()
     entry = {

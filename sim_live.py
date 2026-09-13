@@ -264,7 +264,7 @@ CC_CLOUD_MODEL = "deepseek/deepseek-v4-flash"
 
 def _cc_key():
     import glob as _g
-    for envf in _g.glob("/mnt/c/Users/z7280/binance-llm-bot/.env"):
+    for envf in _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env"):
         try:
             for line in open(envf):
                 if line.startswith("COMMAND_CODE_API_KEY="):
@@ -312,20 +312,43 @@ def _llm_chat_ollama(system, user, timeout=480):
     return content
 
 
+def _agent_ask(kind, system, user, expect_json=True, wait=None):
+    """优先问「我」（llm_agent 文件队列，免费）。没等到答案返回 None。"""
+    try:
+        import llm_agent
+        a = llm_agent.ask(kind, system, user, expect_json=expect_json, wait=wait)
+        if a is None:
+            return None
+        return a if isinstance(a, str) else json.dumps(a, ensure_ascii=False)
+    except Exception as e:
+        print("  [agent-llm] 不可用(%s)，走降级" % str(e)[:80])
+        return None
+
+
+def _cloud_allowed():
+    return os.environ.get("AGENT_LLM_ALLOW_CLOUD", "0") in ("1", "true", "yes", "on")
+
+
 def _llm_chat(system, user, timeout=480):
-    """commandcode 优先 → ollama 降级；空返回自动重试。"""
-    errs = []
-    import time as _t
-    for attempt in range(3):
-        try:
-            c = _llm_chat_cc(system, user, timeout=min(timeout, 120))
-            if c.strip():
-                return c
-            errs.append("cc 空返回(第%d次)" % (attempt + 1))
-        except Exception as e:
-            errs.append("cc: %s" % e)
-        _t.sleep(1.5 * (attempt + 1))
-    return _llm_chat_ollama(system, user, timeout=timeout)
+    """Agent 队列（免费）→ ollama（免费）→ [付费云端，默认停用]。"""
+    c = _agent_ask("candidates", system, user, expect_json=True)
+    if c and c.strip():
+        return c
+    try:
+        return _llm_chat_ollama(system, user, timeout=timeout)
+    except Exception as e:
+        errs = ["ollama: %s" % str(e)[:80]]
+    if _cloud_allowed():
+        import time as _t
+        for attempt in range(2):
+            try:
+                c = _llm_chat_cc(system, user, timeout=min(timeout, 120))
+                if c.strip():
+                    return c
+            except Exception as e:
+                errs.append("cc: %s" % e)
+            _t.sleep(1.5 * (attempt + 1))
+    raise RuntimeError("；".join(errs))
 
 
 def llm_review_candidates(cands, macro_llm=None):
@@ -400,19 +423,17 @@ def _json_of(text):
 
 
 def _llm_chat_fast(system, user):
-    """盘中调用：cc 一次 → ollama 一次，不重试。
+    """盘中调用：先问我（等 AGENT_LLM_WAIT_FAST 秒，默认不等待只登记），
+    再走 ollama 本地；不重试，失败即熔断放行。
 
-    cc 首次失败（含超时）后同样给 ollama 机会：重块抢 CPU 时云端会偶发超时，
-    此时本地模型往往还能答（实测 cc 2.3s / ollama 7.7s 空闲时）。
+    盘中闸门 2 分钟一轮，不能为等我而卡住 —— 默认 AGENT_LLM_WAIT_FAST=0：
+    只把问题登记进队列，我不在线就交给 ollama / 规则放行。
     """
     errs = []
-    try:
-        c = _llm_chat_cc(system, user, timeout=GATE_TIMEOUT)
-        if c.strip():
-            return c
-        errs.append("cc 空返回")
-    except Exception as e:
-        errs.append("cc: %s" % str(e)[:60])
+    wait = float(os.environ.get("AGENT_LLM_WAIT_FAST", "0"))
+    c = _agent_ask("gate", system, user, expect_json=True, wait=wait)
+    if c and c.strip():
+        return c
     try:
         c = _llm_chat_ollama(system, user, timeout=GATE_TIMEOUT * 2)
         if c.strip():
@@ -420,6 +441,14 @@ def _llm_chat_fast(system, user):
         errs.append("ollama 空返回")
     except Exception as e:
         errs.append("ollama: %s" % str(e)[:60])
+    if _cloud_allowed():
+        try:
+            c = _llm_chat_cc(system, user, timeout=GATE_TIMEOUT)
+            if c.strip():
+                return c
+            errs.append("cc 空返回")
+        except Exception as e:
+            errs.append("cc: %s" % str(e)[:60])
     raise RuntimeError("；".join(errs))
 
 

@@ -15,6 +15,13 @@ LLM 只在 review.py 里做事后复盘，提的建议（加 SMA20 过滤、别�
 - 兜底：LLM 不可用/超时/解析失败 → 全部放行（绝不因 LLM 停盘）；连错 3 次熔断 10 分钟
 - 开关：BN_LLM_GATE=0 关闭；BN_LLM_GATE_TIMEOUT 改超时（默认 30s）
 
+LLM 通道（免费优先）
+--------------------
+1. Agent 文件队列（默认）：提问落 data/llm_queue/pending/<id>.json，由我（WorkBuddy）
+   回答后写回 done/，程序轮询读取。等不到 → None → 放行（不卡主流程）。
+   等待时长 BN_LLM_GATE_WAIT（默认取 AGENT_LLM_WAIT，45s；0=只登记不等待）。
+2. 付费云端：仅当 AGENT_LLM_ALLOW_CLOUD=1 时作为兜底（默认关闭 = 不再花钱）。
+
 用法：
     from llm_gate import gate
     dec = gate(st, tasks, ctx_note="池净值 98.2（回撤 4.1%）")
@@ -46,7 +53,9 @@ def _client():
 
 
 def _json_of(text):
-    """从 LLM 返回里抠 JSON（容错 ```json 包裹 / 前后废话）。"""
+    """从 LLM 返回里抠 JSON（容错 ```json 包裹 / 前后废话 / 已是 dict）。"""
+    if isinstance(text, (dict, list)):      # Agent 队列返回的是已解析对象
+        return text
     if not text or not text.strip():
         raise ValueError('空返回')
     t = text.strip()
@@ -99,8 +108,8 @@ SYS_PROMPT = """你是币安（加密/股票永续）的趋势跟随交易风控
 id 必须原样照抄（t1/t2/...），不得替换成标的代码；逐一回答所有 id。"""
 
 
-def _call(tasks, ctx_note=''):
-    """一次批量评审，返回 {id: {verdict,note}}；失败返回 None。"""
+def _build_prompt(tasks, ctx_note=''):
+    """构造提问（云端通道与 Agent 队列共用同一份 prompt）。"""
     short, lines = {}, []
     for i, t in enumerate(tasks, 1):
         sid = 't%d' % i
@@ -129,13 +138,11 @@ def _call(tasks, ctx_note=''):
                     extra, t.get('why') or '', kind))
     user = '【账户背景】%s\n\n【待复核触发】\n%s\n\n逐个给出 allow/avoid，id 原样返回。' % (
         ctx_note or '无', '\n'.join(lines))
-    client = _client()
-    r = client.chat.completions.create(
-        model=os.environ.get('LLM_MODEL', DEFAULT_MODEL),
-        messages=[{'role': 'system', 'content': SYS_PROMPT},
-                  {'role': 'user', 'content': user}],
-        max_tokens=1200, timeout=TIMEOUT)
-    text = (r.choices[0].message.content or '').strip()
+    return SYS_PROMPT, user, short
+
+
+def _parse(text, short):
+    """把 LLM/我的返回解析成 {task_id: {verdict, note}}。"""
     j = _json_of(text)
     out = {}
     for x in (j.get('decisions') or []):
@@ -151,6 +158,80 @@ def _call(tasks, ctx_note=''):
             'verdict': 'avoid' if str(x.get('verdict')).lower() == 'avoid' else 'allow',
             'note': (x.get('note') or '')[:40]}
     return out or None
+
+
+# ---------------- 通道一：Agent 文件队列（免费，优先） ----------------
+# 程序把提问写到 data/llm_queue/pending/，由我（WorkBuddy）回答后落到 done/。
+# 等不到答案 → 返回 None，调用方按原逻辑降级（这里即「放行」），绝不卡主流程。
+# 闸门只等 45s：T+0 市场里止盈/保本单不能为等 LLM 而拖延。等不到 → 放行（等于按规则执行）。
+# 想让我更多地接管这里，可设 BN_LLM_GATE_WAIT，代价是成交被推迟同等时间。
+AGENT_WAIT = float(os.environ.get('BN_LLM_GATE_WAIT', '45'))
+ALLOW_CLOUD = os.environ.get('AGENT_LLM_ALLOW_CLOUD', '0').lower() in ('1', 'true', 'yes', 'on')
+
+
+def _agent_mod():
+    """导入仓库根的 llm_agent（本模块在 binance-llm-bot/ 子目录）。"""
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import llm_agent
+    return llm_agent
+
+
+def _call_agent(system, user, short, meta=None):
+    try:
+        la = _agent_mod()
+    except Exception as e:
+        print('  [llm][gate] Agent 队列不可用: %s' % str(e)[:80])
+        return None
+    try:
+        ans = la.ask('bn_gate', system, user, expect_json=True, wait=AGENT_WAIT,
+                     meta=meta, schema='{"decisions":[{"id":"t1","verdict":"allow|avoid",'
+                                       '"note":"≤20字理由"}]}')
+    except Exception as e:
+        print('  [llm][gate] Agent 队列异常: %s' % str(e)[:80])
+        return None
+    if ans is None:
+        return None
+    try:
+        return _parse(ans if isinstance(ans, (dict, list))
+                      else json.dumps(ans, ensure_ascii=False), short)
+    except Exception as e:
+        print('  [llm][gate] Agent 答案解析失败: %s' % str(e)[:80])
+        return None
+
+
+def _call_cloud(system, user, short):
+    """通道二：付费云端（默认停用，AGENT_LLM_ALLOW_CLOUD=1 才走）。"""
+    client = _client()
+    r = client.chat.completions.create(
+        model=os.environ.get('LLM_MODEL', DEFAULT_MODEL),
+        messages=[{'role': 'system', 'content': system},
+                  {'role': 'user', 'content': user}],
+        max_tokens=1200, timeout=TIMEOUT)
+    text = (r.choices[0].message.content or '').strip()
+    return _parse(text, short)
+
+
+def _call(tasks, ctx_note=''):
+    """成交前复核：Agent 队列优先，等不到再按开关降级到付费云端。"""
+    system, user, short = _build_prompt(tasks, ctx_note)
+    meta = {'n': len(tasks), 'ctx': (ctx_note or '')[:200],
+            'tasks': [{'id': sid, 'symbol': t.get('symbol'), 'name': t.get('name'),
+                       'action': t.get('action'),
+                       'why': (t.get('why') or '')[:60]}
+                      for sid, t in sorted(short.items())]}
+    dec = _call_agent(system, user, short, meta=meta)
+    if dec is not None:
+        return dec
+    if not ALLOW_CLOUD:
+        return None
+    try:
+        return _call_cloud(system, user, short)
+    except Exception as e:
+        print('  [llm][gate] 云端调用失败: %s' % str(e)[:80])
+        return None
 
 
 def gate(state, tasks, ctx_note=''):

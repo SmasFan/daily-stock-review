@@ -9,7 +9,7 @@
 - 交易纪律：乖离>5% 严禁追高；只做 MA5>MA10>MA20 多头
 """
 from dataclasses import dataclass, field, asdict
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from . import indicators as ind
 
