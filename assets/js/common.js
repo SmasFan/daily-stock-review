@@ -79,6 +79,7 @@
         ['backtest', '回测', 'flask', 'backtest.html'],
         ['tracking', '跟踪', 'route', 'tracking.html'],
         ['metals', '期货', 'coins', 'metals.html'],
+        ['industry', '产业', 'gem', 'industry.html'],
         ['sim', '模拟盘', 'gamepad', 'sim.html'],
         ['simlive', '实时模拟', 'stopwatch', 'sim_live.html'],
         ['binance', '币安Bot', 'wallet', 'binance.html'],

@@ -103,6 +103,8 @@ if [ "$IN_TRADING" = "1" ]; then
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中期货数据生成失败" >> data/auto_run.log
     python3 build_mainline.py >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] 盘中主线数据生成失败" >> data/auto_run.log
+    python3 build_industry.py >> data/auto_run.log 2>&1 \
+      || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中产业跟踪数据生成失败，沿用上次" >> data/auto_run.log
   fi
 
   # 每 60 分钟（整点）：盘中播报推送（复盘数据由每 30 分钟刷新提供）

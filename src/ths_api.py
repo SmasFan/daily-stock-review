@@ -81,6 +81,9 @@ def _code_to_thscode(code):
         return code
     if len(code) != 6 or not code.isdigit():
         return None
+    # 北交所：920/921 新代码段 + 43/83/87/88 老代码段（原先被误判为 .SZ/.SH，导致估值批量接口整批返回空）
+    if code.startswith(("92", "43", "83", "87", "88")):
+        return code + ".BJ"
     if code.startswith(("6", "9", "5")):
         return code + ".SH"
     return code + ".SZ"

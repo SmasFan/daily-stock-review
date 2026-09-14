@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产业跟踪 · 染料涨价周期 &amp; 钻石超硬</title>
+<link rel="stylesheet" href="assets/css/common.css?v=3">
+<style>
+  .pg-thesis { font-size:12.5px; color:var(--text-2); line-height:1.75; }
+  .pg-thesis li { margin-bottom:4px; }
+  .pg-thesis-wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .pg-watch { font-size:12px; color:var(--text-2); line-height:1.7; padding-left:2px; }
+  .pg-watch li { margin-bottom:3px; }
+  .pg-core { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; margin-top:12px; }
+  .pg-rowlink { font-size:11px; color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="container" id="app"><div class="loading">数据加载中…</div></div>
+<script src="assets/js/common.js?v=2"></script>
+<script src="assets/js/rvui.js?v=2"></script>
+<script src="assets/js/stockchart.js?v=3"></script>
+<script>
+(async function () {
+  const app = document.getElementById('app');
+  const TITLE = '产业跟踪', SUB = '染料·中间体涨价周期 / 钻石·超硬材料（AI 散热）';
+  try {
+    const d = await RV.API.fetch('industry_track.json');
+    const groups = d.groups || [];
+    if (!groups.length) {
+      app.innerHTML = RV.ui.header(TITLE, SUB, 'industry', d.generatedAt) + RVX.empty('暂无数据，请先运行 python3 build_industry.py');
+      return;
+    }
+    // 每板块核心标的（前端只做筛选，不计算）
+    const CORE = { dye: ['600352', '002440', '603980'], diamond: ['000519', '301071', '300179'] };
+    const peTxt = v => v == null ? '--' : (v <= 0 ? '<span class="neutral">亏损</span>' : RV.fmt.num(v, 1));
+    const pct = v => RVX.colored(v);
+
+    /* ---------- 顶部总览 KPI ---------- */
+    function overview() {
+      const cards = [];
+      groups.forEach(g => {
+        const s = g.stats;
+        cards.push({ label: g.name + ' 今日均涨', val: RV.fmt.pct(s.avg_change), cls: RV.fmt.cls(s.avg_change), sub: `${s.up_count} 涨 / ${s.down_count} 跌 · ${s.count} 只`, icon: g.icon });
+        cards.push({ label: g.name + ' 5 日', val: RV.fmt.pct(s.avg_5d), cls: RV.fmt.cls(s.avg_5d), icon: 'arrow-trend-up' });
+        cards.push({ label: g.name + ' 20 日', val: RV.fmt.pct(s.avg_20d), cls: RV.fmt.cls(s.avg_20d), icon: 'chart-line' });
+        cards.push({ label: g.name + ' 中位 PE', val: s.median_pe == null ? '--' : RV.fmt.num(s.median_pe, 1), sub: `多头 ${s.bull_count} 只`, icon: 'scale-balanced' });
+      });
+      return RVX.kpis(cards);
+    }
+
+    /* ---------- 板块总览区块（带侧边栏锚点） ---------- */
+    function overviewSection() {
+      const chips = groups.map(g => `${g.name} ${RV.fmt.pct(g.stats.avg_change)}`);
+      return `<div class="sec pg-ov" data-nav="板块总览" data-nav-icon="gauge-high">
+        <div class="sec-title"><span class="ti">${RV.ui.icon('gauge-high')}</span>板块总览
+        <span style="margin-left:auto;display:flex;gap:6px">${chips.map(c => `<span class="sec-chip" style="font-size:11px;color:var(--text-2);background:var(--surface-2);padding:2px 8px;border-radius:6px;font-weight:600">${c}</span>`).join('')}</span></div>
+        ${overview()}</div>`;
+    }
+
+    /* ---------- 板块：逻辑 + 催化 + 观察点 + 核心卡 + 成分表 ---------- */
+    function groupSection(g) {
+      const core = (CORE[g.key] || []).map(c => g.stocks.find(s => s.code === c)).filter(Boolean);
+      const coreCards = core.map(s => RVX.stockCard({
+        name: s.name, code: s.code, sector: g.name, price: s.price, change_pct: s.change_pct,
+        ma20: s.ma20, stop_loss: s.stop_loss, take_profit: s.take_profit,
+        score: s.score, signal_key: s.signal_key, signal: s.signal, change_60d: s.change_60d,
+        trend_status: s.trend_status, macd_status: s.macd_status, rsi12: s.rsi12,
+        rsi_status: s.rsi_status, volume_status: s.volume_status, reason: s.role,
+      }, { click: true, codeAttr: `onclick="window.__stock('${s.code}')"`, reasonLen: 70 })).join('');
+
+      const catTable = RVX.table([
+        { k: 'item', label: '跟踪项' },
+        { k: 'value', label: '当前值' },
+        { k: 'note', label: '说明' },
+      ], g.catalysts || [], { emptyText: '暂无催化数据' });
+
+      const cols = [
+        { k: 'name', label: '个股', render: (v, r) => `<span class="sname" onclick="window.__stock('${r.code}')" style="cursor:pointer">${v}</span> <span class="date-tag">${r.code}</span>` },
+        { k: 'role', label: '产业地位 / 看点', render: v => `<span style="font-size:11.5px;color:var(--text-2)">${v || '--'}</span>` },
+        { k: 'price', label: '现价', render: v => v == null ? '--' : RV.fmt.num(v, 2) },
+        { k: 'change_pct', label: '今日', render: v => pct(v), cls: v => RV.fmt.cls(v) },
+        { k: 'change_5d', label: '5日', render: v => pct(v), cls: v => RV.fmt.cls(v) },
+        { k: 'change_20d', label: '20日', render: v => pct(v), cls: v => RV.fmt.cls(v) },
+        { k: 'change_60d', label: '60日', render: v => pct(v), cls: v => RV.fmt.cls(v) },
+        { k: 'from_60d_high', label: '距60高', render: v => pct(v), cls: v => RV.fmt.cls(v) },
+        { k: 'pe_ttm', label: 'PE', render: v => peTxt(v) },
+        { k: 'pb_mrq', label: 'PB', render: v => v == null ? '--' : RV.fmt.num(v, 2) },
+        { k: 'ma_state', label: '均线', render: (v, r) => `<span class="sec-chip">${v || '--'}</span>${r.trend_status ? ' <span style="font-size:11px;color:var(--text-2)">' + r.trend_status + '</span>' : ''}` },
+        { k: 'rsi6', label: 'RSI6', render: v => v == null ? '--' : RV.fmt.num(v, 1) },
+        { k: 'volume_ratio', label: '量比', render: v => v == null ? '--' : RV.fmt.num(v, 2) },
+        { k: 'score', label: '评分', render: (v, r) => v == null ? '--' : `<b class="${v >= 68 ? 'up' : v >= 40 ? 'watch' : 'down'}">${v}</b> ${RV.ui.signalBadge(r.signal_key, r.signal)}` },
+      ];
+
+      const body = `
+        <div class="pg-thesis-wrap">
+          <div>
+            <div style="font-weight:800;font-size:13px;margin-bottom:6px">${RV.ui.icon('lightbulb', 'fa-xs')} 产业逻辑</div>
+            <ul class="pg-thesis">${(g.thesis || []).map(t => `<li>${t}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <div style="font-weight:800;font-size:13px;margin-bottom:6px">${RV.ui.icon('triangle-exclamation', 'fa-xs')} 观察点 / 证伪信号</div>
+            <ul class="pg-watch">${(g.watch || []).map(t => `<li>${t}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div style="font-weight:800;font-size:13px;margin:14px 0 6px">${RV.ui.icon('tags', 'fa-xs')} 价格 / 催化跟踪</div>
+        ${catTable}
+        <div style="font-weight:800;font-size:13px;margin:16px 0 2px">${RV.ui.icon('star', 'fa-xs')} 核心标的</div>
+        <div class="pg-core">${coreCards}</div>
+        <div style="font-weight:800;font-size:13px;margin:16px 0 6px">${RV.ui.icon('list', 'fa-xs')} 成分股全览（${g.stocks.length} 只，点击名称看个股卡与行情）</div>
+        ${RVX.table(cols, g.stocks, { emptyText: '暂无成分股' })}`;
+
+      return RVX.section(g.name, g.icon, body, [g.tag, `均涨 ${RV.fmt.pct(g.stats.avg_change)}`, `${g.stats.up_count}/${g.stats.count} 上涨`, `生成 ${d.generatedAt.slice(5, 16)}`], `pg-grp-${g.key}`);
+    }
+
+    app.innerHTML = RV.ui.header(TITLE, SUB, 'industry', d.generatedAt)
+      + overviewSection()
+      + groups.map(groupSection).join('')
+      + '<footer>数据源：腾讯行情 + 同花顺估值 + src/analyzer 技术因子 · 产业字段由 build_industry.py 维护 · 仅供研究，不构成投资建议</footer>';
+    // 侧边栏锚点：板块区块（内容区块 ≥2 必选，见 docs/UI-STANDARD.md §7）
+    groups.forEach(g => {
+      const el = app.querySelector('.pg-grp-' + g.key);
+      if (el) { el.setAttribute('data-nav', g.name); el.setAttribute('data-nav-icon', g.icon); }
+    });
+    RV.ui.initSidebar();
+  } catch (e) {
+    app.innerHTML = RV.ui.header(TITLE, SUB, 'industry') + RV.ui.error(e);
+  }
+})();
+</script>
+</body>
+</html>

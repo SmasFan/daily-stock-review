@@ -29,6 +29,14 @@ def main():
                 codes.add(str(t["code"]))
     except Exception as e:
         print("无 sim_live: %s" % e)
+    # 产业跟踪（industry.html：染料化工 / 钻石超硬）成分股也导出，供个股弹卡行情图使用
+    try:
+        ind = json.load(open(os.path.join(BASE, "data", "industry_track.json"), encoding="utf-8"))
+        for g in ind.get("groups", []):
+            for s in g.get("stocks", []):
+                codes.add(str(s["code"]))
+    except Exception as e:
+        print("无 industry_track: %s" % e)
     for c in sorted(codes):
         src = os.path.join(CACHE, "kline_%s.json" % c)
         if os.path.exists(src):

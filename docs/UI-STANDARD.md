@@ -126,6 +126,7 @@
 | backtest.html | backtest | 侧栏 + 绩效表 + 调仓折叠 + 净值图 |
 | tracking.html | tracking | 稳定榜 + 历史折叠组 |
 | metals.html | metals | 分组行情卡 + 期货图 |
+| industry.html | industry | kpis + section（逻辑/催化/观察点）+ 核心标的 stockCard + 成分股表 + 个股弹卡 |
 | sim.html | sim | 窗口切换 + 策略卡 + 净值/收益图 + 交易折叠 + 弹层 |
 | sim_live.html | simlive | kpi + 净值图(买卖点) + 持仓/流水 + 日志/复盘 + 弹层 |
 | watchlist.html | (旧独立) | 板块汇总 + 板块卡 + 个股 modal（历史遗留，新代码勿模仿） |

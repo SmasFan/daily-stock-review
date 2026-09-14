@@ -41,6 +41,7 @@ python -m http.server 8000
 - [持仓跟踪](holdings.html) —— 盘中实时跟踪 + 盘后复盘 + 网格策略操作提醒（配置见 holdings.json）
 - [网格回测](backtest.html) —— 均衡偏低均值线 + 不对称网格回测
 - [有色金属期货](metals.html) —— SHFE 主力连续合约（铜/铝/锌/铅/镍/锡）行情、走势与技术因子，点击展开各品种
+- [产业跟踪](industry.html) —— 染料·中间体涨价周期 与 钻石·超硬材料（AI 芯片金刚石散热）：产业逻辑、价格/催化跟踪表、证伪信号、成分股全览与个股弹卡
 
 ## 持仓配置（holdings.json）
 
@@ -94,9 +95,10 @@ data/
 ├── backtest_data.json   # 网格回测数据
 ├── holdings_data.json   # 持仓数据
 ├── metals_data.json     # 有色金属期货行情/技术因子数据
+├── industry_track.json  # 产业跟踪（染料化工 / 钻石超硬：逻辑+催化+成分股）
 ├── walk_forward_data.json # walk-forward 参数敏感性结果
 └── cache/               # K线/估值/分红/涨跌家数缓存（不入库）
-index.html / review.html / recommend.html / holdings.html / backtest.html / metals.html   # 数据驱动页面
+index.html / review.html / recommend.html / holdings.html / backtest.html / metals.html / industry.html   # 数据驱动页面
 ```
 
 ## 分析逻辑口径
