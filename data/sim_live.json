@@ -12,41 +12,16 @@
    "all"
   ],
   "llm_gate": {
-   "date": "2026-09-11",
+   "date": "2026-09-14",
    "items": {
-    "all|mix|516910|buy": {
+    "all|aggressive|002430|sell": {
      "verdict": "allow",
-     "note": "回踩买点，共识一致",
-     "ts": "09:32:01"
-    },
-    "all|mix|600036|buy": {
-     "verdict": "allow",
-     "note": "回踩到位，未明显弱势",
-     "ts": "09:32:01"
-    },
-    "all|aggressive|601233|sell": {
-     "verdict": "allow",
-     "note": "硬止损不可否决，确认执行",
-     "ts": "09:38:01"
-    },
-    "all|balanced|601233|sell": {
-     "verdict": "allow",
-     "note": "硬止损不可否决，确认执行",
-     "ts": "09:38:01"
-    },
-    "all|aggressive|600346|sell": {
-     "verdict": "allow",
-     "note": "硬止损，现价破位且当日大跌，执行",
-     "ts": "13:34:01"
-    },
-    "all|balanced|600346|sell": {
-     "verdict": "allow",
-     "note": "硬止损不可否决，确认卖出",
-     "ts": "13:34:01"
+     "note": "硬止损强制执行",
+     "ts": "13:18:01"
     }
    },
    "stat": {
-    "llm": 4,
+    "llm": 1,
     "cache": 0,
     "fallback": 0,
     "off": 0
@@ -67,7 +42,7 @@
    "2026-09-14": {
     "gate": "block",
     "why": "LLM宏观防御；宏观数据过期70h(已不参与多头判断)",
-    "ts": "13:16:01"
+    "ts": "13:24:02"
    }
   }
  },
@@ -146,7 +121,7 @@
      "key": "aggressive",
      "label": "激进",
      "start_cash": 50000.0,
-     "cash": 19669.098399999995,
+     "cash": 29800.986399999994,
      "positions": [
       {
        "code": "002493",
@@ -165,37 +140,15 @@
        "prev_close": 13.6,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.27,
-       "last_chg": -2.43,
-       "last_ts": "13:16:01",
+       "last": 13.23,
+       "last_chg": -2.72,
+       "last_ts": "13:24:02",
        "last_close": 13.56,
        "ext": {
         "score": 4.8,
         "why": "外部:石化",
         "backfill": true
        }
-      },
-      {
-       "code": "002430",
-       "name": "杭氧股份",
-       "shares": 400,
-       "cost": 26.73,
-       "buy_date": "2026-09-07",
-       "buy_time": "10:45:47",
-       "stop_atr": 25.38,
-       "stop_ma": null,
-       "tp": 32.712,
-       "trail": 0.1,
-       "be_at": null,
-       "be_on": false,
-       "peak": 27.6,
-       "prev_close": 26.75,
-       "score": 86,
-       "signal": "强烈买入",
-       "last": 25.47,
-       "last_chg": -4.79,
-       "last_ts": "13:16:01",
-       "last_close": 26.65
       },
       {
        "code": "600900",
@@ -214,9 +167,9 @@
        "prev_close": 28.45,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.54,
-       "last_chg": 0.32,
-       "last_ts": "13:16:01",
+       "last": 28.55,
+       "last_chg": 0.35,
+       "last_ts": "13:24:02",
        "last_close": 28.43
       }
      ],
@@ -497,6 +450,27 @@
        "llm": {
         "verdict": "allow",
         "note": "硬止损，现价破位且当日大跌，执行",
+        "src": "llm"
+       }
+      },
+      {
+       "action": "sell",
+       "date": "2026-09-14",
+       "time": "13:18:01",
+       "code": "002430",
+       "name": "杭氧股份",
+       "price": 25.35,
+       "shares": 400,
+       "ext": null,
+       "chg_at_fill": -5.23,
+       "pnl": -552.0,
+       "pnl_pct": -5.16,
+       "reason": "破ATR/保本止损 25.38",
+       "strategy": "aggressive",
+       "pool": "all",
+       "llm": {
+        "verdict": "allow",
+        "note": "硬止损强制执行",
         "src": "llm"
        }
       }
@@ -1175,6 +1149,11 @@
        "date": "2026-09-14",
        "kind": "plan",
        "note": "[全池]激进 盘中复盘刷新: 新增 宁波中百"
+      },
+      {
+       "date": "2026-09-14",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [
@@ -1220,9 +1199,9 @@
        "prev_close": 13.6,
        "score": 88,
        "signal": "强烈买入",
-       "last": 13.27,
-       "last_chg": -2.43,
-       "last_ts": "13:16:01",
+       "last": 13.23,
+       "last_chg": -2.72,
+       "last_ts": "13:24:02",
        "last_close": 13.56,
        "ext": {
         "score": 4.8,
@@ -1247,9 +1226,9 @@
        "prev_close": 22.28,
        "score": 86,
        "signal": "强烈买入",
-       "last": 22.01,
-       "last_chg": -1.21,
-       "last_ts": "13:16:01",
+       "last": 21.92,
+       "last_chg": -1.62,
+       "last_ts": "13:24:02",
        "last_close": 22.18
       }
      ],
@@ -2188,6 +2167,11 @@
        "date": "2026-09-14",
        "kind": "plan",
        "note": "[全池]稳健 盘中复盘刷新: 新增 深南电路,航发动力"
+      },
+      {
+       "date": "2026-09-14",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [
@@ -3035,6 +3019,11 @@
        "date": "2026-09-14",
        "kind": "plan",
        "note": "[全池]严守纪律 盘中复盘刷新: 新增 宁波中百"
+      },
+      {
+       "date": "2026-09-14",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -3080,9 +3069,9 @@
       "from": [
        "aggressive"
       ],
-      "last": 16.53,
-      "last_chg": 9.98,
-      "last_ts": "13:16:01",
+      "last": 16.51,
+      "last_chg": 9.85,
+      "last_ts": "13:24:02",
       "last_close": 15.07
      }
     ],
@@ -3716,6 +3705,11 @@
       "date": "2026-09-14",
       "kind": "plan",
       "note": "[全池]合并·共识 盘中复盘刷新: 新增 宁波中百"
+     },
+     {
+      "date": "2026-09-14",
+      "kind": "plan",
+      "note": "[全池]合并·共识：12 单待触发（共识3:4 共识2:3 共识1:5）（大盘闸门挡）"
      }
     ],
     "review_log": [],
@@ -3873,9 +3867,9 @@
        "prev_close": 74.5,
        "score": 73,
        "signal": "买入",
-       "last": 73.59,
-       "last_chg": -1.22,
-       "last_ts": "13:16:01",
+       "last": 73.41,
+       "last_chg": -1.46,
+       "last_ts": "13:24:02",
        "last_close": 74.4
       },
       {
@@ -3895,9 +3889,9 @@
        "prev_close": 28.45,
        "score": 70,
        "signal": "买入",
-       "last": 28.54,
-       "last_chg": 0.32,
-       "last_ts": "13:16:01",
+       "last": 28.55,
+       "last_chg": 0.35,
+       "last_ts": "13:24:02",
        "last_close": 28.43
       },
       {
@@ -3917,9 +3911,9 @@
        "prev_close": 35.5,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.61,
-       "last_chg": 0.31,
-       "last_ts": "13:16:01",
+       "last": 35.64,
+       "last_chg": 0.39,
+       "last_ts": "13:24:02",
        "last_close": 35.48
       },
       {
@@ -3939,9 +3933,9 @@
        "prev_close": 64.07,
        "score": 74,
        "signal": "买入",
-       "last": 61.86,
-       "last_chg": -3.45,
-       "last_ts": "13:16:01",
+       "last": 61.75,
+       "last_chg": -3.62,
+       "last_ts": "13:24:02",
        "last_close": 64.04
       }
      ],
@@ -4345,6 +4339,11 @@
       },
       {
        "date": "2026-09-11",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-14",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
       },
@@ -4811,6 +4810,11 @@
        "date": "2026-09-14",
        "kind": "plan",
        "note": "[6股精选]稳健：1 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-14",
+       "kind": "plan",
+       "note": "[6股精选]稳健：1 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5233,6 +5237,11 @@
        "date": "2026-09-14",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-14",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5529,6 +5538,11 @@
       "date": "2026-09-14",
       "kind": "plan",
       "note": "[6股精选]合并·共识：1 单待触发（共识3:0 共识2:1 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-14",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：1 单待触发（共识3:0 共识2:0 共识1:1）（大盘闸门挡）"
      },
      {
       "date": "2026-09-14",
