@@ -62,7 +62,20 @@ timeout 120 python3 build_external.py >> "$LOG" 2>&1 \
 # 场景：在 Windows 侧（WorkBuddy）改过代码并提交，但 Windows 侧没有 GitHub 私钥，
 # push 会被 Host key verification 挡下 → 提交一直躺在本地。WSL 侧有 key，
 # 这里每天 8 次地检查并补推，保证云端 workflow 与 Pages 不会长期落后于本地。
+#
+# 先清理未完成的 rebase/merge：pull --rebase 撞上 data/*.json 冲突会停在中途，
+# 之后所有 commit 都落在 detached HEAD 上（不进 main、推不上去）——
+# 2026-09-14 曾因此让本地提交在无人分支上积压一整天。
+git_cleanup_state() {
+  [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ] || [ -f .git/MERGE_HEAD ] || return 0
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 检测到未完成的 rebase/merge，abort 恢复干净状态" >> "$LOG"
+  git rebase --abort >> "$LOG" 2>&1 || true
+  git merge --abort >> "$LOG" 2>&1 || true
+  git checkout main >> "$LOG" 2>&1 || true
+}
+
 push_backlog() {
+  git_cleanup_state
   git fetch origin main --quiet 2>/dev/null || true
   local n
   n=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
@@ -94,9 +107,12 @@ done
 
 for i in 1 2 3; do
   # 先对齐远端再推（盘中/云端脚本可能刚推过），失败不阻断，交给 push 重试
-  git pull --rebase origin main >> "$LOG" 2>&1 || true
+  # 冲突时 abort 掉半成品 rebase，避免后续 commit 落到 detached HEAD
+  git pull --rebase origin main >> "$LOG" 2>&1 || git_cleanup_state
   git push -u origin main >> "$LOG" 2>&1 && { echo "[$(date '+%Y-%m-%d %H:%M:%S')] push 成功" >> "$LOG"; break; }
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] push 第${i}次失败，重试..." >> "$LOG"
   sleep 5
 done
+# 末尾再补一次积压（本轮 push 失败时，把它们留到下一段，别攒成 detached HEAD）
+push_backlog
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 完成" >> "$LOG"
