@@ -1,54 +1,28 @@
 {
- "generatedAt": "2026-09-11 15:51:57",
+ "generatedAt": "2026-09-14 16:15:41",
  "plan": {
-  "n": 15,
+  "n": 11,
   "dist": {
-   "-2.5": 3,
-   "-1.0": 6,
-   "-0.5": 3,
-   "0.5": 3
+   "-1.5": 4,
+   "0.5": 4,
+   "2.5": 2,
+   "5.0": 1
   }
  },
  "hold": {
-  "n": 2,
+  "n": 0,
   "ic": null,
-  "buckets": {
-   "强利好(≥2)": {
-    "n": 2,
-    "avg": -3.898,
-    "median": -3.898,
-    "win": 0.0
-   }
-  },
-  "detail": [
-   {
-    "pool": "all",
-    "acct": "aggressive",
-    "code": "002493",
-    "name": "荣盛石化",
-    "ext": 4.8,
-    "ret": -3.898,
-    "since": "2026-09-07"
-   },
-   {
-    "pool": "all",
-    "acct": "balanced",
-    "code": "002493",
-    "name": "荣盛石化",
-    "ext": 4.8,
-    "ret": -3.898,
-    "since": "2026-09-07"
-   }
-  ]
+  "buckets": {},
+  "detail": []
  },
  "closed": {
-  "n": 2,
+  "n": 4,
   "ic": null,
   "buckets": {
    "强利好(≥2)": {
-    "n": 2,
-    "avg": -6.21,
-    "median": -6.21,
+    "n": 4,
+    "avg": -6.47,
+    "median": -6.47,
     "win": 0.0
    }
   },
@@ -66,6 +40,17 @@
    },
    {
     "pool": "all",
+    "acct": "aggressive",
+    "code": "002493",
+    "name": "荣盛石化",
+    "action": "sell",
+    "ext": 4.8,
+    "date": "2026-09-14",
+    "pnl_pct": -6.73,
+    "ret": -3.24
+   },
+   {
+    "pool": "all",
     "acct": "balanced",
     "code": "600346",
     "name": "恒力石化",
@@ -74,6 +59,17 @@
     "date": "2026-09-11",
     "pnl_pct": -6.21,
     "ret": -5.65
+   },
+   {
+    "pool": "all",
+    "acct": "balanced",
+    "code": "002493",
+    "name": "荣盛石化",
+    "action": "sell",
+    "ext": 4.8,
+    "date": "2026-09-14",
+    "pnl_pct": -6.73,
+    "ret": -3.24
    }
   ]
  },
