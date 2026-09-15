@@ -56,8 +56,8 @@
    },
    "2026-09-15": {
     "gate": "block",
-    "why": "LLM宏观防御；宏观数据过期90h(已不参与多头判断)",
-    "ts": "09:58:01"
+    "why": "LLM宏观防御；宏观数据过期91h(已不参与多头判断)",
+    "ts": "10:14:02"
    }
   }
  },
@@ -155,46 +155,24 @@
        "prev_close": 28.63,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.52,
-       "last_chg": -0.38,
-       "last_ts": "09:58:01",
+       "last": 28.56,
+       "last_chg": -0.24,
+       "last_ts": "10:14:01",
        "last_close": 28.61
       }
      ],
      "plan": [
-      {
-       "code": "002142",
-       "name": "宁波银行",
-       "asof": "2026-09-15",
-       "score": 87,
-       "signal": "强烈买入",
-       "close": 35.52,
-       "buy_below": 35.342,
-       "stop_atr": 34.17,
-       "stop_ma": null,
-       "tp": 42.624,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:红利银行"
-       },
-       "reason": "强烈买入(87分) 回踩≤35.34 ATR止损34.17（外部:红利银行+1.5）"
-      },
       {
        "code": "600036",
        "name": "招商银行",
        "asof": "2026-09-15",
        "score": 87,
        "signal": "强烈买入",
-       "close": 41.7,
-       "buy_below": 41.49,
-       "stop_atr": 40.44,
+       "close": 41.44,
+       "buy_below": 41.233,
+       "stop_atr": 40.14,
        "stop_ma": null,
-       "tp": 50.04,
+       "tp": 49.728,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -204,7 +182,7 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤41.49 ATR止损40.44（外部:红利银行+1.5）"
+       "reason": "强烈买入(87分) 回踩≤41.23 ATR止损40.14（外部:红利银行+1.5）"
       },
       {
        "code": "600026",
@@ -231,11 +209,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 1.33,
-       "buy_below": 1.323,
-       "stop_atr": 1.27,
+       "close": 1.324,
+       "buy_below": 1.317,
+       "stop_atr": 1.26,
        "stop_ma": null,
-       "tp": 1.596,
+       "tp": 1.589,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -245,7 +223,7 @@
         "score": 2.4,
         "why": "外部:海油"
        },
-       "reason": "强烈买入(84分) 回踩≤1.32 ATR止损1.27（外部:海油+2.4）"
+       "reason": "强烈买入(84分) 回踩≤1.32 ATR止损1.26（外部:海油+2.4）"
       },
       {
        "code": "601988",
@@ -267,42 +245,26 @@
        "reason": "强烈买入(87分) 回踩≤6.54 ATR止损6.28"
       },
       {
-       "code": "002297",
-       "name": "博云新材",
+       "code": "002142",
+       "name": "宁波银行",
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 22.25,
-       "buy_below": 22.139,
-       "stop_atr": 19.29,
+       "close": 35.41,
+       "buy_below": 35.233,
+       "stop_atr": 34.04,
        "stop_ma": null,
-       "tp": 26.7,
+       "tp": 42.492,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(84分) 回踩≤22.14 ATR止损19.29"
-      },
-      {
-       "code": "603228",
-       "name": "景旺电子",
-       "asof": "2026-09-15",
-       "score": 77,
-       "signal": "买入",
-       "close": 111.16,
-       "buy_below": 110.14,
-       "stop_atr": 98.29,
-       "stop_ma": null,
-       "tp": 133.392,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "买入(77分) 回踩≤110.14 ATR止损98.29"
+       "ext": {
+        "score": 1.5,
+        "why": "外部:红利银行"
+       },
+       "reason": "强烈买入(84分) 回踩≤35.23 ATR止损34.04（外部:红利银行+1.5）"
       },
       {
        "code": "601838",
@@ -322,6 +284,44 @@
        "status": "wait",
        "ext": null,
        "reason": "强烈买入(84分) 回踩≤19.98 ATR止损19.39"
+      },
+      {
+       "code": "601009",
+       "name": "南京银行",
+       "asof": "2026-09-15",
+       "score": 84,
+       "signal": "强烈买入",
+       "close": 12.19,
+       "buy_below": 12.129,
+       "stop_atr": 11.74,
+       "stop_ma": null,
+       "tp": 14.628,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(84分) 回踩≤12.13 ATR止损11.74"
+      },
+      {
+       "code": "002297",
+       "name": "博云新材",
+       "asof": "2026-09-15",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 22.61,
+       "buy_below": 22.497,
+       "stop_atr": 19.58,
+       "stop_ma": null,
+       "tp": 27.132,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤22.50 ATR止损19.58"
       }
      ],
      "trades": [
@@ -1294,6 +1294,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]激进 盘中复盘刷新: 新增 南京银行"
       }
      ],
      "review_log": [
@@ -1343,46 +1353,24 @@
        "prev_close": 21.81,
        "score": 86,
        "signal": "强烈买入",
-       "last": 21.09,
-       "last_chg": -3.3,
-       "last_ts": "09:58:01",
+       "last": 20.92,
+       "last_chg": -4.08,
+       "last_ts": "10:14:01",
        "last_close": 21.82
       }
      ],
      "plan": [
-      {
-       "code": "002142",
-       "name": "宁波银行",
-       "asof": "2026-09-15",
-       "score": 87,
-       "signal": "强烈买入",
-       "close": 35.52,
-       "buy_below": 34.81,
-       "stop_atr": 34.17,
-       "stop_ma": 34.4,
-       "tp": 40.848,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:红利银行"
-       },
-       "reason": "强烈买入(87分) 回踩≤34.81 ATR止损34.17（外部:红利银行+1.5）"
-      },
       {
        "code": "600036",
        "name": "招商银行",
        "asof": "2026-09-15",
        "score": 87,
        "signal": "强烈买入",
-       "close": 41.7,
-       "buy_below": 40.866,
-       "stop_atr": 40.44,
-       "stop_ma": 40.44,
-       "tp": 47.955,
+       "close": 41.44,
+       "buy_below": 40.611,
+       "stop_atr": 40.14,
+       "stop_ma": 40.42,
+       "tp": 47.656,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -1392,7 +1380,7 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤40.87 ATR止损40.44（外部:红利银行+1.5）"
+       "reason": "强烈买入(87分) 回踩≤40.61 ATR止损40.14（外部:红利银行+1.5）"
       },
       {
        "code": "601988",
@@ -1412,6 +1400,28 @@
        "status": "wait",
        "ext": null,
        "reason": "强烈买入(87分) 回踩≤6.44 ATR止损6.28"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-15",
+       "score": 84,
+       "signal": "强烈买入",
+       "close": 35.41,
+       "buy_below": 34.702,
+       "stop_atr": 34.04,
+       "stop_ma": 34.4,
+       "tp": 40.721,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": 1.5,
+        "why": "外部:红利银行"
+       },
+       "reason": "强烈买入(84分) 回踩≤34.70 ATR止损34.04（外部:红利银行+1.5）"
       },
       {
        "code": "601009",
@@ -1457,11 +1467,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 1.33,
-       "buy_below": 1.303,
-       "stop_atr": 1.27,
+       "close": 1.324,
+       "buy_below": 1.298,
+       "stop_atr": 1.26,
        "stop_ma": 1.29,
-       "tp": 1.529,
+       "tp": 1.523,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -1471,7 +1481,7 @@
         "score": 2.4,
         "why": "外部:海油"
        },
-       "reason": "强烈买入(84分) 回踩≤1.30 ATR止损1.27（外部:海油+2.4）"
+       "reason": "强烈买入(84分) 回踩≤1.30 ATR止损1.26（外部:海油+2.4）"
       },
       {
        "code": "600026",
@@ -1493,23 +1503,26 @@
        "reason": "强烈买入(88分) 回踩≤20.36 ATR止损18.77"
       },
       {
-       "code": "601288",
-       "name": "农业银行",
+       "code": "600900",
+       "name": "长江电力",
        "asof": "2026-09-15",
        "score": 83,
        "signal": "强烈买入",
-       "close": 6.96,
-       "buy_below": 6.821,
-       "stop_atr": 6.67,
-       "stop_ma": 6.88,
-       "tp": 8.004,
+       "close": 28.6,
+       "buy_below": 28.028,
+       "stop_atr": 27.77,
+       "stop_ma": 28.25,
+       "tp": 32.89,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(83分) 回踩≤6.82 ATR止损6.67"
+       "ext": {
+        "score": 0.3,
+        "why": "外部:新能源电力"
+       },
+       "reason": "强烈买入(83分) 回踩≤28.03 ATR止损27.77（外部:新能源电力+0.3）"
       }
      ],
      "trades": [
@@ -2430,6 +2443,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]稳健 盘中复盘刷新: 新增 长江电力"
       }
      ],
      "review_log": [
@@ -2464,38 +2487,16 @@
      "positions": [],
      "plan": [
       {
-       "code": "002142",
-       "name": "宁波银行",
-       "asof": "2026-09-15",
-       "score": 87,
-       "signal": "强烈买入",
-       "close": 35.52,
-       "buy_below": 34.454,
-       "stop_atr": 34.17,
-       "stop_ma": null,
-       "tp": 39.072,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "block",
-       "budget": 7000.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:红利银行"
-       },
-       "reason": "强烈买入(87分) 回踩≤34.45 ATR止损34.17（保本+5%%）（外部:红利银行+1.5）"
-      },
-      {
        "code": "600036",
        "name": "招商银行",
        "asof": "2026-09-15",
        "score": 87,
        "signal": "强烈买入",
-       "close": 41.7,
-       "buy_below": 40.449,
-       "stop_atr": 40.44,
+       "close": 41.44,
+       "buy_below": 40.197,
+       "stop_atr": 40.14,
        "stop_ma": null,
-       "tp": 45.87,
+       "tp": 45.584,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -2505,7 +2506,29 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤40.45 ATR止损40.44（保本+5%%）（外部:红利银行+1.5）"
+       "reason": "强烈买入(87分) 回踩≤40.20 ATR止损40.14（保本+5%%）（外部:红利银行+1.5）"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-15",
+       "score": 84,
+       "signal": "强烈买入",
+       "close": 35.41,
+       "buy_below": 34.348,
+       "stop_atr": 34.04,
+       "stop_ma": null,
+       "tp": 38.951,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": 1.5,
+        "why": "外部:红利银行"
+       },
+       "reason": "强烈买入(84分) 回踩≤34.35 ATR止损34.04（保本+5%%）（外部:红利银行+1.5）"
       },
       {
        "code": "601009",
@@ -2551,11 +2574,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 1.33,
-       "buy_below": 1.29,
-       "stop_atr": 1.27,
+       "close": 1.324,
+       "buy_below": 1.284,
+       "stop_atr": 1.26,
        "stop_ma": null,
-       "tp": 1.463,
+       "tp": 1.456,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -2565,7 +2588,7 @@
         "score": 2.4,
         "why": "外部:海油"
        },
-       "reason": "强烈买入(84分) 回踩≤1.29 ATR止损1.27（保本+5%%）（外部:海油+2.4）"
+       "reason": "强烈买入(84分) 回踩≤1.28 ATR止损1.26（保本+5%%）（外部:海油+2.4）"
       },
       {
        "code": "601988",
@@ -2606,23 +2629,23 @@
        "reason": "强烈买入(88分) 回踩≤20.16 ATR止损18.77（保本+5%%）"
       },
       {
-       "code": "002980",
-       "name": "华盛昌",
+       "code": "601872",
+       "name": "招商轮船",
        "asof": "2026-09-15",
        "score": 79,
        "signal": "买入",
-       "close": 122.98,
-       "buy_below": 119.291,
-       "stop_atr": 107.39,
+       "close": 19.96,
+       "buy_below": 19.361,
+       "stop_atr": 17.62,
        "stop_ma": null,
-       "tp": 135.278,
+       "tp": 21.956,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(79分) 回踩≤119.29 ATR止损107.39（保本+5%%）"
+       "reason": "买入(79分) 回踩≤19.36 ATR止损17.62（保本+5%%）"
       }
      ],
      "trades": [],
@@ -3402,6 +3425,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]严守纪律 盘中复盘刷新: 新增 招商轮船"
       }
      ],
      "review_log": [],
@@ -3447,9 +3480,9 @@
       "from": [
        "aggressive"
       ],
-      "last": 16.63,
-      "last_chg": 0.6,
-      "last_ts": "09:58:01",
+      "last": 16.42,
+      "last_chg": -0.67,
+      "last_ts": "10:14:01",
       "last_close": 16.53
      }
     ],
@@ -3479,40 +3512,16 @@
       "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤20.68 止損18.77 止盈22.86"
      },
      {
-      "code": "002142",
-      "name": "宁波银行",
-      "asof": "2026-09-15",
-      "score": 87,
-      "signal": "强烈买入",
-      "close": 35.52,
-      "buy_below": 35.342,
-      "stop_atr": 34.17,
-      "stop_ma": null,
-      "tp": 39.072,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 10000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤35.34 止損34.17 止盈39.07"
-     },
-     {
       "code": "600036",
       "name": "招商银行",
       "asof": "2026-09-15",
       "score": 87,
       "signal": "强烈买入",
-      "close": 41.7,
-      "buy_below": 41.49,
-      "stop_atr": 40.44,
+      "close": 41.44,
+      "buy_below": 41.233,
+      "stop_atr": 40.14,
       "stop_ma": null,
-      "tp": 45.87,
+      "tp": 45.584,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -3524,7 +3533,7 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤41.49 止損40.44 止盈45.87"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤41.23 止損40.14 止盈45.58"
      },
      {
       "code": "601988",
@@ -3556,11 +3565,11 @@
       "asof": "2026-09-15",
       "score": 84,
       "signal": "强烈买入",
-      "close": 1.33,
-      "buy_below": 1.323,
-      "stop_atr": 1.27,
+      "close": 1.324,
+      "buy_below": 1.317,
+      "stop_atr": 1.26,
       "stop_ma": null,
-      "tp": 1.463,
+      "tp": 1.456,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -3572,7 +3581,31 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤1.32 止損1.27 止盈1.46"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤1.32 止損1.26 止盈1.46"
+     },
+     {
+      "code": "002142",
+      "name": "宁波银行",
+      "asof": "2026-09-15",
+      "score": 84,
+      "signal": "强烈买入",
+      "close": 35.41,
+      "buy_below": 35.233,
+      "stop_atr": 34.04,
+      "stop_ma": null,
+      "tp": 38.951,
+      "trail": 0.1,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤35.23 止損34.04 止盈38.95"
      },
      {
       "code": "601838",
@@ -3605,33 +3638,34 @@
       "score": 84,
       "signal": "强烈买入",
       "close": 12.19,
-      "buy_below": 11.946,
+      "buy_below": 12.129,
       "stop_atr": 11.74,
       "stop_ma": null,
       "tp": 13.409,
-      "trail": null,
+      "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 6500.0,
+      "budget": 10000.0,
       "status": "wait",
-      "consensus": 2,
+      "consensus": 3,
       "from": [
+       "aggressive",
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤11.95 止損11.74 止盈13.41"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤12.13 止損11.74 止盈13.41"
      },
      {
       "code": "002297",
       "name": "博云新材",
       "asof": "2026-09-15",
-      "score": 84,
+      "score": 83,
       "signal": "强烈买入",
-      "close": 22.25,
-      "buy_below": 22.139,
-      "stop_atr": 19.29,
+      "close": 22.61,
+      "buy_below": 22.497,
+      "stop_atr": 19.58,
       "stop_ma": null,
-      "tp": 26.7,
+      "tp": 27.132,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -3641,19 +3675,19 @@
       "from": [
        "aggressive"
       ],
-      "reason": "共识1/3（激进）仓位8% 回踩≤22.14 止損19.29 止盈26.70"
+      "reason": "共识1/3（激进）仓位8% 回踩≤22.50 止損19.58 止盈27.13"
      },
      {
-      "code": "601288",
-      "name": "农业银行",
+      "code": "600900",
+      "name": "长江电力",
       "asof": "2026-09-15",
       "score": 83,
       "signal": "强烈买入",
-      "close": 6.96,
-      "buy_below": 6.821,
-      "stop_atr": 6.67,
+      "close": 28.6,
+      "buy_below": 28.028,
+      "stop_atr": 27.77,
       "stop_ma": null,
-      "tp": 8.004,
+      "tp": 32.89,
       "trail": null,
       "be_at": null,
       "gate": "block",
@@ -3663,19 +3697,19 @@
       "from": [
        "balanced"
       ],
-      "reason": "共识1/3（稳健）仓位8% 回踩≤6.82 止損6.67 止盈8.00"
+      "reason": "共识1/3（稳健）仓位8% 回踩≤28.03 止損27.77 止盈32.89"
      },
      {
-      "code": "002980",
-      "name": "华盛昌",
+      "code": "601872",
+      "name": "招商轮船",
       "asof": "2026-09-15",
       "score": 79,
       "signal": "买入",
-      "close": 122.98,
-      "buy_below": 119.291,
-      "stop_atr": 107.39,
+      "close": 19.96,
+      "buy_below": 19.361,
+      "stop_atr": 17.62,
       "stop_ma": null,
-      "tp": 135.278,
+      "tp": 21.956,
       "trail": null,
       "be_at": 0.05,
       "gate": "block",
@@ -3685,29 +3719,7 @@
       "from": [
        "disciplined"
       ],
-      "reason": "共识1/3（严守纪律）仓位8% 回踩≤119.29 止損107.39 止盈135.28"
-     },
-     {
-      "code": "603228",
-      "name": "景旺电子",
-      "asof": "2026-09-15",
-      "score": 77,
-      "signal": "买入",
-      "close": 111.16,
-      "buy_below": 110.14,
-      "stop_atr": 98.29,
-      "stop_ma": null,
-      "tp": 133.392,
-      "trail": 0.1,
-      "be_at": null,
-      "gate": "block",
-      "budget": 4000.0,
-      "status": "wait",
-      "consensus": 1,
-      "from": [
-       "aggressive"
-      ],
-      "reason": "共识1/3（激进）仓位8% 回踩≤110.14 止損98.29 止盈133.39"
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤19.36 止損17.62 止盈21.96"
      }
     ],
     "trades": [
@@ -4176,6 +4188,16 @@
       "date": "2026-09-15",
       "kind": "plan",
       "note": "[全池]合并·共识：11 单待触发（共识3:6 共识2:1 共识1:4）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[全池]合并·共识：11 单待触发（共识3:6 共识2:1 共识1:4）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[全池]合并·共识 盘中复盘刷新: 新增 长江电力,招商轮船"
      }
     ],
     "review_log": [],
@@ -4337,9 +4359,9 @@
        "prev_close": 73.51,
        "score": 73,
        "signal": "买入",
-       "last": 73.61,
-       "last_chg": 0.14,
-       "last_ts": "09:58:01",
+       "last": 73.76,
+       "last_chg": 0.34,
+       "last_ts": "10:14:01",
        "last_close": 73.5
       },
       {
@@ -4359,9 +4381,9 @@
        "prev_close": 28.63,
        "score": 70,
        "signal": "买入",
-       "last": 28.52,
-       "last_chg": -0.38,
-       "last_ts": "09:58:01",
+       "last": 28.56,
+       "last_chg": -0.24,
+       "last_ts": "10:14:01",
        "last_close": 28.61
       },
       {
@@ -4381,9 +4403,9 @@
        "prev_close": 35.76,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.31,
-       "last_chg": -1.26,
-       "last_ts": "09:58:01",
+       "last": 35.4,
+       "last_chg": -1.01,
+       "last_ts": "10:14:01",
        "last_close": 35.73
       },
       {
@@ -4403,9 +4425,9 @@
        "prev_close": 61.57,
        "score": 74,
        "signal": "买入",
-       "last": 61.95,
-       "last_chg": 0.62,
-       "last_ts": "09:58:01",
+       "last": 61.51,
+       "last_chg": -0.1,
+       "last_ts": "10:14:01",
        "last_close": 61.66
       }
      ],
@@ -4938,6 +4960,11 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -4955,13 +4982,13 @@
        "code": "002142",
        "name": "宁波银行",
        "asof": "2026-09-15",
-       "score": 87,
+       "score": 84,
        "signal": "强烈买入",
-       "close": 35.52,
-       "buy_below": 34.81,
-       "stop_atr": 34.17,
+       "close": 35.41,
+       "buy_below": 34.702,
+       "stop_atr": 34.04,
        "stop_ma": 34.4,
-       "tp": 40.848,
+       "tp": 40.721,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -4971,19 +4998,19 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤34.81 ATR止损34.17（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤34.70 ATR止损34.04（外部:红利银行+1.5）"
       },
       {
        "code": "600900",
        "name": "长江电力",
        "asof": "2026-09-15",
-       "score": 74,
-       "signal": "买入",
-       "close": 28.65,
-       "buy_below": 28.077,
-       "stop_atr": 27.82,
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 28.6,
+       "buy_below": 28.028,
+       "stop_atr": 27.77,
        "stop_ma": 28.25,
-       "tp": 32.947,
+       "tp": 32.89,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -4993,7 +5020,7 @@
         "score": 0.3,
         "why": "外部:新能源电力"
        },
-       "reason": "买入(74分) 回踩≤28.08 ATR止损27.82（外部:新能源电力+0.3）"
+       "reason": "强烈买入(83分) 回踩≤28.03 ATR止损27.77（外部:新能源电力+0.3）"
       }
      ],
      "trades": [],
@@ -5486,6 +5513,11 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5514,13 +5546,13 @@
        "code": "002142",
        "name": "宁波银行",
        "asof": "2026-09-15",
-       "score": 87,
+       "score": 84,
        "signal": "强烈买入",
-       "close": 35.52,
-       "buy_below": 34.454,
-       "stop_atr": 34.17,
+       "close": 35.41,
+       "buy_below": 34.348,
+       "stop_atr": 34.04,
        "stop_ma": null,
-       "tp": 39.072,
+       "tp": 38.951,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -5530,7 +5562,29 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(87分) 回踩≤34.45 ATR止损34.17（保本+5%%）（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤34.35 ATR止损34.04（保本+5%%）（外部:红利银行+1.5）"
+      },
+      {
+       "code": "600900",
+       "name": "长江电力",
+       "asof": "2026-09-15",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 28.6,
+       "buy_below": 27.742,
+       "stop_atr": 27.77,
+       "stop_ma": null,
+       "tp": 31.46,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": {
+        "score": 0.3,
+        "why": "外部:新能源电力"
+       },
+       "reason": "强烈买入(83分) 回踩≤27.74 ATR止损27.77（保本+5%%）（外部:新能源电力+0.3）"
       }
      ],
      "trades": [],
@@ -6028,6 +6082,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]严守纪律：1 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：1 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律 盘中复盘刷新: 新增 长江电力"
       }
      ],
      "review_log": [],
@@ -6046,13 +6110,13 @@
       "code": "002142",
       "name": "宁波银行",
       "asof": "2026-09-15",
-      "score": 87,
+      "score": 84,
       "signal": "强烈买入",
-      "close": 35.52,
-      "buy_below": 34.81,
-      "stop_atr": 34.17,
+      "close": 35.41,
+      "buy_below": 34.702,
+      "stop_atr": 34.04,
       "stop_ma": null,
-      "tp": 39.072,
+      "tp": 38.951,
       "trail": null,
       "be_at": 0.05,
       "gate": "block",
@@ -6063,29 +6127,30 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤34.81 止損34.17 止盈39.07"
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤34.70 止損34.04 止盈38.95"
      },
      {
       "code": "600900",
       "name": "长江电力",
       "asof": "2026-09-15",
-      "score": 74,
-      "signal": "买入",
-      "close": 28.65,
-      "buy_below": 28.077,
-      "stop_atr": 27.82,
+      "score": 83,
+      "signal": "强烈买入",
+      "close": 28.6,
+      "buy_below": 28.028,
+      "stop_atr": 27.77,
       "stop_ma": null,
-      "tp": 32.947,
+      "tp": 31.46,
       "trail": null,
-      "be_at": null,
+      "be_at": 0.05,
       "gate": "block",
-      "budget": 4000.0,
+      "budget": 6500.0,
       "status": "wait",
-      "consensus": 1,
+      "consensus": 2,
       "from": [
-       "balanced"
+       "balanced",
+       "disciplined"
       ],
-      "reason": "共识1/3（稳健）仓位8% 回踩≤28.08 止損27.82 止盈32.95"
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤28.03 止損27.77 止盈31.46"
      }
     ],
     "trades": [],
@@ -6460,6 +6525,11 @@
       "date": "2026-09-15",
       "kind": "plan",
       "note": "[6股精选]合并·共识 盘中复盘刷新: 新增 长江电力"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：2 单待触发（共识3:0 共识2:1 共识1:1）（大盘闸门挡）"
      },
      {
       "date": "2026-09-15",
