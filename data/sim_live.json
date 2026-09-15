@@ -56,8 +56,8 @@
    },
    "2026-09-15": {
     "gate": "block",
-    "why": "上证空头；LLM宏观防御",
-    "ts": "13:24:02"
+    "why": "LLM宏观防御",
+    "ts": "13:40:01"
    }
   }
  },
@@ -155,9 +155,9 @@
        "prev_close": 28.63,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.51,
-       "last_chg": -0.42,
-       "last_ts": "13:24:01",
+       "last": 28.45,
+       "last_chg": -0.63,
+       "last_ts": "13:40:01",
        "last_close": 28.61
       }
      ],
@@ -166,13 +166,13 @@
        "code": "159518",
        "name": "标普油气ETF嘉实",
        "asof": "2026-09-15",
-       "score": 84,
+       "score": 87,
        "signal": "强烈买入",
-       "close": 1.334,
-       "buy_below": 1.327,
-       "stop_atr": 1.27,
+       "close": 1.338,
+       "buy_below": 1.331,
+       "stop_atr": 1.28,
        "stop_ma": null,
-       "tp": 1.601,
+       "tp": 1.606,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -182,7 +182,26 @@
         "score": 4.8,
         "why": "外部:海油"
        },
-       "reason": "强烈买入(84分) 回踩≤1.33 ATR止损1.27（外部:海油+4.8）"
+       "reason": "强烈买入(87分) 回踩≤1.33 ATR止损1.28（外部:海油+4.8）"
+      },
+      {
+       "code": "603980",
+       "name": "吉华集团",
+       "asof": "2026-09-15",
+       "score": 88,
+       "signal": "强烈买入",
+       "close": 7.98,
+       "buy_below": 7.94,
+       "stop_atr": 7.03,
+       "stop_ma": null,
+       "tp": 9.576,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(88分) 回踩≤7.94 ATR止损7.03"
       },
       {
        "code": "603228",
@@ -190,18 +209,18 @@
        "asof": "2026-09-15",
        "score": 83,
        "signal": "强烈买入",
-       "close": 106.21,
-       "buy_below": 105.679,
-       "stop_atr": 92.55,
+       "close": 106.16,
+       "buy_below": 105.629,
+       "stop_atr": 92.5,
        "stop_ma": null,
-       "tp": 127.452,
+       "tp": 127.392,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(83分) 回踩≤105.68 ATR止损92.55"
+       "reason": "强烈买入(83分) 回踩≤105.63 ATR止损92.5"
       },
       {
        "code": "002297",
@@ -209,56 +228,18 @@
        "asof": "2026-09-15",
        "score": 88,
        "signal": "强烈买入",
-       "close": 22.36,
-       "buy_below": 22.248,
-       "stop_atr": 19.33,
+       "close": 22.33,
+       "buy_below": 22.218,
+       "stop_atr": 19.3,
        "stop_ma": null,
-       "tp": 26.832,
+       "tp": 26.796,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(88分) 回踩≤22.25 ATR止损19.33"
-      },
-      {
-       "code": "603980",
-       "name": "吉华集团",
-       "asof": "2026-09-15",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 7.86,
-       "buy_below": 7.821,
-       "stop_atr": 6.91,
-       "stop_ma": null,
-       "tp": 9.432,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(84分) 回踩≤7.82 ATR止损6.91"
-      },
-      {
-       "code": "601988",
-       "name": "中国银行",
-       "asof": "2026-09-15",
-       "score": 87,
-       "signal": "强烈买入",
-       "close": 6.57,
-       "buy_below": 6.537,
-       "stop_atr": 6.28,
-       "stop_ma": null,
-       "tp": 7.884,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(87分) 回踩≤6.54 ATR止损6.28"
+       "reason": "强烈买入(88分) 回踩≤22.22 ATR止损19.3"
       },
       {
        "code": "002142",
@@ -266,11 +247,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 35.3,
-       "buy_below": 35.123,
-       "stop_atr": 33.89,
+       "close": 35.32,
+       "buy_below": 35.143,
+       "stop_atr": 33.91,
        "stop_ma": null,
-       "tp": 42.36,
+       "tp": 42.384,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -280,7 +261,45 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(84分) 回踩≤35.12 ATR止损33.89（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤35.14 ATR止损33.91（外部:红利银行+1.5）"
+      },
+      {
+       "code": "300179",
+       "name": "四方达",
+       "asof": "2026-09-15",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 42.23,
+       "buy_below": 41.66,
+       "stop_atr": 35.95,
+       "stop_ma": null,
+       "tp": 50.676,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(86分) 回踩≤41.66 ATR止损35.95"
+      },
+      {
+       "code": "002046",
+       "name": "国机精工",
+       "asof": "2026-09-15",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 59.68,
+       "buy_below": 59.09,
+       "stop_atr": 52.76,
+       "stop_ma": null,
+       "tp": 71.616,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(86分) 回踩≤59.09 ATR止损52.76"
       },
       {
        "code": "601838",
@@ -300,25 +319,6 @@
        "status": "wait",
        "ext": null,
        "reason": "强烈买入(87分) 回踩≤20.05 ATR止损19.44"
-      },
-      {
-       "code": "601009",
-       "name": "南京银行",
-       "asof": "2026-09-15",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 12.22,
-       "buy_below": 12.159,
-       "stop_atr": 11.75,
-       "stop_ma": null,
-       "tp": 14.664,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(84分) 回踩≤12.16 ATR止损11.75"
       }
      ],
      "trades": [
@@ -1386,6 +1386,21 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]激进 盘中复盘刷新: 新增 国机精工,四方达"
       }
      ],
      "review_log": [
@@ -1435,43 +1450,24 @@
        "prev_close": 21.81,
        "score": 86,
        "signal": "强烈买入",
-       "last": 21.04,
-       "last_chg": -3.53,
-       "last_ts": "13:24:01",
+       "last": 21.2,
+       "last_chg": -2.8,
+       "last_ts": "13:40:01",
        "last_close": 21.82
       }
      ],
      "plan": [
       {
-       "code": "601988",
-       "name": "中国银行",
-       "asof": "2026-09-15",
-       "score": 87,
-       "signal": "强烈买入",
-       "close": 6.57,
-       "buy_below": 6.439,
-       "stop_atr": 6.28,
-       "stop_ma": 6.38,
-       "tp": 7.555,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(87分) 回踩≤6.44 ATR止损6.28"
-      },
-      {
        "code": "159518",
        "name": "标普油气ETF嘉实",
        "asof": "2026-09-15",
-       "score": 84,
+       "score": 87,
        "signal": "强烈买入",
-       "close": 1.334,
-       "buy_below": 1.307,
-       "stop_atr": 1.27,
+       "close": 1.338,
+       "buy_below": 1.311,
+       "stop_atr": 1.28,
        "stop_ma": 1.29,
-       "tp": 1.534,
+       "tp": 1.539,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -1481,7 +1477,26 @@
         "score": 4.8,
         "why": "外部:海油"
        },
-       "reason": "强烈买入(84分) 回踩≤1.31 ATR止损1.27（外部:海油+4.8）"
+       "reason": "强烈买入(87分) 回踩≤1.31 ATR止损1.28（外部:海油+4.8）"
+      },
+      {
+       "code": "603980",
+       "name": "吉华集团",
+       "asof": "2026-09-15",
+       "score": 88,
+       "signal": "强烈买入",
+       "close": 7.98,
+       "buy_below": 7.82,
+       "stop_atr": 7.03,
+       "stop_ma": 7.37,
+       "tp": 9.177,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(88分) 回踩≤7.82 ATR止损7.03"
       },
       {
        "code": "002142",
@@ -1489,11 +1504,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 35.3,
-       "buy_below": 34.594,
-       "stop_atr": 33.89,
+       "close": 35.32,
+       "buy_below": 34.614,
+       "stop_atr": 33.91,
        "stop_ma": 34.39,
-       "tp": 40.595,
+       "tp": 40.618,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -1503,26 +1518,7 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(84分) 回踩≤34.59 ATR止损33.89（外部:红利银行+1.5）"
-      },
-      {
-       "code": "603980",
-       "name": "吉华集团",
-       "asof": "2026-09-15",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 7.86,
-       "buy_below": 7.703,
-       "stop_atr": 6.91,
-       "stop_ma": 7.37,
-       "tp": 9.039,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(84分) 回踩≤7.70 ATR止损6.91"
+       "reason": "强烈买入(84分) 回踩≤34.61 ATR止损33.91（外部:红利银行+1.5）"
       },
       {
        "code": "601838",
@@ -1549,18 +1545,18 @@
        "asof": "2026-09-15",
        "score": 88,
        "signal": "强烈买入",
-       "close": 22.36,
-       "buy_below": 21.913,
-       "stop_atr": 19.33,
+       "close": 22.33,
+       "buy_below": 21.883,
+       "stop_atr": 19.3,
        "stop_ma": 19.9,
-       "tp": 25.714,
+       "tp": 25.679,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(88分) 回踩≤21.91 ATR止损19.33"
+       "reason": "强烈买入(88分) 回踩≤21.88 ATR止损19.3"
       },
       {
        "code": "601009",
@@ -1582,23 +1578,42 @@
        "reason": "强烈买入(84分) 回踩≤11.98 ATR止损11.75"
       },
       {
-       "code": "603228",
-       "name": "景旺电子",
+       "code": "002046",
+       "name": "国机精工",
        "asof": "2026-09-15",
-       "score": 83,
+       "score": 86,
        "signal": "强烈买入",
-       "close": 106.21,
-       "buy_below": 104.086,
-       "stop_atr": 92.55,
-       "stop_ma": 97.69,
-       "tp": 122.141,
+       "close": 59.68,
+       "buy_below": 58.486,
+       "stop_atr": 52.76,
+       "stop_ma": 52.9,
+       "tp": 68.632,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(83分) 回踩≤104.09 ATR止损92.55"
+       "reason": "强烈买入(86分) 回踩≤58.49 ATR止损52.76"
+      },
+      {
+       "code": "603228",
+       "name": "景旺电子",
+       "asof": "2026-09-15",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 106.16,
+       "buy_below": 104.037,
+       "stop_atr": 92.5,
+       "stop_ma": 97.68,
+       "tp": 122.084,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤104.04 ATR止损92.5"
       }
      ],
      "trades": [
@@ -2614,6 +2629,21 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]稳健 盘中复盘刷新: 新增 国机精工"
       }
      ],
      "review_log": [
@@ -2648,26 +2678,23 @@
      "positions": [],
      "plan": [
       {
-       "code": "159518",
-       "name": "标普油气ETF嘉实",
+       "code": "603980",
+       "name": "吉华集团",
        "asof": "2026-09-15",
-       "score": 84,
+       "score": 88,
        "signal": "强烈买入",
-       "close": 1.334,
-       "buy_below": 1.294,
-       "stop_atr": 1.27,
+       "close": 7.98,
+       "buy_below": 7.741,
+       "stop_atr": 7.03,
        "stop_ma": null,
-       "tp": 1.467,
+       "tp": 8.778,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
-       "ext": {
-        "score": 4.8,
-        "why": "外部:海油"
-       },
-       "reason": "强烈买入(84分) 回踩≤1.29 ATR止损1.27（保本+5%%）（外部:海油+4.8）"
+       "ext": null,
+       "reason": "强烈买入(88分) 回踩≤7.74 ATR止损7.03（保本+5%%）"
       },
       {
        "code": "002142",
@@ -2675,11 +2702,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 35.3,
-       "buy_below": 34.241,
-       "stop_atr": 33.89,
+       "close": 35.32,
+       "buy_below": 34.26,
+       "stop_atr": 33.91,
        "stop_ma": null,
-       "tp": 38.83,
+       "tp": 38.852,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -2689,45 +2716,29 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(84分) 回踩≤34.24 ATR止损33.89（保本+5%%）（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤34.26 ATR止损33.91（保本+5%%）（外部:红利银行+1.5）"
       },
       {
-       "code": "603980",
-       "name": "吉华集团",
-       "asof": "2026-09-15",
-       "score": 84,
-       "signal": "强烈买入",
-       "close": 7.86,
-       "buy_below": 7.624,
-       "stop_atr": 6.91,
-       "stop_ma": null,
-       "tp": 8.646,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "block",
-       "budget": 7000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(84分) 回踩≤7.62 ATR止损6.91（保本+5%%）"
-      },
-      {
-       "code": "601988",
-       "name": "中国银行",
+       "code": "159518",
+       "name": "标普油气ETF嘉实",
        "asof": "2026-09-15",
        "score": 87,
        "signal": "强烈买入",
-       "close": 6.57,
-       "buy_below": 6.373,
-       "stop_atr": 6.28,
+       "close": 1.338,
+       "buy_below": 1.298,
+       "stop_atr": 1.28,
        "stop_ma": null,
-       "tp": 7.227,
+       "tp": 1.472,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
-       "ext": null,
-       "reason": "强烈买入(87分) 回踩≤6.37 ATR止损6.28（保本+5%%）"
+       "ext": {
+        "score": 4.8,
+        "why": "外部:海油"
+       },
+       "reason": "强烈买入(87分) 回踩≤1.30 ATR止损1.28（保本+5%%）（外部:海油+4.8）"
       },
       {
        "code": "601009",
@@ -2754,18 +2765,18 @@
        "asof": "2026-09-15",
        "score": 83,
        "signal": "强烈买入",
-       "close": 106.21,
-       "buy_below": 103.024,
-       "stop_atr": 92.55,
+       "close": 106.16,
+       "buy_below": 102.975,
+       "stop_atr": 92.5,
        "stop_ma": null,
-       "tp": 116.831,
+       "tp": 116.776,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(83分) 回踩≤103.02 ATR止损92.55（保本+5%%）"
+       "reason": "强烈买入(83分) 回踩≤102.97 ATR止损92.5（保本+5%%）"
       },
       {
        "code": "002297",
@@ -2773,18 +2784,37 @@
        "asof": "2026-09-15",
        "score": 88,
        "signal": "强烈买入",
-       "close": 22.36,
-       "buy_below": 21.689,
-       "stop_atr": 19.33,
+       "close": 22.33,
+       "buy_below": 21.66,
+       "stop_atr": 19.3,
        "stop_ma": null,
-       "tp": 24.596,
+       "tp": 24.563,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
        "ext": null,
-       "reason": "强烈买入(88分) 回踩≤21.69 ATR止损19.33（保本+5%%）"
+       "reason": "强烈买入(88分) 回踩≤21.66 ATR止损19.3（保本+5%%）"
+      },
+      {
+       "code": "600989",
+       "name": "宝丰能源",
+       "asof": "2026-09-15",
+       "score": 81,
+       "signal": "强烈买入",
+       "close": 24.72,
+       "buy_below": 23.978,
+       "stop_atr": 22.78,
+       "stop_ma": null,
+       "tp": 27.192,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(81分) 回踩≤23.98 ATR止损22.78（保本+5%%）"
       },
       {
        "code": "601838",
@@ -3678,6 +3708,21 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]严守纪律：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[全池]严守纪律 盘中复盘刷新: 新增 宝丰能源"
       }
      ],
      "review_log": [],
@@ -3723,24 +3768,48 @@
       "from": [
        "aggressive"
       ],
-      "last": 16.44,
-      "last_chg": -0.54,
-      "last_ts": "13:24:01",
+      "last": 16.59,
+      "last_chg": 0.36,
+      "last_ts": "13:40:01",
       "last_close": 16.53
      }
     ],
     "plan": [
+     {
+      "code": "603980",
+      "name": "吉华集团",
+      "asof": "2026-09-15",
+      "score": 88,
+      "signal": "强烈买入",
+      "close": 7.98,
+      "buy_below": 7.94,
+      "stop_atr": 7.03,
+      "stop_ma": null,
+      "tp": 8.778,
+      "trail": 0.1,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤7.94 止損7.03 止盈8.78"
+     },
      {
       "code": "002297",
       "name": "博云新材",
       "asof": "2026-09-15",
       "score": 88,
       "signal": "强烈买入",
-      "close": 22.36,
-      "buy_below": 22.248,
-      "stop_atr": 19.33,
+      "close": 22.33,
+      "buy_below": 22.218,
+      "stop_atr": 19.3,
       "stop_ma": null,
-      "tp": 24.596,
+      "tp": 24.563,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -3752,19 +3821,19 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤22.25 止損19.33 止盈24.60"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤22.22 止損19.30 止盈24.56"
      },
      {
-      "code": "601988",
-      "name": "中国银行",
+      "code": "159518",
+      "name": "标普油气ETF嘉实",
       "asof": "2026-09-15",
       "score": 87,
       "signal": "强烈买入",
-      "close": 6.57,
-      "buy_below": 6.537,
-      "stop_atr": 6.28,
+      "close": 1.338,
+      "buy_below": 1.331,
+      "stop_atr": 1.28,
       "stop_ma": null,
-      "tp": 7.227,
+      "tp": 1.472,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -3776,7 +3845,7 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤6.54 止損6.28 止盈7.23"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤1.33 止損1.28 止盈1.47"
      },
      {
       "code": "601838",
@@ -3803,64 +3872,16 @@
       "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤20.05 止損19.44 止盈22.16"
      },
      {
-      "code": "159518",
-      "name": "标普油气ETF嘉实",
-      "asof": "2026-09-15",
-      "score": 84,
-      "signal": "强烈买入",
-      "close": 1.334,
-      "buy_below": 1.327,
-      "stop_atr": 1.27,
-      "stop_ma": null,
-      "tp": 1.467,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 10000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤1.33 止損1.27 止盈1.47"
-     },
-     {
-      "code": "603980",
-      "name": "吉华集团",
-      "asof": "2026-09-15",
-      "score": 84,
-      "signal": "强烈买入",
-      "close": 7.86,
-      "buy_below": 7.821,
-      "stop_atr": 6.91,
-      "stop_ma": null,
-      "tp": 8.646,
-      "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 10000.0,
-      "status": "wait",
-      "consensus": 3,
-      "from": [
-       "aggressive",
-       "balanced",
-       "disciplined"
-      ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤7.82 止損6.91 止盈8.65"
-     },
-     {
       "code": "002142",
       "name": "宁波银行",
       "asof": "2026-09-15",
       "score": 84,
       "signal": "强烈买入",
-      "close": 35.3,
-      "buy_below": 35.123,
-      "stop_atr": 33.89,
+      "close": 35.32,
+      "buy_below": 35.143,
+      "stop_atr": 33.91,
       "stop_ma": null,
-      "tp": 38.83,
+      "tp": 38.852,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -3872,7 +3893,54 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤35.12 止損33.89 止盈38.83"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤35.14 止損33.91 止盈38.85"
+     },
+     {
+      "code": "603228",
+      "name": "景旺电子",
+      "asof": "2026-09-15",
+      "score": 83,
+      "signal": "强烈买入",
+      "close": 106.16,
+      "buy_below": 105.629,
+      "stop_atr": 92.5,
+      "stop_ma": null,
+      "tp": 116.776,
+      "trail": 0.1,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤105.63 止損92.50 止盈116.78"
+     },
+     {
+      "code": "002046",
+      "name": "国机精工",
+      "asof": "2026-09-15",
+      "score": 86,
+      "signal": "强烈买入",
+      "close": 59.68,
+      "buy_below": 59.09,
+      "stop_atr": 52.76,
+      "stop_ma": null,
+      "tp": 68.632,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "aggressive",
+       "balanced"
+      ],
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤59.09 止損52.76 止盈68.63"
      },
      {
       "code": "601009",
@@ -3881,46 +3949,65 @@
       "score": 84,
       "signal": "强烈买入",
       "close": 12.22,
-      "buy_below": 12.159,
+      "buy_below": 11.976,
       "stop_atr": 11.75,
       "stop_ma": null,
       "tp": 13.442,
-      "trail": 0.1,
+      "trail": null,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 10000.0,
+      "budget": 6500.0,
       "status": "wait",
-      "consensus": 3,
+      "consensus": 2,
       "from": [
-       "aggressive",
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤12.16 止損11.75 止盈13.44"
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤11.98 止損11.75 止盈13.44"
      },
      {
-      "code": "603228",
-      "name": "景旺电子",
+      "code": "300179",
+      "name": "四方达",
       "asof": "2026-09-15",
-      "score": 83,
+      "score": 86,
       "signal": "强烈买入",
-      "close": 106.21,
-      "buy_below": 105.679,
-      "stop_atr": 92.55,
+      "close": 42.23,
+      "buy_below": 41.66,
+      "stop_atr": 35.95,
       "stop_ma": null,
-      "tp": 116.831,
+      "tp": 50.676,
       "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "aggressive"
+      ],
+      "reason": "共识1/3（激进）仓位8% 回踩≤41.66 止損35.95 止盈50.68"
+     },
+     {
+      "code": "600989",
+      "name": "宝丰能源",
+      "asof": "2026-09-15",
+      "score": 81,
+      "signal": "强烈买入",
+      "close": 24.72,
+      "buy_below": 23.978,
+      "stop_atr": 22.78,
+      "stop_ma": null,
+      "tp": 27.192,
+      "trail": null,
       "be_at": 0.05,
       "gate": "block",
-      "budget": 10000.0,
+      "budget": 4000.0,
       "status": "wait",
-      "consensus": 3,
+      "consensus": 1,
       "from": [
-       "aggressive",
-       "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤105.68 止損92.55 止盈116.83"
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤23.98 止損22.78 止盈27.19"
      }
     ],
     "trades": [
@@ -4479,6 +4566,21 @@
       "date": "2026-09-15",
       "kind": "plan",
       "note": "[全池]合并·共识：8 单待触发（共识3:8 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[全池]合并·共识：8 单待触发（共识3:8 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[全池]合并·共识：8 单待触发（共识3:8 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[全池]合并·共识 盘中复盘刷新: 新增 国机精工,四方达,宝丰能源"
      }
     ],
     "review_log": [],
@@ -4640,9 +4742,9 @@
        "prev_close": 73.51,
        "score": 73,
        "signal": "买入",
-       "last": 73.67,
-       "last_chg": 0.22,
-       "last_ts": "13:24:01",
+       "last": 73.32,
+       "last_chg": -0.26,
+       "last_ts": "13:40:01",
        "last_close": 73.5
       },
       {
@@ -4662,9 +4764,9 @@
        "prev_close": 28.63,
        "score": 70,
        "signal": "买入",
-       "last": 28.51,
-       "last_chg": -0.42,
-       "last_ts": "13:24:01",
+       "last": 28.45,
+       "last_chg": -0.63,
+       "last_ts": "13:40:01",
        "last_close": 28.61
       },
       {
@@ -4684,9 +4786,9 @@
        "prev_close": 35.76,
        "score": 82,
        "signal": "强烈买入",
-       "last": 35.32,
-       "last_chg": -1.23,
-       "last_ts": "13:24:01",
+       "last": 35.28,
+       "last_chg": -1.34,
+       "last_ts": "13:40:01",
        "last_close": 35.73
       },
       {
@@ -4706,9 +4808,9 @@
        "prev_close": 61.57,
        "score": 74,
        "signal": "买入",
-       "last": 60.9,
-       "last_chg": -1.09,
-       "last_ts": "13:24:01",
+       "last": 60.89,
+       "last_chg": -1.1,
+       "last_ts": "13:40:01",
        "last_close": 61.66
       }
      ],
@@ -5311,6 +5413,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5330,11 +5442,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 35.3,
-       "buy_below": 34.594,
-       "stop_atr": 33.89,
+       "close": 35.32,
+       "buy_below": 34.614,
+       "stop_atr": 33.91,
        "stop_ma": 34.39,
-       "tp": 40.595,
+       "tp": 40.618,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -5344,7 +5456,7 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(84分) 回踩≤34.59 ATR止损33.89（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤34.61 ATR止损33.91（外部:红利银行+1.5）"
       },
       {
        "code": "600900",
@@ -5352,11 +5464,11 @@
        "asof": "2026-09-15",
        "score": 83,
        "signal": "强烈买入",
-       "close": 28.5,
-       "buy_below": 27.93,
-       "stop_atr": 27.66,
+       "close": 28.49,
+       "buy_below": 27.92,
+       "stop_atr": 27.65,
        "stop_ma": 28.24,
-       "tp": 32.775,
+       "tp": 32.763,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -5366,7 +5478,7 @@
         "score": 0.6,
         "why": "外部:新能源电力"
        },
-       "reason": "强烈买入(83分) 回踩≤27.93 ATR止损27.66（外部:新能源电力+0.6）"
+       "reason": "强烈买入(83分) 回踩≤27.92 ATR止损27.65（外部:新能源电力+0.6）"
       }
      ],
      "trades": [],
@@ -5929,6 +6041,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5959,11 +6081,11 @@
        "asof": "2026-09-15",
        "score": 84,
        "signal": "强烈买入",
-       "close": 35.3,
-       "buy_below": 34.241,
-       "stop_atr": 33.89,
+       "close": 35.32,
+       "buy_below": 34.26,
+       "stop_atr": 33.91,
        "stop_ma": null,
-       "tp": 38.83,
+       "tp": 38.852,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -5973,7 +6095,7 @@
         "score": 1.5,
         "why": "外部:红利银行"
        },
-       "reason": "强烈买入(84分) 回踩≤34.24 ATR止损33.89（保本+5%%）（外部:红利银行+1.5）"
+       "reason": "强烈买入(84分) 回踩≤34.26 ATR止损33.91（保本+5%%）（外部:红利银行+1.5）"
       },
       {
        "code": "600900",
@@ -5981,11 +6103,11 @@
        "asof": "2026-09-15",
        "score": 83,
        "signal": "强烈买入",
-       "close": 28.5,
-       "buy_below": 27.645,
-       "stop_atr": 27.66,
+       "close": 28.49,
+       "buy_below": 27.635,
+       "stop_atr": 27.65,
        "stop_ma": null,
-       "tp": 31.35,
+       "tp": 31.339,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
@@ -5995,7 +6117,7 @@
         "score": 0.6,
         "why": "外部:新能源电力"
        },
-       "reason": "强烈买入(83分) 回踩≤27.64 ATR止损27.66（保本+5%%）（外部:新能源电力+0.6）"
+       "reason": "强烈买入(83分) 回踩≤27.64 ATR止损27.65（保本+5%%）（外部:新能源电力+0.6）"
       }
      ],
      "trades": [],
@@ -6568,6 +6690,16 @@
        "date": "2026-09-15",
        "kind": "plan",
        "note": "[6股精选]严守纪律：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-15",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：2 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -6588,11 +6720,11 @@
       "asof": "2026-09-15",
       "score": 84,
       "signal": "强烈买入",
-      "close": 35.3,
-      "buy_below": 34.594,
-      "stop_atr": 33.89,
+      "close": 35.32,
+      "buy_below": 34.614,
+      "stop_atr": 33.91,
       "stop_ma": null,
-      "tp": 38.83,
+      "tp": 38.852,
       "trail": null,
       "be_at": 0.05,
       "gate": "block",
@@ -6603,7 +6735,7 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤34.59 止損33.89 止盈38.83"
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤34.61 止損33.91 止盈38.85"
      },
      {
       "code": "600900",
@@ -6611,11 +6743,11 @@
       "asof": "2026-09-15",
       "score": 83,
       "signal": "强烈买入",
-      "close": 28.5,
-      "buy_below": 27.93,
-      "stop_atr": 27.66,
+      "close": 28.49,
+      "buy_below": 27.92,
+      "stop_atr": 27.65,
       "stop_ma": null,
-      "tp": 31.35,
+      "tp": 31.339,
       "trail": null,
       "be_at": 0.05,
       "gate": "block",
@@ -6626,7 +6758,7 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤27.93 止損27.66 止盈31.35"
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤27.92 止損27.65 止盈31.34"
      }
     ],
     "trades": [],
@@ -7011,6 +7143,16 @@
       "date": "2026-09-15",
       "kind": "plan",
       "note": "[6股精选]合并·共识：2 单待触发（共识3:0 共识2:1 共识1:1）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：2 单待触发（共识3:0 共识2:2 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-15",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：2 单待触发（共识3:0 共识2:2 共识1:0）（大盘闸门挡）"
      },
      {
       "date": "2026-09-15",
