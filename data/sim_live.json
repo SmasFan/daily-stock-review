@@ -22,10 +22,10 @@
    }
   },
   "daily_gate": {
-   "date": "2026-09-16",
+   "date": "2026-09-17",
    "gate": "block",
-   "why": "LLM宏观防御；宏观数据过期20h(已不参与多头判断)",
-   "ts": "09:38:01"
+   "why": "普涨过热(广度75%)；LLM宏观防御；宏观数据过期23h(已不参与多头判断)",
+   "ts": "09:36:02"
   },
   "gate_history": {
    "2026-09-11": {
@@ -45,8 +45,13 @@
    },
    "2026-09-16": {
     "gate": "block",
-    "why": "普涨过热(广度75%)；LLM宏观防御",
-    "ts": "15:56:39"
+    "why": "普涨过热(广度75%)；LLM宏观防御；宏观数据过期23h(已不参与多头判断)",
+    "ts": "09:34:06"
+   },
+   "2026-09-17": {
+    "gate": "block",
+    "why": "LLM宏观防御；宏观数据过期24h(已不参与多头判断)",
+    "ts": "09:50:01"
    }
   },
   "llm_gate_cb": {
@@ -144,97 +149,167 @@
        "be_at": null,
        "be_on": false,
        "peak": 28.65,
-       "prev_close": 28.501,
+       "prev_close": 28.46,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.45,
-       "last_chg": -0.18,
-       "last_ts": "close",
+       "last": 28.27,
+       "last_chg": -0.67,
+       "last_ts": "09:50:01",
        "last_close": 28.45
       }
      ],
      "plan": [
       {
-       "code": "601985",
-       "name": "中国核电",
-       "asof": "2026-09-16",
-       "score": 84,
+       "code": "300487",
+       "name": "蓝晓科技",
+       "asof": "2026-09-17",
+       "score": 86,
        "signal": "强烈买入",
-       "close": 9.1,
-       "buy_below": 9.054,
-       "stop_atr": 8.86,
+       "close": 68.74,
+       "buy_below": 67.61,
+       "stop_atr": 62.7,
        "stop_ma": null,
-       "tp": 10.92,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": {
-        "score": -0.3,
-        "why": "外部:新能源电力"
-       },
-       "reason": "强烈买入(84分) 回踩≤9.05 ATR止损8.86；LLM:核电电力公用防御受益，乖离小（外部:新能源电力-0.3）"
-      },
-      {
-       "code": "300037",
-       "name": "新宙邦",
-       "asof": "2026-09-16",
-       "score": 81,
-       "signal": "强烈买入",
-       "close": 73.45,
-       "buy_below": 72.14,
-       "stop_atr": 66.2,
-       "stop_ma": null,
-       "tp": 88.14,
-       "trail": 0.1,
-       "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:周期资源"
-       },
-       "reason": "强烈买入(81分) 回踩≤72.14 ATR止损66.2；LLM:60日跌18%低位，周期资源受益油价（外部:周期资源+1.5）"
-      },
-      {
-       "code": "688028",
-       "name": "沃尔德",
-       "asof": "2026-09-16",
-       "score": 72,
-       "signal": "买入",
-       "close": 126.46,
-       "buy_below": 121.402,
-       "stop_atr": 108.29,
-       "stop_ma": null,
-       "tp": 151.752,
+       "tp": 82.488,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(72分) 回踩≤121.40 ATR止损108.29；LLM:钻石超硬非重灾方向，60日涨幅温和"
+       "reason": "强烈买入(86分) 回踩≤67.61 ATR止损62.7"
       },
       {
        "code": "603980",
        "name": "吉华集团",
-       "asof": "2026-09-16",
-       "score": 72,
-       "signal": "买入",
-       "close": 8.23,
-       "buy_below": 8.06,
-       "stop_atr": 7.27,
+       "asof": "2026-09-17",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 8.18,
+       "buy_below": 8.07,
+       "stop_atr": 7.26,
        "stop_ma": null,
-       "tp": 9.876,
+       "tp": 9.816,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(72分) 回踩≤8.06 ATR止损7.27；LLM:染料化工低位，受益顺周期涨价"
+       "reason": "强烈买入(82分) 回踩≤8.07 ATR止损7.26"
+      },
+      {
+       "code": "920725",
+       "name": "惠丰钻石",
+       "asof": "2026-09-17",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 96.12,
+       "buy_below": 95.639,
+       "stop_atr": 79.25,
+       "stop_ma": null,
+       "tp": 115.344,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤95.64 ATR止损79.25"
+      },
+      {
+       "code": "601985",
+       "name": "中国核电",
+       "asof": "2026-09-17",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 9.06,
+       "buy_below": 9.015,
+       "stop_atr": 8.83,
+       "stop_ma": null,
+       "tp": 10.872,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤9.02 ATR止损8.83"
+      },
+      {
+       "code": "600172",
+       "name": "黄河旋风",
+       "asof": "2026-09-17",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 16.5,
+       "buy_below": 16.21,
+       "stop_atr": 14.25,
+       "stop_ma": null,
+       "tp": 19.8,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(82分) 回踩≤16.21 ATR止损14.25"
+      },
+      {
+       "code": "688028",
+       "name": "沃尔德",
+       "asof": "2026-09-17",
+       "score": 77,
+       "signal": "买入",
+       "close": 125.58,
+       "buy_below": 120.75,
+       "stop_atr": 108.3,
+       "stop_ma": null,
+       "tp": 150.696,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(77分) 回踩≤120.75 ATR止损108.3"
+      },
+      {
+       "code": "601838",
+       "name": "成都银行",
+       "asof": "2026-09-17",
+       "score": 79,
+       "signal": "买入",
+       "close": 19.79,
+       "buy_below": 19.691,
+       "stop_atr": 19.11,
+       "stop_ma": null,
+       "tp": 23.748,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(79分) 回踩≤19.69 ATR止损19.11"
+      },
+      {
+       "code": "002916",
+       "name": "深南电路",
+       "asof": "2026-09-17",
+       "score": 77,
+       "signal": "买入",
+       "close": 393.36,
+       "buy_below": 391.393,
+       "stop_atr": 353.98,
+       "stop_ma": null,
+       "tp": 472.032,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(77分) 回踩≤391.39 ATR止损353.98"
       }
      ],
      "trades": [
@@ -1631,6 +1706,16 @@
        "date": "2026-09-16",
        "kind": "review",
        "note": "[全池]激进：平仓4笔 胜0/负4 胜率0% 已实现-2568｜亏因：破ATR/保本止损 ×4｜均亏-642"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-17",
+       "kind": "plan",
+       "note": "[全池]激进 盘中复盘刷新: 新增 深南电路,蓝晓科技,黄河旋风,成都银行,惠丰钻石"
       }
      ],
      "review_log": [
@@ -1685,100 +1770,167 @@
        "be_at": null,
        "be_on": false,
        "peak": 22.53,
-       "prev_close": 20.37,
+       "prev_close": 21.11,
        "score": 86,
        "signal": "强烈买入",
-       "last": 21.14,
-       "last_chg": 3.78,
-       "last_ts": "close",
+       "last": 20.88,
+       "last_chg": -1.09,
+       "last_ts": "09:50:01",
        "last_close": 21.14
       }
      ],
      "plan": [
       {
-       "code": "601985",
-       "name": "中国核电",
-       "asof": "2026-09-16",
-       "score": 84,
+       "code": "300487",
+       "name": "蓝晓科技",
+       "asof": "2026-09-17",
+       "score": 86,
        "signal": "强烈买入",
-       "close": 9.1,
-       "buy_below": 8.918,
-       "stop_atr": 8.86,
-       "stop_ma": 8.95,
-       "tp": 10.465,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": {
-        "score": -0.3,
-        "why": "外部:新能源电力"
-       },
-       "reason": "强烈买入(84分) 回踩≤8.92 ATR止损8.86；LLM:核电电力公用防御受益，乖离小（外部:新能源电力-0.3）"
-      },
-      {
-       "code": "002155",
-       "name": "湖南黄金",
-       "asof": "2026-09-16",
-       "score": 71,
-       "signal": "买入",
-       "close": 27.13,
-       "buy_below": 26.587,
-       "stop_atr": 24.47,
-       "stop_ma": 26.56,
-       "tp": 31.199,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": {
-        "score": 1.8,
-        "why": "外部:黄金"
-       },
-       "reason": "买入(71分) 回踩≤26.59 ATR止损24.47（外部:黄金+1.8）"
-      },
-      {
-       "code": "603980",
-       "name": "吉华集团",
-       "asof": "2026-09-16",
-       "score": 72,
-       "signal": "买入",
-       "close": 8.23,
-       "buy_below": 8.06,
-       "stop_atr": 7.27,
-       "stop_ma": 7.44,
-       "tp": 9.464,
+       "close": 68.74,
+       "buy_below": 67.365,
+       "stop_atr": 62.7,
+       "stop_ma": 64.33,
+       "tp": 79.051,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(72分) 回踩≤8.06 ATR止损7.27；LLM:染料化工低位，受益顺周期涨价"
+       "reason": "强烈买入(86分) 回踩≤67.36 ATR止损62.7"
       },
       {
-       "code": "300037",
-       "name": "新宙邦",
-       "asof": "2026-09-16",
-       "score": 81,
+       "code": "601985",
+       "name": "中国核电",
+       "asof": "2026-09-17",
+       "score": 83,
        "signal": "强烈买入",
-       "close": 73.45,
-       "buy_below": 71.981,
-       "stop_atr": 66.2,
-       "stop_ma": 66.33,
-       "tp": 84.468,
+       "close": 9.06,
+       "buy_below": 8.879,
+       "stop_atr": 8.83,
+       "stop_ma": 8.96,
+       "tp": 10.419,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:周期资源"
-       },
-       "reason": "强烈买入(81分) 回踩≤71.98 ATR止损66.2；LLM:60日跌18%低位，周期资源受益油价（外部:周期资源+1.5）"
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤8.88 ATR止损8.83"
+      },
+      {
+       "code": "603980",
+       "name": "吉华集团",
+       "asof": "2026-09-17",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 8.18,
+       "buy_below": 8.016,
+       "stop_atr": 7.26,
+       "stop_ma": 7.51,
+       "tp": 9.407,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(82分) 回踩≤8.02 ATR止损7.26"
+      },
+      {
+       "code": "600900",
+       "name": "长江电力",
+       "asof": "2026-09-17",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 28.37,
+       "buy_below": 27.803,
+       "stop_atr": 27.59,
+       "stop_ma": 28.25,
+       "tp": 32.625,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(80分) 回踩≤27.80 ATR止损27.59"
+      },
+      {
+       "code": "601838",
+       "name": "成都银行",
+       "asof": "2026-09-17",
+       "score": 79,
+       "signal": "买入",
+       "close": 19.79,
+       "buy_below": 19.394,
+       "stop_atr": 19.11,
+       "stop_ma": 19.43,
+       "tp": 22.758,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(79分) 回踩≤19.39 ATR止损19.11"
+      },
+      {
+       "code": "159518",
+       "name": "标普油气ETF嘉实",
+       "asof": "2026-09-17",
+       "score": 75,
+       "signal": "买入",
+       "close": 1.325,
+       "buy_below": 1.298,
+       "stop_atr": 1.26,
+       "stop_ma": 1.3,
+       "tp": 1.524,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(75分) 回踩≤1.30 ATR止损1.26"
+      },
+      {
+       "code": "601988",
+       "name": "中国银行",
+       "asof": "2026-09-17",
+       "score": 75,
+       "signal": "买入",
+       "close": 6.56,
+       "buy_below": 6.429,
+       "stop_atr": 6.28,
+       "stop_ma": 6.43,
+       "tp": 7.544,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(75分) 回踩≤6.43 ATR止损6.28"
+      },
+      {
+       "code": "600795",
+       "name": "国电电力",
+       "asof": "2026-09-17",
+       "score": 75,
+       "signal": "买入",
+       "close": 5.26,
+       "buy_below": 5.155,
+       "stop_atr": 5.05,
+       "stop_ma": 5.27,
+       "tp": 6.049,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(75分) 回踩≤5.16 ATR止损5.05"
       }
      ],
      "trades": [
@@ -3118,6 +3270,16 @@
        "date": "2026-09-16",
        "kind": "review",
        "note": "[全池]稳健：平仓3笔 胜0/负3 胜率0% 已实现-1612｜亏因：破ATR/保本止损 ×3｜均亏-537"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[全池]稳健：8 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-17",
+       "kind": "plan",
+       "note": "[全池]稳健 盘中复盘刷新: 新增 蓝晓科技,国电电力,长江电力,成都银行,中国银行"
       }
      ],
      "review_log": [
@@ -3160,48 +3322,156 @@
      "positions": [],
      "plan": [
       {
-       "code": "601985",
-       "name": "中国核电",
-       "asof": "2026-09-16",
-       "score": 84,
+       "code": "603980",
+       "name": "吉华集团",
+       "asof": "2026-09-17",
+       "score": 82,
        "signal": "强烈买入",
-       "close": 9.1,
-       "buy_below": 8.827,
-       "stop_atr": 8.86,
+       "close": 8.18,
+       "buy_below": 7.935,
+       "stop_atr": 7.26,
        "stop_ma": null,
-       "tp": 10.01,
+       "tp": 8.998,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
-       "ext": {
-        "score": -0.3,
-        "why": "外部:新能源电力"
-       },
-       "reason": "强烈买入(84分) 回踩≤8.83 ATR止损8.86（保本+5%%）；LLM:核电电力公用防御受益，乖离小（外部:新能源电力-0.3）"
+       "ext": null,
+       "reason": "强烈买入(82分) 回踩≤7.93 ATR止损7.26（保本+5%%）"
       },
       {
-       "code": "300037",
-       "name": "新宙邦",
-       "asof": "2026-09-16",
-       "score": 81,
+       "code": "600900",
+       "name": "长江电力",
+       "asof": "2026-09-17",
+       "score": 80,
        "signal": "强烈买入",
-       "close": 73.45,
-       "buy_below": 71.246,
-       "stop_atr": 66.2,
+       "close": 28.37,
+       "buy_below": 27.519,
+       "stop_atr": 27.59,
        "stop_ma": null,
-       "tp": 80.795,
+       "tp": 31.207,
        "trail": null,
        "be_at": 0.05,
        "gate": "block",
        "budget": 7000.0,
        "status": "wait",
-       "ext": {
-        "score": 1.5,
-        "why": "外部:周期资源"
-       },
-       "reason": "强烈买入(81分) 回踩≤71.25 ATR止损66.2（保本+5%%）；LLM:60日跌18%低位，周期资源受益油价（外部:周期资源+1.5）"
+       "ext": null,
+       "reason": "强烈买入(80分) 回踩≤27.52 ATR止损27.59（保本+5%%）"
+      },
+      {
+       "code": "601838",
+       "name": "成都银行",
+       "asof": "2026-09-17",
+       "score": 79,
+       "signal": "买入",
+       "close": 19.79,
+       "buy_below": 19.196,
+       "stop_atr": 19.11,
+       "stop_ma": null,
+       "tp": 21.769,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "买入(79分) 回踩≤19.20 ATR止损19.11（保本+5%%）"
+      },
+      {
+       "code": "300487",
+       "name": "蓝晓科技",
+       "asof": "2026-09-17",
+       "score": 86,
+       "signal": "强烈买入",
+       "close": 68.74,
+       "buy_below": 66.678,
+       "stop_atr": 62.7,
+       "stop_ma": null,
+       "tp": 75.614,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(86分) 回踩≤66.68 ATR止损62.7（保本+5%%）"
+      },
+      {
+       "code": "601985",
+       "name": "中国核电",
+       "asof": "2026-09-17",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 9.06,
+       "buy_below": 8.788,
+       "stop_atr": 8.83,
+       "stop_ma": null,
+       "tp": 9.966,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤8.79 ATR止损8.83（保本+5%%）"
+      },
+      {
+       "code": "600982",
+       "name": "宁波能源",
+       "asof": "2026-09-17",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 5.12,
+       "buy_below": 4.966,
+       "stop_atr": 4.8,
+       "stop_ma": null,
+       "tp": 5.632,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(80分) 回踩≤4.97 ATR止损4.8（保本+5%%）"
+      },
+      {
+       "code": "920725",
+       "name": "惠丰钻石",
+       "asof": "2026-09-17",
+       "score": 83,
+       "signal": "强烈买入",
+       "close": 96.12,
+       "buy_below": 93.236,
+       "stop_atr": 79.25,
+       "stop_ma": null,
+       "tp": 105.732,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(83分) 回踩≤93.24 ATR止损79.25（保本+5%%）"
+      },
+      {
+       "code": "600172",
+       "name": "黄河旋风",
+       "asof": "2026-09-17",
+       "score": 82,
+       "signal": "强烈买入",
+       "close": 16.5,
+       "buy_below": 16.005,
+       "stop_atr": 14.25,
+       "stop_ma": null,
+       "tp": 18.15,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(82分) 回踩≤16.00 ATR止损14.25（保本+5%%）"
       }
      ],
      "trades": [],
@@ -4380,6 +4650,16 @@
        "date": "2026-09-16",
        "kind": "plan",
        "note": "[全池]严守纪律：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[全池]严守纪律：5 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-17",
+       "kind": "plan",
+       "note": "[全池]严守纪律 盘中复盘刷新: 新增 蓝晓科技,黄河旋风,长江电力,宁波能源,成都银行,吉华集团,惠丰钻石"
       }
      ],
      "review_log": [],
@@ -4418,31 +4698,31 @@
       "be_at": null,
       "be_on": false,
       "peak": 16.83,
-      "prev_close": 16.359,
+      "prev_close": 16.65,
       "score": 83,
       "signal": "强烈买入",
       "consensus": 1,
       "from": [
        "aggressive"
       ],
-      "last": 16.68,
-      "last_chg": 1.96,
-      "last_ts": "close",
+      "last": 16.35,
+      "last_chg": -1.8,
+      "last_ts": "09:50:01",
       "last_close": 16.68
      }
     ],
     "plan": [
      {
-      "code": "601985",
-      "name": "中国核电",
-      "asof": "2026-09-16",
-      "score": 84,
+      "code": "300487",
+      "name": "蓝晓科技",
+      "asof": "2026-09-17",
+      "score": 86,
       "signal": "强烈买入",
-      "close": 9.1,
-      "buy_below": 9.054,
-      "stop_atr": 8.86,
+      "close": 68.74,
+      "buy_below": 67.61,
+      "stop_atr": 62.7,
       "stop_ma": null,
-      "tp": 10.01,
+      "tp": 75.614,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -4454,19 +4734,19 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤9.05 止損8.86 止盈10.01"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤67.61 止損62.70 止盈75.61"
      },
      {
-      "code": "300037",
-      "name": "新宙邦",
-      "asof": "2026-09-16",
-      "score": 81,
+      "code": "601985",
+      "name": "中国核电",
+      "asof": "2026-09-17",
+      "score": 83,
       "signal": "强烈买入",
-      "close": 73.45,
-      "buy_below": 72.14,
-      "stop_atr": 66.2,
+      "close": 9.06,
+      "buy_below": 9.015,
+      "stop_atr": 8.83,
       "stop_ma": null,
-      "tp": 80.795,
+      "tp": 9.966,
       "trail": 0.1,
       "be_at": 0.05,
       "gate": "block",
@@ -4478,42 +4758,135 @@
        "balanced",
        "disciplined"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤72.14 止損66.20 止盈80.80"
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤9.02 止損8.83 止盈9.97"
      },
      {
       "code": "603980",
       "name": "吉华集团",
-      "asof": "2026-09-16",
-      "score": 72,
-      "signal": "买入",
-      "close": 8.23,
-      "buy_below": 8.06,
-      "stop_atr": 7.27,
+      "asof": "2026-09-17",
+      "score": 82,
+      "signal": "强烈买入",
+      "close": 8.18,
+      "buy_below": 8.07,
+      "stop_atr": 7.26,
       "stop_ma": null,
-      "tp": 9.464,
+      "tp": 8.998,
       "trail": 0.1,
-      "be_at": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤8.07 止損7.26 止盈9.00"
+     },
+     {
+      "code": "601838",
+      "name": "成都银行",
+      "asof": "2026-09-17",
+      "score": 79,
+      "signal": "买入",
+      "close": 19.79,
+      "buy_below": 19.691,
+      "stop_atr": 19.11,
+      "stop_ma": null,
+      "tp": 21.769,
+      "trail": 0.1,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 10000.0,
+      "status": "wait",
+      "consensus": 3,
+      "from": [
+       "aggressive",
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤19.69 止損19.11 止盈21.77"
+     },
+     {
+      "code": "920725",
+      "name": "惠丰钻石",
+      "asof": "2026-09-17",
+      "score": 83,
+      "signal": "强烈买入",
+      "close": 96.12,
+      "buy_below": 95.639,
+      "stop_atr": 79.25,
+      "stop_ma": null,
+      "tp": 105.732,
+      "trail": 0.1,
+      "be_at": 0.05,
       "gate": "block",
       "budget": 6500.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
-       "balanced"
+       "disciplined"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤8.06 止損7.27 止盈9.46"
+      "reason": "共识2/3（激进/严守纪律）仓位13% 回踩≤95.64 止損79.25 止盈105.73"
+     },
+     {
+      "code": "600900",
+      "name": "长江电力",
+      "asof": "2026-09-17",
+      "score": 80,
+      "signal": "强烈买入",
+      "close": 28.37,
+      "buy_below": 27.803,
+      "stop_atr": 27.59,
+      "stop_ma": null,
+      "tp": 31.207,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤27.80 止損27.59 止盈31.21"
+     },
+     {
+      "code": "600982",
+      "name": "宁波能源",
+      "asof": "2026-09-17",
+      "score": 80,
+      "signal": "强烈买入",
+      "close": 5.12,
+      "buy_below": 4.966,
+      "stop_atr": 4.8,
+      "stop_ma": null,
+      "tp": 5.632,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "disciplined"
+      ],
+      "reason": "共识1/3（严守纪律）仓位8% 回踩≤4.97 止損4.80 止盈5.63"
      },
      {
       "code": "688028",
       "name": "沃尔德",
-      "asof": "2026-09-16",
-      "score": 72,
+      "asof": "2026-09-17",
+      "score": 77,
       "signal": "买入",
-      "close": 126.46,
-      "buy_below": 121.402,
-      "stop_atr": 108.29,
+      "close": 125.58,
+      "buy_below": 120.75,
+      "stop_atr": 108.3,
       "stop_ma": null,
-      "tp": 151.752,
+      "tp": 150.696,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -4523,19 +4896,41 @@
       "from": [
        "aggressive"
       ],
-      "reason": "共识1/3（激进）仓位8% 回踩≤121.40 止損108.29 止盈151.75"
+      "reason": "共识1/3（激进）仓位8% 回踩≤120.75 止損108.30 止盈150.70"
      },
      {
-      "code": "002155",
-      "name": "湖南黄金",
-      "asof": "2026-09-16",
-      "score": 71,
+      "code": "002916",
+      "name": "深南电路",
+      "asof": "2026-09-17",
+      "score": 77,
       "signal": "买入",
-      "close": 27.13,
-      "buy_below": 26.587,
-      "stop_atr": 24.47,
+      "close": 393.36,
+      "buy_below": 391.393,
+      "stop_atr": 353.98,
       "stop_ma": null,
-      "tp": 31.199,
+      "tp": 472.032,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "aggressive"
+      ],
+      "reason": "共识1/3（激进）仓位8% 回踩≤391.39 止損353.98 止盈472.03"
+     },
+     {
+      "code": "159518",
+      "name": "标普油气ETF嘉实",
+      "asof": "2026-09-17",
+      "score": 75,
+      "signal": "买入",
+      "close": 1.325,
+      "buy_below": 1.298,
+      "stop_atr": 1.26,
+      "stop_ma": null,
+      "tp": 1.524,
       "trail": null,
       "be_at": null,
       "gate": "block",
@@ -4545,7 +4940,51 @@
       "from": [
        "balanced"
       ],
-      "reason": "共识1/3（稳健）仓位8% 回踩≤26.59 止損24.47 止盈31.20"
+      "reason": "共识1/3（稳健）仓位8% 回踩≤1.30 止損1.26 止盈1.52"
+     },
+     {
+      "code": "601988",
+      "name": "中国银行",
+      "asof": "2026-09-17",
+      "score": 75,
+      "signal": "买入",
+      "close": 6.56,
+      "buy_below": 6.429,
+      "stop_atr": 6.28,
+      "stop_ma": null,
+      "tp": 7.544,
+      "trail": null,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "balanced"
+      ],
+      "reason": "共识1/3（稳健）仓位8% 回踩≤6.43 止損6.28 止盈7.54"
+     },
+     {
+      "code": "600795",
+      "name": "国电电力",
+      "asof": "2026-09-17",
+      "score": 75,
+      "signal": "买入",
+      "close": 5.26,
+      "buy_below": 5.155,
+      "stop_atr": 5.05,
+      "stop_ma": null,
+      "tp": 6.049,
+      "trail": null,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "balanced"
+      ],
+      "reason": "共识1/3（稳健）仓位8% 回踩≤5.16 止損5.05 止盈6.05"
      }
     ],
     "trades": [
@@ -5390,6 +5829,16 @@
       "date": "2026-09-16",
       "kind": "plan",
       "note": "[全池]合并·共识：5 单待触发（共识3:2 共识2:1 共识1:2）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-16",
+      "kind": "plan",
+      "note": "[全池]合并·共识：9 单待触发（共识3:4 共识2:4 共识1:1）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-17",
+      "kind": "plan",
+      "note": "[全池]合并·共识 盘中复盘刷新: 新增 深南电路,蓝晓科技,国电电力,长江电力,宁波能源,成都银行,中国银行,惠丰钻石"
      }
     ],
     "review_log": [],
@@ -5556,12 +6005,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 28.65,
-       "prev_close": 28.501,
+       "prev_close": 28.46,
        "score": 70,
        "signal": "买入",
-       "last": 28.45,
-       "last_chg": -0.18,
-       "last_ts": "close",
+       "last": 28.27,
+       "last_chg": -0.67,
+       "last_ts": "09:50:01",
        "last_close": 28.45
       },
       {
@@ -5578,12 +6027,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 36.01,
-       "prev_close": 35.162,
+       "prev_close": 34.31,
        "score": 82,
        "signal": "强烈买入",
-       "last": 34.36,
-       "last_chg": -2.28,
-       "last_ts": "close",
+       "last": 34.14,
+       "last_chg": -0.5,
+       "last_ts": "09:50:01",
        "last_close": 34.36
       },
       {
@@ -5600,12 +6049,12 @@
        "be_at": null,
        "be_on": false,
        "peak": 64.55,
-       "prev_close": 60.798,
+       "prev_close": 62.33,
        "score": 74,
        "signal": "买入",
-       "last": 62.36,
-       "last_chg": 2.57,
-       "last_ts": "close",
+       "last": 62.27,
+       "last_chg": -0.1,
+       "last_ts": "09:50:01",
        "last_close": 62.36
       }
      ],
@@ -6468,6 +6917,11 @@
        "date": "2026-09-16",
        "kind": "review",
        "note": "[6股精选]激进：平仓1笔 胜0/负1 胜率0% 已实现-400｜亏因：破ATR/保本止损 ×1｜均亏-400"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [
@@ -6485,7 +6939,49 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [],
+     "plan": [
+      {
+       "code": "600900",
+       "name": "长江电力",
+       "asof": "2026-09-17",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 28.37,
+       "buy_below": 27.803,
+       "stop_atr": 27.59,
+       "stop_ma": 28.25,
+       "tp": 32.625,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(80分) 回踩≤27.80 ATR止损27.59"
+      },
+      {
+       "code": "002142",
+       "name": "宁波银行",
+       "asof": "2026-09-17",
+       "score": 75,
+       "signal": "买入",
+       "close": 34.14,
+       "buy_below": 33.457,
+       "stop_atr": 32.72,
+       "stop_ma": 34.45,
+       "tp": 39.261,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": 1.5,
+        "why": "外部:红利银行"
+       },
+       "reason": "买入(75分) 回踩≤33.46 ATR止损32.72（外部:红利银行+1.5）"
+      }
+     ],
      "trades": [],
      "equity_curve": [
       {
@@ -7280,6 +7776,16 @@
        "date": "2026-09-16",
        "kind": "plan",
        "note": "[6股精选]稳健：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-17",
+       "kind": "plan",
+       "note": "[6股精选]稳健 盘中复盘刷新: 新增 宁波银行,长江电力"
       }
      ],
      "review_log": [],
@@ -7303,7 +7809,27 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [],
+     "plan": [
+      {
+       "code": "600900",
+       "name": "长江电力",
+       "asof": "2026-09-17",
+       "score": 80,
+       "signal": "强烈买入",
+       "close": 28.37,
+       "buy_below": 27.519,
+       "stop_atr": 27.59,
+       "stop_ma": null,
+       "tp": 31.207,
+       "trail": null,
+       "be_at": 0.05,
+       "gate": "block",
+       "budget": 7000.0,
+       "status": "wait",
+       "ext": null,
+       "reason": "强烈买入(80分) 回踩≤27.52 ATR止损27.59（保本+5%%）"
+      }
+     ],
      "trades": [],
      "equity_curve": [
       {
@@ -8108,6 +8634,16 @@
        "date": "2026-09-16",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-16",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-17",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律 盘中复盘刷新: 新增 长江电力"
       }
      ],
      "review_log": [],
@@ -8121,7 +8657,53 @@
     "start_cash": 50000.0,
     "cash": 50000.0,
     "positions": [],
-    "plan": [],
+    "plan": [
+     {
+      "code": "600900",
+      "name": "长江电力",
+      "asof": "2026-09-17",
+      "score": 80,
+      "signal": "强烈买入",
+      "close": 28.37,
+      "buy_below": 27.803,
+      "stop_atr": 27.59,
+      "stop_ma": null,
+      "tp": 31.207,
+      "trail": null,
+      "be_at": 0.05,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "balanced",
+       "disciplined"
+      ],
+      "reason": "共识2/3（稳健/严守纪律）仓位13% 回踩≤27.80 止損27.59 止盈31.21"
+     },
+     {
+      "code": "002142",
+      "name": "宁波银行",
+      "asof": "2026-09-17",
+      "score": 75,
+      "signal": "买入",
+      "close": 34.14,
+      "buy_below": 33.457,
+      "stop_atr": 32.72,
+      "stop_ma": null,
+      "tp": 39.261,
+      "trail": null,
+      "be_at": null,
+      "gate": "block",
+      "budget": 4000.0,
+      "status": "wait",
+      "consensus": 1,
+      "from": [
+       "balanced"
+      ],
+      "reason": "共识1/3（稳健）仓位8% 回踩≤33.46 止損32.72 止盈39.26"
+     }
+    ],
     "trades": [],
     "equity_curve": [
      {
@@ -8805,6 +9387,16 @@
       "date": "2026-09-16",
       "kind": "plan",
       "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-16",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-17",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识 盘中复盘刷新: 新增 宁波银行,长江电力"
      }
     ],
     "review_log": [],
