@@ -55,8 +55,8 @@
    },
    "2026-09-18": {
     "gate": "block",
-    "why": "普涨过热(广度80%)；LLM宏观防御；宏观数据过期23h(已不参与多头判断)",
-    "ts": "10:24:01"
+    "why": "普涨过热(广度81%)；LLM宏观防御；宏观数据过期24h(已不参与多头判断)",
+    "ts": "10:44:02"
    }
   },
   "llm_gate_cb": {
@@ -157,9 +157,9 @@
        "prev_close": 28.46,
        "score": 83,
        "signal": "强烈买入",
-       "last": 28.43,
-       "last_chg": -0.11,
-       "last_ts": "10:24:01",
+       "last": 28.32,
+       "last_chg": -0.49,
+       "last_ts": "10:44:02",
        "last_close": 28.45
       }
      ],
@@ -170,30 +170,30 @@
        "asof": "2026-09-18",
        "score": 73,
        "signal": "买入",
-       "close": 68.31,
-       "buy_below": 67.93,
-       "stop_atr": 62.35,
+       "close": 68.26,
+       "buy_below": 67.919,
+       "stop_atr": 62.3,
        "stop_ma": null,
-       "tp": 81.972,
+       "tp": 81.912,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤67.93 ATR止损62.35"
+       "reason": "买入(73分) 回踩≤67.92 ATR止损62.3"
       },
       {
        "code": "600135",
        "name": "乐凯胶片",
        "asof": "2026-09-18",
-       "score": 69,
+       "score": 73,
        "signal": "买入",
-       "close": 7.88,
+       "close": 7.87,
        "buy_below": 7.73,
-       "stop_atr": 7.35,
+       "stop_atr": 7.34,
        "stop_ma": null,
-       "tp": 9.456,
+       "tp": 9.444,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -203,7 +203,7 @@
         "score": 3.6,
         "why": "外部:半导体"
        },
-       "reason": "买入(69分) 回踩≤7.73 ATR止损7.35（外部:半导体+3.6）"
+       "reason": "买入(73分) 回踩≤7.73 ATR止损7.34（外部:半导体+3.6）"
       },
       {
        "code": "002245",
@@ -230,18 +230,18 @@
        "asof": "2026-09-18",
        "score": 73,
        "signal": "买入",
-       "close": 5.22,
+       "close": 5.24,
        "buy_below": 5.19,
-       "stop_atr": 4.89,
+       "stop_atr": 4.91,
        "stop_ma": null,
-       "tp": 6.264,
+       "tp": 6.288,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤5.19 ATR止损4.89"
+       "reason": "买入(73分) 回踩≤5.19 ATR止损4.91"
       },
       {
        "code": "600105",
@@ -249,11 +249,11 @@
        "asof": "2026-09-18",
        "score": 68,
        "signal": "买入",
-       "close": 46.47,
-       "buy_below": 44.611,
-       "stop_atr": 41.16,
+       "close": 46.53,
+       "buy_below": 44.669,
+       "stop_atr": 41.2,
        "stop_ma": null,
-       "tp": 55.764,
+       "tp": 55.836,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
@@ -263,7 +263,29 @@
         "score": 1.8,
         "why": "外部:CPO/光模块"
        },
-       "reason": "买入(68分) 回踩≤44.61 ATR止损41.16（外部:CPO/光模块+1.8）"
+       "reason": "买入(68分) 回踩≤44.67 ATR止损41.2（外部:CPO/光模块+1.8）"
+      },
+      {
+       "code": "000001",
+       "name": "平安银行",
+       "asof": "2026-09-18",
+       "score": 74,
+       "signal": "买入",
+       "close": 11.8,
+       "buy_below": 11.741,
+       "stop_atr": 11.42,
+       "stop_ma": null,
+       "tp": 14.16,
+       "trail": 0.1,
+       "be_at": null,
+       "gate": "block",
+       "budget": 11000.0,
+       "status": "wait",
+       "ext": {
+        "score": -2.7,
+        "why": "外部:红利银行"
+       },
+       "reason": "买入(74分) 回踩≤11.74 ATR止损11.42（外部:红利银行-2.7）"
       },
       {
        "code": "300568",
@@ -271,18 +293,18 @@
        "asof": "2026-09-18",
        "score": 69,
        "signal": "买入",
-       "close": 15.64,
-       "buy_below": 15.45,
-       "stop_atr": 14.05,
+       "close": 15.55,
+       "buy_below": 15.44,
+       "stop_atr": 13.96,
        "stop_ma": null,
-       "tp": 18.768,
+       "tp": 18.66,
        "trail": 0.1,
        "be_at": null,
        "gate": "block",
        "budget": 11000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(69分) 回踩≤15.45 ATR止损14.05"
+       "reason": "买入(69分) 回踩≤15.44 ATR止损13.96"
       }
      ],
      "trades": [
@@ -1931,6 +1953,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]激进：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进 盘中复盘刷新: 新增 平安银行"
       }
      ],
      "review_log": [
@@ -1992,9 +2029,9 @@
        "prev_close": 21.09,
        "score": 86,
        "signal": "强烈买入",
-       "last": 21.43,
-       "last_chg": 1.61,
-       "last_ts": "10:24:01",
+       "last": 21.52,
+       "last_chg": 2.04,
+       "last_ts": "10:44:02",
        "last_close": 21.2
       }
      ],
@@ -2005,18 +2042,18 @@
        "asof": "2026-09-18",
        "score": 73,
        "signal": "买入",
-       "close": 68.31,
-       "buy_below": 66.944,
-       "stop_atr": 62.35,
-       "stop_ma": 64.35,
-       "tp": 78.556,
+       "close": 68.26,
+       "buy_below": 66.895,
+       "stop_atr": 62.3,
+       "stop_ma": 64.34,
+       "tp": 78.499,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤66.94 ATR止损62.35"
+       "reason": "买入(73分) 回踩≤66.89 ATR止损62.3"
       },
       {
        "code": "600982",
@@ -2024,18 +2061,40 @@
        "asof": "2026-09-18",
        "score": 73,
        "signal": "买入",
-       "close": 5.22,
-       "buy_below": 5.116,
-       "stop_atr": 4.89,
+       "close": 5.24,
+       "buy_below": 5.135,
+       "stop_atr": 4.91,
        "stop_ma": 4.98,
-       "tp": 6.003,
+       "tp": 6.026,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤5.12 ATR止损4.89"
+       "reason": "买入(73分) 回踩≤5.13 ATR止损4.91"
+      },
+      {
+       "code": "600135",
+       "name": "乐凯胶片",
+       "asof": "2026-09-18",
+       "score": 73,
+       "signal": "买入",
+       "close": 7.87,
+       "buy_below": 7.713,
+       "stop_atr": 7.34,
+       "stop_ma": 7.57,
+       "tp": 9.05,
+       "trail": null,
+       "be_at": null,
+       "gate": "block",
+       "budget": 9000.0,
+       "status": "wait",
+       "ext": {
+        "score": 3.6,
+        "why": "外部:半导体"
+       },
+       "reason": "买入(73分) 回踩≤7.71 ATR止损7.34（外部:半导体+3.6）"
       },
       {
        "code": "002245",
@@ -2057,26 +2116,26 @@
        "reason": "买入(74分) 回踩≤17.91 ATR止损16.58"
       },
       {
-       "code": "600135",
-       "name": "乐凯胶片",
+       "code": "000001",
+       "name": "平安银行",
        "asof": "2026-09-18",
-       "score": 69,
+       "score": 74,
        "signal": "买入",
-       "close": 7.88,
-       "buy_below": 7.722,
-       "stop_atr": 7.35,
-       "stop_ma": 7.57,
-       "tp": 9.062,
+       "close": 11.8,
+       "buy_below": 11.564,
+       "stop_atr": 11.42,
+       "stop_ma": 11.75,
+       "tp": 13.57,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": {
-        "score": 3.6,
-        "why": "外部:半导体"
+        "score": -2.7,
+        "why": "外部:红利银行"
        },
-       "reason": "买入(69分) 回踩≤7.72 ATR止损7.35（外部:半导体+3.6）"
+       "reason": "买入(74分) 回踩≤11.56 ATR止损11.42（外部:红利银行-2.7）"
       },
       {
        "code": "300568",
@@ -2084,18 +2143,18 @@
        "asof": "2026-09-18",
        "score": 69,
        "signal": "买入",
-       "close": 15.64,
-       "buy_below": 15.327,
-       "stop_atr": 14.05,
-       "stop_ma": 14.78,
-       "tp": 17.986,
+       "close": 15.55,
+       "buy_below": 15.239,
+       "stop_atr": 13.96,
+       "stop_ma": 14.77,
+       "tp": 17.883,
        "trail": null,
        "be_at": null,
        "gate": "block",
        "budget": 9000.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(69分) 回踩≤15.33 ATR止损14.05"
+       "reason": "买入(69分) 回踩≤15.24 ATR止损13.96"
       },
       {
        "code": "600105",
@@ -2103,11 +2162,11 @@
        "asof": "2026-09-18",
        "score": 68,
        "signal": "买入",
-       "close": 46.47,
-       "buy_below": 44.611,
-       "stop_atr": 41.16,
-       "stop_ma": 40.57,
-       "tp": 53.44,
+       "close": 46.53,
+       "buy_below": 44.669,
+       "stop_atr": 41.2,
+       "stop_ma": 40.58,
+       "tp": 53.509,
        "trail": null,
        "be_at": null,
        "gate": "block",
@@ -2117,7 +2176,7 @@
         "score": 1.8,
         "why": "外部:CPO/光模块"
        },
-       "reason": "买入(68分) 回踩≤44.61 ATR止损41.16（外部:CPO/光模块+1.8）"
+       "reason": "买入(68分) 回踩≤44.67 ATR止损41.2（外部:CPO/光模块+1.8）"
       }
      ],
      "trades": [
@@ -3709,6 +3768,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]稳健：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健：6 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健 盘中复盘刷新: 新增 平安银行"
       }
      ],
      "review_log": [
@@ -5172,6 +5246,16 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]严守纪律：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -5217,9 +5301,9 @@
       "from": [
        "aggressive"
       ],
-      "last": 15.77,
-      "last_chg": -1.81,
-      "last_ts": "10:24:01",
+      "last": 15.75,
+      "last_chg": -1.93,
+      "last_ts": "10:44:02",
       "last_close": 16.1
      }
     ],
@@ -5248,16 +5332,16 @@
       "reason": "共识2/3（激进/稳健）仓位13% 回踩≤18.09 止損16.58 止盈21.01"
      },
      {
-      "code": "300487",
-      "name": "蓝晓科技",
+      "code": "000001",
+      "name": "平安银行",
       "asof": "2026-09-18",
-      "score": 73,
+      "score": 74,
       "signal": "买入",
-      "close": 68.31,
-      "buy_below": 67.93,
-      "stop_atr": 62.35,
+      "close": 11.8,
+      "buy_below": 11.741,
+      "stop_atr": 11.42,
       "stop_ma": null,
-      "tp": 78.556,
+      "tp": 13.57,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -5268,7 +5352,53 @@
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤67.93 止損62.35 止盈78.56"
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤11.74 止損11.42 止盈13.57"
+     },
+     {
+      "code": "300487",
+      "name": "蓝晓科技",
+      "asof": "2026-09-18",
+      "score": 73,
+      "signal": "买入",
+      "close": 68.26,
+      "buy_below": 67.919,
+      "stop_atr": 62.3,
+      "stop_ma": null,
+      "tp": 78.499,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "aggressive",
+       "balanced"
+      ],
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤67.92 止損62.30 止盈78.50"
+     },
+     {
+      "code": "600135",
+      "name": "乐凯胶片",
+      "asof": "2026-09-18",
+      "score": 73,
+      "signal": "买入",
+      "close": 7.87,
+      "buy_below": 7.73,
+      "stop_atr": 7.34,
+      "stop_ma": null,
+      "tp": 9.05,
+      "trail": 0.1,
+      "be_at": null,
+      "gate": "block",
+      "budget": 6500.0,
+      "status": "wait",
+      "consensus": 2,
+      "from": [
+       "aggressive",
+       "balanced"
+      ],
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤7.73 止損7.34 止盈9.05"
      },
      {
       "code": "600982",
@@ -5276,11 +5406,11 @@
       "asof": "2026-09-18",
       "score": 73,
       "signal": "买入",
-      "close": 5.22,
+      "close": 5.24,
       "buy_below": 5.19,
-      "stop_atr": 4.89,
+      "stop_atr": 4.91,
       "stop_ma": null,
-      "tp": 6.003,
+      "tp": 6.026,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -5291,30 +5421,7 @@
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤5.19 止損4.89 止盈6.00"
-     },
-     {
-      "code": "600135",
-      "name": "乐凯胶片",
-      "asof": "2026-09-18",
-      "score": 69,
-      "signal": "买入",
-      "close": 7.88,
-      "buy_below": 7.73,
-      "stop_atr": 7.35,
-      "stop_ma": null,
-      "tp": 9.062,
-      "trail": 0.1,
-      "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
-      "status": "wait",
-      "consensus": 2,
-      "from": [
-       "aggressive",
-       "balanced"
-      ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤7.73 止損7.35 止盈9.06"
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤5.19 止損4.91 止盈6.03"
      },
      {
       "code": "300568",
@@ -5322,11 +5429,11 @@
       "asof": "2026-09-18",
       "score": 69,
       "signal": "买入",
-      "close": 15.64,
-      "buy_below": 15.45,
-      "stop_atr": 14.05,
+      "close": 15.55,
+      "buy_below": 15.44,
+      "stop_atr": 13.96,
       "stop_ma": null,
-      "tp": 17.986,
+      "tp": 17.883,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -5337,7 +5444,7 @@
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤15.45 止損14.05 止盈17.99"
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤15.44 止損13.96 止盈17.88"
      },
      {
       "code": "600105",
@@ -5345,11 +5452,11 @@
       "asof": "2026-09-18",
       "score": 68,
       "signal": "买入",
-      "close": 46.47,
-      "buy_below": 44.611,
-      "stop_atr": 41.16,
+      "close": 46.53,
+      "buy_below": 44.669,
+      "stop_atr": 41.2,
       "stop_ma": null,
-      "tp": 53.44,
+      "tp": 53.509,
       "trail": 0.1,
       "be_at": null,
       "gate": "block",
@@ -5360,7 +5467,7 @@
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤44.61 止損41.16 止盈53.44"
+      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤44.67 止損41.20 止盈53.51"
      }
     ],
     "trades": [
@@ -6448,6 +6555,21 @@
       "date": "2026-09-18",
       "kind": "plan",
       "note": "[全池]合并·共识：6 单待触发（共识3:0 共识2:6 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识：6 单待触发（共识3:0 共识2:6 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识：6 单待触发（共识3:0 共识2:6 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识 盘中复盘刷新: 新增 平安银行"
      }
     ],
     "review_log": [],
@@ -6621,9 +6743,9 @@
        "prev_close": 28.46,
        "score": 70,
        "signal": "买入",
-       "last": 28.43,
-       "last_chg": -0.11,
-       "last_ts": "10:24:01",
+       "last": 28.32,
+       "last_chg": -0.49,
+       "last_ts": "10:44:02",
        "last_close": 28.45
       },
       {
@@ -6643,9 +6765,9 @@
        "prev_close": 34.59,
        "score": 82,
        "signal": "强烈买入",
-       "last": 34.86,
-       "last_chg": 0.78,
-       "last_ts": "10:24:01",
+       "last": 34.73,
+       "last_chg": 0.4,
+       "last_ts": "10:44:02",
        "last_close": 34.62
       },
       {
@@ -6665,9 +6787,9 @@
        "prev_close": 61.27,
        "score": 74,
        "signal": "买入",
-       "last": 62.2,
-       "last_chg": 1.52,
-       "last_ts": "10:24:01",
+       "last": 62.25,
+       "last_chg": 1.6,
+       "last_ts": "10:44:02",
        "last_close": 61.27
       }
      ],
@@ -7722,6 +7844,16 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [
@@ -8715,6 +8847,16 @@
        "date": "2026-09-17",
        "kind": "plan",
        "note": "[6股精选]稳健：2 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（大盘闸门挡）"
       },
       {
        "date": "2026-09-18",
@@ -9760,6 +9902,16 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
       }
      ],
      "review_log": [],
@@ -10635,6 +10787,16 @@
       "date": "2026-09-17",
       "kind": "plan",
       "note": "[6股精选]合并·共识：2 单待触发（共识3:0 共识2:0 共识1:2）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（大盘闸门挡）"
      },
      {
       "date": "2026-09-18",
