@@ -24,7 +24,7 @@ SYMBOLS = {
     'ETH/USDT:USDT': {'alloc': 0.30, 'sma': 50, 'name': 'ETH'},
     'TSLA/USDT:USDT': {'alloc': 0.30, 'sma': 30, 'name': 'TSLA'},
 }
-LEV = 2.0
+LEV = 5.0
 FEE = 0.0005   # 合约 maker 费率约 0.02%, 保守 0.05%
 PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
 LOOP_HOURS = float(os.environ.get('LOOP_HOURS', '6'))

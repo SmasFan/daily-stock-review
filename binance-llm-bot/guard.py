@@ -19,7 +19,7 @@ SYMBOLS = ['TSLA/USDT:USDT', 'COIN/USDT:USDT', 'PLTR/USDT:USDT', 'MSTR/USDT:USDT
 SL_PCT = float(os.environ.get('SL_PCT', '0.12'))
 CHECK_SEC = int(os.environ.get('GUARD_SEC', '60'))
 PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
-LEV = 2.0
+LEV = 5.0
 
 
 def make_fex():
