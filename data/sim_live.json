@@ -1,7 +1,7 @@
 {
  "meta": {
   "created": "2026-09-05 10:12:21",
-  "strategy_version": "v3.11",
+  "strategy_version": "v3.12",
   "accounts": [
    "aggressive",
    "balanced",
@@ -23,9 +23,10 @@
   },
   "daily_gate": {
    "date": "2026-09-18",
-   "gate": "block",
-   "why": "LLM宏观防御；宏观数据过期23h(已不参与多头判断)",
-   "ts": "09:38:04"
+   "gate": "caution",
+   "why": "普涨过热(广度82%，降半仓)",
+   "ts": "12:46:04",
+   "pos": 0.5
   },
   "gate_history": {
    "2026-09-11": {
@@ -54,9 +55,12 @@
     "ts": "09:36:34"
    },
    "2026-09-18": {
-    "gate": "block",
-    "why": "普涨过热(广度82%)",
-    "ts": "11:39:56"
+    "gate": "caution",
+    "pos": 0.5,
+    "why": "普涨过热(广度82%，降半仓)",
+    "breadth": 82.6,
+    "bench": 1.05,
+    "ts": "12:46:04"
    }
   },
   "llm_gate_cb": {
@@ -129,6 +133,12 @@
    "from": "v3.10",
    "to": "v3.11",
    "change": "①日内棘轮——LLM 宏观判断一天内会抖动（实测同一交易日同一批新闻 09:09多头64→09:23防御44，跨越60/40两阈值），导致闸门 open↔block 反复；风控上误block只错过机会、误解除会逆势开仓，故当天一旦 block 即维持到收盘（次日重评）。②闸门历史按日记录 state.meta.gate_history，页面新增「大盘闸门历史」卡，连续≥3天防守时高亮告警（防宏观卡死导致长期不交易）。③LLM 闸门 fallback 计数（区分真复核/放行）。"
+  },
+  {
+   "date": "2026-09-18",
+   "from": "v3.11",
+   "to": "v3.12",
+   "change": "v3.13 闸门由二元开关改为仓位旋钮 + 突破买点。\n动机: 9/11~9/18 连续6日 block(原因逐日退化为单靠一条 LLM 防御)，期间半导体涨5~14%、模拟盘仅成交1笔、93.8%现金闲置。用开/不开仓控风险=只会守财。\n改动:\n① market_gate 五档 attack/open/caution/reduce/block，新增 gate_pos 仓位系数(1.0/1.0/0.5/0.6/0)。软因素(LLM防御/广度过热)只降档到 caution(半仓)，硬崩盘(上证空头+涨占比≤20%)才 block。\n② 对称新鲜度: 过期宏观数据既不能判多头也不能判防御(旧版过期90h的防御仍能 block 全天，9/14 即因此假阳性)。\n③ 新增攻attack档: 多头结构+广度45~75+板块主力净流入≥100亿 → 满仓，可突破买点。\n④ 突破买点 buy_above: 强势多头+站上MA20 额外给追入价(前高3%内取前高，否则现价+0.5%)，band open/attack 3%、caution 1.5%；盘中实时降档自动收紧或关闭突破通道；追高上限由昨收+3%放宽到+8%。\n⑤ 闸门历史记 pos/breadth/bench，连续≥3日降档且基准累计>2% → 打防守过度告警。\n测试: tests/test_sim_gate.py 19 例(含突破触发/band收紧/硬空仓边界)。"
   }
  ],
  "pools": {
@@ -172,16 +182,19 @@
        "signal": "买入",
        "close": 68.83,
        "buy_below": 68.03,
+       "buy_above": 70.5,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 62.85,
        "stop_ma": null,
        "tp": 82.596,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤68.03 ATR止损62.85"
+       "reason": "买入(73分) 回踩≤68.03 / 突破≥70.50 ATR止损62.85（闸门0档×0.50）"
       },
       {
        "code": "300037",
@@ -191,16 +204,19 @@
        "signal": "买入",
        "close": 73.18,
        "buy_below": 72.814,
+       "buy_above": 73.546,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 66.37,
        "stop_ma": null,
        "tp": 87.816,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(77分) 回踩≤72.81 ATR止损66.37"
+       "reason": "买入(77分) 回踩≤72.81 / 突破≥73.55 ATR止损66.37（闸门0档×0.50）"
       },
       {
        "code": "600879",
@@ -210,19 +226,22 @@
        "signal": "买入",
        "close": 14.71,
        "buy_below": 14.43,
+       "buy_above": 15.065,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 13.63,
        "stop_ma": null,
        "tp": 17.652,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": {
         "score": 2.25,
         "why": "外部:军工"
        },
-       "reason": "买入(72分) 回踩≤14.43 ATR止损13.63（外部:军工+2.2）"
+       "reason": "买入(72分) 回踩≤14.43 / 突破≥15.06 ATR止损13.63（闸门0档×0.50）（外部:军工+2.2）"
       },
       {
        "code": "603980",
@@ -232,16 +251,19 @@
        "signal": "买入",
        "close": 8.81,
        "buy_below": 8.458,
+       "buy_above": 8.979,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 7.82,
        "stop_ma": null,
        "tp": 10.572,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(72分) 回踩≤8.46 ATR止损7.82"
+       "reason": "买入(72分) 回踩≤8.46 / 突破≥8.98 ATR止损7.82（闸门0档×0.50）"
       },
       {
        "code": "600105",
@@ -251,19 +273,22 @@
        "signal": "买入",
        "close": 46.63,
        "buy_below": 44.765,
+       "buy_above": 47.547,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 41.3,
        "stop_ma": null,
        "tp": 55.956,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": {
         "score": 1.8,
         "why": "外部:CPO/光模块"
        },
-       "reason": "买入(72分) 回踩≤44.77 ATR止损41.3（外部:CPO/光模块+1.8）"
+       "reason": "买入(72分) 回踩≤44.77 / 突破≥47.55 ATR止损41.3（闸门0档×0.50）（外部:CPO/光模块+1.8）"
       },
       {
        "code": "002245",
@@ -273,16 +298,19 @@
        "signal": "买入",
        "close": 18.27,
        "buy_below": 18.09,
+       "buy_above": 18.659,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 16.58,
        "stop_ma": null,
        "tp": 21.924,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(74分) 回踩≤18.09 ATR止损16.58"
+       "reason": "买入(74分) 回踩≤18.09 / 突破≥18.66 ATR止损16.58（闸门0档×0.50）"
       },
       {
        "code": "600982",
@@ -292,19 +320,22 @@
        "signal": "买入",
        "close": 5.23,
        "buy_below": 5.19,
+       "buy_above": 5.355,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 4.9,
        "stop_ma": null,
        "tp": 6.276,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": {
         "score": -0.3,
         "why": "外部:新能源电力"
        },
-       "reason": "买入(73分) 回踩≤5.19 ATR止损4.9（外部:新能源电力-0.3）"
+       "reason": "买入(73分) 回踩≤5.19 / 突破≥5.36 ATR止损4.9（闸门0档×0.50）（外部:新能源电力-0.3）"
       },
       {
        "code": "002145",
@@ -314,16 +345,19 @@
        "signal": "买入",
        "close": 4.63,
        "buy_below": 4.45,
+       "buy_above": 4.695,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 4.41,
        "stop_ma": null,
        "tp": 5.556,
        "trail": 0.1,
        "be_at": null,
-       "gate": "block",
-       "budget": 11000.0,
+       "gate": "caution",
+       "budget": 5500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(70分) 回踩≤4.45 ATR止损4.41"
+       "reason": "买入(70分) 回踩≤4.45 / 突破≥4.70 ATR止损4.41（闸门0档×0.50）"
       }
      ],
      "trades": [
@@ -2032,6 +2066,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]激进 盘中复盘刷新: 新增 钛能化学,新宙邦,航天电子,吉华集团"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]激进：8 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [
@@ -2108,19 +2157,22 @@
        "signal": "买入",
        "close": 5.23,
        "buy_below": 5.125,
+       "buy_above": 5.355,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 4.9,
        "stop_ma": 4.98,
        "tp": 6.014,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": {
         "score": -0.3,
         "why": "外部:新能源电力"
        },
-       "reason": "买入(73分) 回踩≤5.12 ATR止损4.9（外部:新能源电力-0.3）"
+       "reason": "买入(73分) 回踩≤5.12 / 突破≥5.36 ATR止损4.9（闸门0档×0.50）（外部:新能源电力-0.3）"
       },
       {
        "code": "300487",
@@ -2130,16 +2182,19 @@
        "signal": "买入",
        "close": 68.83,
        "buy_below": 67.453,
+       "buy_above": 70.5,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 62.85,
        "stop_ma": 64.37,
        "tp": 79.154,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(73分) 回踩≤67.45 ATR止损62.85"
+       "reason": "买入(73分) 回踩≤67.45 / 突破≥70.50 ATR止损62.85（闸门0档×0.50）"
       },
       {
        "code": "002245",
@@ -2149,16 +2204,19 @@
        "signal": "买入",
        "close": 18.27,
        "buy_below": 17.905,
+       "buy_above": 18.659,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 16.58,
        "stop_ma": 17.77,
        "tp": 21.01,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(74分) 回踩≤17.91 ATR止损16.58"
+       "reason": "买入(74分) 回踩≤17.91 / 突破≥18.66 ATR止损16.58（闸门0档×0.50）"
       },
       {
        "code": "300037",
@@ -2168,16 +2226,19 @@
        "signal": "买入",
        "close": 73.18,
        "buy_below": 71.716,
+       "buy_above": 73.546,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 66.37,
        "stop_ma": 67.19,
        "tp": 84.157,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(77分) 回踩≤71.72 ATR止损66.37"
+       "reason": "买入(77分) 回踩≤71.72 / 突破≥73.55 ATR止损66.37（闸门0档×0.50）"
       },
       {
        "code": "600879",
@@ -2187,38 +2248,22 @@
        "signal": "买入",
        "close": 14.71,
        "buy_below": 14.416,
+       "buy_above": 15.065,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 13.63,
        "stop_ma": 14.42,
        "tp": 16.916,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": {
         "score": 2.25,
         "why": "外部:军工"
        },
-       "reason": "买入(72分) 回踩≤14.42 ATR止损13.63（外部:军工+2.2）"
-      },
-      {
-       "code": "002145",
-       "name": "钛能化学",
-       "asof": "2026-09-18",
-       "score": 70,
-       "signal": "买入",
-       "close": 4.63,
-       "buy_below": 4.45,
-       "stop_atr": 4.41,
-       "stop_ma": 4.36,
-       "tp": 5.324,
-       "trail": null,
-       "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "买入(70分) 回踩≤4.45 ATR止损4.41"
+       "reason": "买入(72分) 回踩≤14.42 / 突破≥15.06 ATR止损13.63（闸门0档×0.50）（外部:军工+2.2）"
       },
       {
        "code": "603980",
@@ -2228,16 +2273,19 @@
        "signal": "买入",
        "close": 8.81,
        "buy_below": 8.458,
+       "buy_above": 8.979,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 7.82,
        "stop_ma": 7.62,
        "tp": 10.131,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": null,
-       "reason": "买入(72分) 回踩≤8.46 ATR止损7.82"
+       "reason": "买入(72分) 回踩≤8.46 / 突破≥8.98 ATR止损7.82（闸门0档×0.50）"
       },
       {
        "code": "600105",
@@ -2247,19 +2295,22 @@
        "signal": "买入",
        "close": 46.63,
        "buy_below": 44.765,
+       "buy_above": 47.547,
+       "breakout_band": 0.015,
+       "entry": "回踩+突破",
        "stop_atr": 41.3,
        "stop_ma": 40.58,
        "tp": 53.624,
        "trail": null,
        "be_at": null,
-       "gate": "block",
-       "budget": 9000.0,
+       "gate": "caution",
+       "budget": 4500.0,
        "status": "wait",
        "ext": {
         "score": 1.8,
         "why": "外部:CPO/光模块"
        },
-       "reason": "买入(72分) 回踩≤44.77 ATR止损41.3（外部:CPO/光模块+1.8）"
+       "reason": "买入(72分) 回踩≤44.77 / 突破≥47.55 ATR止损41.3（闸门0档×0.50）（外部:CPO/光模块+1.8）"
       }
      ],
      "trades": [
@@ -3911,6 +3962,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]稳健 盘中复盘刷新: 新增 钛能化学,新宙邦,航天电子,吉华集团"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健：7 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健：7 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]稳健：7 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [
@@ -3955,27 +4021,7 @@
      "start_cash": 50000.0,
      "cash": 50000.0,
      "positions": [],
-     "plan": [
-      {
-       "code": "300037",
-       "name": "新宙邦",
-       "asof": "2026-09-18",
-       "score": 77,
-       "signal": "买入",
-       "close": 73.18,
-       "buy_below": 70.985,
-       "stop_atr": 66.37,
-       "stop_ma": null,
-       "tp": 80.498,
-       "trail": null,
-       "be_at": 0.05,
-       "gate": "block",
-       "budget": 7000.0,
-       "status": "wait",
-       "ext": null,
-       "reason": "买入(77分) 回踩≤70.98 ATR止损66.37（保本+5%%）"
-      }
-     ],
+     "plan": [],
      "trades": [],
      "equity_curve": [
       {
@@ -5444,6 +5490,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[全池]严守纪律 盘中复盘刷新: 新增 新宙邦"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[全池]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [],
@@ -5504,21 +5565,23 @@
       "signal": "买入",
       "close": 73.18,
       "buy_below": 72.814,
+      "buy_above": 73.546,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 66.37,
       "stop_ma": null,
-      "tp": 80.498,
+      "tp": 84.157,
       "trail": 0.1,
-      "be_at": 0.05,
-      "gate": "block",
-      "budget": 10000.0,
+      "be_at": null,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
-      "consensus": 3,
+      "consensus": 2,
       "from": [
        "aggressive",
-       "balanced",
-       "disciplined"
+       "balanced"
       ],
-      "reason": "共识3/3（激进/稳健/严守纪律）仓位20% 回踩≤72.81 止損66.37 止盈80.50"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤72.81 / 突破≥73.55 止損66.37 止盈84.16"
      },
      {
       "code": "002245",
@@ -5528,20 +5591,23 @@
       "signal": "买入",
       "close": 18.27,
       "buy_below": 18.09,
+      "buy_above": 18.659,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 16.58,
       "stop_ma": null,
       "tp": 21.01,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤18.09 止損16.58 止盈21.01"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤18.09 / 突破≥18.66 止損16.58 止盈21.01"
      },
      {
       "code": "300487",
@@ -5551,20 +5617,23 @@
       "signal": "买入",
       "close": 68.83,
       "buy_below": 68.03,
+      "buy_above": 70.5,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 62.85,
       "stop_ma": null,
       "tp": 79.154,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤68.03 止損62.85 止盈79.15"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤68.03 / 突破≥70.50 止損62.85 止盈79.15"
      },
      {
       "code": "600982",
@@ -5574,20 +5643,23 @@
       "signal": "买入",
       "close": 5.23,
       "buy_below": 5.19,
+      "buy_above": 5.355,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 4.9,
       "stop_ma": null,
       "tp": 6.014,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤5.19 止損4.90 止盈6.01"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤5.19 / 突破≥5.36 止損4.90 止盈6.01"
      },
      {
       "code": "600879",
@@ -5597,20 +5669,23 @@
       "signal": "买入",
       "close": 14.71,
       "buy_below": 14.43,
+      "buy_above": 15.065,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 13.63,
       "stop_ma": null,
       "tp": 16.916,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤14.43 止損13.63 止盈16.92"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤14.43 / 突破≥15.06 止損13.63 止盈16.92"
      },
      {
       "code": "603980",
@@ -5620,20 +5695,23 @@
       "signal": "买入",
       "close": 8.81,
       "buy_below": 8.458,
+      "buy_above": 8.979,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 7.82,
       "stop_ma": null,
       "tp": 10.131,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤8.46 止損7.82 止盈10.13"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤8.46 / 突破≥8.98 止損7.82 止盈10.13"
      },
      {
       "code": "600105",
@@ -5643,20 +5721,23 @@
       "signal": "买入",
       "close": 46.63,
       "buy_below": 44.765,
+      "buy_above": 47.547,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 41.3,
       "stop_ma": null,
       "tp": 53.624,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 3250.0,
       "status": "wait",
       "consensus": 2,
       "from": [
        "aggressive",
        "balanced"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤44.77 止損41.30 止盈53.62"
+      "reason": "共识2/3（激进/稳健）仓位13%×0.5降档 回踩≤44.77 / 突破≥47.55 止損41.30 止盈53.62"
      },
      {
       "code": "002145",
@@ -5666,20 +5747,22 @@
       "signal": "买入",
       "close": 4.63,
       "buy_below": 4.45,
+      "buy_above": 4.695,
+      "breakout_band": 0.015,
+      "entry": "回踩+突破",
       "stop_atr": 4.41,
       "stop_ma": null,
-      "tp": 5.324,
+      "tp": 5.556,
       "trail": 0.1,
       "be_at": null,
-      "gate": "block",
-      "budget": 6500.0,
+      "gate": "caution",
+      "budget": 2000.0,
       "status": "wait",
-      "consensus": 2,
+      "consensus": 1,
       "from": [
-       "aggressive",
-       "balanced"
+       "aggressive"
       ],
-      "reason": "共识2/3（激进/稳健）仓位13% 回踩≤4.45 止損4.41 止盈5.32"
+      "reason": "共识1/3（激进）仓位8%×0.5降档 回踩≤4.45 / 突破≥4.70 止損4.41 止盈5.56"
      }
     ],
     "trades": [
@@ -6827,6 +6910,21 @@
       "date": "2026-09-18",
       "kind": "plan",
       "note": "[全池]合并·共识 盘中复盘刷新: 新增 钛能化学,新宙邦,航天电子,吉华集团"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识：8 单待触发（共识3:0 共识2:7 共识1:1）（caution降档：仓位×0.5）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识：8 单待触发（共识3:0 共识2:7 共识1:1）（caution降档：仓位×0.5）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[全池]合并·共识：8 单待触发（共识3:0 共识2:7 共识1:1）（caution降档：仓位×0.5）"
      }
     ],
     "review_log": [],
@@ -8146,6 +8244,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[6股精选]激进：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]激进：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [
@@ -9204,6 +9317,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[6股精选]稳健：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]稳健：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [],
@@ -10274,6 +10402,21 @@
        "date": "2026-09-18",
        "kind": "plan",
        "note": "[6股精选]严守纪律：0 单待盘中触发（大盘闸门挡）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
+      },
+      {
+       "date": "2026-09-18",
+       "kind": "plan",
+       "note": "[6股精选]严守纪律：0 单待盘中触发（caution档：门槛+4分 仓位×0.50）"
       }
      ],
      "review_log": [],
@@ -11214,6 +11357,21 @@
       "date": "2026-09-18",
       "kind": "plan",
       "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（大盘闸门挡）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（caution降档：仓位×0.5）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（caution降档：仓位×0.5）"
+     },
+     {
+      "date": "2026-09-18",
+      "kind": "plan",
+      "note": "[6股精选]合并·共识：0 单待触发（共识3:0 共识2:0 共识1:0）（caution降档：仓位×0.5）"
      }
     ],
     "review_log": [],

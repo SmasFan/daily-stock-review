@@ -42,6 +42,29 @@ REDUCE_BREADTH = float(os.environ.get("SIM_REDUCE_BREADTH", "25"))      # 涨占
 REDUCE_MIN_SCORE_BONUS = float(os.environ.get("SIM_REDUCE_SCORE", "6"))  # 买入门槛上调
 REDUCE_BUDGET_FACTOR = float(os.environ.get("SIM_REDUCE_BUDGET", "0.6"))  # 仓位打折
 MACRO_STALE_HOURS = float(os.environ.get("SIM_MACRO_STALE_H", "20"))     # 宏观数据超过则视为过期
+# 闸门分档（v3.12）：把「开/关」二元闸门改成「仓位旋钮」。
+#   背景：9/11~9/18 连续 6 日 block（原因逐日退化为单靠一条 LLM「防御」），
+#   期间半导体 +5%~14%、模拟盘只成交 1 笔、93.8% 现金闲置 —— 用「开不开仓」控风险
+#   等于只会守财。改为：软因素（LLM 防御 / 广度过热）只降档到 caution（半仓），
+#   只有「上证空头 + 涨占比极低」这类硬崩盘条件才 block（空仓）。
+GATE_POS = {"attack": 1.0, "open": 1.0, "caution": 0.5, "reduce": 0.6, "block": 0.0}
+CAUTION_POS = float(os.environ.get("SIM_CAUTION_POS", "0.5"))           # 软因素降档后的仓位系数
+CAUTION_SCORE_BONUS = float(os.environ.get("SIM_CAUTION_SCORE", "4"))   # 降档时买入门槛上调分
+OVERHEAT_BREADTH = float(os.environ.get("SIM_OVERHEAT_BREADTH", "65"))  # 普涨过热阈值（只降档不空仓）
+HARD_FLAT_BREADTH = float(os.environ.get("SIM_HARD_FLAT_BREADTH", "20"))  # 硬空仓：涨占比 ≤ 此值
+ATTACK_MAIN_NET = float(os.environ.get("SIM_ATTACK_MAIN_NET", "1.0e10"))  # attack 需主力净流入 ≥ 100亿
+ATTACK_BREADTH_LO = float(os.environ.get("SIM_ATTACK_BREADTH_LO", "45"))  # attack 广度下限
+ATTACK_BREADTH_HI = float(os.environ.get("SIM_ATTACK_BREADTH_HI", "75"))  # attack 广度上限
+# 突破买点（v3.12）：只做回踩买点 → 单边上涨永远等不到单（plan 全是 buy_below）。
+#   对「强势多头 + 站上 MA20」的标的额外给一个 buy_above，达到即可追入（限幅防追高）。
+#   过热（caution）阶段也允许突破 —— 普涨日往往没有回踩；但追高幅度收紧到 1.5%。
+BREAKOUT_GATES = ("open", "attack", "caution")                               # 这三档允许突破买
+BREAKOUT_PREM = float(os.environ.get("SIM_BREAKOUT_PREM", "0.005"))         # 触发价 = 现价 ×(1+0.5%)
+BREAKOUT_BAND = float(os.environ.get("SIM_BREAKOUT_BAND", "0.03"))          # open/attack：最多追到触发价 ×1.03
+BREAKOUT_BAND_CAUTION = float(os.environ.get("SIM_BREAKOUT_BAND_CAUTION", "0.015"))  # caution：×1.015
+BREAKOUT_MAX_CHG = float(os.environ.get("SIM_BREAKOUT_MAX_CHG", "0.08"))    # 相对昨收最大 +8%
+# 闸门错失成本监控（v3.12）：记录 block/caution 日的基准与广度，供「防守过度」复核
+MISSED_BENCH = "sh000300"
 # 外部市场因子（build_external.py 产出）：原油/黄金/白银/铜/美债收益率/美元/纳指/VIX/标普
 # → 板块偏好分。选股时按 板块 或 个股名关键词 折算成加/减分，影响候选排序与门槛。
 EXT_WEIGHT = float(os.environ.get("SIM_EXT_WEIGHT", "1.5"))    # 偏好分 → 选股分 的放大系数
@@ -607,79 +630,144 @@ def _macro_age_hours(macro):
         return None
 
 
+def gate_pos_of(gate):
+    """闸门 → 仓位系数（v3.12）。未知档位按 0.5 保守处理。"""
+    if gate == "caution":
+        return CAUTION_POS
+    return GATE_POS.get(gate, 0.5)
+
+
+def breakout_band_of(gate):
+    """闸门 → 突破追高幅度上限（v3.12）。caution 阶段收紧。"""
+    return BREAKOUT_BAND_CAUTION if gate == "caution" else BREAKOUT_BAND
+
+
 def market_gate(review, state=None, date=None):
-    """大盘闸门。返回 (gate, 说明)，gate ∈ {open, reduce, block}。
+    """大盘闸门。返回 (gate, 说明)，gate ∈ {attack, open, caution, reduce, block}。
 
-    block : 上证空头 / 普涨过热 / LLM宏观防御 → 不开新仓
-    reduce: 宏观利多但市场宽度极弱（政策面与盘面背离）→ 抬买入门槛 + 缩仓位
-            （不 block：利多真实、超卖可能是机会，只是不该满仓追）
+    v3.12：由二元开关改为「仓位旋钮」，软因素只降档，硬崩盘才空仓。
+      attack : 多头结构 + 广度健康(45~75) + 板块主力净流入 ≥ 100亿 → 满仓（含突破买点）
+      open   : 其余无风险 → 满仓
+      caution: 广度过热(≥65) / LLM 防御 / 上证弱 → 半仓（仍可开仓，但只用回踩买点）
+      reduce : 宏观利多 × 宽度极弱背离 → 仓位×0.6
+      block  : 上证空头 **且** 涨占比 ≤ 20%（真崩盘）→ 空仓
 
-    日内棘轮（传 state 时生效）：LLM 宏观判断在一天内会抖动
-    （实测同一交易日同一批新闻：09:09 多头64 → 09:23 防御44，跨越 60/40 两阈值），
-    导致闸门 open↔block 反复。风控上「误 block」只错过机会、「误解除」会逆势开仓，
-    故当天一旦 block 即维持到收盘（次日重新评估）。
+    理由：2026-09-11~18 连续 6 日 block，原因逐日退化为单靠一条 LLM「防御」
+    （同日 LLM 实测会在 多头64 / 防御44 之间抖动），期间主线板块涨 5%~14%、
+    模拟盘只成交 1 笔、93.8% 现金闲置。风控应靠「仓位大小」，不是「开不开仓」。
+
+    日内棘轮（传 state 时生效）：仅对 block 维持到收盘（防 LLM 抖动导致反复开关）；
+    caution/reduce 不锁定，随时可按最新市场恢复。
     """
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
     sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
     mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
     breadth = (review.get("temperature") or {}).get("breadth") or 0
-    overheat = breadth >= 65
-    llm_def, llm_bull, macro_age = False, False, None
+    overheat = breadth >= OVERHEAT_BREADTH
+    llm_def, llm_bull, macro_age, llm_stale = False, False, None, False
     try:
         _llm = load_json("macro_llm_data.json") or {}
         _ll = (_llm.get("llm") or {})
         _llm_sent = _ll.get("sentiment")
         _score = _ll.get("score") or 50
-        llm_def = _llm_sent in ("空头", "防御") or (_llm_sent == "中性" and _score < 40)
         macro_age = _macro_age_hours(_llm)
-        # 宏观的"多头"只在新鲜时可信（过期数据不该主导降档判断）
         fresh = macro_age is None or macro_age <= MACRO_STALE_HOURS
+        llm_stale = not fresh
+        # v3.12 对称新鲜度：过期数据既不能判多头，也不能判防御
+        #   （旧版只有多头要求 fresh，导致过期 90h 的「防御」仍能 block 全天）
+        llm_def = fresh and (_llm_sent in ("空头", "防御")
+                             or (_llm_sent == "中性" and _score < 40))
         llm_bull = fresh and _llm_sent == "多头" and _score >= 60
+    except Exception:
+        pass
+    # attack 判定：市场资金面（板块主力净流入，取机构数据 overview）
+    main_net = 0.0
+    try:
+        _inst = load_json("institution_data.json") or {}
+        main_net = ((_inst.get("overview") or {}).get("main_net")) or 0.0
     except Exception:
         pass
     # 背离：政策面利多，但个股普跌（涨占比极低）→ 降档而非禁开仓
     diverge = llm_bull and breadth <= REDUCE_BREADTH
-    if mkt_bear or overheat or llm_def:
+    # 硬空仓：大盘转空 + 个股几乎全跌（真崩盘）
+    hard_flat = mkt_bear and 0 < breadth <= HARD_FLAT_BREADTH
+    attack_ok = (not mkt_bear and not overheat and not llm_def
+                 and ATTACK_BREADTH_LO <= breadth <= ATTACK_BREADTH_HI
+                 and main_net >= ATTACK_MAIN_NET)
+    if hard_flat:
         gate = "block"
+    elif mkt_bear or overheat or llm_def:
+        gate = "caution"
     elif diverge:
         gate = "reduce"
+    elif attack_ok:
+        gate = "attack"
     else:
         gate = "open"
     why = []
     if mkt_bear:
         why.append("上证空头")
+    if hard_flat:
+        why.append("涨占比%.0f%%≤%.0f%%(崩盘)" % (breadth, HARD_FLAT_BREADTH))
     if overheat:
-        why.append("普涨过热(广度%d%%)" % int(breadth))
+        why.append("普涨过热(广度%d%%，降半仓)" % int(breadth))
     if llm_def:
-        why.append("LLM宏观防御")
+        why.append("LLM宏观防御(降半仓)")
     if diverge:
         why.append("宏观利多×宽度极弱(涨占比%.1f%%≤%.0f%%)背离→降档" % (breadth, REDUCE_BREADTH))
-    if macro_age is not None and macro_age > MACRO_STALE_HOURS:
-        why.append("宏观数据过期%.0fh(已不参与多头判断)" % macro_age)
+    if attack_ok:
+        why.append("进攻档(广度%.0f%% 主力净流入%.0f亿)" % (breadth, main_net / 1e8))
+    if llm_stale and macro_age is not None:
+        why.append("宏观数据过期%.0fh(不参与闸门判断)" % macro_age)
 
-    # 日内棘轮：当天已 block 则维持（避免 LLM 宏观判断抖动导致闸门反复开关）
+    # 日内棘轮：仅 block 维持到收盘（软因素 caution/reduce 不锁，允许按最新市场恢复）
+    _pos = gate_pos_of(gate)
     if state is not None and date:
         try:
             dg = state.setdefault("meta", {}).setdefault("daily_gate", {})
-            if dg.get("date") == date and dg.get("gate") == "block" and gate != "block":
+            if dg.get("date") != date:
+                dg.clear()
+                dg.update({"date": date, "blocked_today": False})
+            if gate == "block":
+                dg["blocked_today"] = True
+                dg["block_ts"] = dg.get("block_ts") or time.strftime("%H:%M:%S")
+            if dg.get("blocked_today") and gate != "block":
                 why.append("日内棘轮（今日 %s 已触发 block：%s）" % (
-                    dg.get("ts", ""), dg.get("why") or ""))
-                gate = "block"
-            elif gate == "block" and dg.get("date") != date:
-                dg.update({"date": date, "gate": "block",
-                           "why": "；".join(why) or "block",
+                    dg.get("block_ts", ""), dg.get("block_why") or ""))
+                gate, _pos = "block", 0.0
+            else:
+                if gate == "block":
+                    dg["block_why"] = "；".join(why) or "block"
+                dg.update({"gate": gate, "pos": _pos,
+                           "why": "；".join(why) or "open",
                            "ts": time.strftime("%H:%M:%S")})
         except Exception:
             pass
-    # 闸门历史（按日，供"连续 block 天数"告警：宏观卡防御会导致长期不交易）
+    # 闸门历史（按日，供"连续 block 天数"告警与「防守过度」复核）：
+    # 同时记录 gate_pos、广度、基准涨幅 —— 用于回看 block/caution 日的错失幅度
     if state is not None and date:
         try:
             gh = state.setdefault("meta", {}).setdefault("gate_history", {})
-            gh[date] = {"gate": gate, "why": "；".join(why) or "open",
+            _bench = ((idx_sigs.get(MISSED_BENCH) or {}).get("change_pct"))
+            gh[date] = {"gate": gate, "pos": _pos, "why": "；".join(why) or "open",
+                        "breadth": round(breadth, 1),
+                        "bench": _bench,
                         "ts": time.strftime("%H:%M:%S")}
             if len(gh) > 90:
                 for k in sorted(gh)[:-90]:
                     gh.pop(k, None)
+            # 防守过度告警：连续 ≥3 日非 open 且基准累计上涨 > 2%
+            _seq = [gh[k] for k in sorted(gh) if k <= date][-12:]
+            _streak, _bench_cum = 0, 0.0
+            for _h in reversed(_seq):
+                if _h.get("gate") in ("block", "caution"):
+                    _streak += 1
+                    _bench_cum += (_h.get("bench") or 0)
+                else:
+                    break
+            if _streak >= 3 and _bench_cum > 2.0:
+                print("  [gate-watch] 连续 %d 日降档/防守，基准累计 %+.2f%% → 复核是否防守过度" % (
+                    _streak, _bench_cum))
         except Exception:
             pass
     return gate, ("；".join(why) if why else "open")
@@ -839,10 +927,11 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
         print("  [ext] 外部因子过期 %.1fh（>%.0fh），本次不参与选股" % (
             ext.get("_age_h", 0), EXT_MAX_AGE_H))
     _reduce = (gate == "reduce")
-    _score_bonus = REDUCE_MIN_SCORE_BONUS if _reduce else 0.0
-    _budget_mul = REDUCE_BUDGET_FACTOR if _reduce else 1.0
+    _score_bonus = (REDUCE_MIN_SCORE_BONUS if _reduce else
+                    (CAUTION_SCORE_BONUS if gate == "caution" else 0.0))
+    _budget_mul = gate_pos_of(gate) if gate != "open" else 1.0
     if gate != "open":
-        print("  [gate][%s] %s" % (pool, gate_why))
+        print("  [gate][%s] %s（仓位×%.2f）" % (pool, gate_why, _budget_mul))
     # 候选：池过滤
     cand_pool = {}   # code -> item
     per_key = {}     # key -> [item]
@@ -925,11 +1014,27 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
             floor = min(ideal, close * (1 - cfg["buy_bias"]))
             buy_below = min(close * (1 - cfg["buy_bias"]), max(floor, close * 0.96))
             buy_below = round(buy_below, 3)
+            # 突破买点（v3.12）：单边上涨时回踩单永远等不到，对「强势多头 + 站上 MA20」
+            # 额外给一个现价上方的追入价，仅在 open/attack 档启用（弱市不追）。
+            buy_above, breakout_band = None, None
+            _ma20 = it.get("ma20") or 0
+            if (gate in BREAKOUT_GATES and close and _ma20 and close >= _ma20
+                    and it.get("trend_status") in ("强势多头", "多头排列")):
+                # 突破价：前高在 3% 以内 → 取「突破前高」（趋势突破，更有意义）；
+                # 否则取现价上方 0.5%（日内向上确认，避免 buy_above 离现价太远而永不触发）
+                _resist = it.get("resistance") or 0
+                if _resist and _resist <= close * 1.03:
+                    buy_above = round(max(close * (1 + BREAKOUT_PREM), _resist * 1.001), 3)
+                else:
+                    buy_above = round(close * (1 + BREAKOUT_PREM), 3)
+                breakout_band = breakout_band_of(gate)
             budget = round(CASH_START * cfg["budget_frac"] * _budget_mul, 2)
             plan.append({
                 "code": it["code"], "name": it.get("name"), "asof": asof,
                 "score": it.get("score"), "signal": it.get("signal"),
-                "close": close, "buy_below": buy_below,
+                "close": close, "buy_below": buy_below, "buy_above": buy_above,
+                "breakout_band": breakout_band,
+                "entry": "回踩+突破" if buy_above else "回踩",
                 "stop_atr": it.get("atr_stop"),
                 "stop_ma": it.get("stop_loss") if cfg["stop_ma"] else None,
                 "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
@@ -937,22 +1042,24 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 "gate": gate, "budget": budget, "status": "wait",
                 # 外部因子结构化分（供统计：ext 分档 vs 实际收益）
                 "ext": {"score": round(_eb, 2), "why": _eb_why} if _eb else None,
-                "reason": "%s(%s分) 回踩≤%.2f ATR止损%s%s%s%s%s" % (
+                "reason": "%s(%s分) 回踩≤%.2f%s ATR止损%s%s%s%s%s" % (
                     it.get("signal"), it.get("score"), buy_below,
+                    (" / 突破≥%.2f" % buy_above) if buy_above else "",
                     it.get("atr_stop") if it.get("atr_stop") else "--",
                     "（保本+5%%）" if cfg.get("be_at") else "",
                     ("；LLM:" + _rv.get("note", "")) if _rv else "",
-                    ("（背离降档×%.1f）" % _budget_mul) if _reduce else "",
+                    ("（闸门%d档×%.2f）" % ({"caution": 0, "reduce": 1}.get(gate, 2), _budget_mul))
+                    if gate != "open" else "",
                     ("（%s%+.1f）" % (_eb_why, _eb)) if _eb else ""),
             })
         acct["plan"] = plan
         if log:
+            _gate_note = "" if gate == "open" else (
+                "（%s档：门槛+%.0f分 仓位×%.2f）" % (gate, _score_bonus, _budget_mul))
             acct["daily_log"].append({"date": asof, "kind": "plan",
                                       "note": "[%s]%s：%d 单待盘中触发%s" % (
                                           POOL_LABEL[pool], cfg["label"], len(plan),
-                                          ("（大盘闸门挡）" if gate == "block" else
-                                           ("（背离降档：门槛+%.0f分 仓位×%.1f）" % (
-                                               _score_bonus, _budget_mul) if _reduce else "")))})
+                                          _gate_note)})
     make_mix_plan(state, pool, asof, gate, log)
     return {k: len(acc_b[k]["plan"]) for k in REAL_ACCOUNTS}
 
@@ -980,17 +1087,24 @@ def make_mix_plan(state, pool, asof, gate, log=True):
     for code, lst in groups.items():
         n = len(lst)
         src = [pl for _, pl in lst]
-        _bf = REDUCE_BUDGET_FACTOR if gate == "reduce" else 1.0
+        _bf = gate_pos_of(gate) if gate != "open" else 1.0
         budget = round(CASH_START * MIX_SIZE.get(n, MIX_SIZE[1]) * _bf, 2)
         stops = [pl["stop_atr"] for pl in src if pl.get("stop_atr")]
         tps = [pl["tp"] for pl in src if pl.get("tp")]
-        blocked = any(pl.get("gate") == "block" for pl in src)
+        _aboves = [pl["buy_above"] for pl in src if pl.get("buy_above")]
+        buy_above = round(min(_aboves), 3) if _aboves else None
+        _bands = [pl.get("breakout_band") for pl in src if pl.get("breakout_band")]
+        breakout_band = min(_bands) if _bands else None
+        blocked = any(gate_pos_of(pl.get("gate") or "open") <= 0 for pl in src)
         plan.append({
             "code": code, "name": src[0].get("name"), "asof": asof,
             "score": max((pl.get("score") or 0) for pl in src),
             "signal": src[0].get("signal"),
             "close": max((pl.get("close") or 0) for pl in src),
             "buy_below": round(max(pl["buy_below"] for pl in src), 3),
+            "buy_above": buy_above,
+            "breakout_band": breakout_band,
+            "entry": "回踩+突破" if buy_above else "回踩",
             "stop_atr": round(max(stops), 3) if stops else None,
             "stop_ma": None,
             "tp": round(min(tps), 3) if tps else None,
@@ -999,10 +1113,11 @@ def make_mix_plan(state, pool, asof, gate, log=True):
             "gate": "block" if blocked else (gate or "open"),
             "budget": budget, "status": "wait", "consensus": n,
             "from": [k for k, _ in lst],
-            "reason": "共识%d/3（%s）仓位%.0f%%%s 回踩≤%.2f 止損%s 止盈%s" % (
+            "reason": "共识%d/3（%s）仓位%.0f%%%s 回踩≤%.2f%s 止損%s 止盈%s" % (
                 n, "/".join(ACCOUNTS[k]["label"] for k, _ in lst), MIX_SIZE[n] * 100,
-                ("×%.1f降档" % REDUCE_BUDGET_FACTOR) if gate == "reduce" else "",
+                ("×%.1f降档" % _bf) if gate != "open" else "",
                 max(pl["buy_below"] for pl in src),
+                (" / 突破≥%.2f" % buy_above) if buy_above else "",
                 "%.2f" % max(stops) if stops else "--",
                 "%.2f" % min(tps) if tps else "--"),
         })
@@ -1017,8 +1132,8 @@ def make_mix_plan(state, pool, asof, gate, log=True):
                                       sum(1 for p in mix["plan"] if p["consensus"] == 2),
                                       sum(1 for p in mix["plan"] if p["consensus"] == 1),
                                       ("（大盘闸门挡）" if gate == "block" else
-                                       ("（背离降档：仓位×%.1f）" % REDUCE_BUDGET_FACTOR
-                                        if gate == "reduce" else "")))})
+                                       ("（%s降档：仓位×%.1f）" % (gate, gate_pos_of(gate))
+                                        if gate != "open" else "")))})
     return len(mix["plan"])
 
 
@@ -1055,8 +1170,9 @@ def intraday_scan(state, date, hms):
     probes, tasks = {}, []
     for pool in POOLS:
         for key, a, cfg in all_books(state, pool):
-            sells, buys, pnotes = _probe_account(pool, a, cfg, quotes, date, hms, ctx)
-            if live_gate == "block" and buys:
+            sells, buys, pnotes = _probe_account(pool, a, cfg, quotes, date, hms, ctx,
+                                                 live_gate=live_gate)
+            if gate_pos_of(live_gate) <= 0 and buys:
                 # 闸门关闭：丢弃全部买入候选（卖出/止损照常执行）
                 n_buys = len(buys)
                 stale = sorted({(b["pl"].get("gate") or "?") for b in buys})
@@ -1069,6 +1185,15 @@ def intraday_scan(state, date, hms):
                 buys = []
                 pnotes = list(pnotes) + ["⛔[%s]%s 实时闸门 block（%s）→ 拦截 %d 个买入候选（计划原 gate=%s）" % (
                     POOL_LABEL[pool], cfg["label"], live_why, n_buys, ",".join(stale))]
+            elif buys and live_gate not in BREAKOUT_GATES:
+                # v3.12：盘中降档（caution/reduce）→ 关闭突破通道，只留回踩买点（弱市不追）
+                _drop = [b for b in buys if b.get("entry_type") == "突破"]
+                for b in _drop:
+                    b["pl"]["buy_above"] = None
+                if _drop:
+                    buys = [b for b in buys if b not in _drop]
+                    pnotes = list(pnotes) + ["⏸[%s]%s 实时闸门 %s → 关闭 %d 个突破买点（只留回踩）" % (
+                        POOL_LABEL[pool], cfg["label"], live_gate, len(_drop))]
             probes[(pool, key)] = (a, cfg, sells, buys, pnotes)
             tasks.extend(sells)
             tasks.extend(buys)
@@ -1120,7 +1245,7 @@ def _mark_miss(pool, acct, pl, low, date, hms, tol):
     return first
 
 
-def _probe_account(pool, acct, cfg, quotes, date, hms, ctx=None):
+def _probe_account(pool, acct, cfg, quotes, date, hms, ctx=None, live_gate=None):
     """第一遍：只读扫描（刷新持仓现价印记/漏单留痕），产出卖出与买入候选。"""
     ctx = ctx or {}
     sells, buys, notes = [], [], []
@@ -1175,7 +1300,7 @@ def _probe_account(pool, acct, cfg, quotes, date, hms, ctx=None):
     for pl in acct.get("plan", []):
         if pl.get("status", "wait") != "wait":
             continue
-        if pl.get("gate") == "block":
+        if gate_pos_of(pl.get("gate") or "open") <= 0:
             continue
         if len(acct["positions"]) >= cfg["max_pos"]:
             continue
@@ -1185,17 +1310,29 @@ def _probe_account(pool, acct, cfg, quotes, date, hms, ctx=None):
         px = q.get("price")
         if not px:
             continue
-        if px > (pl.get("close") or 0) * 1.03:
-            continue  # 高开冲高不追
-        pc = q.get("prevClose") or pl.get("close")
+        _close = pl.get("close") or 0
+        # v3.12：追高上限从 昨收+3% 放宽到 +8%，否则突破买点（现价上方）永远进不来；
+        # 回踩线 buy_below 本就 ≤ 昨收，不受影响。
+        if _close and px > _close * (1 + BREAKOUT_MAX_CHG):
+            continue  # 相对昨收涨幅过大不追
+        pc = q.get("prevClose") or _close
         chg = (px / pc - 1) * 100 if pc else 0
         trigger = round(pl["buy_below"] * (1 + TOUCH_TOL), 3)
-        if px <= trigger:
+        # 突破触发（v3.12）：站上 buy_above，但最多追到 buy_above×(1+band)
+        #   实时档位比计划更严时收紧 band（例：计划 open → 盘中转 caution）
+        _above = pl.get("buy_above")
+        _band = pl.get("breakout_band") or breakout_band_of(pl.get("gate") or "open")
+        if live_gate:
+            _band = min(_band, breakout_band_of(live_gate))
+        trig_break = bool(_above) and px >= _above and px <= _above * (1 + _band)
+        if px <= trigger or trig_break:
             it = ctx.get(pl["code"]) or {}
+            _entry = "突破" if (trig_break and not px <= trigger) else "回踩"
             buys.append({
                 "id": "%s|%s|%s|buy" % (pool, acct["key"], pl["code"]),
                 "action": "buy", "code": pl["code"], "name": pl["name"],
                 "px": px, "chg": chg, "buy_below": pl["buy_below"],
+                "buy_above": _above, "entry_type": _entry,
                 "why": pl.get("reason", ""), "pl": pl,
                 "sector": it.get("sector"),
                 "trend": it.get("trend_status") or pl.get("signal"),
@@ -1267,7 +1404,7 @@ def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
             notes.append("🧠[%s] %s LLM否决买入：%s" % (
                 acct["label"], b["name"], d.get("note") or ""))
             continue
-        if pl.get("gate") == "block":
+        if gate_pos_of(pl.get("gate") or "open") <= 0:
             pl["status"] = "skip_gate"
             continue
         if len(acct["positions"]) >= cfg["max_pos"]:
@@ -1298,6 +1435,7 @@ def _apply_account(pool, acct, cfg, quotes, date, hms, sells, buys, decisions):
             "action": "buy", "date": date, "time": hms, "code": pl["code"],
             "name": pl["name"], "price": round(px, 3), "shares": shares,
             "chg_at_fill": round(b["chg"], 2),
+            "entry": b.get("entry_type"),
             "reason": pl.get("reason", ""), "strategy": acct["key"], "pool": pool,
             "ext": pl.get("ext"),
             "llm": {"verdict": d.get("verdict"), "note": d.get("note"),
@@ -1523,8 +1661,10 @@ def main():
                 a = accts(state, pool)[k]
                 print("  [%s] %d 单" % (ACCOUNTS[k]["label"], len(a["plan"])))
                 for p in a["plan"][:5]:
-                    print("    %s 分%s 回踩≤%.2f %s" % (p["name"], p["score"], p["buy_below"],
-                                                       p.get("gate")))
+                    print("    %s 分%s 回踩≤%.2f%s %s" % (
+                        p["name"], p["score"], p["buy_below"],
+                        (" / 突破≥%.2f" % p["buy_above"]) if p.get("buy_above") else "",
+                        p.get("gate")))
             mx = books(state, pool)["mix"]
             print("  [%s] %d 单%s" % (MIX_CFG["label"], len(mx["plan"]),
                                     "（%s）" % "/".join(
@@ -1532,8 +1672,10 @@ def main():
                                         for c in (3, 2, 1) if any(p.get("consensus") == c for p in mx["plan"]))
                                     if mx["plan"] else ""))
             for p in mx["plan"][:5]:
-                print("    [共识%d] %s 分%s 回踩≤%.2f %s" % (
-                    p.get("consensus", 0), p["name"], p["score"], p["buy_below"], p.get("gate")))
+                print("    [共识%d] %s 分%s 回踩≤%.2f%s %s" % (
+                    p.get("consensus", 0), p["name"], p["score"], p["buy_below"],
+                    (" / 突破≥%.2f" % p["buy_above"]) if p.get("buy_above") else "",
+                    p.get("gate")))
         save(state)
         return
 
