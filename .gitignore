@@ -25,3 +25,7 @@ binance-llm-bot/watchdog.lock
 binance-llm-bot/*.bak
 binance-llm-bot/reviews/
 binance-llm-bot/backtest/*.csv
+# 密钥备份与状态快照（.env.bak.* 曾误入库触发 GitHub push protection）
+binance-llm-bot/.env*
+binance-llm-bot/*.bak
+binance-llm-bot/*.bak.*
