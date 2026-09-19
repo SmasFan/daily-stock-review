@@ -554,9 +554,24 @@ def shadow_html():
 
 def main():
     ex = make_fex()
-    ex.load_markets()
+    try:
+        ex.load_markets()
+    except Exception as e:      # 首次失败不退出，交给循环重试
+        print('load_markets 失败(循环内重试):', str(e)[:120], flush=True)
+    _tick = 0
     while True:
+        _tick += 1
         try:
+            # WSL 时钟会漂移（实测本机比币安快 ~2.4s）：ccxt 的 adjustForTimeDifference
+            # 只在 load_markets 时校准一次，之后漂移会让所有请求 -1021，状态页长期停在
+            # 「生成失败」。故每 10 轮（≈5 分钟）重新校准一次时间差。
+            if _tick % 10 == 1:
+                try:
+                    ex.load_time_difference()
+                except Exception:
+                    pass
+            if not getattr(ex, 'markets', None):
+                ex.load_markets()
             procs = proc_status()
             # 日线池
             pos_list, total_pnl = positions(ex, SYMBOLS, NAMES, CN_NAMES,

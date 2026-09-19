@@ -377,6 +377,17 @@ def main():
     log.info('短线bot启动: %s刀池 %d标 %gx SMA%d %s, 每%.0fmin, 止损-%d%%',
              POOL_START, len(SYMBOLS), LEV, SMA_N, TIMEFRAME, LOOP_MIN, SL_PCT * 100)
     while True:
+        # WSL 时钟漂移（实测本机比币安快 ~2.4s）：ccxt 的 adjustForTimeDifference 只在
+        # load_markets 时校准一次，之后漂移会让请求报 -1021（timeout/挂止损失败）。每轮重新校准。
+        try:
+            ex.load_time_difference()
+        except Exception:
+            pass
+        try:
+            import algo_tools as _at
+            _at.sync_time()      # algo 条件单走自建 REST，需独立对时（-1021 自愈）
+        except Exception:
+            pass
         try:
             decide(ex, st)
         except Exception as e:

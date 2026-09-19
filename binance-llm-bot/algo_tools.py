@@ -25,8 +25,30 @@ PROXIES = {'http': PROXY, 'https': PROXY} if PROXY else None
 _SYM_ID = {}
 
 
+# 时钟偏移校正（ms）：本机时间戳 - 币安服务器时间。
+# 背景：WSL 时钟会漂移（实测本机快 ~2.4s），而本模块直接用 time.time() 签名，
+# 不做校正会持续报 -1021 "Timestamp ahead"，导致止损单挂不上、旧单撤不掉。
+_TIME_OFFSET_MS = 0
+
+
+def sync_time():
+    """请求币安服务器时间，记录本机-服务器偏移；返回偏移(ms)，失败返回 None。"""
+    global _TIME_OFFSET_MS
+    try:
+        r = requests.get(f'{BASE_URL}/fapi/v1/time', proxies=PROXIES, timeout=10)
+        server = int(r.json()['serverTime'])
+        _TIME_OFFSET_MS = int(time.time() * 1000) - server
+        return _TIME_OFFSET_MS
+    except Exception:
+        return None
+
+
+def time_offset_ms():
+    return _TIME_OFFSET_MS
+
+
 def _sig(params):
-    params['timestamp'] = int(time.time() * 1000)
+    params['timestamp'] = int(time.time() * 1000) - _TIME_OFFSET_MS
     params['recvWindow'] = 10000
     qs = '&'.join(f'{k}={v}' for k, v in params.items())
     return qs + '&signature=' + hmac.new(SECRET.encode(), qs.encode(), hashlib.sha256).hexdigest()
@@ -37,7 +59,13 @@ def _req(method, path, params=None):
     url = f'{BASE_URL}{path}?{_sig(params)}'
     r = requests.request(method, url, headers={'X-MBX-APIKEY': KEY}, proxies=PROXIES, timeout=15)
     if r.status_code != 200:
-        raise RuntimeError(f'{method} {path}: HTTP {r.status_code} {r.text[:200]}')
+        # -1021 时间戳偏移 → 自动重新对时并重试一次（自愈）
+        if '"code":-1021' in r.text and sync_time() is not None:
+            url = f'{BASE_URL}{path}?{_sig(params)}'
+            r = requests.request(method, url, headers={'X-MBX-APIKEY': KEY},
+                                 proxies=PROXIES, timeout=15)
+        if r.status_code != 200:
+            raise RuntimeError(f'{method} {path}: HTTP {r.status_code} {r.text[:200]}')
     return r.json()
 
 
