@@ -96,9 +96,17 @@ def positions(ex, syms, names, cn_map, pool_start=100.0, profile='daily', state_
             mark = float(p.get('markPrice') or entry)
             pnl = float(p['unrealizedPnl'])
             liq = float(p.get('liquidationPrice') or 0)
-            pct = (mark / entry - 1) * 100
+            # 方向感知：策略只做多，但历史事故会留反向仓（META -18.56 张）：
+            # 空头的涨跌幅/名义/杠杆全部要反号并取绝对值，否则页面显示 +1.18% / -13724 这种鬼数字。
+            try:
+                import pos_guard as _pg
+                side = _pg.side_of(p)
+            except Exception:
+                side = 'long' if float(p.get('contracts') or 0) > 0 else 'flat'
+            sign = -1 if side == 'short' else 1
+            pct = (mark / entry - 1) * 100 * sign
             info = p.get('info', {})
-            notional = float(info.get('notional') or amt * mark)
+            notional = abs(float(info.get('notional') or amt * mark))
             init_margin = float(info.get('positionInitialMargin') or info.get('initialMargin') or 0)
             lev = round(notional / init_margin, 1) if init_margin > 0 else 0
             total_pnl += pnl
@@ -119,7 +127,7 @@ def positions(ex, syms, names, cn_map, pool_start=100.0, profile='daily', state_
             pos_list.append({
                 'sym': names.get(s, s), 'cn': cn_map.get(s, ''), 'amt': amt, 'entry': entry, 'mark': mark,
                 'pnl': pnl, 'pct': pct, 'liq': liq, 'sl': sl, 'sl_default': sl_default,
-                'lev': lev, 'notional': notional,
+                'lev': lev, 'notional': notional, 'side': side,
                 'peak': peak, 'peak_pct': peak_pct, 'dd_peak': dd_peak,
                 'trimmed': trimmed, 'pg_act': act,
             })
@@ -169,27 +177,48 @@ def latest_review_html():
         return f.readlines()[-lines:]
 
 
-def trade_stats(trades):
-    """汇总: 交易数/胜率/累计盈亏"""
-    closed = [t for t in trades if t['type'] in ('close', 'sl')]
+def pool_of(t):
+    """记录归属池：优先显式 pool 标签；旧记录（pool=None）按标的集合推断（日线 5 标 / 短线 8 标）
+
+    历史记录没有标签，但标的是不重叠的，所以能准确归类；只是那些旧的 pnl 没存下来（=0），
+    金额上从本次修复后开始准确。
+    """
+    p = t.get('pool')
+    if p in ('daily', 'short'):
+        return p
+    return 'daily' if t.get('symbol') in SYMBOLS else 'short'
+
+
+def trade_stats(trades, pool=None):
+    """汇总: 交易数/胜率/累计盈亏（可按池过滤：pool='daily'|'short'|None=全部）"""
+    closed = [t for t in trades if t['type'] in ('close', 'sl') and (pool is None or pool_of(t) == pool)]
     wins = [t for t in closed if t.get('pnl', 0) > 0]
     total_pnl = sum(t.get('pnl', 0) for t in closed)
     return len(closed), len(wins), total_pnl
 
 
+def realized_pnl(trades, pool):
+    """池内已实现盈亏（带 pool 标签 or 按标的归属；历史 pool=None 且 pnl 假 0 的记录不影响总额）"""
+    return sum(float(t.get('pnl') or 0) for t in trades
+               if t['type'] in ('close', 'sl') and pool_of(t) == pool)
+
+
 def build_html(procs, pos_list, total_pnl, bal, trades, tstats,
-               short_pos=None, short_pnl=0.0, short_n=8):
+               short_pos=None, short_pnl=0.0, short_n=8,
+               daily_realized=0.0, short_realized=0.0, short_bug_loss=0.0):
     badge = {'open': ('开仓', 'b-open'), 'close': ('平仓', 'b-close'),
              'sl': ('止损', 'b-sl'), 'cooldown': ('熔断', 'b-warn'),
              'error': ('错误', 'b-err'), 'decision': ('决策', 'b-info')}
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     short_pos = short_pos or []
-    # 日线池净值
+    # 日线池净值 = 起始 + 已实现 + 未实现（旧版只看未实现，平仓后盈亏“消失”，这才是收益对不上的根因之一）
     pool_start = float(os.environ.get('POOL_START', '100'))
-    pool = pool_start + total_pnl
+    pool = pool_start + daily_realized + total_pnl
     # 短线池净值
     short_pool_start = float(os.environ.get('SHORT_POOL', '100'))
-    short_pool = short_pool_start + short_pnl
+    short_pool = short_pool_start + short_realized + short_pnl
+    short_lev = float(os.environ.get('SHORT_LEV', '5'))
+    daily_lev = float(os.environ.get('LEV', '5'))
     rows_p = ''.join(
         f'<tr><td><span class="mono">{n}</span></td><td>'
         f'{"<span class=\"pill ok\"></span><span>运行中</span>" if "✅" in st else "<span class=\"pill dead\"></span><span style=\"color:var(--down)\u003e挂掉</span>"}'
@@ -212,7 +241,9 @@ def build_html(procs, pos_list, total_pnl, bal, trades, tstats,
                 badge_html += '<br><span class="dim" style="font-size:11px">已减半</span>'
             # 止损价已上移到保本以上 → 用金色标出来（盈利单不会再变亏损单）
             sl_cls = 'gold' if p['sl'] > p['sl_default'] * 1.0001 else 'dim'
-            out += (f'<tr><td><span class="coin"><span class="cdot" style="background:{cc}">{p["sym"][0]}</span>{p["cn"]} <span class="dim" style="font-size:12px">{p["sym"]}</span></span></td>'
+            out += (f'<tr><td><span class="coin"><span class="cdot" style="background:{cc}">{p["sym"][0]}</span>{p["cn"]}'
+                    f'{" <span class=\"badge b-sl\">空</span>" if p.get("side") == "short" else ""}'
+                    f' <span class="dim" style="font-size:12px">{p["sym"]}</span></span></td>'
                     f'<td>{p["amt"]:.4f}<br><span class="dim" style="font-size:11px">≈${p["notional"]:,.1f}</span></td>'
                     f'<td>{p["entry"]:,.2f}</td><td>{p["mark"]:,.2f}</td>'
                     f'<td><span class="badge b-info">{p["lev"]}x</span></td>'
@@ -248,16 +279,21 @@ def build_html(procs, pos_list, total_pnl, bal, trades, tstats,
         for t in reversed(trades):  # 新的在前
             cls = 'up' if t['pnl'] > 0 else ('down' if t['pnl'] < 0 else 'dim')
             bl, bc = badge.get(t['type'], (t['type'], 'b-info'))
-            pnl_s = f'<td class="{cls}">{t["pnl"]:+.2f} U</td>' if t['type'] in ('close', 'sl') else '<td class="dim">-</td>'
+            pnl_s = f'<td class="{cls}">{t["pnl"]:+.2f} U</td>' if t['type'] in ('close', 'sl') and (t.get('price') or t.get('pnl')) else '<td class="dim">-</td>'
+            # 旧记录（本次修复前）价格/盈亏存不下来：不显示假 0，用 — 代替
+            px_s = f'{t["price"]:,.2f}' if t.get('price') else '<span class="dim">—</span>'
             cc = COIN_COLOR.get(t['symbol'], '#888')
             cn = CN_NAMES.get(t['symbol'], t['symbol'].split('/')[0])
             lev = t.get('lev')
             lev_s = f'<td><span class="badge b-info">{lev:g}x</span></td>' if lev else '<td class="dim">-</td>'
+            _p = t.get('pool')
+            pool_s = ('<span class="badge b-info" style="margin-left:6px">短线</span>' if pool_of(t) == 'short'
+                      else '<span class="badge b-warn" style="margin-left:6px">日线</span>')
             rows_t += (f'<tr><td class="dim">{t["ts"]}</td>'
-                       f'<td><span class="badge {bc}">{bl}</span></td>'
+                       f'<td><span class="badge {bc}">{bl}</span>{pool_s}</td>'
                        f'<td><span class="coin"><span class="cdot" style="background:{cc}">{t["symbol"].split("/")[0][0]}</span>{cn} <span class="dim" style="font-size:12px">{t["symbol"].split("/")[0]}</span></span></td>'
                        f'<td>{t["qty"]:.4f}<br><span class="dim" style="font-size:11px">≈${t["qty"]*t["price"]:,.1f}</span></td>'
-                       f'<td>{t["price"]:,.2f}</td>'
+                       f'<td>{px_s}</td>'
                        f'{lev_s}{pnl_s}<td class="dim">{html.escape(t["detail"])}</td></tr>')
     else:
         rows_t = '<tr><td colspan=8 class="dim">暂无交易记录</td></tr>'
@@ -329,11 +365,11 @@ tr:hover td{{background:#161b29}}
 <div class="live">🟢 运行中 · 更新 <b>{now.split(" ")[1]}</b> · {now.split(" ")[0]} · 30s 自动刷新</div></header>
 
 <div class="grid">
-  <div class="stat"><div class="lb">日线池净值</div><div class="vl {pool_cls}">{pool:.2f}<span style="font-size:14px;color:var(--dim)"> U</span></div><div class="sub">SMA50日线 起始 100 U · {len(pos_list)}/{len(SYMBOLS)}仓</div></div>
-  <div class="stat"><div class="lb">日线浮盈</div><div class="vl {pool_cls}">{total_pnl:+.2f} U</div><div class="sub">已实现 {t_pnl:+.2f} U · 平仓 {t_closed}笔</div></div>
-  <div class="stat"><div class="lb">短线池净值</div><div class="vl {'up' if short_pnl>=0 else 'down'}">{short_pool:.2f}<span style="font-size:14px;color:var(--dim)"> U</span></div><div class="sub">SMA50 1h · 起始 {short_pool_start:.0f} U · {len(short_pos)}/{short_n}仓</div></div>
-  <div class="stat"><div class="lb">短线浮盈</div><div class="vl {'up' if short_pnl>=0 else 'down'}">{short_pnl:+.2f} U</div><div class="sub">3x · 止损-3%</div></div>
-  <div class="stat"><div class="lb">账户权益</div><div class="vl">{bal:.0f} <span style="font-size:14px;color:var(--dim)">U</span></div><div class="sub">Demo 合约</div></div>
+  <div class="stat"><div class="lb">日线池净值</div><div class="vl {pool_cls}">{pool:.2f}<span style="font-size:14px;color:var(--dim)"> U</span></div><div class="sub">SMA50日线 · 起始 {pool_start:.0f} U · {len(pos_list)}/{len(SYMBOLS)}仓</div></div>
+  <div class="stat"><div class="lb">日线盈亏</div><div class="vl {pool_cls}">{daily_realized + total_pnl:+.2f} U</div><div class="sub">已实现 {daily_realized:+.2f} U · 浮动 {total_pnl:+.2f} U · 平仓 {t_closed}笔</div></div>
+  <div class="stat"><div class="lb">短线池净值</div><div class="vl {'up' if short_pool >= short_pool_start else 'down'}">{short_pool:.2f}<span style="font-size:14px;color:var(--dim)"> U</span></div><div class="sub">SMA50 1h · 起始 {short_pool_start:.0f} U · {len(short_pos)}/{short_n}仓{(' · <span class="gold">含方向守卫事故 %+.2f U</span>' % short_bug_loss) if short_bug_loss else ''}</div></div>
+  <div class="stat"><div class="lb">短线盈亏</div><div class="vl {'up' if short_realized + short_pnl >= 0 else 'down'}">{short_realized + short_pnl:+.2f} U</div><div class="sub">已实现 {short_realized:+.2f} U · 浮动 {short_pnl:+.2f} U · {short_lev:g}x · 止损-3%</div></div>
+  <div class="stat"><div class="lb">账户权益</div><div class="vl">{bal:.0f} <span style="font-size:14px;color:var(--dim)">U</span></div><div class="sub">Demo 合约 · 日线{daily_lev:g}x</div></div>
 </div>
 
 {rev_html}
@@ -583,9 +619,16 @@ def main():
                                              profile='short', state_file='state_short.json')
             bal = float(ex.fetch_balance()['info'].get('totalWalletBalance', 0))
             from trade_log import read_trades
-            trades = read_trades(100)
-            page = build_html(procs, pos_list, total_pnl, bal, trades, trade_stats(trades),
-                              short_pos=short_pos, short_pnl=short_pnl, short_n=len(SYMBOLS_SHORT))
+            trades = read_trades(400)
+            try:
+                _sb = json.load(open(os.path.join(BASE, 'state_short.json'))).get('bug_loss') or 0.0
+            except Exception:
+                _sb = 0.0
+            page = build_html(procs, pos_list, total_pnl, bal, trades, trade_stats(trades, 'daily'),
+                              short_pos=short_pos, short_pnl=short_pnl, short_n=len(SYMBOLS_SHORT),
+                              daily_realized=realized_pnl(trades, 'daily'),
+                              short_realized=realized_pnl(trades, 'short'),
+                              short_bug_loss=float(_sb))
             for o in OUTS:
                 with open(o, 'w') as f:
                     f.write(page)

@@ -9,7 +9,10 @@ TRADE_LOG = os.path.join(BASE, 'trades.jsonl')
 
 
 def record(event_type, symbol, action, qty=0, price=0, pnl=0, detail='', pool=None, lev=None, notional=None):
-    """写一条交易记录。event_type: open/close/sl/cooldown/error/decision"""
+    """写一条交易记录。event_type: open/close/sl/cooldown/error/decision
+
+    pool: 池标签 'daily' / 'short'（字符串），旧调用传数字（净值快照）也兼容。
+    """
     entry = {
         'ts': time.strftime('%Y-%m-%d %H:%M:%S'),
         'type': event_type,
@@ -18,7 +21,7 @@ def record(event_type, symbol, action, qty=0, price=0, pnl=0, detail='', pool=No
         'qty': round(qty, 8),
         'price': round(price, 4) if price else 0,
         'pnl': round(pnl, 4) if pnl else 0,
-        'pool': round(pool, 2) if pool is not None else None,
+        'pool': (round(pool, 2) if isinstance(pool, (int, float)) else pool) if pool is not None else None,
         'lev': lev,
         'notional': round(notional, 2) if notional else None,
         'detail': detail,

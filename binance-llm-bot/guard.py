@@ -6,6 +6,8 @@
 import os, sys, time, logging
 import ccxt
 from dotenv import load_dotenv
+import pos_guard
+import algo_tools  # 条件单/撤单 + symbol 映射（模块级导入：方向守卫分支也要用）
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -17,6 +19,8 @@ SYMBOLS = ['TSLA/USDT:USDT', 'COIN/USDT:USDT', 'PLTR/USDT:USDT', 'MSTR/USDT:USDT
            'NVDA/USDT:USDT', 'META/USDT:USDT', 'AMZN/USDT:USDT', 'QQQ/USDT:USDT',
            'SPY/USDT:USDT', 'GOOGL/USDT:USDT', 'INTC/USDT:USDT', 'CRCL/USDT:USDT']
 SL_PCT = float(os.environ.get('SL_PCT', '0.12'))
+# 池归属：guard 同时看两套池，止损记录要落到对应池才能算进该池已实现盈亏
+DAILY_SYMBOLS = {'TSLA/USDT:USDT', 'COIN/USDT:USDT', 'PLTR/USDT:USDT', 'MSTR/USDT:USDT', 'HOOD/USDT:USDT'}
 CHECK_SEC = int(os.environ.get('GUARD_SEC', '60'))
 PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
 LEV = 5.0
@@ -39,8 +43,14 @@ def make_fex():
 def check_once(ex):
     for sym in SYMBOLS:
         for p in ex.fetch_positions([sym]):
-            amt = float(p['contracts'])
+            amt = abs(float(p['contracts']))
             if not amt:
+                continue
+            # 方向守卫：guard 只管多头止损；出现空头仓（历史事故残留）立即市价平掉，
+            # 否则「跌破 -12% → 卖出」会在空头仓上持续加空。
+            if pos_guard.side_of(p) != 'long':
+                algo_tools.set_symbol_map(ex.markets)
+                pos_guard.flatten_unexpected(ex, sym, p, None, name=sym.split('/')[0], why='止损守护')
                 continue
             entry = float(p['entryPrice'])
             mark = float(p.get('markPrice') or entry)
@@ -50,16 +60,18 @@ def check_once(ex):
             if mark <= sl_price:
                 log.warning('!!! %s 触发止损: mark %.2f <= SL %.2f (入场%.2f), 市价平仓', sym, mark, sl_price, entry)
                 try:
-                    import algo_tools
                     algo_tools.set_symbol_map(ex.markets)
                     try:
                         algo_tools.cancel_all_algo(sym)  # 先撤 algo 止损单, 防平仓后残留反向触发
                     except Exception:
                         pass
-                    ex.create_order(sym, 'market', 'sell', ex.amount_to_precision(sym, amt))
+                    _o = ex.create_order(sym, 'market', 'sell', ex.amount_to_precision(sym, amt), None, {'reduceOnly': True})
                     from trade_log import record
-                    record('sl', sym, 'STOP_LOSS', amt, mark, (mark-entry)*amt,
-                           detail=f'入场{entry:.2f} SL@{sl_price:.2f}', pool=None, lev=LEV)
+                    # 用真实成交均价（缺失时退回 mark）保证已实现盈亏不为 0
+                    avg = float(_o.get('average') or (_o.get('info') or {}).get('avgPrice') or 0) or mark
+                    pnl = (avg - entry) * amt
+                    record('sl', sym, 'STOP_LOSS', amt, avg, pnl,
+                           detail=f'入场{entry:.2f} SL@{sl_price:.2f}', pool=('daily' if sym in DAILY_SYMBOLS else 'short'), lev=LEV)
                     log.warning('已平 %s %f 张', sym, amt)
                 except Exception as e:
                     log.error('平仓失败 %s: %s', sym, str(e)[:150])

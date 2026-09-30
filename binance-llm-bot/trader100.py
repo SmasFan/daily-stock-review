@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 import algo_tools  # 显式 Algo 条件单 API (STOP 单 2025-12 起走 algo 端点)
 import llm_gate     # 成交前 LLM 风控复核（买入可否决；趋势离场硬规则）
 import profit_guard  # T+0 利润保护：保本上移 / 分批止盈 / 移动止盈
+import pos_guard     # 方向/规模守卫：反向仓与超仓自动市价纠正
 
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -90,9 +91,14 @@ def sync_from_real(ex, st):
     """
     algo_tools.set_symbol_map(ex.markets)
     positions = ex.fetch_positions(list(SYMBOLS.keys()))
+    max_notional = POOL_START * LEV * 3      # 单仓名义上限：池子满杠杆 3 倍，超出即异常
     for p in positions:
         sym = p['symbol']
-        amt = float(p['contracts'])
+        # 方向守卫：反向仓/超仓先市价清掉，不当成「持有中」参与决策
+        if pos_guard.flatten_unexpected(ex, sym, p, st, max_notional=max_notional,
+                                        name=(SYMBOLS.get(sym) or {}).get('name') or (SYMBOLS.get(sym) or {}).get('n'), why='日线sync'):
+            continue
+        amt = abs(float(p['contracts']))
         if amt != 0:
             old = st['real_pos'].get(sym) or {}
             entry = float(p['entryPrice'])
@@ -150,9 +156,14 @@ def buy_open(ex, sym, notional_usd, llm=None):
     """市价开多, 名义 ~notional_usd。先设杠杆+挂止损。返回实际张数"""
     ex.set_leverage(int(LEV), sym)  # 必须 int, float 会 Binance 拒(-1102)
     cancel_sl(ex, sym)  # 清可能残留的旧止损单
+    # 反向仓不能靠「买入」处理：先中止，交由方向守卫清仓
+    for _p in ex.fetch_positions([sym]):
+        if float(_p.get('contracts') or 0) and pos_guard.side_of(_p) != 'long':
+            log.error('开多前发现 %s 非多头仓位(%s)，已中止本次开仓', sym, pos_guard.side_of(_p))
+            return 0.0
     t = ex.fetch_ticker(sym)
     qty = ex.amount_to_precision(sym, notional_usd / t['last'])
-    o = ex.create_order(sym, 'market', 'buy', qty)
+    o = ex.create_order(sym, 'market', 'buy', qty, None, {'reduceOnly': False})
     filled = float(o.get('filled', qty))
     avg = float(o.get('average') or t['last'])
     aid = set_sl(ex, sym, filled, avg)
@@ -160,7 +171,7 @@ def buy_open(ex, sym, notional_usd, llm=None):
     _n = (llm or {}).get('note')
     record('open', sym, 'BUY', filled, avg,
            detail=f'名义~{notional_usd:.0f}' + (f'｜LLM:{_n}' if _n else '｜LLM:未复核'),
-           pool=None, lev=LEV, notional=notional_usd)
+           pool='daily', lev=LEV, notional=notional_usd)
     return filled
 
 
@@ -171,30 +182,41 @@ def sell_close(ex, sym, amt=None, llm=None, why=None):
         ex.cancel_all_orders(sym)
     except Exception:
         pass
-    entry_px = 0.0
-    if amt is None:
+    # 只平多头：拿真实多头数量（空头仓位反向卖出会变成加空，事故根因）
+    real_long, entry_px, side, other_amt = 0.0, 0.0, 'flat', 0.0
+    try:
         for p in ex.fetch_positions([sym]):
-            if float(p['contracts']) > 0:
-                amt = float(p['contracts'])
+            if not float(p.get('contracts') or 0):
+                continue
+            side = pos_guard.side_of(p)
+            if side == 'long':
+                real_long = float(p['contracts'])
                 entry_px = float(p['entryPrice'])
-    else:
-        # 有指定量: 从 state 或持仓取入场价
-        try:
-            for p in ex.fetch_positions([sym]):
-                if float(p['contracts']) > 0:
-                    entry_px = float(p['entryPrice'])
-        except Exception:
-            pass
-    if amt:
-        o = ex.create_order(sym, 'market', 'sell', ex.amount_to_precision(sym, amt))
-        avg = float(o.get('average') or 0)
-        # 平仓前抓最后浮盈 (均价优先, 退路用持仓) —— 修正: 平仓前取 entry, 用成交均价算
-        pnl = (avg - entry_px) * amt if (avg and entry_px) else 0
+            else:
+                other_amt = float(p['contracts'])
+    except Exception as e:
+        log.warning('查持仓失败 %s: %s', sym, str(e)[:100])
+    if side == 'short':
+        log.error('%s 是空头仓(%.4f)，拒绝卖出平仓（会继续加空）→ 交方向守卫处理', sym, other_amt)
+        return 0
+    qty = real_long if amt is None else min(float(amt), real_long)
+    if qty and qty > 0:
+        o = ex.create_order(sym, 'market', 'sell', ex.amount_to_precision(sym, qty), None, {'reduceOnly': True})
+        avg = float(o.get('average') or (o.get('info') or {}).get('avgPrice') or 0)
+        if not avg:
+            try:
+                avg = float(ex.fetch_ticker(sym).get('last') or 0)
+            except Exception:
+                avg = 0.0
+        # 盈亏优先用交易所口径 realizedPnl（含手续费，最准）
+        pnl = float((o.get('info') or {}).get('realizedPnl') or 0)
+        if not pnl:
+            pnl = (avg - entry_px) * qty if (avg and entry_px) else 0
         from trade_log import record
         _n = (llm or {}).get('note')
-        record('close', sym, 'SELL', amt, avg, pnl,
-               detail=(why or 'SMA离场') + (f'｜LLM:{_n}' if _n else ''), lev=LEV)
-        return amt
+        record('close', sym, 'SELL', qty, avg, pnl,
+               detail=(why or 'SMA离场') + (f'｜LLM:{_n}' if _n else ''), pool='daily', lev=LEV)
+        return qty
     return 0
 
 
