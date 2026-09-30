@@ -12,14 +12,37 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pos_guard  # noqa: E402
 import trader_short  # noqa: E402
 import guard  # noqa: E402
+import trade_log  # noqa: E402
 
 SYM = 'META/USDT:USDT'
+
+
+class RecordSpy:
+    """顶掉 trade_log.record：**测试绝不能往真实 trades.jsonl 写**（曾经污染过 10 条假记录）"""
+
+    def __init__(self):
+        self.calls = []
+        self._p = None
+
+    def __enter__(self):
+        self._p = mock.patch.object(trade_log, 'record', side_effect=self._spy)
+        self._p.start()
+        return self
+
+    def __exit__(self, *exc):
+        self._p.stop()
+        return False
+
+    def _spy(self, *a, **kw):
+        self.calls.append((a, kw))
+        return {'spied': True}
 
 
 def mkpos(side, qty, entry=730.85, mark=739.42):
@@ -114,6 +137,9 @@ class TestSellCloseRefusesShort(unittest.TestCase):
     def setUp(self):
         self._orig_cancel = trader_short.cancel_sl
         trader_short.cancel_sl = lambda ex, sym: None    # 不碰 algo 网络接口
+        self.rec = RecordSpy()
+        self.rec.__enter__()
+        self.addCleanup(lambda: self.rec.__exit__(None, None, None))
 
     def tearDown(self):
         trader_short.cancel_sl = self._orig_cancel
@@ -122,6 +148,7 @@ class TestSellCloseRefusesShort(unittest.TestCase):
         ex = FakeEx(positions=[mkpos('short', 18.56)])
         self.assertEqual(trader_short.sell_close(ex, SYM), 0)
         self.assertEqual(ex.orders, [])                   # 没卖出 → 不会加空
+        self.assertEqual(self.rec.calls, [])              # 也不该记账
 
     def test_long_position_is_closed_with_reduce_only(self):
         ex = FakeEx(positions=[mkpos('long', 0.08)])
@@ -129,6 +156,10 @@ class TestSellCloseRefusesShort(unittest.TestCase):
         self.assertEqual(qty, 0.08)
         self.assertEqual(ex.orders[0]['side'], 'sell')
         self.assertTrue(ex.orders[0]['params'].get('reduceOnly'))
+        self.assertEqual(len(self.rec.calls), 1)
+        _a, _kw = self.rec.calls[0]                       # record('close', sym, 'SELL', qty, avg, pnl, ...)
+        self.assertEqual(_kw['pool'], 'short')
+        self.assertLess(_a[5], 0)                         # 盈亏入了账（不再恒为 0）
 
     def test_partial_qty_is_capped_by_real_long(self):
         """state 里记 0.08，实际只剩 0.04 → 只能卖 0.04"""
@@ -139,14 +170,16 @@ class TestSellCloseRefusesShort(unittest.TestCase):
 class TestGuardDirection(unittest.TestCase):
     def test_guard_flattens_short_instead_of_stopping_out(self):
         ex = FakeEx(positions=[mkpos('short', 18.56)])
-        guard.check_once(ex)
+        with RecordSpy():
+            guard.check_once(ex)
         self.assertEqual(len(ex.orders), 1)
         self.assertEqual(ex.orders[0]['side'], 'buy')     # 空头 → 买入平掉
         self.assertTrue(ex.orders[0]['params'].get('reduceOnly'))
 
     def test_guard_keeps_long_above_stop(self):
         ex = FakeEx(positions=[mkpos('long', 0.08, entry=100.0, mark=99.0)])
-        guard.check_once(ex)
+        with RecordSpy():
+            guard.check_once(ex)
         self.assertEqual(ex.orders, [])                   # 未触及 -12% 止损，不动手
 
 
