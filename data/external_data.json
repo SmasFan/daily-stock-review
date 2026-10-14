@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-14 01:06:39",
+ "generatedAt": "2026-10-14 06:05:04",
  "quotes": {
   "us_index": {
    "DJI": {
@@ -73,94 +73,94 @@
   },
   "global": {
    "WTI": {
-    "price": 95.253,
+    "price": 94.708,
     "prevClose": 94.14,
     "open": 94.75,
-    "high": 95.4,
-    "low": 94.51,
-    "ts": "09:06:38",
-    "change_pct": 1.18
+    "high": 95.41,
+    "low": 94.48,
+    "ts": "14:05:03",
+    "change_pct": 0.6
    },
    "BRENT_X": {
-    "price": 106.989,
+    "price": 106.335,
     "prevClose": 105.69,
     "open": 106.25,
-    "high": 107.14,
-    "low": 106.24,
-    "ts": "09:06:24",
-    "change_pct": 1.23
+    "high": 107.15,
+    "low": 106.08,
+    "ts": "14:05:02",
+    "change_pct": 0.61
    },
    "GOLD": {
-    "price": 4181.795,
+    "price": 4168.62,
     "prevClose": 4177.3,
     "open": 4184.2,
-    "high": 4186.8,
-    "low": 4175.0,
-    "ts": "09:06:39",
-    "change_pct": 0.11
+    "high": 4193.5,
+    "low": 4167.0,
+    "ts": "14:05:04",
+    "change_pct": -0.21
    },
    "GOLD_SPOT": {
-    "price": 4158.24,
+    "price": 4146.93,
     "prevClose": 4161.0,
     "open": 4161.97,
-    "high": 4163.45,
-    "low": 4152.2,
-    "ts": "09:06:00",
-    "change_pct": -0.07
-   },
-   "SILVER": {
-    "price": 59.32,
-    "prevClose": 59.525,
-    "open": 59.415,
-    "high": 59.425,
-    "low": 59.14,
-    "ts": "09:06:28",
+    "high": 4170.25,
+    "low": 4144.36,
+    "ts": "14:04:00",
     "change_pct": -0.34
    },
+   "SILVER": {
+    "price": 58.643,
+    "prevClose": 59.525,
+    "open": 59.415,
+    "high": 59.595,
+    "low": 58.625,
+    "ts": "14:05:03",
+    "change_pct": -1.48
+   },
    "COPPER": {
-    "price": 672.849,
+    "price": 673.721,
     "prevClose": 672.6,
     "open": 672.7,
-    "high": 673.35,
-    "low": 671.4,
-    "ts": "09:06:21",
-    "change_pct": 0.04
+    "high": 678.9,
+    "low": 670.4,
+    "ts": "14:05:02",
+    "change_pct": 0.17
    },
    "NGAS": {
-    "price": 3.649,
+    "price": 3.629,
     "prevClose": 3.602,
     "open": 3.635,
-    "high": 3.65,
-    "low": 3.629,
-    "ts": "09:06:27",
-    "change_pct": 1.3
+    "high": 3.652,
+    "low": 3.627,
+    "ts": "14:04:59",
+    "change_pct": 0.75
    },
    "ES": {
-    "price": 7857.7,
+    "price": 7857.075,
     "prevClose": 7855.75,
     "open": 7856.25,
-    "high": 7862.25,
+    "high": 7874.25,
     "low": 7848.75,
-    "ts": "09:06:39",
+    "ts": "14:05:04",
     "change_pct": 0.02
    },
    "NQ": {
-    "price": 30791.138,
+    "price": 30717.728,
     "prevClose": 30791.5,
     "open": 30791.5,
-    "high": 30849.5,
-    "low": 30744.5,
-    "ts": "09:06:39",
-    "change_pct": -0.0
+    "high": 30891.5,
+    "low": 30717.5,
+    "ts": "14:05:03",
+    "change_pct": -0.24
    },
    "YM": {
-    "price": 51905.76,
+    "price": 51994.8,
     "prevClose": 51935.0,
     "open": 51933.0,
-    "high": 51948.0,
+    "high": 52056.0,
     "low": 51873.0,
-    "ts": "09:06:32",
-    "change_pct": -0.06
+    "ts": "14:05:04",
+    "change_pct": 0.12
    },
    "VIX": {
     "price": 15.28,
@@ -172,13 +172,13 @@
     "change_pct": 0.53
    },
    "DXY": {
-    "price": 102.1735,
+    "price": 102.1318,
     "prevClose": 102.1961,
     "open": 102.2103,
     "high": 102.2215,
-    "low": 102.1562,
-    "ts": "2026-10-14 09:06:34",
-    "change_pct": -0.02
+    "low": 102.0747,
+    "ts": "2026-10-14 14:04:55",
+    "change_pct": -0.06
    }
   }
  },
@@ -337,30 +337,30 @@
  "factors": {
   "oil": {
    "label": "原油",
-   "chg": 1.18,
-   "level": 1,
-   "note": "WTI 95.25 (1.18%)",
+   "chg": 0.6,
+   "level": 0,
+   "note": "WTI 94.71 (0.60%)",
    "market_effect": "能源涨价 / 中下游成本升"
   },
   "gold": {
    "label": "黄金",
-   "chg": 0.11,
+   "chg": -0.21,
    "level": 0,
-   "note": "COMEX金 4181.80 (0.11%)",
-   "market_effect": "黄金上涨 / 避险需求强"
+   "note": "COMEX金 4168.62 (-0.21%)",
+   "market_effect": "黄金下跌 / 避险降温"
   },
   "silver": {
    "label": "白银",
-   "chg": -0.34,
-   "level": 0,
-   "note": "COMEX银 59.32 (-0.34%)",
+   "chg": -1.48,
+   "level": -1,
+   "note": "COMEX银 58.64 (-1.48%)",
    "market_effect": "白银下跌"
   },
   "copper": {
    "label": "铜",
-   "chg": 0.04,
+   "chg": 0.17,
    "level": 0,
-   "note": "COMEX铜 672.85 (0.04%)",
+   "note": "COMEX铜 673.72 (0.17%)",
    "market_effect": "铜价上涨 / 工业需求旺"
   },
   "yield": {
@@ -372,16 +372,16 @@
   },
   "dxy": {
    "label": "美元指数",
-   "chg": -0.02,
+   "chg": -0.06,
    "level": 0,
-   "note": "美元指数 102.174 (-0.02%)",
+   "note": "美元指数 102.132 (-0.06%)",
    "market_effect": "美元走弱 / 利好商品"
   },
   "nasdaq": {
    "label": "纳指(隔夜/期指)",
-   "chg": -0.0,
+   "chg": -0.24,
    "level": 0,
-   "note": "纳指期指 30791 (-0.00%)",
+   "note": "纳指期指 30718 (-0.24%)",
    "market_effect": "外盘科技走弱"
   },
   "vix": {
@@ -395,7 +395,7 @@
    "label": "标普期指",
    "chg": 0.02,
    "level": 0,
-   "note": "标普期指 7858 (+0.02%)",
+   "note": "标普期指 7857 (+0.02%)",
    "market_effect": "外盘风险偏好升"
   },
   "yield2": {
@@ -416,31 +416,17 @@
    "label": "商品金属(金银铜合成)",
    "chg": null,
    "level": 0,
-   "note": "gold+0 silver+0 copper+0",
+   "note": "gold+0 silver-1 copper+0",
    "market_effect": "金属分化"
   }
  },
- "sector_bias": {
-  "石油石化": 1.0,
-  "油服": 0.8,
-  "交通运输": -0.8,
-  "煤炭": 0.6,
-  "汽车零部件": -0.5,
-  "基础化工": -0.5,
-  "汽车": -0.5,
-  "新能源电力": 0.2
- },
- "keyword_bias": {
-  "海油|油气|油服|采掘|石油ETF|油气ETF": 1.6,
-  "石化|化纤": -0.9
- },
+ "sector_bias": {},
+ "keyword_bias": {},
  "risk_pref": {
   "score": 0.0,
   "tone": "neutral",
   "note": "外部中性"
  },
- "summary": [
-  "原油↑ WTI 95.25 (1.18%) → 利好 石油石化/煤炭/油服/新能源电力；利空 汽车零部件/交通运输/基础化工/汽车"
- ],
+ "summary": [],
  "note": "外部因子→A股板块偏好分（正=受益/负=受损）；供 sim_live 选股与买点排序使用"
 }
