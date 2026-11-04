@@ -1,184 +1,184 @@
 {
- "generatedAt": "2026-11-03 20:02:23",
+ "generatedAt": "2026-11-04 02:08:30",
  "quotes": {
   "us_index": {
    "DJI": {
     "name": "道琼斯",
     "code": ".DJI",
-    "price": 51763.99,
+    "price": 51786.72,
     "prevClose": 51983.98,
     "open": 51932.63,
     "high": 51932.63,
     "low": 51593.16,
-    "change_pct": -0.42,
-    "ts": "2026-11-03 15:02:00"
+    "change_pct": -0.38,
+    "ts": "2026-11-03 16:34:56"
    },
    "IXIC": {
     "name": "纳斯达克",
     "code": ".IXIC",
-    "price": 25337.18,
+    "price": 25372.01,
     "prevClose": 25164.36,
     "open": 25246.64,
     "high": 25474.46,
     "low": 25246.64,
-    "change_pct": 0.69,
-    "ts": "2026-11-03 15:01:59"
+    "change_pct": 0.83,
+    "ts": "2026-11-03 17:15:59"
    },
    "INX": {
     "name": "标普500",
     "code": ".INX",
-    "price": 7563.45,
+    "price": 7568.92,
     "prevClose": 7541.4,
     "open": 7552.92,
     "high": 7594.61,
     "low": 7545.39,
-    "change_pct": 0.29,
-    "ts": "2026-11-03 15:02:00"
+    "change_pct": 0.36,
+    "ts": "2026-11-03 16:30:13"
    },
    "NDX": {
     "name": "纳斯达克100",
     "code": ".NDX",
-    "price": 28133.51,
+    "price": 28180.26,
     "prevClose": 27989.82,
     "open": 28085.5,
     "high": 28307.9,
     "low": 28085.5,
-    "change_pct": 0.51,
-    "ts": "2026-11-03 15:01:59"
+    "change_pct": 0.68,
+    "ts": "2026-11-03 17:15:59"
    }
   },
   "us_bond_proxy": {
    "TLT": {
     "name": "20年期以上美国国债ETF-iShares",
     "code": "TLT.OQ",
-    "price": 81.18,
+    "price": 81.11,
     "prevClose": 81.73,
     "open": 81.44,
     "high": 81.45,
     "low": 80.97,
-    "change_pct": -0.67,
-    "ts": "2026-11-03 15:01:59"
+    "change_pct": -0.76,
+    "ts": "2026-11-03 16:00:02"
    },
    "IEF": {
     "name": "美国7-10年期国债ETF-iShares",
     "code": "IEF.OQ",
-    "price": 91.22,
+    "price": 91.16,
     "prevClose": 91.5,
     "open": 91.37,
     "high": 91.38,
     "low": 91.09,
-    "change_pct": -0.31,
-    "ts": "2026-11-03 15:01:55"
+    "change_pct": -0.37,
+    "ts": "2026-11-03 16:00:02"
    }
   },
   "global": {
    "WTI": {
-    "price": 96.773,
-    "prevClose": 96.46,
-    "open": 96.3,
-    "high": 98.82,
-    "low": 93.59,
-    "ts": "04:02:23",
-    "change_pct": 0.32
+    "price": 95.411,
+    "prevClose": 96.09,
+    "open": 96.81,
+    "high": 97.15,
+    "low": 95.32,
+    "ts": "10:08:28",
+    "change_pct": -0.71
    },
    "BRENT_X": {
-    "price": 104.388,
-    "prevClose": 104.77,
-    "open": 104.45,
-    "high": 107.24,
-    "low": 100.8,
-    "ts": "04:02:22",
-    "change_pct": -0.36
+    "price": 103.209,
+    "prevClose": 103.6,
+    "open": 104.23,
+    "high": 104.96,
+    "low": 103.08,
+    "ts": "10:08:25",
+    "change_pct": -0.38
    },
    "GOLD": {
-    "price": 3927.008,
-    "prevClose": 3969.6,
-    "open": 3960.5,
-    "high": 3981.7,
-    "low": 3904.1,
-    "ts": "04:02:18",
-    "change_pct": -1.07
+    "price": 3947.037,
+    "prevClose": 3940.4,
+    "open": 3940.8,
+    "high": 3974.4,
+    "low": 3928.2,
+    "ts": "10:08:27",
+    "change_pct": 0.17
    },
    "GOLD_SPOT": {
-    "price": 3919.97,
-    "prevClose": 3946.47,
-    "open": 3948.82,
-    "high": 3970.9,
-    "low": 3895.36,
-    "ts": "04:02:00",
-    "change_pct": -0.67
+    "price": 3938.93,
+    "prevClose": 3930.09,
+    "open": 3930.14,
+    "high": 3964.68,
+    "low": 3919.85,
+    "ts": "10:08:00",
+    "change_pct": 0.22
    },
    "SILVER": {
-    "price": 49.397,
-    "prevClose": 50.888,
-    "open": 50.745,
-    "high": 50.915,
-    "low": 48.62,
-    "ts": "04:02:18",
-    "change_pct": -2.93
+    "price": 49.628,
+    "prevClose": 49.753,
+    "open": 49.825,
+    "high": 50.27,
+    "low": 49.405,
+    "ts": "10:08:27",
+    "change_pct": -0.25
    },
    "COPPER": {
-    "price": 638.148,
-    "prevClose": 656.75,
-    "open": 653.75,
-    "high": 655.25,
-    "low": 631.8,
-    "ts": "04:02:18",
-    "change_pct": -2.83
+    "price": 634.545,
+    "prevClose": 640.2,
+    "open": 641.55,
+    "high": 643.5,
+    "low": 633.6,
+    "ts": "10:08:22",
+    "change_pct": -0.88
    },
    "NGAS": {
-    "price": 3.406,
-    "prevClose": 3.348,
-    "open": 3.355,
-    "high": 3.408,
-    "low": 3.332,
-    "ts": "04:02:01",
-    "change_pct": 1.73
+    "price": 3.352,
+    "prevClose": 3.392,
+    "open": 3.403,
+    "high": 3.403,
+    "low": 3.349,
+    "ts": "10:07:46",
+    "change_pct": -1.18
    },
    "ES": {
-    "price": 7593.62,
-    "prevClose": 7574.5,
-    "open": 7584.0,
-    "high": 7623.75,
-    "low": 7546.0,
-    "ts": "04:02:22",
-    "change_pct": 0.25
+    "price": 7541.675,
+    "prevClose": 7596.75,
+    "open": 7610.25,
+    "high": 7633.5,
+    "low": 7523.0,
+    "ts": "10:08:29",
+    "change_pct": -0.72
    },
    "NQ": {
-    "price": 28282.632,
-    "prevClose": 28127.5,
-    "open": 28201.0,
-    "high": 28443.5,
-    "low": 28038.25,
-    "ts": "04:02:22",
-    "change_pct": 0.55
+    "price": 27912.95,
+    "prevClose": 28305.75,
+    "open": 28410.0,
+    "high": 28512.0,
+    "low": 27732.5,
+    "ts": "10:08:29",
+    "change_pct": -1.39
    },
    "YM": {
-    "price": 51850.83,
-    "prevClose": 52133.0,
-    "open": 52156.0,
-    "high": 52186.0,
-    "low": 51631.0,
-    "ts": "04:02:21",
-    "change_pct": -0.54
+    "price": 51665.04,
+    "prevClose": 51895.0,
+    "open": 51808.0,
+    "high": 51974.0,
+    "low": 51608.0,
+    "ts": "10:08:26",
+    "change_pct": -0.44
    },
    "VIX": {
-    "price": 20.93,
+    "price": 20.82,
     "prevClose": 21.66,
     "open": 21.14,
     "high": 21.91,
     "low": 20.29,
-    "ts": "2026-11-04 04:02:01",
-    "change_pct": -0.99
+    "ts": "2026-11-04 05:15:01",
+    "change_pct": -1.51
    },
    "DXY": {
-    "price": 101.8699,
-    "prevClose": 101.7523,
-    "open": 101.7592,
-    "high": 101.9438,
-    "low": 101.62,
-    "ts": "2026-11-04 04:02:20",
-    "change_pct": 0.12
+    "price": 101.4905,
+    "prevClose": 101.8643,
+    "open": 101.8645,
+    "high": 101.899,
+    "low": 101.2533,
+    "ts": "2026-11-04 10:08:25",
+    "change_pct": -0.37
    }
   }
  },
@@ -337,116 +337,111 @@
  "factors": {
   "oil": {
    "label": "原油",
-   "chg": 0.32,
+   "chg": -0.71,
    "level": 0,
-   "note": "WTI 96.77 (0.32%)",
-   "market_effect": "能源涨价 / 中下游成本升"
+   "note": "WTI 95.41 (-0.71%)",
+   "market_effect": "能源跌价 / 中下游成本降"
   },
   "gold": {
    "label": "黄金",
-   "chg": -1.07,
-   "level": -1,
-   "note": "COMEX金 3927.01 (-1.07%)",
-   "market_effect": "黄金下跌 / 避险降温"
+   "chg": 0.17,
+   "level": 0,
+   "note": "COMEX金 3947.04 (0.17%)",
+   "market_effect": "黄金上涨 / 避险需求强"
   },
   "silver": {
    "label": "白银",
-   "chg": -2.93,
-   "level": -2,
-   "note": "COMEX银 49.40 (-2.93%)",
+   "chg": -0.25,
+   "level": 0,
+   "note": "COMEX银 49.63 (-0.25%)",
    "market_effect": "白银下跌"
   },
   "copper": {
    "label": "铜",
-   "chg": -2.83,
-   "level": -2,
-   "note": "COMEX铜 638.15 (-2.83%)",
+   "chg": -0.88,
+   "level": -1,
+   "note": "COMEX铜 634.54 (-0.88%)",
    "market_effect": "铜价下跌 / 工业需求弱"
   },
   "yield": {
    "label": "美债收益率",
-   "chg": 0.67,
+   "chg": 0.76,
    "level": 0,
-   "note": "TLT 81.18 (-0.67%) → 收益率上行",
+   "note": "TLT 81.11 (-0.76%) → 收益率上行",
    "market_effect": "收益率上行 / 压制高估值"
   },
   "dxy": {
    "label": "美元指数",
-   "chg": 0.12,
+   "chg": -0.37,
    "level": 0,
-   "note": "美元指数 101.870 (+0.12%)",
-   "market_effect": "美元走强 / 压制商品"
+   "note": "美元指数 101.490 (-0.37%)",
+   "market_effect": "美元走弱 / 利好商品"
   },
   "nasdaq": {
    "label": "纳指(隔夜/期指)",
-   "chg": 0.55,
-   "level": 0,
-   "note": "纳指期指 28283 (+0.55%)",
-   "market_effect": "外盘科技走强"
+   "chg": -1.39,
+   "level": -1,
+   "note": "纳指期指 27913 (-1.39%)",
+   "market_effect": "外盘科技走弱"
   },
   "vix": {
    "label": "VIX恐慌",
-   "chg": -0.99,
+   "chg": -1.51,
    "level": 1,
-   "note": "VIX 20.93 (-0.99%)",
-   "market_effect": "波动率降 / 风险偏好升（VIX 20.9 高位）"
+   "note": "VIX 20.82 (-1.51%)",
+   "market_effect": "波动率降 / 风险偏好升（VIX 20.8 高位）"
   },
   "sp500": {
    "label": "标普期指",
-   "chg": 0.25,
+   "chg": -0.72,
    "level": 0,
-   "note": "标普期指 7594 (+0.25%)",
-   "market_effect": "外盘风险偏好升"
+   "note": "标普期指 7542 (-0.72%)",
+   "market_effect": "外盘风险偏好降"
   },
   "yield2": {
    "label": "美债收益率(电子)",
-   "chg": 0.67,
+   "chg": 0.76,
    "level": 0,
-   "note": "TLT 81.18 (-0.67%) → 收益率上行",
+   "note": "TLT 81.11 (-0.76%) → 收益率上行",
    "market_effect": "收益率上行 / 压制高估值"
   },
   "vix2": {
    "label": "VIX恐慌(防御)",
-   "chg": -0.99,
+   "chg": -1.51,
    "level": 1,
-   "note": "VIX 20.93 (-0.99%)",
-   "market_effect": "波动率降 / 风险偏好升（VIX 20.9 高位）"
+   "note": "VIX 20.82 (-1.51%)",
+   "market_effect": "波动率降 / 风险偏好升（VIX 20.8 高位）"
   },
   "metals": {
    "label": "商品金属(金银铜合成)",
    "chg": null,
-   "level": -2,
-   "note": "gold-1 silver-2 copper-2",
-   "market_effect": "贵金属/工业金属共振下行"
+   "level": 0,
+   "note": "gold+0 silver+0 copper-1",
+   "market_effect": "金属分化"
   }
  },
  "sector_bias": {
-  "周期资源": -2.0,
-  "贵金属": -2.0,
-  "黄金": -2.0,
-  "AI算力": -0.8,
-  "半导体": -0.7,
-  "机器人": -0.7,
-  "红利银行": 0.5,
-  "公用事业": 0.5,
+  "AI算力": -1.8,
+  "半导体": -1.6,
+  "机器人": -1.3,
+  "红利银行": 1.1,
+  "CPO/光模块": -1.0,
+  "公用事业": 1.0,
+  "科技-通信电子": -0.9,
   "军工": -0.5,
   "医药医疗": 0.4,
   "基建交通": 0.4
  },
- "keyword_bias": {
-  "黄金|金矿|贵金属": -2.4,
-  "白银|银泰|盛达": -2.0,
-  "铜|有色|铝|稀土|矿业": -2.0
- },
+ "keyword_bias": {},
  "risk_pref": {
-  "score": -1.0,
+  "score": -2.0,
   "tone": "neutral",
   "note": "外部中性"
  },
  "summary": [
-  "VIX恐慌↑ VIX 20.93 (-0.99%) → 利好 红利银行/公用事业；利空 AI算力/半导体/机器人/军工",
-  "VIX恐慌(防御)↑ VIX 20.93 (-0.99%) → 利好 医药医疗/基建交通",
-  "商品金属合成 gold-1 silver-2 copper-2 → 利空 周期资源/贵金属"
+  "纳指(隔夜/期指)↓ 纳指期指 27913 (-1.39%) → 利好 红利银行/公用事业；利空 AI算力/半导体/CPO/光模块/科技-通信电子/机器人",
+  "VIX恐慌↑ VIX 20.82 (-1.51%) → 利好 红利银行/公用事业；利空 AI算力/半导体/机器人/军工",
+  "VIX恐慌(防御)↑ VIX 20.82 (-1.51%) → 利好 医药医疗/基建交通"
  ],
  "note": "外部因子→A股板块偏好分（正=受益/负=受损）；供 sim_live 选股与买点排序使用"
 }
