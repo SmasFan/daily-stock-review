@@ -42,3 +42,6 @@ holdings.json
 strategy/report_data.json
 binance-llm-bot/reviews/
 binance-llm-bot/*.out
+
+# 历史分享打包产物（一次性生成，勿入库）
+.trae-html-share-packages/
