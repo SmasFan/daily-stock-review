@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""实时模拟本地服务：静态文件 + 双池状态/重建 API。
+"""实时模拟本地服务：静态文件 + 全池状态/重建 API。
 
-  GET  /api/sim_state            → 双池概览 {pools:{six:{...},all:{...}}, version}
-  POST /api/sim_plan {pool?:six|all} → 重建计划（省略 = 双池并行重建；--no-llm 快速）
+  GET  /api/sim_state            → 全池概览 {pools:{all:{...}}, version}
+  POST /api/sim_plan {pool?:all}     → 重建计划（省略 = 全池；--no-llm 快速）
 替代 python3 -m http.server（原静态服务无 API）。
-双池并行架构下无"切换"概念：six/all 常驻各自独立交易，仅计划重建入口。
+2026-11-10 起 6 股精选池（six）已下线，只保留全池（all）。
 """
 import functools
 import http.server
@@ -43,7 +43,7 @@ def sim_state():
     pools = st.get("pools") or {}
     return {
         "version": meta.get("strategy_version", "v?"),
-        "pools": {p: pool_summary(pools.get(p, {})) for p in ("six", "all")},
+        "pools": {p: pool_summary(pools.get(p, {})) for p in ("all",)},
         "accounts": meta.get("accounts", []),
         "updated": meta.get("created", ""),
     }
@@ -93,8 +93,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             body = {}
         pool = body.get("pool") or body.get("pool_mode")
-        if pool not in ("six", "all", None):
-            self._json(400, {"ok": False, "error": "pool 须为 six|all 或省略"})
+        if pool not in ("all", None):
+            self._json(400, {"ok": False, "error": "pool 须为 all 或省略（six 已停用）"})
             return
         self._json(200, run_plan(pool))
 
@@ -102,5 +102,5 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     httpd = http.server.ThreadingHTTPServer(('0.0.0.0', port), Handler)
-    print('实时模拟服务(静态+API 双池并行): http://0.0.0.0:%d root=%s' % (port, ROOT), flush=True)
+    print('实时模拟服务(静态+API 全池): http://0.0.0.0:%d root=%s' % (port, ROOT), flush=True)
     httpd.serve_forever()

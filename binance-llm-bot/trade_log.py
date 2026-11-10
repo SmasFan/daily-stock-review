@@ -4,7 +4,7 @@
 """
 import os, json, time
 
-BASE = '/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot'
+BASE = os.environ.get('BINANCE_BASE', os.path.dirname(os.path.abspath(__file__)))
 TRADE_LOG = os.path.join(BASE, 'trades.jsonl')
 
 

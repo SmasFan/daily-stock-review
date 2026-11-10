@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>模拟盘 · 三策略 5万回放</title>
-<link rel="stylesheet" href="assets/css/common.css?v=3">
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="assets/css/common.css?v=4">
+<script src="assets/js/echarts.min.js"></script>
 <style>
   .strat-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; margin:20px 0; }
   .strat-card { background:var(--surface); border:2px solid var(--border); border-radius:var(--radius); padding:18px 20px; cursor:pointer; transition:border-color .15s, transform .15s; }
@@ -82,7 +82,7 @@
   <div class="loading" id="loading">数据加载中…</div>
   <div id="content" style="display:none"></div>
 </div>
-<script src="assets/js/common.js?v=2"></script>
+<script src="assets/js/common.js?v=3"></script>
 <script src="assets/js/rvui.js?v=2"></script>
 <script src="assets/js/stockchart.js?v=3"></script>
 <script>
@@ -95,7 +95,7 @@ const KEY_META = {
 const ORDER = ['aggressive', 'balanced', 'disciplined'];
 let current = 'balanced';
 let charts = {};
-let WDATA = null;      // sim_trade_all.json windows
+let WDATA = null;      // { start_cash, windows: {key: {label, strategies, mixed}} }
 let WIN_ORDER = [];     // [{key,label}]
 let winKey = 'all';
 (async function () {
@@ -104,9 +104,15 @@ let winKey = 'all';
   const content = document.getElementById('content');
   let D = null;
   try {
+    // 首屏只拉 sim_trade.json（即 all 窗口，gzip 后 ~190KB）；
+    // 其他窗口切到时才按需拉 data/sim_trade_all/<key>.json，避免一次 5.5MB。
     D = await RV.API.fetch('sim_trade.json');
-    WDATA = await RV.API.fetch('sim_trade_all.json');
-    WIN_ORDER = Object.keys(WDATA.windows).map(k => ({ key: k, label: WDATA.windows[k].label }));
+    const labels = D.windows || { all: '全部' };
+    WDATA = {
+      start_cash: D.start_cash,
+      windows: { all: { label: labels.all || '全部', strategies: D.strategies, mixed: D.mixed } },
+    };
+    WIN_ORDER = Object.keys(labels).map(k => ({ key: k, label: labels[k] }));
     app.innerHTML = RV.ui.header('模拟炒股 · 三策略', '5万 · 多窗口回放 · 激进 / 稳健 / 严守纪律(保本)', 'sim', D.generatedAt);
     loading.style.display = 'none';
     content.style.display = 'block';
@@ -119,6 +125,7 @@ let winKey = 'all';
 
   function renderAll() {
     const d = WDATA.windows[winKey];
+    if (!d) { content.innerHTML = '<div style="padding:20px;color:var(--text-2)">窗口数据缺失，点上方按钮重试</div>'; return; }
     const stratCards = ORDER.map(k => card(d.strategies[k], k)).join('') + mixCard(d.mixed);
     const winBtns = WIN_ORDER.map(w => `<button class="bt-range-btn ${w.key === winKey ? 'active' : ''}" data-wk="${w.key}">${w.label}</button>`).join('');
     content.innerHTML = `
@@ -143,7 +150,24 @@ let winKey = 'all';
         <footer style="text-align:center;color:var(--text-2);font-size:12px;padding:10px 0 4px">数据由 <code>python3 build_sim.py</code> 生成 · 历史回放仅供学习研究 · 不构成投资建议</footer>
       </div>`;
     document.querySelectorAll('.bt-range-btn').forEach(b =>
-      b.addEventListener('click', () => { winKey = b.dataset.wk; current = 'balanced'; renderAll(); }));
+      b.addEventListener('click', async () => {
+        const k = b.dataset.wk;
+        if (k === winKey) return;
+        if (!WDATA.windows[k]) {
+          const old = b.innerHTML;
+          b.innerHTML = '加载中…';
+          try {
+            const w = await RV.API.fetch('sim_trade_all/' + encodeURIComponent(k) + '.json');
+            WDATA.windows[k] = { label: w.label, strategies: w.strategies, mixed: w.mixed };
+          } catch (e) {
+            b.innerHTML = old;
+            alert('窗口数据加载失败：' + e.message);
+            return;   // winKey 保持原值，可再点一次重试
+          }
+        }
+        winKey = k; current = 'balanced';
+        renderAll();
+      }));
     ORDER.forEach(k => {
       document.getElementById('sc-' + k).addEventListener('click', () => select(k));
     });

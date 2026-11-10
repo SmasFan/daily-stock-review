@@ -26,7 +26,7 @@ log = logging.getLogger('trader')
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(BASE, 'state.json')
 SYMBOL = 'BTC/USDT'
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
 LOOP_HOURS = float(os.environ.get('LOOP_HOURS', '6'))
 SMA_N = int(os.environ.get('SMA_N', '100'))
 DD_STOP = 0.15        # 峰值回撤 15% 硬离场

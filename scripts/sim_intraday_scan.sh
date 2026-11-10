@@ -5,10 +5,10 @@
 # 巡检排在它后面会被同一把锁挡掉（日志里的「锁忙(>90s)，跳过本轮」）→ 实际采样间隔 5~20 分钟，
 # 盘中瞬时砸破买点容易漏。本脚本独立 flock + timeout，采样间隔回到 ~2 分钟。
 #
-# - sim_live.py --intraday ：双池巡检，现价 ≤ 买点×(1+0.2%容差) 即买，破止损/到止盈即卖，漏单留痕
+# - sim_live.py --intraday ：全池巡检，现价 ≤ 买点×(1+0.2%容差) 即买，破止损/到止盈即卖，漏单留痕
 # - sim_sprint.py --scan  ：一周冲刺盘扫止盈/止损
 export CACHE_MAX_AGE_HOURS=2
-BASE=/mnt/c/Users/z7280/daily-stock-review
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK=/tmp/sim_intraday.lock
 LOG=$BASE/data/sim_intraday.log
 
@@ -30,3 +30,5 @@ timeout 240 python3 sim_live.py --intraday 9>&- >> "$LOG" 2>&1 \
   || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中巡检失败/超时" >> "$LOG"
 timeout 120 python3 sim_sprint.py --scan 9>&- >> "$LOG" 2>&1 \
   || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 冲刺盘巡检失败/超时" >> "$LOG"
+timeout 90 python3 sim_dividend.py --intraday 9>&- >> "$LOG" 2>&1 \
+  || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 红利池巡检失败/超时" >> "$LOG"

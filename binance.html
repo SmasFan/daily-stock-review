@@ -3,53 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>币安Bot 状态 · 每日复盘工作台</title>
-<link rel="stylesheet" href="assets/css/common.css?v=3">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<title>币安 Bot 状态</title>
 <style>
-  #app { min-height: 100vh; display: flex; flex-direction: column; }
-  .bn-tip { font-size: 12px; color: var(--text-2); background: var(--surface); border: 1px dashed var(--border); border-radius: 8px; padding: 6px 10px; margin: 10px 0 6px; line-height: 1.7; }
-  .bn-tip i { color: var(--accent); margin-right: 4px; }
-  #bn-frame { flex: 1; width: 100%; border: 1px solid var(--border); border-radius: 10px; background: #fff; min-height: 60vh; }
-  .bn-fail { padding: 40px 16px; text-align: center; color: var(--text-2); }
-  .bn-fail i { font-size: 40px; margin-bottom: 10px; color: var(--down, #dc2626); }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #f2f3f5; color: #16181d;
+    font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .bn-bar {
+    height: 34px; display: flex; align-items: center; gap: 12px;
+    padding: 0 14px; background: #fff; border-bottom: 1px solid #e3e5e8;
+    position: relative; z-index: 20;
+  }
+  .bn-bar a { color: #6b7280; text-decoration: none; white-space: nowrap; }
+  .bn-bar a:hover { color: #16181d; text-decoration: underline; }
+  .bn-bar .sp { flex: 1; }
+  .bn-bar .meta { color: #9aa1ab; white-space: nowrap; }
+  .quick { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+  .quick a { font-size: 11.5px; }
+  .quick a.cur { color: #16181d; font-weight: 600; text-decoration: none; }
+  .nav-btn {
+    font: inherit; font-size: 11.5px; color: #374151; background: #fff;
+    border: 1px solid #d9dde3; border-radius: 2px; padding: 3px 8px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .nav-btn:hover { border-color: #9aa1ab; }
+  .nav-pop {
+    display: none; position: absolute; top: 33px; left: 12px;
+    width: max-content; max-width: 92vw; padding: 8px;
+    background: #fff; border: 1px solid #d9dde3;
+    grid-template-columns: repeat(4, minmax(76px, auto)); gap: 2px 6px;
+  }
+  .nav-pop.show { display: grid; }
+  .nav-pop a { font-size: 11.5px; padding: 4px 8px; border-radius: 2px; }
+  .nav-pop a:hover { background: #f2f3f5; text-decoration: none; }
+  .nav-pop a.cur { color: #16181d; font-weight: 600; background: #f2f3f5; }
+  .nav-pop .nav-head {
+    grid-column: 1 / -1; font-size: 10.5px; color: #9aa1ab;
+    padding: 2px 8px 5px; border-bottom: 1px solid #eef0f2; margin-bottom: 3px;
+  }
+  .nav-pop a.src {
+    grid-column: 1 / -1; margin-top: 3px; padding-top: 6px;
+    border-top: 1px solid #eef0f2; color: #9aa1ab;
+  }
+  @media (max-width: 900px) { .quick { display: none; } }
+  #bn-frame { display: block; width: 100%; height: calc(100vh - 35px); border: 0; background: #f2f3f5; }
+  .bn-fail { padding: 48px 16px; text-align: center; color: #6b7280; line-height: 1.9; }
+  .bn-fail b { color: #16181d; }
+  .bn-fail code { background: #f0f1f3; padding: 1px 4px; border-radius: 2px; }
 </style>
 </head>
 <body>
-<div id="app"><div class="loading">数据加载中…</div></div>
-<script src="assets/js/common.js?v=2"></script>
-<script src="assets/js/rvui.js?v=2"></script>
+<div class="bn-bar">
+  <button class="nav-btn" id="nav-btn" aria-expanded="false">导航</button>
+  <div class="quick">
+    <a href="review.html">复盘</a><a href="recommend.html">推荐</a>
+    <a href="macro.html">宏观</a><a href="holdings.html">持仓</a>
+    <a href="sim_live.html">实时模拟</a><a href="sim_dividend.html">红利池</a><a href="us-sim.html">美股模拟</a>
+    <a class="cur" href="binance.html">账户状态</a><a href="perp.html">全天候双向盘</a>
+  </div>
+  <span class="sp"></span>
+  <span class="meta">账户状态 · 每 30 秒刷新 · 只读</span>
+  <div class="nav-pop" id="nav-pop">
+    <div class="nav-head">页面导航 · 每日复盘工作台</div>
+    <a href="index.html">工作台</a><a href="review.html">复盘</a>
+    <a href="uptrend.html">趋势</a><a href="mainline.html">主线</a>
+    <a href="recommend.html">推荐</a><a href="lowval.html">低估值</a>
+    <a href="institution.html">资金</a><a href="macro.html">宏观</a>
+    <a href="holdings.html">持仓</a><a href="backtest.html">回测</a>
+    <a href="tracking.html">跟踪</a><a href="metals.html">期货</a>
+    <a href="industry.html">产业</a><a href="sim.html">模拟盘</a>
+    <a href="sim_live.html">实时模拟</a><a href="sim_dividend.html">红利池</a><a href="us-sim.html">美股模拟</a>
+    <a class="cur" href="binance.html">币安 Bot</a><a href="perp.html">全天候双向盘</a><a href="docs.html">说明</a>
+    <a class="src" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">项目源码 ↗</a>
+  </div>
+</div>
+<div id="bn-load" class="bn-fail">状态加载中…</div>
 <script>
+(function () {
+  const btn = document.getElementById('nav-btn');
+  const pop = document.getElementById('nav-pop');
+  const toggle = (on) => { pop.classList.toggle('show', on); btn.setAttribute('aria-expanded', String(on)); };
+  btn.addEventListener('click', e => { e.stopPropagation(); toggle(!pop.classList.contains('show')); });
+  document.addEventListener('click', e => { if (!pop.contains(e.target)) toggle(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') toggle(false); });
+})();
 (async function () {
-  const app = document.getElementById('app');
-  const TIP = '<div class="bn-tip"><i class="fa-solid fa-circle-info"></i>币安模拟盘交易Bot状态（由 binance-llm-bot/status_page.py 每 30 秒自动生成，页面内自动刷新）。数据仅供参考，不构成投资建议。</div>';
-
-  // 页面骨架：header + 内容
-  app.innerHTML = RV.ui.header('币安Bot 状态', 'binance-llm-bot · 每 30 秒自动刷新', 'binance') + TIP + '<div class="loading" id="bn-load">状态加载中…</div>';
-
   const loadEl = document.getElementById('bn-load');
-
-  // 探测镜像文件是否存在，失败给提示而非空 iframe
   try {
-    const r = await fetch('data/binance_status.html', { method: 'HEAD' });
+    const r = await fetch('data/binance_status.html', { method: 'HEAD', cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const iframe = document.createElement('iframe');
     iframe.id = 'bn-frame';
     iframe.src = 'data/binance_status.html';
-    // 同源：读内容高度撑开，避免双重滚动条
-    const fit = () => {
-      try {
-        const h = iframe.contentDocument ? iframe.contentDocument.documentElement.scrollHeight : 0;
-        if (h > 100) iframe.style.height = h + 'px';
-      } catch (e) { /* 跨域/加载中忽略 */ }
-    };
-    iframe.onload = fit;
-    window.addEventListener('resize', fit);
-    setInterval(fit, 4000);
     loadEl.replaceWith(iframe);
   } catch (e) {
-    loadEl.outerHTML = `<div class="bn-fail"><div><i class="fa-solid fa-triangle-exclamation"></i></div>
-      状态镜像 data/binance_status.html 未生成。<br>请确认 binance-llm-bot 的 status_page.py 进程在运行（watchdog 自动管理）。<br><small>${e.message}</small></div>`;
+    loadEl.innerHTML = `状态镜像 <code>data/binance_status.html</code> 未生成。<br>
+      本机当前为<b>展示端</b>，binance bot 未在本机运行。<br>
+      <small>若要在本机运行：<code>cd binance-llm-bot && bash keepalive.sh</code></small><br>
+      <small>${e.message}</small>`;
   }
 })();
 </script>

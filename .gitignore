@@ -9,6 +9,10 @@ _*.html
 # Agent LLM 队列（临时提问/答案，勿入库）
 data/llm_queue/
 data/cache/
+# 美股模拟盘行情缓存（账户账本、回测和网页快照仍入库）
+data/us-sim/quotes.json
+data/us-sim/kline.json
+data/us-sim/secids.json
 *.log
 watchlist.json
 .env
@@ -29,3 +33,5 @@ binance-llm-bot/backtest/*.csv
 binance-llm-bot/.env*
 binance-llm-bot/*.bak
 binance-llm-bot/*.bak.*
+
+binance-llm-bot/*.out

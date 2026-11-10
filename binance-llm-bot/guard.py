@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""本地止损守护 (补 demo 无服务器端止损)
-每 60s 查持仓价, 跌破入场价 -12% 立即市价平仓
-独立常驻, 与 trader100.py 的 6h 策略互补
+"""本地止损守护 (竞技场版：读 state_arena.json 的每笔止损口径)
+每 30s 查持仓价, 偏离入场价 2%（多空同口径）立即市价平仓
+独立常驻, 与 trader100 / trader_short 的日内混合策略互补
+
+2026-11-10 短线化：日线池原 -8% / 短线池 -3% / 空头 +6% 全部收紧到 2%，
+与 v3 回测（backtest/shortterm_hybrid.py）的 1h 止损口径一致；巡检周期从 1h
+缩到 15min 后，本地守护也要更快才能兜住服务器端 algo 单未覆盖的窗口。
+
+2026-11-09 起支持双向：空头仓只有在 BN_ALLOW_SHORT=1 **且**池状态文件登记
+side='short' 才算合法，按「涨破入场价 +2%」止损买回；其余一律按事故残留买回平掉。
 """
-import os, sys, time, logging
+import os, sys, time, json, logging
 import ccxt
 from dotenv import load_dotenv
 import pos_guard
@@ -15,15 +22,22 @@ log = logging.getLogger('guard')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 # 股票 TRADIFI 永续 (日线 5 标 + 短线 8 标)
-SYMBOLS = ['TSLA/USDT:USDT', 'COIN/USDT:USDT', 'PLTR/USDT:USDT', 'MSTR/USDT:USDT', 'HOOD/USDT:USDT',
-           'NVDA/USDT:USDT', 'META/USDT:USDT', 'AMZN/USDT:USDT', 'QQQ/USDT:USDT',
-           'SPY/USDT:USDT', 'GOOGL/USDT:USDT', 'INTC/USDT:USDT', 'CRCL/USDT:USDT']
-SL_PCT = float(os.environ.get('SL_PCT', '0.12'))
+# 竞技场 23 标（与 arena_engine.SYMBOLS 保持一致）
+SYMBOLS = [n + '/USDT:USDT' for n in (
+    'AMZN', 'COIN', 'CRCL', 'EWJ', 'GOOGL', 'HOOD', 'INTC', 'META', 'MSTR', 'MU',
+    'NVDA', 'PAYP', 'PLTR', 'QQQ', 'SAMSUNG', 'SKHYNIX', 'SOXL', 'SOXS', 'SPY',
+    'TSLA', 'XAG', 'XAU', 'XPT')]
+SL_PCT = float(os.environ.get('SL_PCT', '0.02'))          # 日线池止损 -2%（v3 回测口径）
+SHORT_SL_PCT = float(os.environ.get('SHORT_SL_PCT', '0.02'))  # 短线池止损 -2%
+SHORT_STOP_PCT = float(os.environ.get('BN_SHORT_SL', '0.02'))  # 空头止损 +2%（多空同口径）
+ALLOW_SHORT = os.environ.get('BN_ALLOW_SHORT', '0').lower() not in ('0', 'false', 'off', 'no')
 # 池归属：guard 同时看两套池，止损记录要落到对应池才能算进该池已实现盈亏
 DAILY_SYMBOLS = {'TSLA/USDT:USDT', 'COIN/USDT:USDT', 'PLTR/USDT:USDT', 'MSTR/USDT:USDT', 'HOOD/USDT:USDT'}
-CHECK_SEC = int(os.environ.get('GUARD_SEC', '60'))
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
-LEV = 5.0
+STATE_FILES = ('state_arena.json',)
+CHECK_SEC = int(os.environ.get('GUARD_SEC', '30'))
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
+LEV = float(os.environ.get('LEV', '5'))
+SHORT_LEV = float(os.environ.get('SHORT_LEV', '5'))
 
 
 def make_fex():
@@ -40,51 +54,84 @@ def make_fex():
     return ex
 
 
+def registered():
+    """从竞技场状态文件读登记的 方向 / 止损百分比 / 归属策略。"""
+    out = {}
+    for fn in STATE_FILES:
+        try:
+            with open(os.path.join(BASE, fn)) as f:
+                d = json.load(f)
+            for s, rec in (d.get('real_pos') or {}).items():
+                if not isinstance(rec, dict):
+                    continue
+                side = rec.get('side') if rec.get('side') in ('long', 'short') else 'long'
+                out[s] = {'side': side, 'sl_pct': rec.get('sl_pct'),
+                          'strategy': rec.get('strategy')}
+        except Exception:
+            continue
+    return out
+
+
 def check_once(ex):
+    reg = registered()
     for sym in SYMBOLS:
         for p in ex.fetch_positions([sym]):
             amt = abs(float(p['contracts']))
             if not amt:
                 continue
-            # 方向守卫：guard 只管多头止损；出现空头仓（历史事故残留）立即市价平掉，
-            # 否则「跌破 -12% → 卖出」会在空头仓上持续加空。
-            if pos_guard.side_of(p) != 'long':
-                algo_tools.set_symbol_map(ex.markets)
-                pos_guard.flatten_unexpected(ex, sym, p, None, name=sym.split('/')[0], why='止损守护')
+            side = pos_guard.side_of(p)
+            expect = (reg.get(sym) or {}).get('side') or 'long'
+            # 方向守卫：未登记 / 方向不符 / 双向未开启时的空头 = 事故残留，立即买回平掉。
+            # 否则「跌破止损线 → 卖出」打在空头仓上会持续加空（2026-09-30 META 事故）。
+            if pos_guard.flatten_unexpected(
+                    ex, sym, p, None, name=sym.split('/')[0], why='止损守护',
+                    allow_short=True, expected_side=expect):
                 continue
             entry = float(p['entryPrice'])
             mark = float(p.get('markPrice') or entry)
             liq = float(p.get('liquidationPrice') or 0)
-            sl_price = entry * (1 - SL_PCT)
+            lev = LEV
+            is_short = (side == 'short')
+            _reg = reg.get(sym) or {}
+            sl_pct = float(_reg.get('sl_pct') or (SHORT_STOP_PCT if is_short else SL_PCT))
+            sl_price = entry * (1 + sl_pct) if is_short else entry * (1 - sl_pct)
+            close_side = 'buy' if is_short else 'sell'
+            triggered = mark >= sl_price if is_short else mark <= sl_price
             # 止损触发
-            if mark <= sl_price:
-                log.warning('!!! %s 触发止损: mark %.2f <= SL %.2f (入场%.2f), 市价平仓', sym, mark, sl_price, entry)
+            if triggered:
+                log.warning('!!! %s %s触发止损: mark %.2f %s SL %.2f (入场%.2f), 市价平仓',
+                            sym, '空头' if is_short else '多头', mark,
+                            '>=' if is_short else '<=', sl_price, entry)
                 try:
                     algo_tools.set_symbol_map(ex.markets)
                     try:
                         algo_tools.cancel_all_algo(sym)  # 先撤 algo 止损单, 防平仓后残留反向触发
                     except Exception:
                         pass
-                    _o = ex.create_order(sym, 'market', 'sell', ex.amount_to_precision(sym, amt), None, {'reduceOnly': True})
+                    _o = ex.create_order(sym, 'market', close_side,
+                                         ex.amount_to_precision(sym, amt), None, {'reduceOnly': True})
                     from trade_log import record
                     # 用真实成交均价（缺失时退回 mark）保证已实现盈亏不为 0
                     avg = float(_o.get('average') or (_o.get('info') or {}).get('avgPrice') or 0) or mark
-                    pnl = (avg - entry) * amt
-                    record('sl', sym, 'STOP_LOSS', amt, avg, pnl,
-                           detail=f'入场{entry:.2f} SL@{sl_price:.2f}', pool=('daily' if sym in DAILY_SYMBOLS else 'short'), lev=LEV)
+                    pnl = (entry - avg) * amt if is_short else (avg - entry) * amt
+                    record('sl', sym, 'STOP_LOSS_SHORT' if is_short else 'STOP_LOSS', amt, avg, pnl,
+                           detail=f'{"空" if is_short else "多"} 入场{entry:.2f} SL@{sl_price:.2f}',
+                           pool=(_reg.get('strategy') or 'arena'), lev=lev)
                     log.warning('已平 %s %f 张', sym, amt)
                 except Exception as e:
                     log.error('平仓失败 %s: %s', sym, str(e)[:150])
             else:
-                pnl_pct = (mark / entry - 1) * 100
-                log.info('%s 入场%.2f mark%.2f (%+.1f%%) SL@%.2f 距SL %.1f%%',
-                         sym, entry, mark, pnl_pct, sl_price, (mark - sl_price) / mark * 100)
+                pnl_pct = (1 - mark / entry if is_short else mark / entry - 1) * 100
+                log.info('%s %s 入场%.2f mark%.2f (%+.1f%%) SL@%.2f 距SL %.1f%%',
+                         sym, '空' if is_short else '多', entry, mark, pnl_pct, sl_price,
+                         abs(mark - sl_price) / mark * 100)
 
 
 def main():
     ex = make_fex()
     ex.load_markets()
-    log.info('止损守护启动: 每%ds检查, 止损线 -%.0f%%', CHECK_SEC, SL_PCT * 100)
+    log.info('止损守护启动: 每%ds检查, 日线 -%.1f%% / 短线 -%.1f%% / 空头 +%.1f%%',
+             CHECK_SEC, SL_PCT * 100, SHORT_SL_PCT * 100, SHORT_STOP_PCT * 100)
     while True:
         # WSL 时钟漂移（实测本机比币安快 ~2.4s）：ccxt 的 adjustForTimeDifference 只在
         # load_markets 时校准一次，之后漂移会让请求报 -1021（timeout/挂止损失败）。每轮重新校准。

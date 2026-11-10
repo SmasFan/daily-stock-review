@@ -27,7 +27,7 @@ A 股 T+1 那套「让利润奔跑、收盘再决定」的惯性，在这里是�
 开关：BN_PROFIT_GUARD=0 关闭整个模块（退化成原来的纯趋势离场）。
 参数：PG_LOCK / PG_TRAIL / PG_TRAIL_MIN / PG_GIVE_BACK / PG_TP_SCALE /
      PG_SCALE_RATIO / PG_TP_FAST
-     （不带前缀的 PG_* 对两套 profile 同时生效，也可调用时用 kwargs 覆盖）
+     （不带前缀的 PG_* 对所有 profile 同时生效，也可调用时用 kwargs 覆盖）
 """
 import logging
 import os
@@ -44,6 +44,10 @@ PROFILE_DEFAULTS = {
                   tp_scale=3.0, scale_ratio=0.5, tp_fast=5.0),
     'daily': dict(lock=4.0, trail=3.0, trail_min=4.0, give_back=0.5,
                   tp_scale=7.0, scale_ratio=0.5, tp_fast=12.0),
+    # 2026-11-10 日内混合策略（日线定方向 + 1h 择时）。数值直接取 v3 回测的
+    # PG_SHORT：短线波动小，日线那套 4/7/12 永远触发不了，浮盈会原样还回去。
+    'intraday': dict(lock=1.0, trail=0.6, trail_min=1.0, give_back=0.5,
+                     tp_scale=2.0, scale_ratio=0.5, tp_fast=3.5),
 }
 
 ON = os.environ.get('BN_PROFIT_GUARD', '1').lower() not in ('0', 'false', 'off', 'no')
@@ -69,52 +73,74 @@ def cfg(profile='daily', **over):
     return p
 
 
-def be_price(entry):
-    """保本价：入场价上浮 BE_BUF，保证平仓不亏（含手续费滑点）。"""
-    return round(float(entry) * (1 + BE_BUF), 6)
+def be_price(entry, side='long'):
+    """保本价：多头入场价上浮 / 空头下压 BE_BUF，保证平仓不亏（含手续费滑点）。"""
+    sign = 1 if side == 'long' else -1
+    return round(float(entry) * (1 + BE_BUF * sign), 6)
 
 
-def _pct(px, base):
-    return (float(px) / float(base) - 1) * 100 if base else 0.0
+def _pct(px, base, side='long'):
+    """方向感知的价格涨跌幅 %（空头涨 = 价格跌）。"""
+    sign = 1 if side == 'long' else -1
+    return (float(px) / float(base) - 1) * 100 * sign if base else 0.0
 
 
-def _intrabar_high(ex, sym, tf, since_ms, cap=1000):
-    """自入场以来的最高价（含未收 K 线），失败返回 None。"""
+def _intrabar_extreme(ex, sym, tf, since_ms, cap=1000, side='long'):
+    """自入场以来的极值价：多头取最高价，空头取最低价（含未收 K 线）。"""
     try:
         o = ex.fetch_ohlcv(sym, tf, since=int(since_ms), limit=cap)
         if o:
-            return max(c[2] for c in o)
+            return (max(c[2] for c in o) if side == 'long'
+                    else min(c[3] for c in o))
     except Exception as e:
-        log.debug('[%s] 取 %s 高点失败: %s', sym, tf, str(e)[:80])
+        log.debug('[%s] 取 %s 极值失败: %s', sym, tf, str(e)[:80])
     return None
 
 
-def update_peak(st, sym, price, high=None):
-    """维护 real_pos[sym]['peak']（持仓期间最高价）。返回最新 peak。"""
+def _intrabar_high(ex, sym, tf, since_ms, cap=1000):
+    """兼容旧调用：自入场以来最高价。"""
+    return _intrabar_extreme(ex, sym, tf, since_ms, cap=cap, side='long')
+
+
+def update_peak(st, sym, price, high=None, side='long'):
+    """维护 real_pos[sym]['peak']：多头=持仓期间最高价，空头=最低价。返回最新 peak。"""
     pos = (st.get('real_pos') or {}).get(sym)
     if not pos:
         return None
-    best = max(float(price or 0), float(high or 0))
+    vals = [float(price or 0)]
+    if high:
+        vals.append(float(high))
+    vals = [v for v in vals if v > 0]
+    if not vals:
+        return float(pos.get('peak') or 0) or None
     cur = float(pos.get('peak') or 0)
+    if side == 'short':
+        best = min(vals)
+        if not cur or best < cur:
+            pos['peak'] = round(best, 6)
+            return pos['peak']
+        return cur
+    best = max(vals)
     if best > cur:
         pos['peak'] = round(best, 6)
         return pos['peak']
-    return cur or (round(best, 6) if best else None)
+    return cur or round(best, 6)
 
 
-def plan(entry, price, peak, p, ma20=None, trimmed=False):
+def plan(entry, price, peak, p, ma20=None, trimmed=False, side='long'):
     """纯函数决策（不碰交易所），返回 {'act','why','sl','ratio'}。
 
     act: close（全平） / trim（减仓） / be_lock（只上移止损） / hold
+    side='short' 时浮盈/峰值/回吐全部镜像（gain、dd 与动能止盈方向反转）。
     """
     if not entry or not price:
         return {'act': 'hold', 'why': '无价格数据', 'sl': None, 'ratio': 0}
     entry, price = float(entry), float(price)
     peak = float(peak or price)
-    gain = _pct(price, entry)
-    peak_gain = _pct(peak, entry)
-    dd = (1 - price / peak) * 100 if peak else 0.0
-    be = be_price(entry)
+    gain = _pct(price, entry, side)
+    peak_gain = _pct(peak, entry, side)
+    dd = (1 - price / peak) * 100 * (1 if side == 'long' else -1) if peak else 0.0
+    be = be_price(entry, side)
 
     # 1) 移动止盈：利润正在回吐，优先落袋。
     #    阈值 = max(峰值浮盈 * give_back, trail)：赚得多容忍更大回撤，但不低于 trail 过滤噪音
@@ -129,10 +155,13 @@ def plan(entry, price, peak, p, ma20=None, trimmed=False):
         return {'act': 'trim', 'sl': be, 'ratio': p['scale_ratio'],
                 'why': '分批止盈 浮盈%+.1f%%≥%.1f%%，平%d%%锁利' % (
                     gain, p['tp_scale'], round(p['scale_ratio'] * 100))}
-    # 3) 动能止盈：赚够了但短线结构破
-    if gain >= p['tp_fast'] and ma20 and price < float(ma20):
+    # 3) 动能止盈：赚够了但短线结构破（空头是「涨破 SMA20」）
+    if gain >= p['tp_fast'] and ma20 and (
+            (side == 'long' and price < float(ma20)) or
+            (side == 'short' and price > float(ma20))):
         return {'act': 'close', 'sl': None, 'ratio': 0,
-                'why': '动能止盈 浮盈%+.1f%%但跌破SMA20 %.2f' % (gain, float(ma20))}
+                'why': '动能止盈 浮盈%+.1f%%但%sSMA20 %.2f' % (
+                    gain, '跌破' if side == 'long' else '涨破', float(ma20))}
     # 4) 保本上移：不再让盈利单变亏损单
     if peak_gain >= p['lock']:
         return {'act': 'be_lock', 'sl': be, 'ratio': 0,
@@ -142,7 +171,7 @@ def plan(entry, price, peak, p, ma20=None, trimmed=False):
 
 
 def scan(ex, st, sym, profile='daily', price=None, ms=None, min_notional=0,
-         peak_tf='1h', p=None, now=None):
+         peak_tf='1h', p=None, now=None, side='long'):
     """扫描单个持仓的利润保护信号（**不下单**）。
 
     会就地维护 real_pos[sym] 的 peak / ts / sl 字段。返回 None（无需动作）
@@ -172,19 +201,20 @@ def scan(ex, st, sym, profile='daily', price=None, ms=None, min_notional=0,
     if not px:
         return None
 
-    hi = _intrabar_high(ex, sym, peak_tf, float(pos['ts']) * 1000)
-    peak = update_peak(st, sym, px, hi)
+    hi = _intrabar_extreme(ex, sym, peak_tf, float(pos['ts']) * 1000, side=side)
+    peak = update_peak(st, sym, px, hi, side=side)
     if not peak:
         peak = px
 
     d = plan(entry, px, peak, p,
              ma20=(ms or {}).get('sma20'),
-             trimmed=bool(pos.get('trimmed')))
+             trimmed=bool(pos.get('trimmed')), side=side)
     d.update({'symbol': sym, 'price': round(px, 6), 'peak': round(peak, 6),
-              'entry': entry, 'amt': amt,
-              'pnl_pct': round(_pct(px, entry), 2),
-              'peak_pct': round(_pct(peak, entry), 2),
-              'dd_peak': round((1 - px / peak) * 100, 2) if peak else 0.0,
+              'entry': entry, 'amt': amt, 'side': side,
+              'pnl_pct': round(_pct(px, entry, side), 2),
+              'peak_pct': round(_pct(peak, entry, side), 2),
+              'dd_peak': round((1 - px / peak) * 100 * (1 if side == 'long' else -1), 2)
+                        if peak else 0.0,
               'full': False})
 
     if d['act'] == 'trim':

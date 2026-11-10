@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""sim_live 双池 · 盘中空转守卫（随 run_intraday.sh 每5分钟调用）
+"""sim_live 全池 · 盘中空转守卫（随 run_intraday.sh 每5分钟调用）
 
 问题背景：收盘 auto_run 顺序 bug 曾导致"次日计划被误标过期"→ 次日盘中
 无任何待触发单 = 空转（资金闲、不交易）。本守卫在交易时段巡检：
-  1. 统计双池每账户 wait 待触发单数、是否有"可买空间"(现金够+未满仓)
+  1. 统计全池每账户 wait 待触发单数、是否有"可买空间"(现金够+未满仓)
   2. 若有账户 可买空间>0 但 该账户 wait==0 → 疑似空转
   3. 空转原因分类：
      a. 计划过期/缺失（asof 旧 or plan 空）→ 用最新 review_data 重建计划
@@ -31,7 +31,7 @@ LOCK_STATE = os.path.join(DATA, ".sim_guard_cooldown")  # review 刷新冷却
 REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
 # 空转只看激进/稳健（门槛低，池有信号必出单）；纪律门槛76天然常空仓，不算空转
 WATCH_KEYS = ["aggressive", "balanced"]
-POOLS = ("six", "all")
+POOLS = ("all",)
 # 单笔最低预算（激进0.22/稳健0.18/纪律0.14 × 5万）
 MIN_CASH = {"aggressive": 4000, "balanced": 4000, "disciplined": 3000}
 MAX_POS = {"aggressive": 5, "balanced": 5, "disciplined": 4}
@@ -137,7 +137,7 @@ def main():
                     f.write("1")
             except Exception:
                 pass
-    log("自动重建双池计划(--plan no-llm)...", "FIX")
+    log("自动重建全池计划(--plan no-llm)...", "FIX")
     ok, out = run([sys.executable, "sim_live.py", "--plan", "--no-llm"], timeout=300)
     if not ok:
         log("计划重建失败: %s" % out[-200:], "ERROR")
@@ -158,10 +158,10 @@ def main():
         # 数据新鲜仍无单 = 今日无达标候选（闸门/分数不够），合法防守，不算故障
         log("重建后仍无待触发 %s → 今日无达标候选(闸门block或分数不足)，合法观望" % ",".join(still), "INFO")
     else:
-        log("空转已修复：双池计划重建完成", "OK")
+        log("空转已修复：全池计划重建完成", "OK")
 
 
-POOL_LABEL = {"six": "6股精选", "all": "全池"}
+POOL_LABEL = {"all": "全池"}
 
 
 if __name__ == "__main__":

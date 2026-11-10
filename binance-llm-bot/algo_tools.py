@@ -9,7 +9,8 @@ Algo Order API (/fapi/v1/algoOrder)。ccxt 的 create_order(type='stop') 仍能�
 本模块绕过 ccxt 直接走 REST, 保证挂撤查一致。
 依赖 .env: BN_API_KEY / BN_SECRET / PROXY
 """
-import os, time, hmac, hashlib, requests
+import os, time, hmac, hashlib, base64, requests
+from urllib.parse import quote
 from dotenv import load_dotenv
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -48,9 +49,20 @@ def time_offset_ms():
 
 
 def _sig(params):
+    """币安签名：BN_SECRET 是 Ed25519 PEM 时用 EdDSA，普通串用 HMAC-SHA256。
+
+    坑（2026-11-09 修）：Demo 账号用 Self-generated Ed25519 Key，
+    旧版这里一律 HMAC，algo 条件单持续报 -1022 "Signature for this request is not vali"，
+    止损单只能靠 guard.py 的 60s 本地检查兜底。签名口径与 ccxt.binance.sign 对齐。
+    """
     params['timestamp'] = int(time.time() * 1000) - _TIME_OFFSET_MS
     params['recvWindow'] = 10000
     qs = '&'.join(f'{k}={v}' for k, v in params.items())
+    if 'PRIVATE KEY' in SECRET and len(SECRET) <= 120:
+        from cryptography.hazmat.primitives import serialization
+        key = serialization.load_pem_private_key(SECRET.encode(), password=None)
+        sig = base64.b64encode(key.sign(qs.encode())).decode()
+        return qs + '&signature=' + quote(sig, safe='')
     return qs + '&signature=' + hmac.new(SECRET.encode(), qs.encode(), hashlib.sha256).hexdigest()
 
 
@@ -117,12 +129,17 @@ def open_algo_orders(symbol=None):
     return _req('GET', '/fapi/v1/openAlgoOrders', params)
 
 
-def algo_stops_for(symbol):
-    """该 symbol 所有 SELL reduceOnly STOP 单 (止损用途)"""
+def algo_stops_for(symbol, side='SELL'):
+    """该 symbol 的 reduceOnly STOP 单（多头止损 SELL / 空头止损 BUY）。
+
+    side=None 时不区分方向。"""
     out = []
     for o in open_algo_orders(symbol):
-        if o.get('symbol') == sym_id(symbol) and o.get('side') == 'SELL' and o.get('reduceOnly') in ('true', True):
-            out.append(o)
+        if o.get('symbol') != sym_id(symbol) or o.get('reduceOnly') not in ('true', True):
+            continue
+        if side and o.get('side') != side.upper():
+            continue
+        out.append(o)
     return out
 
 

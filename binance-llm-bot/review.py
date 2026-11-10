@@ -16,7 +16,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 BASE = os.path.dirname(os.path.abspath(__file__))
 TRADES = os.path.join(BASE, 'trades.jsonl')
 EVO_FILE = os.path.join(BASE, 'evolution.json')
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
 
 
 def make_fex():
@@ -144,10 +144,12 @@ REVIEW_FAIL = {'summary': 'LLM 复盘失败, 跳过', 'action': 'review',
                'market_state': '未知', 'execution_ok': True,
                'strengths': [], 'weaknesses': [], 'adjustments': []}
 
-# LLM 通道：Agent 文件队列（免费，优先）→ 付费云端（默认关闭）
-# 事后复盘每 6h 一次，等得起 —— 默认 35 分钟，等我来答（等不到就是跳过复盘，不影响交易）
-AGENT_WAIT = float(os.environ.get('BN_REVIEW_WAIT', os.environ.get('AGENT_LLM_WAIT', '2100')))
+# LLM 通道（2026-11-08 起）：Agent 文件队列 → 本地模型 → 付费云端（默认关闭）
+# 按对比结论，复盘走纯本地模型（group/local-code），不再为等队列空等 35 分钟。
+# BN_REVIEW_WAIT 仍可显式设大（想人工接管时）。配置见根 config/llm_routing.json。
+AGENT_WAIT = float(os.environ.get('BN_REVIEW_WAIT', '0'))
 ALLOW_CLOUD = os.environ.get('AGENT_LLM_ALLOW_CLOUD', '0').lower() in ('1', 'true', 'yes', 'on')
+ROUTER_ON = os.environ.get('BN_REVIEW_ROUTER', '1').lower() not in ('0', 'false', 'off', 'no')
 
 
 def _agent_mod():
@@ -196,6 +198,19 @@ def _review_agent(user, meta=None):
         return None
 
 
+def _review_local(user):
+    """通道二：纯本地模型复盘（结论落地，短/中长 JSON 不出网）。"""
+    root = os.path.dirname(BASE)
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import llm_router
+    text, backend = llm_router.chat('bn_review', REVIEW_SYSTEM, user, expect_json=True)
+    d = _parse_review(text)
+    if d is not None:
+        d['_backend'] = backend
+    return d
+
+
 def _review_cloud(user):
     try:
         client = _get_llm()
@@ -219,15 +234,20 @@ def _review_cloud(user):
 
 
 def llm_review(st, pos, ctx):
-    """复盘分析：先问 Agent 队列，等不到再按开关降级到付费云端。"""
+    """复盘分析：Agent 队列 → 本地模型 →（可选）付费云端。"""
     payload = {'stats': st, 'positions': pos, 'market': ctx}
     user = json.dumps(payload, ensure_ascii=False)
     d = _review_agent(user, meta={'n_trades': st.get('total_trades'),
                                   'n_pos': len(pos or [])})
+    if d is None and ROUTER_ON:
+        try:
+            d = _review_local(user)
+        except Exception as e:
+            print('  [llm][review] 本地模型调用失败: %s' % str(e)[:100])
     if d is None and ALLOW_CLOUD:
         d = _review_cloud(user)
     if d is None:
-        return dict(REVIEW_FAIL, summary='Agent 队列无答案，复盘跳过')
+        return dict(REVIEW_FAIL, summary='LLM 全部通道无答案，复盘跳过')
     return d
 
 

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""LLM 宏观消息面观察（ollama 本地；云端欠费回退）。
+"""LLM 宏观消息面观察（2026-11-08 起按决策路由：宏观走云端 ds4.1 + 联网简报）。
 
 用法:
-  python3 macro_llm.py                # 宏观(财经全流) + 个股新闻(按 sim_live 池模式) → LLM 判断
-  python3 macro_llm.py --pool six     # 强制 6股精选池个股新闻
-  python3 macro_llm.py --pool all     # 全池（不抓个股新闻，只宏观）
+  python3 macro_llm.py                # 宏观(财经全流 + 联网简报) + 重点个股消息面 → LLM 判断
   python3 macro_llm.py --date 2026-09-04   # 指定日期
+  DSR_FOCUS_NEWS=0 python3 macro_llm.py   # 跳过个股新闻抓取
 
 输出 data/macro_llm_data.json:
   {generatedAt, date, llm: {sentiment/score/title/summary/drivers/risks/sectors/stance/backend},
-   stocks: [{code,name,sentiment,score,note}]   # 6股池逐股消息面评审
+   stocks: [{code,name,sentiment,score,note}]   # 重点个股消息面评审（冲刺盘/页面用）
   }
 下游:
   sim_live.py --plan 读取: sentiment∈{空头,防御} → 计划闸门 block
-  sim_live.py --plan 读取 stocks: verdict=avoid 的个股不入计划
+  sim_sprint.py _news_avoid() 读取 stocks: 利空/低分个股回避
+  sim_live.html 展示 stocks 表格
+
+注：2026-11-10 起「6股精选策略池(six)」已下线；这里的 6 只重点个股只是消息面名单，
+与该策略池无关，供冲刺盘与页面使用。
 """
 import argparse
 import json
@@ -27,22 +30,34 @@ sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 
 from src import macro as mc
+import llm_router
+import web_brief
 
 OUT = os.path.join(BASE_DIR, "data", "macro_llm_data.json")
-# LLM 后端（2026-09 多通道）:
-#   1) commandcode /provider/v1 (deepseek-v4-flash) — 快, UA 须 OpenAI/Python 才过 CF
-#   2) ollama 本地 qwen3-vl:32b — 免费离线降级
-# key 复用 binance-llm-bot/.env 的 COMMAND_CODE_API_KEY（已验证可用）
-OLLAMA = "http://localhost:11434"
-MODEL = "qwen3-vl:32b"                 # ollama 本地模型
+# LLM 后端（2026-11-08 起：统一走 llm_router 决策路由）
+#   macro      → workbuddy/deepseek-v4.1-flash（云端 ds4.1，长上下文 + 联网简报更稳）
+#   stock_news → group/local-code（纯本地，短 JSON 与云端结论一致）
+#   路由失败  → 直连 ollama 本地初稿（显式标记 local-draft）
+# 旧的 commandcode 付费通道保留为最后兜底，仍受 AGENT_LLM_ALLOW_CLOUD 控制（默认关）。
+# config/llm_routing.json 可改模型；DSR_LLM_LOCAL_ONLY=1 强制全本地。
+OLLAMA = os.environ.get("DSR_OLLAMA", "http://localhost:11434")
+MODEL = os.environ.get("DSR_LLM_MODEL", "qwen3-coder:30b")  # ollama 本地模型（原默认 qwen3-vl:32b 本机不存在）
 CLOUD_MODEL = "deepseek/deepseek-v4-flash"
+# 输出长度上限：本地模型最大的浪费是话多，800 token 足够宏观看板字段
+MAX_TOKENS = int(os.environ.get("DSR_LLM_MAXTOK", "800"))
+# agent 文件队列的等待秒数（原默认 2100s = 35 分钟，本地跑绝对不能用）
+AGENT_WAIT = int(os.environ.get("DSR_AGENT_WAIT", "8"))
 CC_URL = "https://api.commandcode.ai/provider/v1/chat/completions"
 CC_UA = "OpenAI/Python 1.99.0"
 
 
 def _cc_key():
     import glob as _g
-    envs = _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env")
+    import os
+    # 先找本机项目目录下的 .env（macOS 路径），再兼容旧 WSL 机器的绝对路径
+    here = os.path.dirname(os.path.abspath(__file__))
+    envs = [os.path.join(here, "binance-llm-bot", ".env")]
+    envs += _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env")
     for envf in envs:
         try:
             for line in open(envf):
@@ -74,28 +89,65 @@ def _call_cc(system, user, timeout=120):
 
 def _call_ollama(system, user, timeout=240):
     import urllib.request
+    stream = os.environ.get("DSR_LLM_STREAM", "0") in ("1", "true", "yes", "on")
     body = json.dumps({
-        "model": MODEL, "stream": False,
+        "model": MODEL, "stream": stream,
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
         "format": "json",
-        "options": {"num_predict": 4096, "temperature": 0.2, "num_ctx": 16384},
+        "options": {"num_predict": MAX_TOKENS, "temperature": 0.2, "num_ctx": 16384},
     }).encode()
     req = urllib.request.Request(OLLAMA + "/api/chat", data=body,
                                  headers={"Content-Type": "application/json"})
+    if not stream:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            d = json.loads(r.read().decode())
+        content = (d.get("message") or {}).get("content") or ""
+        if not content.strip():
+            raise RuntimeError("ollama 返回空 content")
+        return content
+    # 流式：逐 token 累计，每 ~0.8s 打一行 [progress] 给 pi-progress 画进度条
+    parts = []
+    ntok = 0
+    t0 = time.time()
+    last = t0
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        d = json.loads(r.read().decode())
-    content = (d.get("message") or {}).get("content") or ""
+        for raw in r:
+            line = raw.decode("utf-8", "ignore").strip()
+            if not line:
+                continue
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            parts.append((d.get("message") or {}).get("content") or "")
+            ntok += 1
+            now = time.time()
+            if now - last >= 0.8:
+                print("[progress] %d/%d  %.1f tok/s" % (ntok, MAX_TOKENS, ntok / max(now - t0, 1e-6)), flush=True)
+                last = now
+            if d.get("done"):
+                break
+    content = "".join(parts)
+    print("[progress] %d/%d  %.1f tok/s  (完成)" % (ntok, MAX_TOKENS, ntok / max(time.time() - t0, 1e-6)), flush=True)
     if not content.strip():
         raise RuntimeError("ollama 返回空 content")
     return content
 
 
 def _agent_ask(kind, system, user, expect_json, meta=None):
-    """优先问「我」（llm_agent 文件队列，免费）。没等到答案返回 None。"""
+    """人工/WorkBuddy 接管通道（llm_agent 文件队列）。没等到答案返回 None。
+
+    按 2026-11-08 结论，各类决策都有固定模型路由兜底，队列只做「人工接管」：
+    仍登记问题、仍优先读 done/ 里预置的答案，但不等人（wait=0），避免卡住定时任务。
+    宏观默认连登记都跳过（DSR_MACRO_AGENT=1 可恢复），免得队列堆积。
+    """
+    if kind == "macro" and os.environ.get("DSR_MACRO_AGENT", "0") not in ("1", "true", "yes", "on"):
+        return None
+    wait = 0
     try:
         import llm_agent
-        a = llm_agent.ask(kind, system, user, expect_json=expect_json, meta=meta)
+        a = llm_agent.ask(kind, system, user, expect_json=expect_json, wait=wait, meta=meta)
         if a is None:
             return None
         return a if isinstance(a, str) else json.dumps(a, ensure_ascii=False)
@@ -107,10 +159,10 @@ def _agent_ask(kind, system, user, expect_json, meta=None):
 def call_llm(system, user, timeout=240, expect_json=False, kind="macro", meta=None):
     """返回 (content, backend)。
 
-    通道优先级（2026-09 起：云端付费停用，改由 Agent 免费接管）：
-      1) agent   —— llm_agent 文件队列，由 WorkBuddy 作答（免费）
-      2) ollama  —— 本地 qwen3-vl（免费离线降级）
-      3) commandcode —— 付费云端，仅 AGENT_LLM_ALLOW_CLOUD=1 时启用
+    通道优先级（2026-11-08 起：按决策类型路由，见 config/llm_routing.json）：
+      1) agent   —— llm_agent 文件队列，人工/WorkBuddy 接管（有人答就优先）
+      2) router  —— macro 走云端 ds4.1（长上下文+联网简报）；其余短 JSON 走纯本地
+      3) commandcode —— 付费云端，仅 AGENT_LLM_ALLOW_CLOUD=1 时最后兜底
 
     expect_json=True 时校验返回可解析为 JSON，失败视为无效。
     """
@@ -132,14 +184,25 @@ def call_llm(system, user, timeout=240, expect_json=False, kind="macro", meta=No
         if good:
             return c, "agent"
         errs.append("agent %s" % why)
+    r = llm_router.route_of(kind)
+    try:
+        c, backend = llm_router.chat(kind, system, user, expect_json=expect_json,
+                                     timeout=min(timeout, r["timeout"]))
+        good, why = _ok(c)
+        if good:
+            return c, backend
+        errs.append("router %s" % why)
+    except Exception as e:
+        errs.append("router %s: %s" % (r["model"], str(e)[:100]))
+    # 最后兜底：旧的 commandcode 付费通道（默认关闭），以及直连 ollama
     try:
         c = _call_ollama(system, user, timeout=timeout)
         good, why = _ok(c)
         if good:
-            return c, "ollama"
-        errs.append("ollama %s" % why)
+            return c, "ollama-direct"
+        errs.append("ollama-direct %s" % why)
     except Exception as e:
-        errs.append("ollama: %s" % str(e)[:80])
+        errs.append("ollama-direct: %s" % str(e)[:80])
     if os.environ.get("AGENT_LLM_ALLOW_CLOUD", "0") in ("1", "true", "yes", "on"):
         for attempt in range(2):
             try:
@@ -186,13 +249,20 @@ SYSTEM = """你是A股宏观策略分析师。输入一批当日财经新闻标�
  "sectors": ["受益板块1","受益板块2"],
  "stance": "进攻|均衡|防守"             // 对应建议: 满仓/正常/空仓等回踩
 }
-要求: 依据事实新闻判断, 不臆造; 若新闻不足以判断给中性50均衡。"""
+要求: 依据事实新闻与【联网简报】判断, 不臆造; 联网简报是实时抓取的行情/国际要闻,
+须优先引用其中的具体数据(指数涨跌幅、VIX、PMI、板块偏好等)并在 summary 里点明;
+若新闻与简报不足以判断给中性50均衡。
+精简要求(必须遵守): summary 不超过80字; drivers/risks 各最多2条; sectors 最多3个;
+每条不超过20字; 总输出不超过350字。宁可少写, 不要凑字数。"""
 
 
 
-# ---------------- 个股相关新闻（新浪个股资讯页，6股池用） ----------------
+# ---------------- 重点个股消息面（新浪个股资讯页） ----------------
+# 注意：这组 6 只是「重点关注个股」名单，供 sim_sprint._news_avoid() 与页面展示，
+# 与已下线的「6股精选策略池（six）」无关，不要跟着删。
+FOCUS_NEWS_ON = os.environ.get("DSR_FOCUS_NEWS", "1").lower() not in ("0", "false", "off", "no")
 SINA_STOCK = "https://vip.stock.finance.sina.com.cn/corp/go.php/vCB_AllNewsStock/symbol/{sym}.phtml"
-SIX_POOL = {
+FOCUS_STOCKS = {
     "601138": ("工业富联", "sh601138"), "600900": ("长江电力", "sh600900"),
     "601899": ("紫金矿业", "sh601899"), "600309": ("万华化学", "sh600309"),
     "002142": ("宁波银行", "sz002142"), "600177": ("雅戈尔", "sh600177"),
@@ -211,7 +281,7 @@ def _sina_get(url):
 def fetch_stock_news(code, date=None, limit=12):
     """抓单只个股新浪资讯页新闻 → [{title, time, url}]（升序）。"""
     import re
-    sym = SIX_POOL.get(code, (None, None))[1]
+    sym = FOCUS_STOCKS.get(code, (None, None))[1]
     if not sym:
         sym = (SINA_SYM.get(code[0], "sh") + code)
     try:
@@ -241,7 +311,7 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
     import json as _json
     lines = []
     for code, news in stock_news.items():
-        name = SIX_POOL.get(code, (code,))[0]
+        name = FOCUS_STOCKS.get(code, (code,))[0]
         titles = "；".join(n["title"][:60] for n in news[:8]) or "（无个股新闻）"
         lines.append("%s %s: %s" % (code, name, titles))
     if not lines:
@@ -277,14 +347,16 @@ def llm_review_stocks(macro_txt, stock_news, timeout=300):
         return None
 
 
-def build_user(news, date):
+def build_user(news, date, web=None):
     lines = []
     for n in news[:60]:
         t = (n.get("title") or "").strip()
         s = (n.get("summary") or "").strip()
         lines.append("• %s%s" % (t, ("｜" + s[:120]) if s else ""))
-    return ("日期 %s。以下为当日财经新闻列表，请给出宏观多空判断：\n\n%s"
-            % (date, "\n".join(lines)))
+    head = "日期 %s。以下为当日财经新闻列表，请给出宏观多空判断：" % date
+    if web:
+        head = "日期 %s。\n\n%s\n\n以下是当日财经新闻列表，结合联网简报给出宏观多空判断：" % (date, web)
+    return "%s\n\n%s" % (head, "\n".join(lines))
 
 
 def main():
@@ -292,18 +364,17 @@ def main():
     ap.add_argument("--date", default=None)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
-    ap.add_argument("--pool", default=None, help="six=6股精选(抓个股新闻) / all=全池(仅宏观)")
+    ap.add_argument("--pool", default=None, help="已停用（6 股精选池已下线，恒为全池）")
     args = ap.parse_args()
 
     if args.offline and os.path.exists(OUT):
         print("离线模式: 沿用 %s" % OUT)
         return
-    # 池模式：--pool > 默认 six（v4 双池后 meta.pool_mode 已废弃，恒为 all 导致
-    # 个股消息面评审从未生效；six 池固定 6 只、成本低，默认就抓）
-    pmode = args.pool or "six"
-    if pmode not in ("six", "all"):
-        pmode = "six"
-    print("池模式:", "6股精选(含个股消息面)" if pmode == "six" else "全池(仅宏观)")
+    # 2026-11-10 起 6 股精选池已下线：恒为全池，不再抓 6 只个股新闻
+    pmode = "all"
+    if args.pool and args.pool != "all":
+        print("[warn] --pool %s 已停用（6 股精选池已下线），按全池处理" % args.pool)
+    print("池模式: 全池(仅宏观)")
     news = mc.fetch_news(use_cache=not args.no_cache)
     try:
         intl = mc.fetch_news_international(page_size=50)
@@ -325,9 +396,13 @@ def main():
         uniq.append(n)
     news = uniq
     date = args.date or (news[0].get("show_time") or time.strftime("%Y-%m-%d"))[:10]
-    print("新闻 %d 条（截至 %s），调用 %s ..." % (len(news), date, MODEL))
+    # 宏观必须联网：把定时抓的外部因子 + 实时国际要闻注入 prompt（模型本身不联网）
+    web, web_meta = web_brief.build_web_context()
+    r = llm_router.route_of("macro")
+    print("新闻 %d 条（截至 %s）｜联网简报 %d 字｜宏观路由 %s ..."
+          % (len(news), date, len(web), r["model"]))
     try:
-        content, _bk = call_llm(SYSTEM, build_user(news, date), expect_json=True)
+        content, _bk = call_llm(SYSTEM, build_user(news, date, web=web), expect_json=True)
         j = _json_of(content)
         j["_backend"] = _bk
     except Exception as e:
@@ -348,27 +423,30 @@ def main():
              "stance": "均衡", "_fallback": True}
     out = {"generatedAt": time.strftime("%Y-%m-%d %H:%M:%S"),
            "date": date, "news_count": len(news), "pool_mode": pmode,
-           "llm": {"model": MODEL, "backend": j.get("_backend", MODEL), **{k2: v2 for k2, v2 in j.items() if k2 != "_backend"}}}
+           "route": {"macro": r["model"], "decision": llm_router.route_of("gate")["model"],
+                     "web": bool(web), "web_meta": web_meta},
+           "llm": {"model": j.get("_backend", r["model"]), "backend": j.get("_backend", r["model"]),
+                   **{k2: v2 for k2, v2 in j.items() if k2 != "_backend"}}}
     ll = out["llm"]
-    # ---- 6股池：抓个股新闻 + 逐股消息面评审 ----
-    if pmode == "six":
+    # ---- 重点个股消息面（供 sim_sprint._news_avoid() 与页面展示；非 six 策略池） ----
+    if FOCUS_NEWS_ON:
         macro_txt = "%s score=%s | %s | 利好:%s | 风险:%s" % (
             ll.get("sentiment"), ll.get("score"), ll.get("summary") or "",
             "、".join(ll.get("drivers") or []) or "-", "、".join(ll.get("risks") or []) or "-")
         stock_news = {}
-        for code, (name, _sym) in SIX_POOL.items():
+        for code, (name, _sym) in FOCUS_STOCKS.items():
             sn = fetch_stock_news(code, date=date)
             stock_news[code] = sn
             print("  %s %s: %d 条新闻" % (code, name, len(sn)))
         srev = llm_review_stocks(macro_txt, stock_news)
         if srev:
-            out["stocks"] = [{"code": c, "name": SIX_POOL[c][0], **r}
+            out["stocks"] = [{"code": c, "name": FOCUS_STOCKS[c][0], **r}
                              for c, r in srev.items()]
             for s in out["stocks"]:
                 print("  [股] %s %s %s score=%s %s" % (s["code"], s["name"], s["sentiment"],
                                                       s["score"], s.get("note", "")))
         else:
-            # 评审失败：沿用上次有效的个股消息面（否则会写空 → sim_live 静默失去个股回避能力）
+            # 评审失败：沿用上次有效的个股消息面（否则会写空 → 冲刺盘静默失去个股回避能力）
             prev = []
             try:
                 with open(OUT, encoding="utf-8") as f:
@@ -378,6 +456,18 @@ def main():
             out["stocks"] = prev
             out["stocks_stale"] = True
             print("  [warn] 个股消息面评审失败 → 沿用上次 %d 只（标记 stocks_stale）" % len(prev))
+    else:
+        # ds4.1 审阅：显式关闭时也沿用上次数据，否则写出无 stocks 的 json
+        # 会让 sim_sprint._news_avoid() 静默失去个股回避能力。
+        prev = []
+        try:
+            with open(OUT, encoding="utf-8") as f:
+                prev = (json.load(f).get("stocks") or [])
+        except Exception:
+            pass
+        out["stocks"] = prev
+        out["stocks_stale"] = True
+        print("  [warn] DSR_FOCUS_NEWS=0 → 沿用上次 %d 只个股消息面（标记 stocks_stale）" % len(prev))
     print("\n[%s][%s] %s  %s  score=%s  stance=%s" % (date, ll.get("backend", "?"),
           ll["sentiment"], ll["title"], ll["score"], ll["stance"]))
     print("逻辑:", ll.get("summary"))

@@ -27,7 +27,7 @@
 #   - 抓取失败沿用上次数据，不写坏文件
 #   - 仅当 external_data.json 真的变了才提交；且只提交这一个文件，不碰别人的暂存区
 export CACHE_MAX_AGE_HOURS=2
-BASE=/mnt/c/Users/z7280/daily-stock-review
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK=/tmp/build_external.lock
 LOG=$BASE/data/external_cron.log
 DATA=$BASE/data/external_data.json

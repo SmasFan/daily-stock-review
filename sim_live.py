@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""实时模拟炒股 · 双池并行盘中触发引擎（v4）
+"""实时模拟炒股 · 全池盘中触发引擎（v5，2026-11-10 起）
 
-双池 = 6股精选(six) + 全池(all)，两池各持 3 个真实独立账户（激进/稳健/严守纪律，各 5 万），
-互不共享资金/计划/持仓，盘中并行巡检同时成交。合并净值 = 池内三账户加权合成。
+只保留全池(all)：3 个真实独立账户（激进/稳健/严守纪律，各 5 万）+ 合并·共识账户。
+原「6股精选(six)」池已停用：不再建账、不再巡检、不再展示，旧数据里的 six 账本会被
+load_state() 自动清掉。合并净值 = 池内三账户加权合成。
 
-数据模型 v4：
-  state.pools = { six: {accounts:{...3账户...}, mix:{...}}, all: {...} }
-  state.meta.pools = ["six","all"]；旧 v1~v3 单池数据自动迁移 → pools.all，six 全新开账。
+数据模型：
+  state.pools = { all: {accounts:{...3账户...}, mix:{...}} }
+  state.meta.pools = ["all"]；旧 v1~v4 数据自动迁移 → pools.all。
 
-命令（默认作用于双池，--pool 可限定单池）：
-  python3 sim_live.py --init                 # 初始化（双池 × 3 账户）
-  python3 sim_live.py --plan [--pool six|all]   # 重建计划（默认双池；收盘 auto_run 调用）
+命令（默认作用于全池，--pool 仅接受 all）：
+  python3 sim_live.py --init                 # 初始化（全池 × 3 账户）
+  python3 sim_live.py --plan                 # 重建计划（收盘 auto_run 调用）
   python3 sim_live.py --intraday-plan         # 盘中整点复盘重建(刷新买点/补新信号, 需全量成分版review)
-  python3 sim_live.py --intraday [--pool ...]   # 盘中巡检触发成交（cron 每2分钟独立锁，双池）
+  python3 sim_live.py --intraday             # 盘中巡检触发成交（cron 每2分钟独立锁）
   python3 sim_live.py --review [--date D]       # 收盘复盘 + 自学习
-  python3 sim_live.py --plan-date 2026-09-04 --pool six   # 6股池历史日K信号重建
   python3 sim_live.py --strategy-log "msg"   # 策略版本变更
 
 LLM 层（--plan 时自动）:
   - 宏观: data/macro_llm_data.json（macro_llm.py 生成）空头/防御 → 全局闸门
-  - 个股评审: 候选股画像 + 宏观 → LLM 批量评审，回避股不入计划（6股池另加个股消息面回避）
+  - 个股评审: 候选股画像 + 宏观 → LLM 批量评审，回避股不入计划
 """
 import argparse
 import json
@@ -71,9 +71,9 @@ EXT_WEIGHT = float(os.environ.get("SIM_EXT_WEIGHT", "1.5"))    # 偏好分 → �
 EXT_CAP = float(os.environ.get("SIM_EXT_CAP", "8"))            # 单个股外部加减分上限
 EXT_MAX_AGE_H = float(os.environ.get("SIM_EXT_STALE_H", "14"))  # 外部数据过期小时数
 
-# 双池
-POOLS = ("six", "all")
-POOL_LABEL = {"six": "6股精选", "all": "全池"}
+# 2026-11-10 起只保留全池；6 股精选池（six）已下线
+POOLS = ("all",)
+POOL_LABEL = {"all": "全池"}
 
 # 账户配置：与历史回测 sim.html 的三种风格对齐
 ACCOUNTS = {
@@ -119,11 +119,8 @@ MIX_CFG = {"key": MIX_KEY, "label": "合并·共识", "max_pos": 6}
 MIX_SIZE = {1: 0.08, 2: 0.13, 3: 0.20}
 SUB_ACCOUNTS = list(REAL_ACCOUNTS)
 
-# 精选 6 股池（6c：资源/制造龙头+银行+防守）
-SIX_POOL = {
-    "601138": "工业富联", "600900": "长江电力", "601899": "紫金矿业",
-    "600309": "万华化学", "002142": "宁波银行", "600177": "雅戈尔",
-}
+# 2026-11-10 起 6 股精选池（six）已下线；不再建账、不再巡检、不再展示。
+# review_from_kline() 仍保留（scripts/backtest_sprint.py 依赖），但只用于工具脚本。
 
 
 def now_ts():
@@ -143,13 +140,13 @@ def load_state():
         return None
     with open(STATE_FILE, "r", encoding="utf-8") as f:
         st = json.load(f)
-    # v1~v3 单池 → v4 双池迁移：旧 accounts/mix → pools.all，six 全新开账
+    # v1~v3 单池 → v4 迁移：旧 accounts/mix → pools.all
+    # 2026-11-10 起 6 股精选池（six）已停用，统一只保留 all
     if st and "pools" not in st and "accounts" in st:
         st["pools"] = {
             "all": {"accounts": st.get("accounts") or {},
                     "mix": st.get("mix") or {"equity_curve": [], "daily_log": [],
                                              "regime": [], "meta": {"start_cash": CASH_START}}},
-            "six": pool_books(),
         }
         st.pop("accounts", None)
         st.pop("mix", None)
@@ -157,12 +154,15 @@ def load_state():
         st["meta"]["pools"] = list(POOLS)
         st["meta"].pop("pool_mode", None)
         st["meta"].pop("pool_switched_at", None)
+    # 清理旧双池数据里残留的 six 账本（不再记账、不再展示）
+    if st and isinstance(st.get("pools"), dict):
+        st["pools"].pop("six", None)
     st = normalize_state(st)
     return st
 
 
 def normalize_state(st):
-    """补齐双池结构（新老字段兜底）。"""
+    """补齐全池结构（新老字段兜底；6 股精选池已停用）。"""
     if not st:
         st = {}
     st.setdefault("meta", {})
@@ -170,8 +170,12 @@ def normalize_state(st):
     m.setdefault("created", now_ts())
     m.setdefault("strategy_version", "v4.0")
     m.setdefault("accounts", list(REAL_ACCOUNTS))
-    m.setdefault("pools", list(POOLS))
+    m["pools"] = list(POOLS)
     st.setdefault("version_history", [])
+    # ds4.1 审阅：旧文件 pools 非 dict 时先重置，否则 setdefault(...).setdefault 会抛 AttributeError 丢账本
+    if not isinstance(st.get("pools"), dict):
+        st["pools"] = {}
+    st["pools"].pop("six", None)
     for p in POOLS:
         b = st.setdefault("pools", {}).setdefault(p, {})
         acc = b.setdefault("accounts", {})
@@ -277,9 +281,11 @@ def equity_of(acct):
 
 
 # ---------------- LLM 个股评审（计划阶段，一次性批量） ----------------
-# 通道：commandcode (deepseek-v4-flash) 优先 → ollama qwen3-vl 降级（macro_llm 同策略）
+# 通道（2026-11-08 起）：agent 队列 → llm_router 决策路由（短 JSON 纯本地）
+#   → ollama 直连兜底 → commandcode 付费云端（默认关）。见 config/llm_routing.json
 OLLAMA = "http://localhost:11434"
-LLM_MODEL = "qwen3-vl:32b"
+LLM_MODEL = os.environ.get("DSR_LLM_MODEL", "qwen3-coder:30b")  # 本机实有模型；原 qwen3-vl:32b 不存在
+LLM_MAXTOK = int(os.environ.get("DSR_LLM_MAXTOK", "1024"))
 CC_URL = "https://api.commandcode.ai/provider/v1/chat/completions"
 CC_UA = "OpenAI/Python 1.99.0"
 CC_CLOUD_MODEL = "deepseek/deepseek-v4-flash"
@@ -287,7 +293,11 @@ CC_CLOUD_MODEL = "deepseek/deepseek-v4-flash"
 
 def _cc_key():
     import glob as _g
-    for envf in _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env"):
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    envs = [os.path.join(here, "binance-llm-bot", ".env")]
+    envs += _g.glob("/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env")
+    for envf in envs:
         try:
             for line in open(envf):
                 if line.startswith("COMMAND_CODE_API_KEY="):
@@ -323,7 +333,7 @@ def _llm_chat_ollama(system, user, timeout=480):
         "messages": [{"role": "system", "content": system},
                      {"role": "user", "content": user}],
         "format": "json",
-        "options": {"num_predict": 4096, "temperature": 0.2, "num_ctx": 16384},
+        "options": {"num_predict": LLM_MAXTOK, "temperature": 0.2, "num_ctx": 16384},
     }).encode()
     req = urllib.request.Request(OLLAMA + "/api/chat", data=body,
                                  headers={"Content-Type": "application/json"})
@@ -353,14 +363,24 @@ def _cloud_allowed():
 
 
 def _llm_chat(system, user, timeout=480):
-    """Agent 队列（免费）→ ollama（免费）→ [付费云端，默认停用]。"""
-    c = _agent_ask("candidates", system, user, expect_json=True)
+    """Agent 队列 → 决策路由(本地) → ollama 直连 → [付费云端，默认停用]。"""
+    c = _agent_ask("candidates", system, user, expect_json=True,
+                   wait=float(os.environ.get("AGENT_LLM_WAIT_CANDIDATES", "0")))
     if c and c.strip():
         return c
+    errs = []
+    try:
+        import llm_router
+        c, _bk = llm_router.chat("candidates", system, user, expect_json=True)
+        if c and c.strip():
+            return c
+        errs.append("router 空返回")
+    except Exception as e:
+        errs.append("router: %s" % str(e)[:100])
     try:
         return _llm_chat_ollama(system, user, timeout=timeout)
     except Exception as e:
-        errs = ["ollama: %s" % str(e)[:80]]
+        errs.append("ollama: %s" % str(e)[:80])
     if _cloud_allowed():
         import time as _t
         for attempt in range(2):
@@ -457,6 +477,16 @@ def _llm_chat_fast(system, user):
     c = _agent_ask("gate", system, user, expect_json=True, wait=wait)
     if c and c.strip():
         return c
+    # 按 2026-11-08 对比结论：短 JSON 复核走纯本地模型（group/local-code）
+    try:
+        import llm_router
+        c, _bk = llm_router.chat("gate", system, user, expect_json=True,
+                                 timeout=GATE_TIMEOUT * 2)
+        if c and c.strip():
+            return c
+        errs.append("router 空返回")
+    except Exception as e:
+        errs.append("router: %s" % str(e)[:100])
     try:
         c = _llm_chat_ollama(system, user, timeout=GATE_TIMEOUT * 2)
         if c.strip():
@@ -943,8 +973,6 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
         for it in items:
             if it.get("code") in held:
                 continue
-            if pool == "six" and it.get("code") not in SIX_POOL:
-                continue
             if it.get("signal_key") not in ("strong_buy", "buy"):
                 continue
             _eb = ext_bonus(it, ext)
@@ -962,16 +990,10 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
             cand_pool.setdefault(it.get("code"), it)
     # LLM 个股评审（盘前一次性；失败放行）
     llm_rev = {}
-    _news_rev = {}
     if not skip_llm:
         _llm_macro = None
         try:
             _llm_macro = load_json("macro_llm_data.json")
-            # 个股消息面评审（macro_llm.py --pool six 产出 stocks）：利空/低分 → 回避
-            for _s in (_llm_macro.get("stocks") or []):
-                if _s.get("sentiment") in ("利空", "防御") or (_s.get("score") or 50) < 45:
-                    _news_rev[_s.get("code")] = "消息面:%s(%s)" % (
-                        _s.get("sentiment"), _s.get("note", ""))
         except Exception:
             pass
         rev_cands = [{"code": it["code"], "name": it.get("name", ""),
@@ -991,18 +1013,11 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
         plan = []
         for it in cands[:8]:
             _rv = llm_rev.get(it.get("code"))
-            _nr = _news_rev.get(it.get("code")) if pool == "six" else None
             if _rv and _rv.get("verdict") == "avoid":
                 acct["daily_log"].append({"date": asof, "kind": "plan",
                                           "note": "[%s]%s：%s LLM技术回避(%s)" % (
                                               POOL_LABEL[pool], cfg["label"], it.get("name"),
                                               _rv.get("note", ""))})
-                continue
-            if _nr:
-                acct["daily_log"].append({"date": asof, "kind": "plan",
-                                          "note": "[%s]%s：%s %s" % (
-                                              POOL_LABEL[pool], cfg["label"],
-                                              it.get("name"), _nr)})
                 continue
             # 注意：_eb 须在本循环内重算（过滤循环里的值会残留，导致所有计划显示同一分数）
             _eb = ext_bonus(it, ext)
@@ -1137,7 +1152,7 @@ def make_mix_plan(state, pool, asof, gate, log=True):
     return len(mix["plan"])
 
 
-# ---------------- 盘中巡检（双池并行） ----------------
+# ---------------- 盘中巡检（全池） ----------------
 def _review_ctx():
     """review_data 索引（板块/趋势/评分），供 LLM 闸门补充上下文。"""
     rev = load_json("review_data.json") or {}
@@ -1584,13 +1599,13 @@ def main():
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--intraday", action="store_true")
     ap.add_argument("--intraday-plan", action="store_true",
-                    help="盘中整点用最新全量复盘刷新双池计划(成分版, items>300 才执行)")
+                    help="盘中整点用最新全量复盘刷新全池计划(成分版, items>300 才执行)")
     ap.add_argument("--replay", default=None)
     ap.add_argument("--review", action="store_true")
     ap.add_argument("--finalize", action="store_true")
     ap.add_argument("--strategy-log", default=None)
-    ap.add_argument("--pool", default=None, help="six=6股精选 / all=全池（默认双池并行）")
-    ap.add_argument("--plan-date", default=None, help="历史日收盘信号重建计划(如2026-09-03，仅six)")
+    ap.add_argument("--pool", default=None, help="all=全池（默认；six 已停用）")
+    ap.add_argument("--plan-date", default=None, help="历史日计划重建已停用（原仅 6 股池）")
     ap.add_argument("--no-llm", action="store_true", help="跳过LLM个股评审(快速重建用)")
     ap.add_argument("--force", action="store_true",
                     help="--intraday 在非交易时段也执行（默认拒绝，避免拿收盘价当盘中成交）")
@@ -1598,9 +1613,9 @@ def main():
     args = ap.parse_args()
 
     if args.pool and args.pool not in POOLS:
-        print("未知池模式:", args.pool, "（six|all，省略=双池并行）")
+        print("未知池模式:", args.pool, "（仅 all；six 已停用，省略=全池）")
         return
-    target_pools = [args.pool] if args.pool else list(POOLS)
+    target_pools = list(POOLS)
 
     if args.strategy_log:
         st = load_state()
@@ -1619,34 +1634,15 @@ def main():
     if args.init or not load_state():
         state = new_state()
         save(state)
-        print("双池初始化：six(6股精选) + all(全池) × 激进/稳健/严守纪律 各 5万，各自独立并行交易。")
-        print("先 --plan 建计划（默认双池）。")
+        print("全池初始化：激进/稳健/严守纪律 各 5 万 + 合并·共识，各自独立交易。")
+        print("先 --plan 建计划。")
         return
     state = load_state()
-    print("当前双池: " + " + ".join("%s(%s)" % (p, POOL_LABEL[p]) for p in POOLS))
+    print("当前池: " + " + ".join("%s(%s)" % (p, POOL_LABEL[p]) for p in POOLS))
 
     if args.plan:
         if args.plan_date:
-            # 历史日：6股池用日K重建信号（无前视）
-            date = args.plan_date
-            if "six" not in target_pools:
-                print("--plan-date 仅支持 6股精选池（--pool six）")
-                return
-            items = []
-            for c, n in SIX_POOL.items():
-                it = review_from_kline(c, n, date)
-                if it:
-                    items.append(it)
-            review = {"generatedAt": date + " 15:00:00", "items": items,
-                      "indices": [], "temperature": {"breadth": 0}}
-            print("6股池历史日信号重建 %s：%d 只有效" % (date, len(items)))
-            for it in items:
-                print("   %s %s %s(%s分) %s" % (it["code"], it["name"], it["signal"],
-                                               it["score"], it["trend_status"]))
-            res = make_plan(state, review, date, "six", skip_llm=bool(args.no_llm))
-            save(state)
-            print("6股池计划更新 %s：%s" % (date, {ACCOUNTS[k]["label"] + ":" + str(v)
-                                                   for k, v in res.items()}))
+            print("--plan-date 已停用（6 股精选池已下线），请直接 --plan 重建全池计划")
             return
         review = load_json("review_data.json")
         if not review:
@@ -1680,7 +1676,7 @@ def main():
         return
 
     if args.intraday_plan:
-        # 盘中整点复盘重建：用最新全量复盘(含ETF成分, items>300)刷新双池待触发计划
+        # 盘中整点复盘重建：用最新全量复盘(含ETF成分, items>300)刷新全池待触发计划
         review = load_json("review_data.json")
         if not review:
             print("无 review_data")
@@ -1718,7 +1714,7 @@ def main():
                                              ",".join(nm.get(c, c) for c in sorted(newm)))})
                 changed += 1
         save(state)
-        print("盘中复盘重建 %s：双池计划已按最新信号刷新，变更账户 %d" % (date, changed))
+        print("盘中复盘重建 %s：全池计划已按最新信号刷新，变更账户 %d" % (date, changed))
         return
 
     if args.intraday:

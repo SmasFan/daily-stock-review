@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>每日复盘工作台</title>
-<link rel="stylesheet" href="assets/css/common.css?v=3">
+<link rel="stylesheet" href="assets/css/common.css?v=4">
 <style>
 .entry-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
 .entry-card {
@@ -36,15 +36,15 @@
   <div class="entry-grid" id="entries"><div class="loading">加载中…</div></div>
   <footer>数据由 <code>python run_review.py</code> 生成 · 仅供学习研究，不构成投资建议</footer>
 </div>
-<script src="assets/js/common.js?v=2"></script>
+<script src="assets/js/common.js?v=3"></script>
 <script src="assets/js/rvui.js?v=2"></script>
 <script src="assets/js/stockchart.js?v=3"></script>
 <script>
 (async function () {
-  document.getElementById('app').innerHTML = RV.ui.header('每日复盘工作台', '', '');
+  document.getElementById('app').innerHTML = RV.ui.header('工作台', '', 'index');
   const box = document.getElementById('entries');
   const gen = document.getElementById('gen');
-  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null, lowval = null, simAll = null, liveSim = null, industry = null;
+  let review = null, rec = null, bt = null, metals = null, holdings = null, tracking = null, inst = null, strat = null, macro = null, lowval = null, simAll = null, liveSim = null, usSim = null, industry = null;
   try { review = await RV.API.review(); } catch (e) {}
   try { rec = await RV.API.recommend(); } catch (e) {}
   try { bt = await RV.API.backtest(); } catch (e) {}
@@ -56,8 +56,9 @@
   try { macro = await RV.API.fetch('macro_data.json'); } catch (e) {}
   try { lowval = await RV.API.fetch('lowval_data.json'); } catch (e) {}
   try { industry = await RV.API.fetch('industry_track.json'); } catch (e) {}
-  try { simAll = await RV.API.fetch('sim_trade_all.json'); } catch (e) {}
+  try { simAll = await RV.API.fetch('sim_trade.json'); } catch (e) {}  // = all 窗口，避免拉 5.5MB 整包
   try { liveSim = await RV.API.fetch('sim_live.json'); } catch (e) {}
+  try { usSim = await RV.API.fetch('us-sim.json'); } catch (e) {}
   if (review) gen.textContent = '数据更新于 ' + review.generatedAt;
 
   const cards = [];
@@ -101,13 +102,19 @@
     <a class="entry-card" href="sim.html">
       <div class="e-icon">${RV.ui.icon('gamepad')}</div><h3>模拟炒股</h3>
       <p>5万本金三策略回放：激进/稳健/严守纪律，多窗口（2024至今/政策牛/2025）收益对比</p>
-      ${simAll && simAll.windows && simAll.windows.all ? (() => { const s = simAll.windows.all.strategies; return `<div class="e-stat">${RV.ui.icon('medal', 'fa-xs')} 稳健 ${RV.fmt.pct(s.balanced.return_pct)} · 纪律 ${RV.fmt.pct(s.disciplined.return_pct)} · 激进 ${RV.fmt.pct(s.aggressive.return_pct)}</div>`; })() : ''}
+      ${simAll && simAll.strategies ? (() => { const s = simAll.strategies; return `<div class="e-stat">${RV.ui.icon('medal', 'fa-xs')} 稳健 ${RV.fmt.pct(s.balanced.return_pct)} · 纪律 ${RV.fmt.pct(s.disciplined.return_pct)} · 激进 ${RV.fmt.pct(s.aggressive.return_pct)}</div>`; })() : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="sim_live.html">
       <div class="e-icon">${RV.ui.icon('stopwatch')}</div><h3>实时模拟盘</h3>
       <p>5万实盘节奏逐日操作：每日收盘决策/次日开盘成交、买卖原因与时间全记录、自学习复盘优化</p>
       ${liveSim && liveSim.meta ? (() => { try { const eq = liveSim.meta.start_cash || 50000; const r = 0; const act = (liveSim.accounts && Object.keys(liveSim.accounts)) || []; const pos = act.length ? act.map(k => liveSim.accounts[k].positions.length).reduce((a, b) => a + b, 0) : (liveSim.positions || []).length; const ver = liveSim.meta.strategy_version || liveSim.meta.strategy?.version || '--'; return `<div class="e-stat">${RV.ui.icon('stopwatch', 'fa-xs')} ${act.length ? act.length + ' 账户 · 持仓' + pos + ' · v' + ver : ''}</div>`; } catch (e) { return ''; } })() : ''}
+    </a>`);
+  cards.push(`
+    <a class="entry-card" href="us-sim.html">
+      <div class="e-icon">${RV.ui.icon('chart-line')}</div><h3>美股模拟盘</h3>
+      <p>100美元碎股模拟：趋势突破、ATR止损、实时行情、持仓盈亏与完整交易记录</p>
+      ${usSim && usSim.account ? `<div class="e-stat">${RV.ui.icon('dollar-sign', 'fa-xs')} 权益 $${RV.fmt.num(usSim.account.equity, 2)} · 收益 ${RV.fmt.pct(usSim.account.ret_pct)} · 持仓 ${usSim.account.position_count} 只</div>` : ''}
     </a>`);
   cards.push(`
     <a class="entry-card" href="metals.html">

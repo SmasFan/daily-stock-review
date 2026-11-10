@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """连通性验证: 只读, 不下单。"""
-import ccxt, os
+import ccxt, os, sys
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
 
 ex = ccxt.binance({
     'apiKey': os.environ.get('BN_API_KEY', ''),

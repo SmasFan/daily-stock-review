@@ -648,8 +648,20 @@ def run_windows():
         json.dump({"start_cash": CASH_START, "windows": {
             k: {"label": WINDOW_LABELS[k], "strategies": v["strategies"], "mixed": v.get("mixed")}
             for k, v in windows.items()}}, f, ensure_ascii=False)
+    # 按窗口拆分：页面首屏只取 sim_trade.json（即 all 窗口），切窗口再按需拉单个文件，
+    # 避免一次下载 5.5MB 全量数据导致加载缓慢。
+    win_dir = os.path.join(DATA_DIR, "sim_trade_all")
+    os.makedirs(win_dir, exist_ok=True)
+    for k, v in windows.items():
+        if k == "all":
+            continue
+        with open(os.path.join(win_dir, k + ".json"), "w", encoding="utf-8") as f:
+            json.dump({"start_cash": CASH_START, "label": WINDOW_LABELS[k],
+                       "strategies": v["strategies"], "mixed": v.get("mixed")},
+                      f, ensure_ascii=False)
     print("完成:", os.path.join(DATA_DIR, "sim_trade.json"),
-          os.path.join(DATA_DIR, "sim_trade_all.json"))
+          os.path.join(DATA_DIR, "sim_trade_all.json"),
+          os.path.join(win_dir, "<window>.json"))
 
 
 if __name__ == "__main__":

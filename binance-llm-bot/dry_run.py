@@ -2,9 +2,10 @@
 """Dry-run 全链路: 行情 -> DeepSeek LLM 决策 -> 风控。不下单。"""
 import os, json
 from dotenv import load_dotenv
-load_dotenv('/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env')
+BASE = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE, '.env'))
 import importlib.util
-spec = importlib.util.spec_from_file_location('bot', '/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/main.py')
+spec = importlib.util.spec_from_file_location('bot', os.path.join(BASE, 'main.py'))
 bot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bot)
 

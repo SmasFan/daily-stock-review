@@ -65,68 +65,89 @@
     icon(name, cls = '') {
       return `<i class="fa-solid fa-${name} ${cls}" aria-hidden="true"></i>`;
     },
-    /* 页头：顶部 [☰ + 标题]，导航改为左侧抽屉（点击滑出，可收起） */
+    /* 页头：34px 紧凑条（样式对齐 binance.html）—— 导航下拉 + 页面名 + 常用入口 + 更新时间 */
     header(title, subtitle, active, genTime) {
       const navs = [
-        ['review', '复盘', 'clipboard-list', 'review.html'],
-        ['uptrend', '趋势', 'arrow-trend-up', 'uptrend.html'],
-        ['mainline', '主线', 'crown', 'mainline.html'],
-        ['recommend', '推荐', 'bullseye', 'recommend.html'],
-        ['lowval', '低估值', 'magnifying-glass-chart', 'lowval.html'],
-        ['institution', '资金', 'landmark', 'institution.html'],
-        ['macro', '宏观', 'newspaper', 'macro.html'],
-        ['holdings', '持仓', 'briefcase', 'holdings.html'],
-        ['backtest', '回测', 'flask', 'backtest.html'],
-        ['tracking', '跟踪', 'route', 'tracking.html'],
-        ['metals', '期货', 'coins', 'metals.html'],
-        ['industry', '产业', 'gem', 'industry.html'],
-        ['sim', '模拟盘', 'gamepad', 'sim.html'],
-        ['simlive', '实时模拟', 'stopwatch', 'sim_live.html'],
-        ['binance', '币安Bot', 'wallet', 'binance.html'],
-        ['docs', '说明', 'book-open', 'docs.html'],
+        ['index', '工作台', 'index.html'],
+        ['review', '复盘', 'review.html'],
+        ['uptrend', '趋势', 'uptrend.html'],
+        ['mainline', '主线', 'mainline.html'],
+        ['recommend', '推荐', 'recommend.html'],
+        ['lowval', '低估值', 'lowval.html'],
+        ['institution', '资金', 'institution.html'],
+        ['macro', '宏观', 'macro.html'],
+        ['holdings', '持仓', 'holdings.html'],
+        ['backtest', '回测', 'backtest.html'],
+        ['tracking', '跟踪', 'tracking.html'],
+        ['metals', '期货', 'metals.html'],
+        ['industry', '产业', 'industry.html'],
+        ['sim', '模拟盘', 'sim.html'],
+        ['simlive', '实时模拟', 'sim_live.html'],
+        ['divsim', '红利池', 'sim_dividend.html'],
+        ['ussim', '美股模拟', 'us-sim.html'],
+        ['binance', '币安 Bot', 'binance.html'],
+        ['perp', '全天候盘', 'perp.html'],
+        ['docs', '说明', 'docs.html'],
       ];
-      const html = `
-      <header class="top drawer-top">
-        <button class="drawer-btn" id="drawer-open" aria-label="打开导航">${ui.icon('bars')}</button>
-        <div class="drawer-title-wrap">
-          <h1>${title}</h1>
-          <div class="gen-time">${subtitle || ''}${genTime ? ' · 生成于 ' + genTime : ''}</div>
+      // 常显的常用入口（窄屏自动隐藏，只留「导航」下拉）
+      const quick = ['review', 'recommend', 'macro', 'holdings', 'simlive', 'divsim', 'ussim', 'binance', 'perp'];
+      const act = active || 'index';
+      const quickHtml = quick.map(k => {
+        const n = navs.find(x => x[0] === k);
+        if (!n) return '';
+        return `<a href="${n[2]}"${k === act ? ' class="cur"' : ''}>${n[1]}</a>`;
+      }).join('');
+      const popHtml = navs.map(([k, label, href]) =>
+        `<a href="${href}"${k === act ? ' class="cur"' : ''}>${label}</a>`).join('');
+      const metaHtml = (subtitle ? `<span class="sub">${subtitle}</span>` : '')
+        + (genTime ? `<span class="time">生成于 ${genTime}</span>` : '');
+      const html = `<div class="tb">
+        <button class="tb-btn" id="tb-nav-btn" aria-expanded="false">导航</button>
+        <span class="tb-title">${title}</span>
+        <div class="tb-quick">${quickHtml}</div>
+        <span class="tb-sp"></span>
+        <span class="tb-meta">${metaHtml}</span>
+        <div class="tb-pop" id="tb-nav-pop">
+          <div class="tb-head">页面导航 · 每日复盘工作台</div>
+          ${popHtml}
+          <a class="src" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">项目源码 ↗</a>
         </div>
-      </header>`;
-      // 注入抽屉（body 级一次）
-      if (!document.getElementById('app-drawer')) {
-        const ov = document.createElement('div');
-        ov.className = 'drawer-overlay';
-        ov.id = 'drawer-overlay';
-        const navHtml = navs.map(([k, label, icon, href]) =>
-          `<a class="nav-link ${k === active ? 'active' : ''}" href="${href}">${ui.icon(icon)} <span>${label}</span></a>`
-        ).join('');
-        const drawer = document.createElement('div');
-        drawer.className = 'app-drawer';
-        drawer.id = 'app-drawer';
-        drawer.innerHTML = `<div class="drawer-head">${ui.icon('chart-line')} <b>每日复盘工作台</b></div>
-          <nav class="drawer-nav">${navHtml}
-            <a class="nav-link repo-link" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">${ui.icon('github')} <span>项目源码</span></a>
-          </nav>`;
-        document.body.appendChild(ov);
-        document.body.appendChild(drawer);
-        const open = () => { ov.classList.add('show'); drawer.classList.add('open'); document.body.style.overflow = 'hidden'; };
-        const close = () => { ov.classList.remove('show'); drawer.classList.remove('open'); document.body.style.overflow = ''; };
-        ov.addEventListener('click', close);
-        drawer.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', close));
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
-        window.__navClose = close;
-      }
-      // 绑定打开按钮（head 渲染后可能多次调用）
+      </div>`;
       setTimeout(() => {
-        const b = document.getElementById('drawer-open');
-        if (b && !b.__bound) {
-          b.__bound = true;
-          b.addEventListener('click', () => {
-            document.getElementById('drawer-overlay').classList.add('show');
-            document.getElementById('app-drawer').classList.add('open');
-            document.body.style.overflow = 'hidden';
+        // 先清掉上一轮渲染提到 body 的旧条，再取当前页新生成的这条
+        document.querySelectorAll('body > .tb').forEach(el => el.remove());
+        const btn = document.getElementById('tb-nav-btn');
+        const pop = document.getElementById('tb-nav-pop');
+        // 把导航条提到 body 最前面 → 真正通栏（不受 .container 的 1280 宽和 24px 内边距限制）
+        const tb = btn && btn.closest('.tb');
+        if (tb && tb.parentElement !== document.body) {
+          document.body.insertBefore(tb, document.body.firstChild);
+        }
+        if (!btn || !pop || btn.__bound) return;
+        btn.__bound = true;
+        const toggle = on => {
+          pop.classList.toggle('show', on);
+          btn.setAttribute('aria-expanded', String(on));
+        };
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          toggle(!pop.classList.contains('show'));
+        });
+        if (!ui._tbDocBound) {
+          ui._tbDocBound = true;
+          const closeAll = () => {
+            const p = document.getElementById('tb-nav-pop');
+            const b = document.getElementById('tb-nav-btn');
+            if (p) p.classList.remove('show');
+            if (b) b.setAttribute('aria-expanded', 'false');
+          };
+          document.addEventListener('click', e => {
+            const p = document.getElementById('tb-nav-pop');
+            const b = document.getElementById('tb-nav-btn');
+            if (!p || !b) return;
+            if (!p.contains(e.target) && !b.contains(e.target)) closeAll();
           });
+          document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAll(); });
         }
       }, 0);
       return html;

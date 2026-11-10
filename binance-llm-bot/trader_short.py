@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
-"""时分短线趋势 bot (Demo 合约) — 独立池, 与 trader100(日线) 并行
-1h K线 SMA50 趋势 + 3x + -3% 止损
-8 股票 TRADIFI 永续等权, 独立 100U 池记账 (state_short.json)
-每 1h 检查 (信号基于 1h K线, 未收 K 过滤)
+"""日内混合趋势 bot (Demo 合约) — 独立池, 与 trader100 并行
 
-T+0 利润保护(profit_guard): 币安随时可平, 只等 SMA 破位会把浮盈原样还回去
-（短线池曾从 +6.3% 回吐到 0）。规则：峰值浮盈 2% 止损上移保本；浮盈 3% 先平一半；
-从峰值回撤 1.5% 或赚够 5% 破 SMA20 → 落袋。平仓类交 LLM 复核（默认放行）。
+8 股票 TRADIFI 永续等权, 独立 100U 池记账 (state_short.json)
+杠杆 5x（可配） | 日线定方向 + 1h 择时 | 每 15min 巡检 | 止损 2%（多空同口径）
+
+2026-11-10 短线化：旧的「1h SMA50 趋势」全部负期望（回测 -45%/回撤 57%），
+已换成与 trader100 同一套 intraday_signal：
+  日线 20 根动量 > +2% 定多头方向、< -2% 定空头方向（半仓），中间观望；
+  方向确定后，1h 12 根动量 > +1% 且价在 1h SMA200 上方才开多，
+  < -1% 且在 SMA200 下方才开空；动量衰减到 0 或日线方向翻转即离场。
+  v3 回测（13 标、双边 0.04% 费）：全期 +22.0%/回撤 11.5%/样本外 +2.9%。
+  详见 backtest/SHORTTERM.md；双向做空是样本外转正的关键，故启用开空。
+
+T+0 利润保护(profit_guard 'intraday'): 峰值浮盈 1% 止损上移保本；2% 先平一半；
+从峰值回撤 0.6% 或赚够 3.5% 破 SMA20 → 落袋。平仓类交 LLM 复核（默认放行）。
 """
 import os, sys, json, time, logging
 import ccxt
 from dotenv import load_dotenv
+
+# 先加载 .env，llm_gate 的模块级开关才读得到（见 trader100.py 同处注释）
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+
 import algo_tools
 import llm_gate     # 成交前 LLM 风控复核（买入可否决；趋势离场硬规则）
 import profit_guard  # T+0 利润保护：保本上移 / 分批止盈 / 移动止盈
 import pos_guard     # 方向/规模守卫：反向仓与超仓自动市价纠正（2026-09-30 META 事故）
+import intraday_signal as isig  # 日线定方向 + 1h 择时（必须在 load_dotenv 之后导入）
 
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 for _n in ('httpx', 'httpx2', 'httpcore', 'openai'):   # 屏蔽 SDK 每次请求的 INFO 噪音
     logging.getLogger(_n).setLevel(logging.WARNING)
@@ -27,12 +38,22 @@ POOL_FILE = os.path.join(BASE, 'state_short.json')
 POOL_START = float(os.environ.get('SHORT_POOL', '100'))
 LEV = float(os.environ.get('SHORT_LEV', '5'))
 FEE = 0.0004
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')
-LOOP_MIN = float(os.environ.get('SHORT_LOOP_MIN', '60'))   # 每 60 分钟检查
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
+LOOP_MIN = float(os.environ.get('LOOP_MIN', os.environ.get('SHORT_LOOP_MIN', '15')))
 DD_STOP = float(os.environ.get('SHORT_DD_STOP', '0.20'))
-SL_PCT = float(os.environ.get('SHORT_SL_PCT', '0.03'))      # 短线止损 -3%
-TIMEFRAME = os.environ.get('SHORT_TF', '1h')
-SMA_N = int(os.environ.get('SHORT_SMA', '50'))
+SL_PCT = float(os.environ.get('SHORT_SL_PCT', '0.02'))      # 多头止损 -2%（v3 回测口径）
+TIMEFRAME = os.environ.get('SHORT_TF', isig.EXEC_TF)         # 1h 执行层
+SMA_N = int(os.environ.get('SHORT_SMA', '50'))               # 仅用于 LLM 上下文（50 小时均线）
+# 2026-11-10 起默认开新仓：旧 1h SMA 负期望的问题已由日内混合信号解决。
+SHORT_ENABLED = os.environ.get('SHORT_ENABLED', '1').lower() in ('1', 'true', 'yes', 'on')
+# 双向：与 trader100 / guard.py 共用开关；空头名义 × SHORT_RISK、止损 +2%。
+ALLOW_SHORT = os.environ.get('BN_ALLOW_SHORT', '0').lower() not in ('0', 'false', 'off', 'no')
+SHORT_STOP_PCT = float(os.environ.get('BN_SHORT_SL', '0.02'))
+SHORT_RISK = float(os.environ.get('BN_SHORT_RISK', '0.5'))
+SHORT_MOM_TH = float(os.environ.get('BN_SHORT_MOM_TH', '0.02'))
+DAILY_SIGNAL = os.environ.get('DAILY_SIGNAL', 'mom').lower()
+DAILY_N = int(os.environ.get('DAILY_MOM_N', '20'))
+DAILY_TH = float(os.environ.get('DAILY_MOM_TH', '0.02'))
 
 # 8 股票 TRADIFI (与 trader100 的 5 标不重叠)
 SYMBOLS = {
@@ -82,15 +103,21 @@ def sync_from_real(ex, st):
     max_notional = POOL_START * LEV * 3      # 单仓名义上限：池子满杠杆的 3 倍，超出即为异常
     for p in positions:
         sym = p['symbol']
-        # 方向守卫：策略只做多，反向仓/超仓先市价清掉，绝不当成「持有中」参与决策
+        # 方向守卫：未登记/方向不符/超仓先市价清掉，绝不当成「持有中」参与决策
+        expect = pos_guard.registered_side(st, sym)
         if pos_guard.flatten_unexpected(ex, sym, p, st, max_notional=max_notional,
-                                        name=(SYMBOLS.get(sym) or {}).get('name'), why='短线sync'):
+                                        name=(SYMBOLS.get(sym) or {}).get('name'), why='短线sync',
+                                        allow_short=ALLOW_SHORT, expected_side=expect):
             continue
         amt = abs(float(p['contracts']))
         if amt != 0:
             old = st['real_pos'].get(sym) or {}
             entry = float(p['entryPrice'])
-            rec = {'amt': amt, 'entry': entry}
+            rec = {'amt': amt, 'entry': entry, 'side': pos_guard.side_of(p)}
+            # ds4.1 审阅：多↔空翻转时清利润保护状态，多头峰值不能带进空头
+            if old.get('side') and old['side'] != rec['side']:
+                rec.pop('peak', None); rec.pop('trimmed', None); rec.pop('sl', None)
+                rec['ts'] = time.time()
             for k in ('peak', 'trimmed', 'sl', 'ts'):
                 if k in old:
                     rec[k] = old[k]
@@ -107,7 +134,8 @@ def closed_bars(ex, sym, tf, need):
     """过滤未收 K 线, 返回收盘价序列"""
     ohlcv = ex.fetch_ohlcv(sym, tf, limit=need + 30)
     now = ex.milliseconds()
-    tf_ms = {'1h': 3600000, '15m': 900000, '4h': 14400000, '1d': 86400000}[tf]
+    tf_ms = {'1m': 60000, '5m': 300000, '15m': 900000,
+             '1h': 3600000, '4h': 14400000, '1d': 86400000}.get(tf, 3600000)
     return [c[4] for c in ohlcv if c[0] + tf_ms <= now]
 
 
@@ -115,13 +143,20 @@ def sma(closes, w):
     return sum(closes[-w:]) / w if len(closes) >= w else None
 
 
-def set_sl(ex, sym, qty, entry, sl_price=None):
-    """挂止损；sl_price 给定时按给定价挂（利润保护上移保本用）"""
-    sl_price = round(sl_price if sl_price else entry * (1 - SL_PCT), 2)
-    pct = (1 - sl_price / entry) * 100 if entry else SL_PCT * 100
+def set_sl(ex, sym, qty, entry, sl_price=None, side='long'):
+    """挂止损；多头 SELL STOP 在下方，空头 BUY STOP 在上方。"""
+    is_short = side == 'short'
+    if sl_price:
+        sl_price = round(sl_price, 2)
+    elif is_short:
+        sl_price = round(entry * (1 + SHORT_STOP_PCT), 2)
+    else:
+        sl_price = round(entry * (1 - SL_PCT), 2)
+    pct = (sl_price / entry - 1) * 100 if entry else SL_PCT * 100
     try:
-        r = algo_tools.place_stop_market(sym, 'sell', qty, sl_price)
-        log.info('挂止损 %s @ %.2f (%+.1f%%) algoId=%s', sym, sl_price, -pct, r.get('algoId'))
+        r = algo_tools.place_stop_market(sym, 'buy' if is_short else 'sell', qty, sl_price)
+        log.info('挂止损 %s @ %.2f (%+.1f%%) %s algoId=%s', sym, sl_price, pct,
+                 '空' if is_short else '多', r.get('algoId'))
         return r.get('algoId')
     except Exception as e:
         log.warning('挂止损失败 %s: %s', sym, str(e)[:120])
@@ -135,19 +170,25 @@ def cancel_sl(ex, sym):
         log.warning('撤 algo 失败 %s: %s', sym, str(e)[:80])
 
 
-def buy_open(ex, sym, notional_usd, llm=None):
-    ex.set_leverage(int(LEV), sym)
-    cancel_sl(ex, sym)
-    # 反向仓不允许被「买入」顺带平掉：先纠正，再按干净的多头开仓
+def buy_open(ex, sym, notional_usd, llm=None, st=None):
+    # ds4.1 审阅：先核对仓位再撤止损，避免「中止开仓却把已有仓止损撤掉」的裸仓窗口。
     for _p in ex.fetch_positions([sym]):
         if float(_p.get('contracts') or 0) and pos_guard.side_of(_p) != 'long':
             log.error('开多前发现 %s 非多头仓位(%s)，已中止本次开仓', sym, pos_guard.side_of(_p))
             return 0.0
+    ex.set_leverage(int(LEV), sym)
+    cancel_sl(ex, sym)
     t = ex.fetch_ticker(sym)
     qty = ex.amount_to_precision(sym, notional_usd / t['last'])
     o = ex.create_order(sym, 'market', 'buy', qty, None, {'reduceOnly': False})
     filled = float(o.get('filled', qty))
     avg = float(o.get('average') or t['last'])
+    # ds4.1 审阅 P0：成交后立即用真实成交均价落盘登记方向，再挂止损。
+    # set_sl 抛异常 / 进程被杀时，guard 才不会把刚开的仓当未登记事故残留平掉。
+    if st is not None and filled:
+        st.setdefault('real_pos', {})[sym] = {
+            'amt': float(filled), 'entry': avg, 'side': 'long', 'ts': time.time()}
+        save_pool(st)
     aid = set_sl(ex, sym, filled, avg)
     from trade_log import record
     _n = (llm or {}).get('note')
@@ -157,8 +198,103 @@ def buy_open(ex, sym, notional_usd, llm=None):
     return filled
 
 
+def sell_open(ex, sym, notional_usd, llm=None, st=None):
+    """市价开空（与 buy_open 对称，名义按 SHORT_RISK 缩过，成交后立刻登记方向）。"""
+    for _p in ex.fetch_positions([sym]):
+        if float(_p.get('contracts') or 0):
+            log.error('开空前发现 %s 已有仓位(%s)，已中止本次开空', sym, pos_guard.side_of(_p))
+            return 0.0
+    ex.set_leverage(int(LEV), sym)
+    cancel_sl(ex, sym)
+    t = ex.fetch_ticker(sym)
+    qty = ex.amount_to_precision(sym, notional_usd / t['last'])
+    o = ex.create_order(sym, 'market', 'sell', qty, None, {'reduceOnly': False})
+    filled = float(o.get('filled', qty))
+    avg = float(o.get('average') or t['last'])
+    if st is not None and filled:
+        st.setdefault('real_pos', {})[sym] = {
+            'amt': float(filled), 'entry': avg, 'side': 'short', 'ts': time.time()}
+        save_pool(st)
+    set_sl(ex, sym, filled, avg, side='short')
+    from trade_log import record
+    _n = (llm or {}).get('note')
+    record('open', sym, 'SELL_SHORT', filled, avg,
+           detail=(f'短线{tf_tag()} 空头 名义~{notional_usd:.0f} 止损+{SHORT_STOP_PCT*100:.0f}%'
+                   + (f'｜LLM:{_n}' if _n else '｜LLM:未复核')),
+           pool='short', lev=LEV, notional=notional_usd)
+    return filled
+
+
 def tf_tag():
     return TIMEFRAME
+
+
+def buy_cover(ex, sym, amt=None, llm=None, why=None):
+    """买入平空（reduceOnly）。短线池默认不开空，但已登记空头必须能正确买回。"""
+    cancel_sl(ex, sym)
+    try:
+        ex.cancel_all_orders(sym)
+    except Exception:
+        pass
+    real_short, entry_px, side = 0.0, 0.0, 'flat'
+    try:
+        for p in ex.fetch_positions([sym]):
+            if not float(p.get('contracts') or 0):
+                continue
+            side = pos_guard.side_of(p)
+            if side == 'short':
+                real_short = abs(float(p['contracts']))
+                entry_px = float(p['entryPrice'])
+    except Exception as e:
+        log.warning('查持仓失败 %s: %s', sym, str(e)[:100])
+    if side == 'long':
+        log.error('%s 是多头仓，拒绝买入平空（会继续加多）→ 交方向守卫处理', sym)
+        return 0
+    qty = real_short if amt is None else min(float(amt), real_short)
+    if qty and qty > 0:
+        o = ex.create_order(sym, 'market', 'buy', ex.amount_to_precision(sym, qty),
+                            None, {'reduceOnly': True})
+        avg = float(o.get('average') or (o.get('info') or {}).get('avgPrice') or 0)
+        if not avg:
+            try:
+                avg = float(ex.fetch_ticker(sym).get('last') or 0)
+            except Exception:
+                avg = 0.0
+        pnl = float((o.get('info') or {}).get('realizedPnl') or 0)
+        if not pnl:
+            pnl = (entry_px - avg) * qty if (avg and entry_px) else 0
+        from trade_log import record
+        _n = (llm or {}).get('note')
+        record('close', sym, 'BUY_COVER', qty, avg, pnl,
+               detail=(why or '空头趋势离场') + (f'｜LLM:{_n}' if _n else ''), pool='short', lev=LEV)
+        return qty
+    return 0
+
+
+def close_pos(ex, sym, side, amt=None, llm=None, why=None):
+    """按持仓方向选平仓函数：多头卖出 / 空头买回。
+
+    ds4.1 审阅：传入方向与交易所真实方向不符时一律拒绝，防 9-30 事故
+    （stale state='long' + 实际 short → 卖出平多 = 继续加空）。
+    """
+    if side not in ('long', 'short'):
+        log.error('%s close_pos 方向未指定，拒绝平仓', sym)
+        return 0
+    try:
+        real = 'flat'
+        for _p in ex.fetch_positions([sym]):
+            if float(_p.get('contracts') or 0):
+                real = pos_guard.side_of(_p)
+                break
+        if real != 'flat' and real != side:
+            log.error('%s close_pos 方向不符: 请求%s / 实际%s → 拒绝，交方向守卫',
+                      sym, side, real)
+            return 0
+    except Exception as e:
+        log.warning('%s close_pos 查持仓失败: %s', sym, str(e)[:100])
+    if side == 'short':
+        return buy_cover(ex, sym, amt=amt, llm=llm, why=why)
+    return sell_close(ex, sym, amt=amt, llm=llm, why=why)
 
 
 def sell_close(ex, sym, amt=None, llm=None, why=None):
@@ -217,10 +353,21 @@ def pool_equity_real(ex, st):
     return POOL_START + pnl
 
 
-def decide(ex, st, dry=False):
-    """一轮决策：1h 信号 → LLM 复核 → 下单（与 trader100 同构的两阶段流程）。
+def hybrid_signal(ex, sym):
+    """日内混合信号：日线定方向 + 1h 择时（与 trader100 同一套参数）。"""
+    daily = isig.daily_dir(closed_bars(ex, sym, '1d', DAILY_N + 5),
+                           mode=DAILY_SIGNAL, cfg={'sma': SMA_N},
+                           n=DAILY_N, th=DAILY_TH, short_th=SHORT_MOM_TH,
+                           short_ok=ALLOW_SHORT)
+    need = max(isig.TREND_N, isig.EXEC_N + 1) + 5
+    exec_sig = isig.exec_signal(closed_bars(ex, sym, TIMEFRAME, need))
+    return daily, exec_sig, isig.target(daily, exec_sig)
 
-    买入可被 LLM 否决（避免短期动能转弱时追高）；趋势离场（跌破 SMA50）标 hard=True。
+
+def decide(ex, st, dry=False):
+    """一轮决策：日线定方向 + 1h 择时 → LLM 复核 → 下单（与 trader100 同构）。
+
+    买入可被 LLM 否决；趋势离场（日线方向翻转或 1h 动量衰减）标 hard=True。
     """
     sync_from_real(ex, st)
     # 影子跟踪：更新历史「LLM 否决」单的现价并结算到期条目
@@ -232,17 +379,17 @@ def decide(ex, st, dry=False):
                      _c, _s.get('n',0), _s.get('correct',0), _s.get('wrong',0), _s.get('avg_ret',0))
     except Exception as _e:
         log.warning('[shadow] 更新失败: %s', str(_e)[:120])
-    # 各标信号
+    # 各标信号：日线定方向，1h 择时（两段时间框架分别只取已收 K）
     sigs = {}
     for sym, cfg in SYMBOLS.items():
-        closes = closed_bars(ex, sym, TIMEFRAME, SMA_N + 5)
-        if len(closes) < SMA_N:
-            log.warning('%s %s历史不足(%d)', cfg['name'], TIMEFRAME, len(closes))
-            continue
-        ma = sma(closes, SMA_N)
-        sigs[sym] = {'above': closes[-1] > ma, 'price': closes[-1], 'ma': ma}
-        log.info('%s %s收%.2f > SMA%d %.2f? %s', cfg['name'], TIMEFRAME, closes[-1], SMA_N, ma,
-                 '✓多' if sigs[sym]['above'] else '✗空')
+        try:
+            daily, exec_sig, side = hybrid_signal(ex, sym)
+        except Exception as e:
+            log.warning('%s 行情获取失败: %s', cfg['name'], str(e)[:120]); continue
+        if daily['mom'] is None or exec_sig['mom'] is None:
+            log.warning('%s 日线/1h 历史不足', cfg['name']); continue
+        sigs[sym] = {'daily': daily, 'exec': exec_sig, 'side': side}
+        log.info('%s %s', cfg['name'], isig.describe(daily, exec_sig, side))
 
     # 回撤风控: 深回撤暂停开新仓 (持仓保留), 新高解除
     eq = pool_equity_real(ex, st)
@@ -256,33 +403,44 @@ def decide(ex, st, dry=False):
     if eq >= st['peak']:
         st['cooldown'] = False
 
+    # SHORT_ENABLED=0 时只平不开（旧 1h SMA 策略的保险丝，新策略下默认已开启）
+    if not SHORT_ENABLED:
+        st['cooldown'] = True
+
     # ---- 阶段一：收集候选 ----
     cands = []
-    sl_tasks = []        # 保本上移任务 [(sym, sl_price)]
+    sl_tasks = []        # 保本上移任务 [(sym, sl_price, side)]
     for sym, cfg in SYMBOLS.items():
         if sym not in sigs:
             continue
         sig = sigs[sym]
         holding = sym in st['real_pos']
+        pos_side = pos_guard.registered_side(st, sym) if holding else 'long'
+        # 持仓时用滞回规则判断「继续持有 or 离场」；空仓时才判断要不要开仓。
+        keep = (isig.target(sig['daily'], sig['exec'], holding_side=pos_side)
+                if holding else None)
         ms = llm_gate.market_stats(ex, sym, sma_n=SMA_N, tf=TIMEFRAME)
         base = {'symbol': sym, 'name': cfg['name'], 'lev': LEV,
-                'price': ms.get('price') or sig['price'],
-                'sma50': ms.get('sma50') or sig['ma'], 'sma20': ms.get('sma20'),
+                'price': ms.get('price') or sig['exec']['price'],
+                'sma50': ms.get('sma50') or sig['exec']['trend'], 'sma20': ms.get('sma20'),
                 'dev50': ms.get('dev50'), 'vs_ma20': ms.get('vs_ma20'),
                 'd7': ms.get('d7'), 'd30': ms.get('d30')}
-        if holding and not sig['above']:
+        if holding and keep is None:
             pos = st['real_pos'].get(sym) or {}
             entry = float(pos.get('entry') or 0)
-            cands.append({**base, 'id': 'short|%s|sell' % sym, 'action': 'sell',
+            sign = 1 if pos_side == 'long' else -1
+            cands.append({**base, 'id': 'short|%s|sell' % sym, 'action': 'sell', 'side': pos_side,
                           'entry': entry,
-                          'pnl_pct': round((base['price'] / entry - 1) * 100, 2) if entry else 0,
-                          'why': '%s收盘跌破SMA%d %.2f（趋势离场）' % (TIMEFRAME, SMA_N, sig['ma']),
+                          'pnl_pct': round((base['price'] / entry - 1) * 100 * sign, 2) if entry else 0,
+                          'why': '%s（%s趋势离场）' % (
+                              isig.describe(sig['daily'], sig['exec'], None),
+                              '空头' if pos_side == 'short' else '多头'),
                           'hard': True})
         elif holding:
             # T+0：趋势未破，但先把账面利润保护起来
             try:
-                pg = profit_guard.scan(ex, st, sym, profile='short', ms=ms,
-                                       min_notional=MIN_NOTIONAL, peak_tf=TIMEFRAME)
+                pg = profit_guard.scan(ex, st, sym, profile='intraday', ms=ms,
+                                       min_notional=MIN_NOTIONAL, peak_tf=TIMEFRAME, side=pos_side)
             except Exception as e:
                 log.warning('[利润保护] %s 扫描失败: %s', cfg['name'], str(e)[:120])
                 pg = None
@@ -290,23 +448,26 @@ def decide(ex, st, dry=False):
                 log.info('[%s] %s（现价%.2f 浮盈%+.2f%% 峰值%+.2f%%）',
                          cfg['name'], pg['why'], pg['price'], pg['pnl_pct'], pg['peak_pct'])
                 if pg['act'] == 'be_lock':
-                    sl_tasks.append((sym, pg['sl']))
+                    sl_tasks.append((sym, pg['sl'], pos_side))
                 elif pg['act'] in ('trim', 'close'):
-                    cands.append({**base, 'price': pg['price'],
+                    cands.append({**base, 'price': pg['price'], 'side': pos_side,
                                   'id': 'short|%s|pg' % sym, 'action': 'sell',
                                   'entry': pg['entry'], 'pnl_pct': pg['pnl_pct'],
                                   'peak_pct': pg['peak_pct'], 'dd_peak': pg['dd_peak'],
                                   'why': '利润保护：' + pg['why'],
                                   'hard': False, 'kind': 'protect', 'pg': pg})
-        elif not holding and not st['cooldown'] and sig['above']:
+        elif not holding and not st['cooldown'] and sig['side']:
+            sig_side = sig['side']
             margin = eq * cfg['alloc']
-            notional = margin * LEV
+            notional = margin * LEV * (SHORT_RISK if sig_side == 'short' else 1.0)
             if notional < MIN_NOTIONAL:
                 log.info('%s 名义%.0f < %dU 跳过', cfg['name'], notional, MIN_NOTIONAL)
                 continue
             cands.append({**base, 'id': 'short|%s|buy' % sym, 'action': 'buy',
-                          'why': '%s收盘站上SMA%d %.2f（趋势突破）名义~%.0f' % (
-                              TIMEFRAME, SMA_N, sig['ma'], notional),
+                          'side': sig_side,
+                          'why': '%s（%s）名义~%.0f' % (
+                              isig.describe(sig['daily'], sig['exec'], sig_side),
+                              '开空·半仓' if sig_side == 'short' else '趋势突破', notional),
                           'hard': False, 'notional': notional})
 
     # ---- 阶段二：LLM 复核 ----
@@ -337,20 +498,22 @@ def decide(ex, st, dry=False):
     # ---- 阶段三：执行 ----
     def _pg_set_sl(_ex, _sym, _qty, _sl):
         _e = float((st['real_pos'].get(_sym) or {}).get('entry') or 0)
-        return set_sl(_ex, _sym, _qty, _e, sl_price=_sl)
+        return set_sl(_ex, _sym, _qty, _e, sl_price=_sl,
+                      side=pos_guard.registered_side(st, _sym))
 
     def _pg_close(_ex, _sym, _amt, _llm, _why=None):
-        return sell_close(_ex, _sym, _amt, _llm, why=_why)
+        return close_pos(_ex, _sym, pos_guard.registered_side(st, _sym),
+                         amt=_amt, llm=_llm, why=_why)
 
     PG_HOOKS = {'cancel_sl': cancel_sl, 'set_sl': _pg_set_sl, 'close': _pg_close}
 
     # 3a. 保本上移（纯降险，直接执行，不占 LLM 额度）
-    for sym, sl in sl_tasks:
+    for sym, sl, pside in sl_tasks:
         pos = st['real_pos'].get(sym) or {}
         try:
             cancel_sl(ex, sym)
             set_sl(ex, sym, float(pos.get('amt') or 0),
-                   float(pos.get('entry') or 0), sl_price=sl)
+                   float(pos.get('entry') or 0), sl_price=sl, side=pside)
             pos['sl'] = sl
             log.info('[利润保护] %s 止损上移保本 → %.2f', sym, sl)
         except Exception as e:
@@ -373,24 +536,35 @@ def decide(ex, st, dry=False):
                 except Exception as e:
                     log.error('[利润保护] %s 执行失败: %s', cfg['name'], str(e)[:150])
                 continue
-            amt = sell_close(ex, sym, llm=c['llm'])
+            amt = close_pos(ex, sym, c.get('side') or pos_guard.registered_side(st, sym),
+                            llm=c['llm'])
             if amt:
-                log.info('平 %s %f 张%s', cfg['name'], amt,
+                log.info('%s %s %f 张%s', '买回平空' if c.get('side') == 'short' else '平多',
+                         cfg['name'], amt,
                          '｜LLM:%s' % c['llm'].get('note') if c['llm'].get('note') else '')
                 st['real_pos'].pop(sym, None)
+                save_pool(st)  # ds4.1 审阅：平仓后立刻落盘
         else:
             if c['llm'].get('verdict') == 'avoid':
                 continue
+            cside = c.get('side') or 'long'
             if dry:
-                log.info('[dry] 开多 %s 名义~%.0f', cfg['name'], c['notional'])
+                log.info('[dry] %s %s 名义~%.0f',
+                         '开空' if cside == 'short' else '开多', cfg['name'], c['notional'])
                 continue
-            amt = buy_open(ex, sym, c['notional'], llm=c['llm'])
-            log.info('开多 %s %.6f 张 (名义~%.0f)%s', cfg['name'], amt, c['notional'],
+            amt = (sell_open(ex, sym, c['notional'], llm=c['llm'], st=st) if cside == 'short'
+                   else buy_open(ex, sym, c['notional'], llm=c['llm'], st=st))
+            log.info('%s %s %.6f 张 (名义~%.0f)%s',
+                     '开空' if cside == 'short' else '开多', cfg['name'], amt, c['notional'],
                      '｜LLM:%s' % c['llm'].get('note') if c['llm'].get('note') else '')
+            # 记账已由 buy_open 在成交瞬间用真实成交均价落盘，不再用快照价二次覆盖
     save_pool(st)
 
 
 def main():
+    if not SHORT_ENABLED:
+        log.warning('短线池只平不开（SHORT_ENABLED=0）：已有仓位仍会离场；'
+                    '新日内混合信号已回测为正期望，建议删掉该开关')
     ex = make_fex()
     ex.load_markets()
     st = load_pool()
@@ -398,8 +572,9 @@ def main():
     if mode == 'once':
         decide(ex, st)
         return
-    log.info('短线bot启动: %s刀池 %d标 %gx SMA%d %s, 每%.0fmin, 止损-%d%%',
-             POOL_START, len(SYMBOLS), LEV, SMA_N, TIMEFRAME, LOOP_MIN, SL_PCT * 100)
+    log.info('短线bot启动: %s刀池 %d标 %gx, 日线%d根定方向 + %s%d根择时, 每%.0fmin, 止损-%.1f%%',
+             POOL_START, len(SYMBOLS), LEV, DAILY_N, TIMEFRAME, isig.EXEC_N,
+             LOOP_MIN, SL_PCT * 100)
     while True:
         # WSL 时钟漂移（实测本机比币安快 ~2.4s）：ccxt 的 adjustForTimeDifference 只在
         # load_markets 时校准一次，之后漂移会让请求报 -1021（timeout/挂止损失败）。每轮重新校准。

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>DSR</title>
+<style>
+  :root{
+    --fg:#1c1d20; --fg2:#5b6068; --fg3:#8c9199;
+    --line:rgba(0,0,0,.09); --up:#c62828; --down:#1b7f3b;
+    --chip:rgba(0,0,0,.045); --chipOn:rgba(0,0,0,.09);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --fg:#e9eaec; --fg2:#a8adb5; --fg3:#7b818a;
+      --line:rgba(255,255,255,.12); --up:#ff6b6b; --down:#4ade80;
+      --chip:rgba(255,255,255,.07); --chipOn:rgba(255,255,255,.14);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+  body{
+    font:12px/1.45 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+    color:var(--fg); -webkit-font-smoothing:antialiased; user-select:none;
+    padding:12px 14px 10px; height:100vh; display:flex; flex-direction:column;
+  }
+  .top{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex:none}
+  .brand{font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--fg2)}
+  .tabs{display:flex; gap:4px; margin-left:auto}
+  .tab{
+    font-size:10.5px; padding:2px 8px; border-radius:20px; cursor:default;
+    background:var(--chip); color:var(--fg2); border:0;
+  }
+  .tab.on{background:var(--chipOn); color:var(--fg); font-weight:600}
+  .body{flex:1 1 auto; overflow-y:auto; overflow-x:hidden; margin-right:-4px; padding-right:4px}
+  .body::-webkit-scrollbar{width:0}
+
+  .hero{display:flex; align-items:flex-end; gap:10px; padding-bottom:9px; border-bottom:1px solid var(--line)}
+  .eq{font-size:26px; font-weight:600; letter-spacing:-.01em; line-height:1.05; font-variant-numeric:tabular-nums}
+  .eq small{font-size:12px; font-weight:500; color:var(--fg3); margin-left:2px}
+  .hero .r{margin-left:auto; text-align:right; font-size:11px; color:var(--fg3); line-height:1.5}
+  .hero .r b{display:block; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums}
+
+  .pools{display:flex; gap:14px; padding:8px 0; border-bottom:1px solid var(--line); font-size:11px; color:var(--fg2)}
+  .pools div{flex:1}
+  .pools b{display:block; font-size:12.5px; color:var(--fg); font-weight:600; font-variant-numeric:tabular-nums}
+  .pools span{display:block; margin-top:2px; font-size:10.5px; line-height:1.35; color:var(--fg3)}
+  .pools b.up, .hero .r b.up{color:var(--up)} .pools b.down, .hero .r b.down{color:var(--down)}
+
+  h4{font-size:10.5px; font-weight:600; color:var(--fg3); margin:10px 0 4px; letter-spacing:.03em}
+  .row{display:flex; align-items:baseline; gap:6px; padding:3px 0; font-size:11.5px}
+  .row .nm{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row .nm i{font-style:normal; font-size:10.5px; color:var(--fg3); margin-left:4px}
+  .row[data-acc]{cursor:default; border-radius:3px}
+  .row[data-acc]:hover{background:var(--chipOn)}
+  .row.on{background:var(--chipOn); font-weight:600}
+  .row.tot{border-bottom:1px solid var(--line); padding-bottom:5px; margin-bottom:3px; color:var(--fg2)}
+  .scope{font-size:10px; color:var(--fg3); margin:-2px 0 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .row .sd{font-size:9.5px; padding:0 3px; border-radius:2px; color:#fff; flex:none}
+  .sd.s{background:#4b7bec} .sd.l{background:#c62828}
+  .row .v{font-variant-numeric:tabular-nums; flex:none; width:62px; text-align:right; font-weight:500}
+  .row .q{color:var(--fg3); flex:none; padding-left:4px; text-align:right; font-variant-numeric:tabular-nums}
+  .empty{color:var(--fg3); font-size:11px; padding:6px 0}
+
+  .plan{display:flex; align-items:baseline; gap:6px; padding:3px 0; font-size:11px; color:var(--fg2)}
+  .plan .nm{flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .plan .d{font-variant-numeric:tabular-nums; flex:none; color:var(--fg3)}
+  .plan .d.near{color:var(--up); font-weight:600}
+
+  .acts{flex:none; display:flex; align-items:center; gap:5px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line)}
+  .btn{
+    font-family:inherit; font-size:11px; line-height:1.2; padding:4px 8px; border:1px solid var(--line); border-radius:4px;
+    background:var(--chip); color:var(--fg); cursor:default; white-space:nowrap;
+  }
+  .btn:hover{background:var(--chipOn)}
+  .btn.main{font-weight:600; margin-right:auto}
+  .btn.ghost{color:var(--fg3)}
+  .foot{flex:none; display:flex; align-items:center; gap:8px; margin-top:6px; padding-top:2px; font-size:10px; color:var(--fg3)}
+  .dot{width:5px;height:5px;border-radius:50%;background:var(--down);flex:none}
+  .dot.off{background:#c0c4ca}
+  .up{color:var(--up)} .down{color:var(--down)} .dim{color:var(--fg3)}
+  .hide{display:none}
+</style>
+</head>
+<body>
+  <div class="top">
+    <span class="brand" id="brand">DSR 量化</span>
+    <div class="tabs">
+      <button class="tab on" data-tab="bn">币安</button>
+      <button class="tab" data-tab="dv">红利</button>
+      <button class="tab" data-tab="sl">全池</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- 币安 -->
+    <section id="bn">
+      <div class="hero">
+        <div class="eq" id="bn-eq">—</div>
+        <div class="r">
+          <b id="bn-pnl">—</b>
+          <span id="bn-today">今日 —</span>
+        </div>
+      </div>
+      <div class="pools">
+        <div>杠杆 · 持仓时间<b id="bn-lev">—</b><span id="bn-hold">—</span></div>
+        <div>当日涨幅 · 收益<b id="bn-chg">—</b><span id="bn-pnl2">—</span></div>
+      </div>
+      <h4 id="bn-pos-h">持仓</h4>
+      <div id="bn-pos"><div class="empty">读取中…</div></div>
+    </section>
+
+    <!-- 红利 -->
+    <section id="dv" class="hide">
+      <div class="hero">
+        <div class="eq" id="dv-eq">—</div>
+        <div class="r">
+          <b id="dv-pnl">—</b>
+          <span id="dv-today">今日 —</span>
+        </div>
+      </div>
+      <div class="pools">
+        <div>持仓<b id="dv-n">—</b></div>
+        <div>现金<b id="dv-cash">—</b></div>
+      </div>
+      <h4>当前持仓</h4>
+      <div id="dv-pos"><div class="empty">读取中…</div></div>
+      <h4>回踩买点</h4>
+      <div id="dv-plan"></div>
+    </section>
+
+    <!-- 实时模拟（全池；6 股精选池不再展示） -->
+    <section id="sl" class="hide">
+      <div class="hero">
+        <div class="eq" id="sl-eq">—</div>
+        <div class="r">
+          <b id="sl-pnl">—</b>
+          <span id="sl-today">今日 —</span>
+        </div>
+      </div>
+      <div class="scope" id="sl-scope">全部策略合计 · 点下方策略单独查看</div>
+      <div class="pools">
+        <div>持仓<b id="sl-n">—</b></div>
+        <div>待触发<b id="sl-wait">—</b></div>
+      </div>
+      <h4>四个策略 <span style="font-weight:400;color:var(--fg3)">（点击查看该策略）</span></h4>
+      <div id="sl-accts"></div>
+      <h4 id="sl-plan-title">待触发买点</h4>
+      <div id="sl-plan"></div>
+      <h4 id="sl-pos-title">当前持仓</h4>
+      <div id="sl-pos"></div>
+    </section>
+  </div>
+
+  <div class="acts">
+    <button class="btn main" id="go-main" data-go="dashboard">打开完整看板 ↗</button>
+    <button class="btn" data-go="sim">实时模拟</button>
+    <button class="btn" data-go="dividend">红利池</button>
+    <button class="btn ghost" data-go="close">收起</button>
+  </div>
+
+  <div class="foot">
+    <span class="dot" id="dot"></span>
+    <span id="foot-time">—</span>
+    <span style="margin-left:auto" id="foot-note">每 15 秒刷新</span>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (n, d = 2) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('zh-CN', {minimumFractionDigits: d, maximumFractionDigits: d});
+const pct = n => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+const cls = n => n > 0 ? 'up' : (n < 0 ? 'down' : 'dim');
+
+let BANK = null, DIV = null, SIM = null, tab = 'bn', simKey = '', lastOk = 0;
+const qs = new URLSearchParams(location.search);
+if (qs.get('tab') === 'dv') tab = 'dv';
+if (qs.get('tab') === 'sl') tab = 'sl';
+if (qs.get('acc')) simKey = qs.get('acc');
+
+// 卡片里的按钮走本机 8765 端口的小端点（dsrbar/main.go startCmdServer）。
+// 打开大窗口会抢键盘，Focusable popover 会自动收起，正好。
+const CMD = 'http://127.0.0.1:8765/cmd?action=';
+function send(action) { fetch(CMD + action).catch(() => {}); }
+function cmdButtons() {
+  document.querySelectorAll('[data-go]').forEach(b => {
+    b.addEventListener('click', () => send(b.dataset.go));
+  });
+}
+// 自检：验证 WKWebView 能跨域 fetch 到本机 8765（按钮和大窗口入口都靠它）
+if (qs.get('autotest') === '1') setTimeout(() => send('ping'), 1500);
+
+async function load() {
+  const bust = '?t=' + Date.now();
+  const [a, b, c] = await Promise.all([
+    fetch('data/binance_arena.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('data/sim_dividend.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('data/sim_live.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  if (a) BANK = a;
+  if (b) DIV = b;
+  if (c) SIM = c;
+  if (a || b || c) lastOk = Date.now();
+  render();
+}
+
+function renderBank() {
+  if (!BANK) { $('#bn-eq').textContent = '—'; $('#bn-pos').innerHTML = '<div class="empty">状态页未启动</div>'; return; }
+  const a = BANK;  // arena_engine 写的 data/binance_arena.json
+  const u = (n) => fmt(n) + 'U';
+  $('#bn-eq').innerHTML = fmt(a.equity) + '<small>U</small>';
+  $('#bn-pnl').textContent = pct(a.cumPnlPct) + ' · ' + u(a.cumPnl);   // 累计收益 % + U
+  $('#bn-pnl').className = cls(a.cumPnl) + ' r';
+  $('#bn-today').textContent = '今日 ' + u(a.dayPnl) + ' (' + pct(a.dayPnlPct) + ')';
+  $('#bn-lev').textContent = (Number(a.lev) || 5) + 'x';
+  $('#bn-hold').textContent = '最长 ' + (a.holdMax || '—') + ' · 均 ' + (a.holdAvg || '—')
+    + ' · 名义 ' + fmt(a.grossNotional, 0) + 'U';
+  $('#bn-chg').textContent = pct(a.dayChangeAvg);
+  $('#bn-chg').className = cls(a.dayChangeAvg);
+  $('#bn-pnl2').innerHTML = '<span class="' + cls(a.dayPnl) + '">当日 ' + u(a.dayPnl) + '</span> / <span class="' + cls(a.cumPnl) + '">累计 ' + u(a.cumPnl) + '</span>';
+
+  const ps = BANK.positions || [];
+  $('#bn-pos-h').textContent = ps.length ? '持仓 ' + ps.length + ' · 最长 ' + (a.holdMax || '—') + ' · 当日涨幅均值 ' + pct(a.dayChangeAvg) : '持仓';
+  $('#bn-pos').innerHTML = ps.length ? ps.map(p => {
+    const isShort = p.side === 'short';
+    const lev = (Number(p.notional) && Number(p.margin)) ? (Number(p.notional) / Number(p.margin)).toFixed(0) + 'x' : '—';
+    return '<div class="row"><span class="sd ' + (isShort ? 's' : 'l') + '">' + (isShort ? '空' : '多') + '</span>'
+      + '<span class="nm">' + (p.name || p.symbol) + (p.cn ? '<i>' + p.cn + '</i>' : '') + '</span>'
+      + '<span class="q">' + (p.holdText || '—') + ' · ' + lev + '</span>'
+      + '<span class="v ' + cls(p.dayChange) + '">' + pct(p.dayChange) + '</span></div>';
+  }).join('') : '<div class="empty">空仓，等信号</div>';
+}
+
+function renderDiv() {
+  if (!DIV) { $('#dv-eq').textContent = '—'; $('#dv-pos').innerHTML = '<div class="empty">红利池未启动</div>'; return; }
+  const cash = Number(DIV.cash) || 0;
+  const ps = DIV.positions || [];
+  const eq = cash + ps.reduce((s, p) => s + (Number(p.shares) || 0) * (Number(p.last) || 0), 0);
+  const start = Number(DIV.meta?.start_cash) || 100000;
+  const curve = DIV.equity_curve || [];
+  const prev = curve.length >= 2 ? Number(curve[curve.length - 2].equity) : eq;
+  const today = prev ? (eq / prev - 1) * 100 : 0;
+  const pnl = start ? (eq / start - 1) * 100 : 0;
+
+  $('#dv-eq').innerHTML = fmt(eq, 0) + '<small>元</small>';
+  $('#dv-pnl').textContent = pct(pnl);
+  $('#dv-pnl').className = cls(pnl) + ' r';
+  $('#dv-today').textContent = '今日 ' + pct(today);
+  $('#dv-n').textContent = ps.length + ' 只';
+  $('#dv-cash').textContent = fmt(cash, 0) + ' 元';
+
+  $('#dv-pos').innerHTML = ps.length ? ps.map(p => {
+    const shares = Number(p.shares) || 0, avg = Number(p.avg) || 0, last = Number(p.last) || 0;
+    const g = avg ? (last / avg - 1) * 100 : 0;
+    const amt = (last - avg) * shares;
+    return '<div class="row"><span class="nm">' + (p.name || p.code) + '</span>'
+      + '<span class="q">' + shares + '股</span>'
+      + '<span class="v ' + cls(g) + '">' + pct(g) + '</span>'
+      + '<span class="q ' + cls(amt) + '">' + (amt >= 0 ? '+' : '') + fmt(amt, 0) + '</span></div>';
+  }).join('') : '<div class="empty">尚未建仓</div>';
+
+  const plan = (DIV.plan || []).filter(p => p.status !== 'full').slice(0, 5);
+  $('#dv-plan').innerHTML = plan.length ? plan.map(p => {
+    const d = Number(p.dist_pct) || 0;
+    return '<div class="plan"><span class="nm">' + (p.name || p.code) + '</span>'
+      + '<span class="d ' + (d < 1 ? 'near' : '') + '">距买点 ' + (d > 0 ? '+' : '') + d.toFixed(2) + '%</span></div>';
+  }).join('') : '<div class="empty">全部满档，等止盈</div>';
+}
+
+function renderSim() {
+  if (!SIM) { $('#sl-eq').textContent = '—'; $('#sl-accts').innerHTML = '<div class="empty">模拟盘未启动</div>'; return; }
+  // 只看全池（pools.all）；6 股精选池 (pools.six) 已于 2026-11-10 下线，后台不再记账
+  const pool = SIM.pools?.all || {};
+  const keys = ['aggressive', 'balanced', 'disciplined'];
+  const LABEL = {aggressive:'激进', balanced:'稳健', disciplined:'严守纪律', mix:'合并·共识'};
+  const accts = keys.map(k => pool.accounts?.[k] ? {...pool.accounts[k], _k: k} : null).filter(Boolean);
+  if (pool.mix) accts.push({...pool.mix, _k: 'mix'});
+  const sel = simKey ? accts.find(a => a._k === simKey) : null;
+  const scope = sel ? '全池 · ' + LABEL[simKey] + ' · 单独账户（点「全部策略」返回）' : '全池 · 全部策略合计 · 点下方策略单独查看';
+  const eqOf = a => (Number(a.cash) || 0) + (a.positions || []).reduce((s, p) =>
+    s + (Number(p.shares) || 0) * (Number(p.last ?? p.last_close ?? p.cost) || 0), 0);
+  const retOf = a => {
+    const c = a.equity_curve || [];
+    const ref = c.length >= 2 ? Number(c[c.length - 2].equity) : 0;
+    return ref ? (eqOf(a) / ref - 1) * 100 : 0;
+  };
+  const startOf = a => Number(a.start_cash) || 50000;
+  let sumEq = 0, sumRef = 0, allPos = [], allWait = [];
+  accts.forEach(a => {
+    sumEq += eqOf(a);
+    const c = a.equity_curve || [];
+    sumRef += c.length >= 2 ? Number(c[c.length - 2].equity) : eqOf(a);
+    (a.positions || []).forEach(p => allPos.push({...p, _k: a._k}));
+    (a.plan || []).filter(p => p.status === 'wait').forEach(p => allWait.push({...p, _k: a._k}));
+  });
+  const today = sumRef ? (sumEq / sumRef - 1) * 100 : 0;
+  const startAll = accts.reduce((s, a) => s + startOf(a), 0);
+  const cum = startAll ? (sumEq / startAll - 1) * 100 : 0;
+  const eq = sel ? eqOf(sel) : sumEq;
+  const cumV = sel ? (startOf(sel) ? (eq / startOf(sel) - 1) * 100 : 0) : cum;
+  const todayV = sel ? retOf(sel) : today;
+  $('#sl-eq').innerHTML = fmt(eq, 0) + '<small>元</small>';
+  $('#sl-pnl').textContent = pct(cumV);
+  $('#sl-pnl').className = cls(cumV) + ' r';
+  $('#sl-today').textContent = '今日 ' + pct(todayV);
+  $('#sl-scope').textContent = scope;
+  $('#sl-n').textContent = (sel ? (sel.positions || []).length : allPos.length) + ' 笔';
+  $('#sl-wait').textContent = (sel ? (sel.plan || []).filter(p => p.status === 'wait').length : allWait.length) + ' 个';
+
+  const totalRow = '<div class="row tot' + (simKey === '' ? ' on' : '') + '" data-acc="">'
+    + '<span class="nm">全部策略</span><span class="q">' + fmt(sumEq, 0) + ' 元</span>'
+    + '<span class="v ' + cls(today) + '">' + pct(today) + '</span></div>';
+  $('#sl-accts').innerHTML = totalRow + accts.map(a => {
+    const r = retOf(a);
+    return '<div class="row' + (simKey === a._k ? ' on' : '') + '" data-acc="' + a._k + '">'
+      + '<span class="nm">' + (LABEL[a._k] || a.label || '—') + '</span>'
+      + '<span class="q">' + fmt(eqOf(a), 0) + ' 元</span>'
+      + '<span class="v ' + cls(r) + '">' + pct(r) + '</span></div>';
+  }).join('');
+
+  $('#sl-pos-title').textContent = '当前持仓 · ' + (sel ? LABEL[simKey] : '全部');
+  $('#sl-plan-title').textContent = '待触发买点' + (sel ? ' · ' + LABEL[simKey] : '');
+  const posRaw = sel ? (sel.positions || []).map(p => ({...p, _k: sel._k})) : allPos;
+  const byCode = {};
+  posRaw.forEach(p => { const k = p.code || p.name; (byCode[k] = byCode[k] || []).push(p); });
+  const pos = Object.values(byCode).map(g => {
+    const p = g[0], sh = g.reduce((s, x) => s + (Number(x.shares) || 0), 0);
+    const avg = Number(p.cost) || 0, last = Number(p.last ?? p.last_close ?? p.cost) || 0;
+    return {name: p.name || p.code, sh, g: avg ? (last / avg - 1) * 100 : 0, n: g.length};
+  });
+  // 全池持仓/买点比 6 股池多得多，列表限长，保证首屏能同时看到持仓和买点
+  const shownPos = pos.slice(0, 3);
+  $('#sl-pos').innerHTML = pos.length ? shownPos.map(p =>
+    '<div class="row"><span class="nm">' + p.name + (p.n > 1 ? ' ×' + p.n : '') + '</span>'
+    + '<span class="q">' + p.sh + '股</span>'
+    + '<span class="v ' + cls(p.g) + '">' + pct(p.g) + '</span></div>').join('')
+    + (pos.length > shownPos.length ? '<div class="empty">另有 ' + (pos.length - shownPos.length) + ' 只 · 完整看板查看</div>' : '')
+    : '<div class="empty">' + (sel ? LABEL[simKey] + ' 当前空仓' : '全池均空仓') + ' · 等回踩触发</div>';
+
+  const waitRaw = sel ? (sel.plan || []).filter(p => p.status === 'wait') : allWait;
+  const waitSeen = {};
+  const waits = waitRaw.filter(p => { const k = p.code || p.name; if (waitSeen[k]) return false; waitSeen[k] = 1; return true; });
+  $('#sl-plan').innerHTML = waits.length ? waits.slice(0, 2).map(p =>
+    '<div class="plan"><span class="nm">' + (p.name || p.code) + '</span>'
+    + '<span class="d">回踩 ≤ ' + fmt(p.buy_below, 2) + '</span></div>').join('')
+    : '<div class="empty">暂无待触发买点</div>';
+  $('#sl-pos-title').textContent += '（' + pos.length + '）';
+  $('#sl-plan-title').textContent += '（' + waits.length + '）';
+}
+
+function render() {
+  renderBank(); renderDiv(); renderSim();
+  $('#bn').classList.toggle('hide', tab !== 'bn');
+  $('#dv').classList.toggle('hide', tab !== 'dv');
+  $('#sl').classList.toggle('hide', tab !== 'sl');
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  // 主按钮随当前页签切到对应的完整看板
+  $('#go-main').dataset.go = {bn:'dashboard', dv:'dividend', sl:'sim'}[tab] || 'dashboard';
+  const t = BANK?.generatedAt || DIV?.meta?.updated || '';
+  const ok = lastOk && (Date.now() - lastOk) < 90000;
+  $('#dot').className = 'dot' + (ok ? '' : ' off');
+  $('#foot-time').textContent = t ? '更新 ' + t : '未取到数据';
+}
+
+cmdButtons();
+// 四个策略行：点谁看谁的持仓/买点/净值，再点一次或点「全部策略」回到合计
+$('#sl-accts').addEventListener('click', e => {
+  const row = e.target.closest('[data-acc]');
+  if (!row) return;
+  const k = row.dataset.acc;
+  simKey = (simKey === k) ? '' : k;
+  renderSim();
+});
+// 自检钩子：只在 DSRBAR_QUERY=autotest=1 时生效，验证真实点击能穿出 WKWebView
+if (qs.get('autotest') === '1') {
+  $('#sl-accts').addEventListener('click', e => {
+    const row = e.target.closest('[data-acc]');
+    if (row) send('click&k=' + (row.dataset.acc || 'all'));
+  });
+  // 在真实 WKWebView 里自动点一次「激进」，走完整的事件委托 → renderSim → send
+  setTimeout(() => {
+    const r = document.querySelector('[data-acc="aggressive"]');
+    if (r) r.click();
+  }, 2200);
+}
+document.querySelectorAll('.tab').forEach(b => {
+  b.addEventListener('click', () => { tab = b.dataset.tab; render(); });
+});
+
+// 显示时（Popover 打开）立刻刷一次；隐藏时定时器可能被节流，靠这里兜底
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+window.addEventListener('focus', () => load());
+
+render();
+load();
+setInterval(load, 15000);
+</script>
+</body>
+</html>

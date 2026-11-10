@@ -6,7 +6,7 @@
 import ccxt, os, json, time, logging, sys
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
@@ -17,7 +17,7 @@ log = logging.getLogger('bot')
 SYMBOL = 'BTC/USDT'
 INTERVALS = [('15m', 48), ('1h', 48), ('4h', 24)]
 LOOP_SECONDS = 300  # 5 分钟一轮
-PROXY = os.environ.get('PROXY', 'socks5h://172.25.16.1:10808')  # v2rayN socks5 经 Windows 网关
+PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')  # v2rayN socks5 经 Windows 网关
 
 
 # ---------- 1. 交易所接入 (Demo API) ----------

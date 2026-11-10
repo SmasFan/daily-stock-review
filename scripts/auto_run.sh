@@ -42,7 +42,7 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; t
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 外部因子生成失败，沿用上次数据" >> "$LOG"
 fi
 
-# 宏观 LLM 消息面（macro_llm.py）：新闻 → LLM 多空判断 + 6股池逐股消息面
+# 宏观 LLM 消息面（macro_llm.py）：新闻 → LLM 多空判断（6 股个股消息面已停用）
 # 供 sim_live --plan 的宏观闸门（空头/防御→block）与个股回避；必须在 sim_live --plan 之前
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ] || [ "$MODE" = "recommend" ]; then
   timeout 240 python3 macro_llm.py >> "$LOG" 2>&1 \
@@ -79,7 +79,7 @@ if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 低估值选股生成失败" >> "$LOG"
 fi
 
-# 实时模拟盘（v4 双池三账户盘中触发）：收盘后重建计划 + 导出个股K线 + 收盘复盘
+# 实时模拟盘（全池三账户盘中触发）：收盘后重建计划 + 导出个股K线 + 收盘复盘
 # （盘中巡检由 scripts/sim_intraday_scan.sh 每2分钟独立锁执行）
 if [ "$MODE" = "all" ] || [ "$MODE" = "review" ]; then
   python3 sim_live.py --plan >> "$LOG" 2>&1 \

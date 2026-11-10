@@ -8,7 +8,7 @@
 """
 import os, sys, json, re, subprocess, time
 
-BASE = '/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot'
+BASE = os.path.dirname(os.path.abspath(__file__))
 EVO = os.path.join(BASE, 'evolution.json')
 ENV = os.path.join(BASE, '.env')
 

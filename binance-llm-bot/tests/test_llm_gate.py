@@ -83,12 +83,13 @@ class TestParse(unittest.TestCase):
 
 class TestAgentChannel(unittest.TestCase):
     def setUp(self):
-        self._saved = (llm_gate.AGENT_WAIT, llm_gate.ALLOW_CLOUD)
+        self._saved = (llm_gate.AGENT_WAIT, llm_gate.ALLOW_CLOUD, llm_gate.ROUTER_ON)
         llm_gate.ALLOW_CLOUD = False        # 测试里绝不允许真的去付费云端
+        llm_gate.ROUTER_ON = False          # 也不真的调本地模型（本地通道单独用 mock 测）
         self._mods = sys.modules.get('llm_agent')
 
     def tearDown(self):
-        llm_gate.AGENT_WAIT, llm_gate.ALLOW_CLOUD = self._saved
+        llm_gate.AGENT_WAIT, llm_gate.ALLOW_CLOUD, llm_gate.ROUTER_ON = self._saved
         if self._mods is not None:
             sys.modules['llm_agent'] = self._mods
         else:
@@ -127,6 +128,38 @@ class TestAgentChannel(unittest.TestCase):
         d2 = llm_gate.gate(st, [BUY])
         self.assertEqual(d2[BUY['id']]['verdict'], 'avoid')
         self.assertEqual(d2[BUY['id']]['src'], 'cache')
+
+
+class TestLocalChannel(unittest.TestCase):
+    """按 2026-11-08 对比结论：短 JSON 复核改走纯本地模型（group/local-code）。"""
+    def setUp(self):
+        self._saved = (llm_gate.ALLOW_CLOUD, llm_gate.ROUTER_ON)
+        llm_gate.ALLOW_CLOUD = False
+        llm_gate.ROUTER_ON = True
+        _fake_agent(None)
+
+    def tearDown(self):
+        llm_gate.ALLOW_CLOUD, llm_gate.ROUTER_ON = self._saved
+
+    def test_local_verdict_used(self):
+        from unittest.mock import patch
+        dec = {BUY['id']: {'verdict': 'avoid', 'note': '本地模型否决'}}
+        with patch.object(llm_gate, '_call_local', return_value=dec) as m:
+            got = llm_gate._call([BUY])
+        self.assertTrue(m.called)
+        self.assertEqual(got[BUY['id']]['verdict'], 'avoid')
+
+    def test_local_error_falls_back_to_none(self):
+        from unittest.mock import patch
+        with patch.object(llm_gate, '_call_local', side_effect=RuntimeError('magpie down')):
+            self.assertIsNone(llm_gate._call([BUY]))
+
+    def test_router_can_be_disabled(self):
+        llm_gate.ROUTER_ON = False
+        from unittest.mock import patch
+        with patch.object(llm_gate, '_call_local') as m:
+            self.assertIsNone(llm_gate._call([BUY]))
+        self.assertFalse(m.called)
 
 
 if __name__ == '__main__':

@@ -42,6 +42,7 @@ python -m http.server 8000
 - [网格回测](backtest.html) —— 均衡偏低均值线 + 不对称网格回测
 - [有色金属期货](metals.html) —— SHFE 主力连续合约（铜/铝/锌/铅/镍/锡）行情、走势与技术因子，点击展开各品种
 - [产业跟踪](industry.html) —— 染料·中间体涨价周期 与 钻石·超硬材料（AI 芯片金刚石散热）：产业逻辑、价格/催化跟踪表、证伪信号、成分股全览与个股弹卡
+- [美股模拟盘](us-sim.html) —— 100美元碎股模拟、趋势突破、ATR止损、实时持仓盈亏与交易记录；每5分钟更新，详见 [US_SIM.md](US_SIM.md)
 
 ## 持仓配置（holdings.json）
 
@@ -85,7 +86,9 @@ src/
 └── report.py            # 汇总生成前端 JSON
 scripts/
 └── walk_forward.py      # walk-forward 参数敏感性（31只×3折×10组合 → data/walk_forward_data.json）
-tests/                   # 单元测试（63 例）：python -m unittest discover -s tests
+usim/                    # 美股模拟盘：行情、策略、碎股账本、交易引擎、网页快照
+scripts/us_sim.py        # 美股模拟盘手动/定时更新入口
+tests/                   # 单元测试：python -m unittest discover -s tests
 assets/
 ├── css/common.css       # 统一设计语言（含板块分组/展开样式）
 └── js/common.js         # RV.API 数据层 + RV.fmt 格式化 + RV.ui 组件
@@ -97,6 +100,8 @@ data/
 ├── metals_data.json     # 有色金属期货行情/技术因子数据
 ├── industry_track.json  # 产业跟踪（染料化工 / 钻石超硬：逻辑+催化+成分股）
 ├── walk_forward_data.json # walk-forward 参数敏感性结果
+├── us-sim.json          # 美股模拟盘网页快照
+├── us-sim/              # 美股独立账本、回测与行情缓存
 └── cache/               # K线/估值/分红/涨跌家数缓存（不入库）
 index.html / review.html / recommend.html / holdings.html / backtest.html / metals.html / industry.html   # 数据驱动页面
 ```

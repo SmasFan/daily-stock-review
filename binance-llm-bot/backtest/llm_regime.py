@@ -6,7 +6,7 @@
 import csv, os, json, random
 import numpy as np
 from dotenv import load_dotenv
-load_dotenv('/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot/.env')
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 rows = []
 with open('btc_1d.csv') as f:

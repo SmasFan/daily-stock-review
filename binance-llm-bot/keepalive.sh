@@ -1,6 +1,6 @@
 #!/bin/bash
 # cron 每分钟执行: 保 watchdog 存活 (单实例)
-BASE=/mnt/c/Users/z7280/daily-stock-review/binance-llm-bot
+BASE="$(cd "$(dirname "$0")" && pwd)"
 LOCK="$BASE/watchdog.lock"
 
 # watchdog 活着? (精确匹配, 排除自己)
@@ -14,5 +14,5 @@ if ! pgrep -f "$BASE/watchdog\.py" > /dev/null && ! pgrep -f "watchdog\.py" > /d
         rm -f "$LOCK"
     fi
     echo "$(date '+%F %T') watchdog 不在, 重启" >> "$BASE/watchdog_restart.log"
-    cd "$BASE" && setsid nohup python3 "$BASE/watchdog.py" >> "$BASE/watchdog_stdout.log" 2>&1 < /dev/null &
+    cd "$BASE" && nohup python3 "$BASE/watchdog.py" >> "$BASE/watchdog_stdout.log" 2>&1 < /dev/null &
 fi

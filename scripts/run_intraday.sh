@@ -10,7 +10,8 @@
 # CACHE_MAX_AGE_HOURS=2：盘中 K 线缓存 2 小时过期，保证当天数据进分析。
 export CACHE_MAX_AGE_HOURS=2
 LOCK=/tmp/run_intraday.lock
-LOG=/mnt/c/Users/z7280/daily-stock-review/data/auto_run.log
+BASE="$(cd "$(dirname "$0")/.." && pwd)"
+LOG=$BASE/data/auto_run.log
 
 # 死锁检测：锁龄 >35 分钟 → 持锁进程视为卡死，SIGTERM + 清锁（正常任务不会超过 35 分钟）
 if [ -f "$LOCK" ]; then
@@ -31,7 +32,7 @@ exec 9>"$LOCK"
 # 等锁最长 90 秒（任务接近完成时顺延等待，避免整日跳过）；超时则放弃本轮
 flock -w 90 9 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] 锁忙(>90s)，跳过本轮" >> "$LOG"; exit 0; }
 
-cd /mnt/c/Users/z7280/daily-stock-review
+cd "$BASE"
 
 # 整体超时：任务超 25 分钟自动终止（正常每轮 <10 分钟；防网络挂死拖垮整天）
 cleanup() { [ -n "${TIMER_PID:-}" ] && kill $TIMER_PID 2>/dev/null; rm -f "$LOCK"; exit 0; }
@@ -72,7 +73,7 @@ if [ "$IN_TRADING" = "1" ]; then
   # 实时模拟盘盘中巡检 / 一周冲刺盘巡检已解耦到 scripts/sim_intraday_scan.sh
   # （独立锁 + cron */2 交易时段），不再排在本重块后面被锁挡掉。
 
-  # 空转守卫：盘中双池无待触发单(计划过期/未生成) → 自动重建修复（每5分钟）
+  # 空转守卫：盘中全池无待触发单(计划过期/未生成) → 自动重建修复（每5分钟）
   python3 scripts/sim_live_guard.py >> data/auto_run.log 2>&1 \
     || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘空转守卫失败" >> data/auto_run.log
 
@@ -92,7 +93,7 @@ if [ "$IN_TRADING" = "1" ]; then
     # 宏观 LLM 消息面刷新（盘中新闻在变；--intraday-plan 会重算闸门，须用最新判断）
     timeout 240 python3 macro_llm.py >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 盘中宏观LLM刷新失败，沿用上次" >> data/auto_run.log
-    # 盘中复盘重建：用刚生成的全量成分版复盘刷新双池待触发买点/补新信号
+    # 盘中复盘重建：用刚生成的全量成分版复盘刷新全池待触发买点/补新信号
     python3 sim_live.py --intraday-plan >> data/auto_run.log 2>&1 \
       || echo "[$(date '+%Y-%m-%d %H:%M:%S')] [warn] 模拟盘盘中重建失败" >> data/auto_run.log
     python3 run_review.py --mode institution >> data/auto_run.log 2>&1 \

@@ -72,6 +72,12 @@ class TestExternalScheduleGate(unittest.TestCase):
     def setUpClass(cls):
         if not os.path.exists(SRC):
             raise unittest.SkipTest("external_cron.sh 不存在")
+        # 分段判定用的是 GNU date -d / stat -c；BSD（macOS）上直接跳过，
+        # 否则闸门恒为「未抓过」，测试会误报失败。
+        probe = subprocess.run([BASH, "-c", "date -d '2026-01-01 00:00:00' +%s >/dev/null 2>&1"],
+                               capture_output=True)
+        if probe.returncode != 0:
+            raise unittest.SkipTest("无 GNU date（BSD/macOS），跳过 3 小时分段判定测试")
         cls.tmp = tempfile.mkdtemp(prefix="extschedule_")
         s = open(SRC, encoding="utf-8").read()
 

@@ -15,12 +15,14 @@ LLM 只在 review.py 里做事后复盘，提的建议（加 SMA20 过滤、别�
 - 兜底：LLM 不可用/超时/解析失败 → 全部放行（绝不因 LLM 停盘）；连错 3 次熔断 10 分钟
 - 开关：BN_LLM_GATE=0 关闭；BN_LLM_GATE_TIMEOUT 改超时（默认 30s）
 
-LLM 通道（免费优先）
---------------------
-1. Agent 文件队列（默认）：提问落 data/llm_queue/pending/<id>.json，由我（WorkBuddy）
-   回答后写回 done/，程序轮询读取。等不到 → None → 放行（不卡主流程）。
-   等待时长 BN_LLM_GATE_WAIT（默认取 AGENT_LLM_WAIT，45s；0=只登记不等待）。
-2. 付费云端：仅当 AGENT_LLM_ALLOW_CLOUD=1 时作为兜底（默认关闭 = 不再花钱）。
+LLM 通道（2026-11-08 起，按本地/云端对比结论分流）
+--------------------------------------------------
+1. Agent 文件队列：人工/WorkBuddy 接管优先，有人答就用。默认只登记不等待（0s），
+   因为本机已有本地模型兜底，不必为等队列卡住 T+0 成交。BN_LLM_GATE_WAIT 可改。
+2. 本地模型（主力）：llm_router 的 bn_gate 路由 → group/local-code（纯本地、不出网）。
+   短 JSON 复核实测与云端 ds4.1 结论一致，且延迟可接受。BN_LLM_GATE_ROUTER=0 可关。
+3. 付费云端：仅当 AGENT_LLM_ALLOW_CLOUD=1 时最后兜底（默认关闭 = 不再花钱）。
+   配置见仓库根 config/llm_routing.json（ Magpie 端点 127.0.0.1:3425，不读 .env）。
 
 用法：
     from llm_gate import gate
@@ -78,23 +80,39 @@ def _hhmm_add(hms, minutes):
     return '%02d:%02d:%02d' % (total // 3600, total % 3600 // 60, total % 60)
 
 
-SYS_PROMPT = """你是币安（加密/股票永续）的趋势跟随交易风控员，在系统下单前做最后复核。
-系统信号：日线（或1h）收盘价站上SMA50 → 开多；跌破SMA50 → 离场。
-另有一类「利润保护」卖出：由止盈规则（回撤/达标）触发，目的是把账面利润变成实际利润。
+SYS_PROMPT = """你是币安（加密/股票 TRADIFI 永续）的日内混合策略风控员，在系统下单前做最后复核。
+系统信号（2026-11-10 短线化后）：
+  日线20根动量 > +2% 定多头方向、< -2% 定空头方向（半仓），两者之间观望；
+  方向确定后，1h 12根动量 > +1% 且价在 1h SMA200 上方才开多，
+  < -1% 且在 SMA200 下方才开空；1h 动量衰减到 0 或日线方向翻转即离场。
+  止损 2%（多空同口径）、5x 杠杆、15min 巡检、7x24 连续交易。
+信号不再支持当前方向时按方向平仓：多头「卖出平多」，空头「买入平空」。
+另有一类「利润保护」：由止盈规则（回撤/达标）触发，目的是把账面利润变成实际利润。
+
+【重要·别否决统计信号】13 标 2026-04→11 回测（含双边 0.04% 费）：纯 1h 动量无正期望
+（样本外 -2%~-9%），只有「日线定方向 + 1h 择时 + 双向」才做到全期 +22%/回撤 11.5%/
+样本外 +2.9%。所以不要因为「1h 已经涨了一段」就否掉：方向来自日线，1h 只是入场时机。
+
+【上下文口径】SMA50 / SMA20 与 d7 / d30 全部按 1h K 线算：
+  d7 = 近 7 小时涨跌，d30 = 近 30 小时涨跌（不是「日」）；SMA50 = 50 小时均线。
 
 【市场特性：T+0】这里随时可平、可反手，没有「今天买明天才能卖」的约束，且 7x24 连续交易。
 因此默认原则是 **优先保证利润** —— 到手的浮盈回吐，比少赚一段趋势的代价更高。
 教训：原来只靠「跌破SMA50再走」，短线池从 +6.3% 一路回吐到 0，日线池从 +4.5% 回吐到 0。
 
-【买入】通常是趋势突破，但历史教训是「入场多集中在局部高点、被噪音止损」（胜率很低）。
-遇到下列情况给 avoid：
-- 价格虽在SMA50上方，但已跌破SMA20（短期动能转弱）
-- 距SMA50偏离过大（>12%）属追高
-- 近7日大跌（d7 <= -8%）属下跌反弹诱多
-- 该标当前已浮亏且趋势在走弱
-其余给 allow。
+【买入】遇到下列情况才给 avoid（其余一律 allow）：
+- 现价已跌破 SMA20（20 小时动能转弱）
+- 距 SMA50 偏离 > 8%（日内追高）
+- 近 7 小时大跌（d7 <= -4%）属下跌反弹诱多
+- 该标当前已浮亏且 1h 动量在走弱
 
-【卖出·硬规则】趋势离场（收盘跌破SMA50）是策略核心，系统强制执行，你只能确认（给 allow）。
+【开空】门槛同样更严，遇到下列情况才给 avoid（其余一律 allow）：
+- 近 7 小时已跌超 -10%（跌幅过大，易反弹轧空）
+- 价格已站回 SMA20 上方（下跌动能衰竭）
+- 距 SMA50 负偏离 > 8% 属追空
+
+【离场·硬规则】趋势离场是策略核心，系统强制执行，你只能确认（给 allow）。
+【空头离场】标签写「买回平空」，同样是硬规则离场，不是加仓，给 allow。
 
 【卖出·利润保护】默认给 allow（T+0 落袋为安）。只有「趋势结构完好」时才给 avoid 继续持有，
 需同时满足：
@@ -115,10 +133,11 @@ def _build_prompt(tasks, ctx_note=''):
         sid = 't%d' % i
         short[sid] = t
         if t.get('action') == 'buy':
+            verb = '开空' if t.get('side') == 'short' else '买'
             lines.append(
-                '%s | 买 %s(%s) | 现价%.2f | SMA50 %.2f(偏离%+.1f%%) | SMA20 %.2f(关系:%s) '
-                '| 近7日%+.1f%% 近30日%+.1f%% | 杠杆%gx | 触发:%s' % (
-                    sid, t.get('name'), t.get('symbol'), t.get('price') or 0,
+                '%s | %s %s(%s) | 现价%.2f | SMA50 %.2f(偏离%+.1f%%) | SMA20 %.2f(关系:%s) '
+                '| 近7小时%+.1f%% 近30小时%+.1f%% | 杠杆%gx | 触发:%s' % (
+                    sid, verb, t.get('name'), t.get('symbol'), t.get('price') or 0,
                     t.get('sma50') or 0, t.get('dev50') or 0, t.get('sma20') or 0,
                     t.get('vs_ma20') or '?', t.get('d7') or 0, t.get('d30') or 0,
                     t.get('lev') or 0, t.get('why') or ''))
@@ -129,10 +148,11 @@ def _build_prompt(tasks, ctx_note=''):
             if t.get('peak_pct') is not None:     # 利润保护单：带上峰值/回撤让 LLM 判断
                 extra = ' | 峰值%+.1f%% 自峰值回撤%.1f%%' % (
                     t.get('peak_pct') or 0, t.get('dd_peak') or 0)
+            verb = '买回平空' if t.get('side') == 'short' else '卖'
             lines.append(
-                '%s | 卖 %s(%s) | 现价%.2f | 入场%.2f 浮盈%+.1f%% | SMA50 %.2f(偏离%+.1f%%) '
-                '| 近7日%+.1f%%%s | %s | 类型:%s' % (
-                    sid, t.get('name'), t.get('symbol'), t.get('price') or 0,
+                '%s | %s %s(%s) | 现价%.2f | 入场%.2f 浮盈%+.1f%% | SMA50 %.2f(偏离%+.1f%%) '
+                '| 近7小时%+.1f%%%s | %s | 类型:%s' % (
+                    sid, verb, t.get('name'), t.get('symbol'), t.get('price') or 0,
                     t.get('entry') or 0, t.get('pnl_pct') or 0,
                     t.get('sma50') or 0, t.get('dev50') or 0, t.get('d7') or 0,
                     extra, t.get('why') or '', kind))
@@ -165,8 +185,9 @@ def _parse(text, short):
 # 等不到答案 → 返回 None，调用方按原逻辑降级（这里即「放行」），绝不卡主流程。
 # 闸门只等 45s：T+0 市场里止盈/保本单不能为等 LLM 而拖延。等不到 → 放行（等于按规则执行）。
 # 想让我更多地接管这里，可设 BN_LLM_GATE_WAIT，代价是成交被推迟同等时间。
-AGENT_WAIT = float(os.environ.get('BN_LLM_GATE_WAIT', '45'))
+AGENT_WAIT = float(os.environ.get('BN_LLM_GATE_WAIT', '0'))
 ALLOW_CLOUD = os.environ.get('AGENT_LLM_ALLOW_CLOUD', '0').lower() in ('1', 'true', 'yes', 'on')
+ROUTER_ON = os.environ.get('BN_LLM_GATE_ROUTER', '1').lower() not in ('0', 'false', 'off', 'no')
 
 
 def _agent_mod():
@@ -202,8 +223,30 @@ def _call_agent(system, user, short, meta=None):
         return None
 
 
+def _router_mod():
+    """导入仓库根的 llm_router（本模块在 binance-llm-bot/ 子目录）。"""
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    import llm_router
+    return llm_router
+
+
+def _call_local(system, user, short):
+    """通道二：本地模型（结论落地）。短 JSON 复核固定纯本地，绝不出网。"""
+    lr = _router_mod()
+    text, backend = lr.chat('bn_gate', system, user, expect_json=True)
+    dec = _parse(text, short)
+    if dec is None:
+        return None
+    for v in dec.values():
+        v['backend'] = backend
+    return dec
+
+
 def _call_cloud(system, user, short):
-    """通道二：付费云端（默认停用，AGENT_LLM_ALLOW_CLOUD=1 才走）。"""
+    """通道三：付费云端（默认停用，AGENT_LLM_ALLOW_CLOUD=1 才走）。"""
     client = _client()
     r = client.chat.completions.create(
         model=os.environ.get('LLM_MODEL', DEFAULT_MODEL),
@@ -215,7 +258,7 @@ def _call_cloud(system, user, short):
 
 
 def _call(tasks, ctx_note=''):
-    """成交前复核：Agent 队列优先，等不到再按开关降级到付费云端。"""
+    """成交前复核：Agent 队列 → 本地模型 →（可选）付费云端。全失败返回 None 放行。"""
     system, user, short = _build_prompt(tasks, ctx_note)
     meta = {'n': len(tasks), 'ctx': (ctx_note or '')[:200],
             'tasks': [{'id': sid, 'symbol': t.get('symbol'), 'name': t.get('name'),
@@ -225,6 +268,13 @@ def _call(tasks, ctx_note=''):
     dec = _call_agent(system, user, short, meta=meta)
     if dec is not None:
         return dec
+    if ROUTER_ON:
+        try:
+            dec = _call_local(system, user, short)
+            if dec is not None:
+                return dec
+        except Exception as e:
+            print('  [llm][gate] 本地模型调用失败: %s' % str(e)[:100])
     if not ALLOW_CLOUD:
         return None
     try:
@@ -297,12 +347,15 @@ def gate(state, tasks, ctx_note=''):
 def market_stats(ex, sym, sma_n=50, tf='1d'):
     """取标的趋势上下文（供闸门判断）：SMA50/SMA20、d7/d30、偏离度。
 
-    返回 dict 或 {}（数据不足/异常时返回空，闸门只看得到什么就用什么）。
+    日内混合策略传 tf='1h'：此时 d7/d30 是近 7 / 30 **小时**涨跌，SMA50 是
+    50 小时均线（SYS_PROMPT 已按这个口径写）。返回 dict 或 {}（数据不足/异常）。
     """
     try:
         ohlcv = ex.fetch_ohlcv(sym, tf, limit=max(sma_n, 60) + 30)
         now = ex.milliseconds()
-        unit = 3600000 if tf.endswith('h') else 86400000
+        tf_ms = {'1m': 60000, '5m': 300000, '15m': 900000,
+                 '1h': 3600000, '4h': 14400000, '1d': 86400000}
+        unit = tf_ms.get(tf, 86400000)
         closes = [c[4] for c in ohlcv if c[0] + unit <= now]   # 只取已收K线
         if len(closes) < 21:
             return {}
@@ -347,7 +400,8 @@ def shadow_record(state, tasks, decisions):
     sh = _shadow(state)
     added = 0
     for t in tasks:
-        if t.get('action') != 'buy':
+        # 影子跟踪按「买入后价格涨跌」多头口径统计，空头方向相反，不登记避免污染统计
+        if t.get('action') != 'buy' or t.get('side') == 'short':
             continue
         d = decisions.get(t['id']) or {}
         if d.get('verdict') != 'avoid':

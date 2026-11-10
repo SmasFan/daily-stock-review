@@ -16,29 +16,46 @@
    "hard_stop": -0.065
   },
   "llm_gate": {
-   "date": "2026-09-18",
-   "items": {
-    "sprint|auto|002916|buy": {
-     "verdict": "allow",
-     "note": "回踩买点触发，当日微涨无风险",
-     "ts": "16:24:27"
-    },
-    "sprint|auto|600879|buy": {
-     "verdict": "avoid",
-     "note": "当日强势上攻，避免追高风险",
-     "ts": "16:24:27"
-    }
-   },
+   "date": "2026-11-06",
+   "items": {},
    "stat": {
-    "llm": 2,
+    "llm": 0,
     "cache": 0,
-    "fallback": 0,
+    "fallback": 2,
     "off": 0
    }
+  },
+  "llm_gate_cb": {
+   "streak": 1
   }
  },
- "cash": 48494.1122,
- "positions": [],
+ "cash": 14757.994400000009,
+ "positions": [
+  {
+   "code": "000858",
+   "name": "五 粮 液",
+   "shares": 300,
+   "cost": 75.82,
+   "buy_time": "2026-11-06 01:52:35",
+   "peak": 75.82,
+   "last": 74.21,
+   "last_chg": 0.96,
+   "stop": 70.892,
+   "last_close": 74.21
+  },
+  {
+   "code": "688160",
+   "name": "步科股份",
+   "shares": 100,
+   "cost": 109.8,
+   "buy_time": "2026-11-06 01:52:36",
+   "peak": 115.83,
+   "last": 113.13,
+   "last_chg": 1.74,
+   "stop": 102.663,
+   "last_close": 113.13
+  }
+ ],
  "trades": [
   {
    "action": "buy",
@@ -59,6 +76,34 @@
    "pnl": -1499.05,
    "pnl_pct": -6.5,
    "reason": "硬止损 -6.5%"
+  },
+  {
+   "action": "buy",
+   "ts": "2026-11-06 01:52:35",
+   "code": "000858",
+   "name": "五 粮 液",
+   "price": 75.82,
+   "shares": 300,
+   "reason": "AI冲刺建仓",
+   "llm": {
+    "verdict": "allow",
+    "note": "LLM不可用，放行",
+    "src": "fallback"
+   }
+  },
+  {
+   "action": "buy",
+   "ts": "2026-11-06 01:52:36",
+   "code": "688160",
+   "name": "步科股份",
+   "price": 109.8,
+   "shares": 100,
+   "reason": "AI冲刺建仓",
+   "llm": {
+    "verdict": "allow",
+    "note": "LLM不可用，放行",
+    "src": "fallback"
+   }
   }
  ],
  "equity_curve": [
@@ -131,6 +176,27 @@
    "cash": 48494.11,
    "daily_return": 0.0,
    "pos": 0
+  },
+  {
+   "date": "2026-11-06",
+   "equity": 48483.99,
+   "cash": 14757.99,
+   "daily_return": -0.021,
+   "pos": 2
+  },
+  {
+   "date": "2026-11-09",
+   "equity": 48483.99,
+   "cash": 14757.99,
+   "daily_return": 0.0,
+   "pos": 2
+  },
+  {
+   "date": "2026-11-10",
+   "equity": 48483.99,
+   "cash": 14757.99,
+   "daily_return": 0.0,
+   "pos": 2
   }
  ],
  "log": [
@@ -179,5 +245,28 @@
    "msg": "LLM 否决建仓 航天电子：当日强势上攻，避免追高风险"
   }
  ],
- "signals": []
+ "signals": [
+  {
+   "ts": "2026-11-06 01:52:35",
+   "code": "000858",
+   "name": "五 粮 液",
+   "score": 78,
+   "signal": "买入",
+   "trend": "多头排列",
+   "ext": 0.0,
+   "llm": "LLM不可用，放行",
+   "why": "自动选股建仓"
+  },
+  {
+   "ts": "2026-11-06 01:52:36",
+   "code": "688160",
+   "name": "步科股份",
+   "score": 81,
+   "signal": "强烈买入",
+   "trend": "强势多头",
+   "ext": -3.9,
+   "llm": "LLM不可用，放行",
+   "why": "自动选股建仓"
+  }
+ ]
 }
