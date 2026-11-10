@@ -1,9 +1,9 @@
 # 项目指令
 
 ## 推送规则（重要）
-- **每次完成代码/数据改动后，必须提交并推送到 GitHub**（`git add` → `git commit` → `git push`）。
+- **GitHub 只放代码与业务逻辑，不放实际数据**（用户 2026-11-11 明确要求）：`data/`、`holdings.json`、`state*.json`、`*.log`、回测 CSV、分享 zip、`reviews/` 一律不入库，`.gitignore` 已覆盖。
+- 上传方式：`~/.local/bin/dsr-publish "提交信息"`。工作区 `/Users/smas/code/daily-stock-review` 不是 git 仓库，镜像在 `~/code/daily-stock-review-git`；脚本会自动排除密钥/数据、做敏感扫描、commit 并 push。
 - 提交信息风格：中文、简洁，参照现有历史（如「docs/index/watchlist 导航补全 + 普涨过热日闸门」）。
-- 生成的数据文件（data/*.json）也一并提交。
 
 ## 项目约定
 - 运行入口：`python3 run_review.py --mode all`（复盘/推荐/机构/策略/持仓/期货）
