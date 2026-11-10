@@ -35,3 +35,10 @@ binance-llm-bot/*.bak
 binance-llm-bot/*.bak.*
 
 binance-llm-bot/*.out
+
+# ---- 实际数据/运行产物不入库（2026-11-11）：GitHub 只放代码与业务逻辑 ----
+data/
+holdings.json
+strategy/report_data.json
+binance-llm-bot/reviews/
+binance-llm-bot/*.out

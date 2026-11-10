@@ -86,33 +86,15 @@ def proc_status():
         toks = cmd.split()
         if not toks or 'python' not in toks[0].lower():
             continue
-        for name in ['trader100.py', 'trader_short.py', 'guard.py', 'status_page.py', 'watchdog.py', 'perp_sim.py']:
-            # perp_sim.py 以 --loop 启动，命令行带参数，不能用 endswith
-            hit = (name + ' ' in cmd or name in cmd) if name == 'perp_sim.py' else \
-                  (cmd.endswith(' ' + name) or cmd.endswith('/' + name))
-            if hit:
+        for name in ['arena_engine.py', 'guard.py', 'status_page.py', 'watchdog.py']:
+            if cmd.endswith(' ' + name) or cmd.endswith('/' + name):
                 all_pids.setdefault(name, []).append(pid)
     rows = []
-    for name in ['trader100.py', 'trader_short.py', 'guard.py', 'status_page.py', 'watchdog.py', 'perp_sim.py']:
+    for name in ['arena_engine.py', 'guard.py', 'status_page.py', 'watchdog.py']:
         pids = all_pids.get(name, [])
-        label = 'perp_sim.py · 全天候盘' if name == 'perp_sim.py' else name
-        rows.append((label, '运行' if pids else '挂掉', ','.join(pids)))
+        rows.append((name, '运行' if pids else '挂掉', ','.join(pids)))
     # cron keepalive: 常驻检测不适用, 显示为调度项
     rows.append(('keepalive (cron每分钟)', '调度中', '-'))
-    # 全天候盘状态以数据新鲜度为准（进程可能在另一台机器跑）
-    try:
-        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'binance_perp.json')
-        if os.path.exists(p):
-            with open(p) as f:
-                gen = json.load(f).get('generatedAt', '')
-            ts = datetime.fromisoformat(gen.replace('Z', '+00:00'))
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            age = (datetime.now(timezone.utc) - ts).total_seconds()
-            age = max(0, age)
-            rows.append(('全天候盘数据', '新鲜' if age < 1800 else '过期', '%d 分钟前' % (age / 60)))
-    except Exception:
-        pass
     return rows
 
 
