@@ -370,20 +370,37 @@ def replay(st, verbose=True):
     return st
 
 
-def intraday(st):
-    """盘中巡检：确保当日 plan → 实时快照 → 逐标 step → 补净值点。"""
-    from src import data_provider as dp
-    date, hms = today(), time.strftime("%H:%M:%S")
+def in_session(now=None):
+    """A 股交易时段（含集合竞价与尾盘缓冲）；非交易时段只刷行情、不交易。"""
+    now = now or datetime.now()
+    if now.weekday() >= 5:
+        return False
+    hm = now.strftime("%H:%M")
+    return ("09:15" <= hm <= "11:35") or ("12:55" <= hm <= "15:05")
+
+
+def _live_quotes():
+    """实时快照（带 change 当日涨跌幅）；失败返回空 dict，不阻塞写账本。"""
     try:
-        quotes = dp.fetch_quotes(CODES) or {}
+        from src import data_provider as dp
+        return dp.fetch_quotes(CODES) or {}
     except Exception as e:
-        log(st, "快照失败 %s" % e)
         print("快照失败:", e)
-        return 0
-    if st["meta"].get("plan_date") != date or not st["plan"]:
-        refresh_plan(st, quotes, use_cache=True)
+        return {}
+
+
+def intraday(st):
+    """盘中巡检：先刷现价/买点；只在交易时段逐标 step，非交易时段仅刷新行情。"""
+    date, hms = today(), time.strftime("%H:%M:%S")
+    quotes = _live_quotes()
+    if quotes:
+        refresh_plan(st, quotes, use_cache=True)   # 每次都刷新现价/买点/当日涨幅（K 线走缓存）
     else:
-        refresh_plan(st, quotes, use_cache=True)   # 每次都刷新现价/买点（K 线走缓存）
+        refresh_plan(st, use_cache=True)           # 无行情时退回 K 线收盘价
+    if not in_session():
+        snapshot_curve(st, date)
+        log(st, "非交易时段：仅刷新行情 %d/%d" % (len(quotes), len(CODES)))
+        return 0
     lv_by_code = {}
     for row in st["plan"]:
         if row["ma20"] and row["ma60"]:
@@ -440,12 +457,12 @@ def main():
     if args.replay:
         replay(st)
     if args.plan:
-        refresh_plan(st, use_cache=True)
+        refresh_plan(st, _live_quotes(), use_cache=True)
         print("买点已更新:", len(st["plan"]), "只")
     if args.intraday:
         intraday(st)
     if args.review:
-        refresh_plan(st, use_cache=True)
+        refresh_plan(st, _live_quotes(), use_cache=True)
         snapshot_curve(st)
         st["daily_log"].append({"date": today(), "ts": now_ts(),
                                 "equity": round(equity(st), 2),
