@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全天候双向合约盘 · 币安</title>
+<style>
+  html, body { margin:0; padding:0; }
+  body { background:#f2f3f5; color:#16181d; font:12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; }
+  .bn-bar { height:34px; display:flex; align-items:center; gap:12px; padding:0 14px;
+    background:#fff; border-bottom:1px solid #e3e5e8; position:relative; z-index:20; }
+  .bn-bar a { color:#6b7280; text-decoration:none; white-space:nowrap; }
+  .bn-bar a:hover { color:#16181d; text-decoration:underline; }
+  .bn-bar .sp { flex:1; }
+  .bn-bar .meta { color:#9aa1ab; white-space:nowrap; }
+  .quick { display:flex; align-items:center; gap:12px; overflow:hidden; }
+  .quick a { font-size:11.5px; }
+  .quick a.cur { color:#16181d; font-weight:600; text-decoration:none; }
+  .nav-btn { font:inherit; font-size:11.5px; color:#374151; background:#fff;
+    border:1px solid #d9dde3; border-radius:2px; padding:3px 8px; cursor:pointer; white-space:nowrap; }
+  .nav-btn:hover { border-color:#9aa1ab; }
+  .nav-pop { display:none; position:absolute; top:33px; left:12px; width:max-content; max-width:92vw;
+    padding:8px; background:#fff; border:1px solid #d9dde3;
+    grid-template-columns:repeat(4,minmax(76px,auto)); gap:2px 6px; }
+  .nav-pop.show { display:grid; }
+  .nav-pop a { font-size:11.5px; padding:4px 8px; border-radius:2px; }
+  .nav-pop a:hover { background:#f2f3f5; text-decoration:none; }
+  .nav-pop a.cur { color:#16181d; font-weight:600; background:#f2f3f5; }
+  .nav-pop .nav-head { grid-column:1/-1; font-size:10.5px; color:#9aa1ab; padding:2px 8px 5px;
+    border-bottom:1px solid #eef0f2; margin-bottom:3px; }
+  .nav-pop a.src { grid-column:1/-1; margin-top:3px; padding-top:6px; border-top:1px solid #eef0f2; color:#9aa1ab; }
+  @media(max-width:900px){ .quick{display:none;} }
+  body.embed .bn-bar { display:none; }
+  .wrap { max-width:1360px; margin:0 auto; padding:12px 16px 28px; }
+  .top { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:9px; }
+  .top h1 { font-size:15px; font-weight:700; margin:0; }
+  .top .sub { color:#6b7280; font-size:11px; }
+  .badge { display:inline-block; font-size:10.5px; font-weight:600; padding:2px 7px;
+    border:1px solid #d9dde3; border-radius:2px; background:#fff; color:#374151; }
+  .badge.ok { background:#eef8f1; border-color:#cfe7d7; color:#1b7f3b; }
+  .badge.blue { background:#eef4fb; border-color:#d4e3f5; color:#24568f; }
+  .notice { background:#fff; border:1px solid #e3e5e8; border-left:3px solid #9aa1ab;
+    padding:7px 11px; margin-bottom:10px; color:#4b5563; font-size:11px; line-height:1.65; }
+  .kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1px;
+    background:#e3e5e8; border:1px solid #e3e5e8; margin-bottom:12px; }
+  .kpi { background:#fff; padding:11px 13px; }
+  .kpi .l { font-size:10.5px; color:#6b7280; }
+  .kpi .v { font-size:22px; font-weight:700; line-height:1.25; margin-top:3px; }
+  .kpi .s { font-size:10.5px; color:#9aa1ab; margin-top:2px; }
+  .up { color:#c62828; } .down { color:#1b7f3b; } .dim { color:#6b7280; }
+  .cols { display:grid; grid-template-columns:1.15fr 1fr; gap:12px; }
+  .panel { background:#fff; border:1px solid #e3e5e8; padding:11px 13px; margin-bottom:12px; }
+  .panel h2 { font-size:12.5px; font-weight:700; margin:0 0 8px; padding-left:7px;
+    border-left:2px solid #6b7280; display:flex; align-items:center; gap:8px; }
+  .panel h2 .n { font-size:10.5px; font-weight:600; color:#9aa1ab; }
+  table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  th { text-align:left; font-size:10.5px; font-weight:600; color:#6b7280; padding:5px 6px;
+    border-bottom:1px solid #d9dde3; white-space:nowrap; }
+  td { padding:5px 6px; border-bottom:1px solid #f0f1f3; white-space:nowrap; }
+  tr:last-child td { border-bottom:0; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .tag { display:inline-block; font-size:10px; font-weight:700; padding:1px 6px; border-radius:2px; }
+  .t-long { background:#fdecec; color:#c62828; }
+  .t-short { background:#eaf6ee; color:#1b7f3b; }
+  .t-flat { background:#f2f3f5; color:#6b7280; }
+  .t-us { background:#eef4fb; color:#24568f; }
+  .t-cn { background:#fdecec; color:#c62828; }
+  .t-hk { background:#fff5e8; color:#a45c10; }
+  .filters { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:7px; }
+  .filters button { font:inherit; font-size:10.5px; padding:2px 8px; border:1px solid #d9dde3;
+    background:#fff; color:#374151; border-radius:2px; cursor:pointer; }
+  .filters button.on { background:#374151; border-color:#374151; color:#fff; }
+  .proxy { background:#fafbfc; border:1px solid #eef0f2; padding:8px 10px; font-size:11px; line-height:1.7; }
+  .proxy b { font-weight:700; }
+  .foot { color:#9aa1ab; font-size:10.5px; text-align:center; padding:6px 0; }
+  details > summary { cursor:pointer; font-size:11.5px; font-weight:600; padding:4px 0; }
+  @media(max-width:1000px){ .cols{grid-template-columns:1fr;} .kpis{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<div class="bn-bar">
+  <button class="nav-btn" id="nav-btn" aria-expanded="false">导航</button>
+  <div class="quick">
+    <a href="review.html">复盘</a><a href="recommend.html">推荐</a>
+    <a href="macro.html">宏观</a><a href="holdings.html">持仓</a>
+    <a href="sim_live.html">实时模拟</a><a href="sim_dividend.html">红利池</a><a href="us-sim.html">美股模拟</a>
+    <a href="binance.html">账户状态</a><a class="cur" href="perp.html">全天候双向盘</a>
+  </div>
+  <span class="sp"></span>
+  <span class="meta">主网公开行情 · 影子模拟 · 60s 刷新</span>
+  <div class="nav-pop" id="nav-pop">
+    <div class="nav-head">页面导航 · 每日复盘工作台</div>
+    <a href="index.html">工作台</a><a href="review.html">复盘</a>
+    <a href="uptrend.html">趋势</a><a href="mainline.html">主线</a>
+    <a href="recommend.html">推荐</a><a href="lowval.html">低估值</a>
+    <a href="institution.html">资金</a><a href="macro.html">宏观</a>
+    <a href="holdings.html">持仓</a><a href="backtest.html">回测</a>
+    <a href="tracking.html">跟踪</a><a href="metals.html">期货</a>
+    <a href="industry.html">产业</a><a href="sim.html">模拟盘</a>
+    <a href="sim_live.html">实时模拟</a><a href="sim_dividend.html">红利池</a><a href="us-sim.html">美股模拟</a>
+    <a href="binance.html">币安 Bot</a><a class="cur" href="perp.html">全天候双向盘</a>
+    <a href="docs.html">说明</a>
+    <a class="src" href="https://github.com/SmasFan/daily-stock-review" target="_blank" rel="noopener">项目源码 ↗</a>
+  </div>
+</div>
+<div class="wrap" id="wrap"><div class="notice">数据加载中…</div></div>
+<script>
+if (window.self !== window.top) document.body.classList.add('embed');
+(function(){
+  const btn=document.getElementById('nav-btn'), pop=document.getElementById('nav-pop');
+  const toggle=on=>{pop.classList.toggle('show',on);btn.setAttribute('aria-expanded',String(on));};
+  btn.addEventListener('click',e=>{e.stopPropagation();toggle(!pop.classList.contains('show'));});
+  document.addEventListener('click',e=>{if(!pop.contains(e.target))toggle(false);});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')toggle(false);});
+})();
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f=(v,d)=>v==null?'--':Number(v).toFixed(d==null?2:d);
+const pc=v=>v>0?'up':(v<0?'down':'dim');
+const sign=v=>(v>0?'+':'')+f(v,2);
+let DATA=null, FILTER='all';
+const GRP={all:'全部',us:'美股',cn:'中国大陆',hk:'港股/中概'};
+function tag(g){return `<span class="tag t-${g}">${GRP[g]||g}</span>`;}
+function sigTag(s){
+  if(s==='long')return '<span class="tag t-long">做多</span>';
+  if(s==='short')return '<span class="tag t-short">做空</span>';
+  return '<span class="tag t-flat">观望</span>';
+}
+function render(){
+  const d=DATA, w=document.getElementById('wrap');
+  const a=d.account, sess=d.session||'';
+  const SESS_CN={pre:'盘前',regular:'盘中',post:'盘后',overnight:'夜盘',weekend:'周末'};
+  function sessionCn(k){ return SESS_CN[k] || k || '-'; }
+  function fmtTime(s){ if(!s) return ''; const dt=new Date(s);
+    return isNaN(dt.getTime()) ? String(s).slice(0,19)
+      : dt.toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).replace(/\//g,'-'); }
+  const pos=d.positions||[], cons=d.contracts||[], trades=d.trades||[];
+  const longN=pos.filter(p=>p.side==='long').length, shortN=pos.length-longN;
+  const shown=cons.filter(c=>FILTER==='all'||c.group===FILTER);
+  const pxy=d.star50_proxy||{};
+  w.innerHTML=`
+    <div class="top">
+      <h1>全天候双向合约盘</h1>
+      <span class="badge blue">7×24 连续 · 无时段闸门</span>
+      <span class="badge ok">${esc(sess)}</span>
+      <span class="badge">${esc(d.mode||'')}</span>
+      <span class="sub">更新 ${fmtTime(d.generatedAt)} · 每 60s 自动刷新</span>
+    </div>
+    <div class="notice">${esc(d.note||'')}
+      <br>策略：1h 未收 K 线动量 ±${f(a.mom_th*100,1)}% 双向开仓，${f(a.lev,0)}x 杠杆、${f(a.risk*100,0)}% 风险预算、最多 ${a.max_pos} 仓；-${f(a.sl_pct*100,0)}% 止损 / +${f(a.tp_pct*100,0)}% 止盈 / 峰值回吐 50%。<b>双向含做空</b>，夜盘、盘前、周末照常巡检。</div>
+    <div class="kpis">
+      <div class="kpi"><div class="l">账户总金额 · 初始 ${f(a.start_cash,0)} U</div><div class="v">${f(a.equity)}<span style="font-size:12px"> U</span></div><div class="s">起始本金 + 已实现 + 浮动</div></div>
+      <div class="kpi"><div class="l">今日收益</div><div class="v ${pc(a.today_ret)}">${sign(a.today_ret)}%</div><div class="s">${a.today_ret>=0?'+':''}${f(a.equity-a.start_cash)} U 累计</div></div>
+      <div class="kpi"><div class="l">已实现盈亏</div><div class="v ${pc(a.realized)}">${sign(a.realized)} U</div><div class="s">扣双边 ${f(0.04,2)}% 手续费</div></div>
+      <div class="kpi"><div class="l">当前持仓</div><div class="v">${pos.length}<span style="font-size:12px"> / ${a.max_pos}</span></div><div class="s">多 ${longN} · 空 ${shortN} · ${f(a.lev,0)}x 杠杆</div></div>
+      <div class="kpi"><div class="l">合约覆盖</div><div class="v">${cons.filter(c=>c.price).length}<span style="font-size:12px"> / ${cons.length}</span></div><div class="s">主网公开行情 · 无 API Key</div></div>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="panel">
+          <h2>当前持仓 <span class="n">方向 / 杠杆 / 浮动盈亏</span></h2>
+          ${pos.length?`<table><thead><tr><th>标的</th><th>方向</th><th class="num">入场</th><th class="num">现价</th><th class="num">名义 U</th><th class="num">浮盈%</th><th class="num">浮盈 U</th><th>开仓时段</th></tr></thead><tbody>
+            ${pos.map(p=>`<tr><td><b>${esc(p.cn)}</b> <span style="color:#9aa1ab">${esc(p.sym.replace('USDT',''))}</span> ${tag(p.group)}</td>
+              <td>${p.side==='long'?'<span class="tag t-long">多</span>':'<span class="tag t-short">空</span>'}</td>
+              <td class="num">${f(p.entry,4)}</td><td class="num">${f(p.price,4)}</td><td class="num">${f(p.notional,1)}</td>
+              <td class="num ${pc(p.pnl_pct)}">${sign(p.pnl_pct)}%</td><td class="num ${pc(p.pnl)}">${sign(p.pnl)}</td>
+              <td style="color:#6b7280">${esc(sessionCn(p.session))} · ${esc((p.opened||'').replace('T',' ').slice(11,19))} UTC</td></tr>`).join('')}
+          </tbody></table>`:'<div class="dim" style="padding:10px 2px">当前空仓，等待双向动量信号</div>'}
+        </div>
+        <div class="panel">
+          <h2>合约池 <span class="n">${cons.length} 个 · 点筛选</span></h2>
+          <div class="filters">${Object.keys(GRP).map(k=>`<button data-g="${k}" class="${FILTER===k?'on':''}">${GRP[k]}</button>`).join('')}</div>
+          <div style="max-height:430px;overflow:auto"><table><thead><tr><th>标的</th><th>分组</th><th class="num">最新价</th><th class="num">24h</th><th class="num">动量%</th><th>信号</th><th>持仓</th></tr></thead><tbody>
+            ${shown.map(c=>`<tr><td><b>${esc(c.cn)}</b> <span style="color:#9aa1ab">${esc(c.sym.replace('USDT',''))}</span></td>
+              <td>${tag(c.group)}</td><td class="num">${c.price?f(c.price,4):'<span class="dim">无行情</span>'}</td>
+              <td class="num ${pc(c.chg)}">${c.price?sign(c.chg)+'%':'--'}</td>
+              <td class="num ${pc(c.mom)}">${c.price?sign(c.mom):'--'}</td>
+              <td>${c.err?'<span class="dim">跳过</span>':sigTag(c.signal)}</td>
+              <td>${c.side?(c.side==='long'?'<span class="tag t-long">多</span>':'<span class="tag t-short">空</span>'):''}</td></tr>`).join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <h2>科创50 代理 <span class="n">方向参考 · 不单独下单</span></h2>
+          <div class="proxy">
+            <div><b>${esc(pxy.label||'')}</b>　24h <b class="${pc(pxy.chg)}">${pxy.chg!=null?sign(pxy.chg)+'%':'--'}</b>　动量 <b class="${pc(pxy.mom)}">${pxy.mom!=null?sign(pxy.mom)+'%':'--'}</b></div>
+            <div style="margin-top:4px;color:#6b7280">成分：${(pxy.members||[]).map(s=>esc(s.replace('USDT',''))).join(' / ')}</div>
+            <div style="margin-top:4px;color:#6b7280">${esc(pxy.note||'')}</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>风控与运行口径 <span class="n">影子模拟</span></h2>
+          <table><tbody>
+            <tr><td style="color:#6b7280">交易时段</td><td>7×24，无开盘/休市闸门；${esc(sess)}</td></tr>
+            <tr><td style="color:#6b7280">方向</td><td>做多 / 做空双向，信号反转即平</td></tr>
+            <tr><td style="color:#6b7280">杠杆</td><td>${f(a.lev,0)}x · 单仓名义 = 净值 × 杠杆 × ${f(a.risk*100,0)}% / ${a.max_pos}</td></tr>
+            <tr><td style="color:#6b7280">止损 / 止盈</td><td>-${f(a.sl_pct*100,0)}% / +${f(a.tp_pct*100,0)}%（方向镜像）</td></tr>
+            <tr><td style="color:#6b7280">信号</td><td>${esc(a.tf)} K 线 ${a.mom_n} 根动量，阈值 ±${f(a.mom_th*100,1)}%</td></tr>
+            <tr><td style="color:#6b7280">数据源</td><td>主网公开 K 线（fapi.binance.com），无需 API Key</td></tr>
+            <tr><td style="color:#6b7280">真实下单</td><td><b>不接</b>。Demo 测试网不开放中国合约；主网真实资金需另行确认。</td></tr>
+          </tbody></table>
+        </div>
+        <div class="panel">
+          <h2>最近成交 <span class="n">${trades.length} 条</span></h2>
+          ${trades.length?`<div style="max-height:330px;overflow:auto"><table><thead><tr><th>时间</th><th>标的</th><th>动作</th><th class="num">价格</th><th class="num">盈亏 U</th></tr></thead><tbody>
+            ${trades.slice(0,30).map(t=>`<tr><td style="color:#6b7280">${esc((t.ts||'').slice(5,16).replace('T',' '))}</td>
+              <td>${esc(t.cn)}</td><td>${t.action==='open'?(t.side==='long'?'<span class="tag t-long">开多</span>':'<span class="tag t-short">开空</span>'):'<span class="tag t-flat">平仓</span>'}</td>
+              <td class="num">${f(t.price,4)}</td><td class="num ${pc(t.pnl)}">${t.action==='open'?'--':sign(t.pnl)}</td></tr>`).join('')}
+          </tbody></table></div>`:'<div class="dim" style="padding:8px 2px">暂无成交</div>'}
+        </div>
+        <details class="panel"><summary>原始说明 / 错误</summary><div style="font-size:11px;color:#6b7280;line-height:1.7">
+          ${esc(d.note||'')}<br>行情错误：${Object.keys(d.errors||{}).length?esc(JSON.stringify(d.errors)):'无'}
+        </div></details>
+      </div>
+    </div>
+    <div class="foot">perp_sim.py 虚拟记账 · 模拟仅供学习研究 · 不构成投资建议</div>`;
+  w.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{FILTER=b.dataset.g;render();}));
+}
+async function load(){
+  try{
+    const r=await fetch('data/binance_perp.json',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    DATA=await r.json(); render();
+  }catch(e){
+    document.getElementById('wrap').innerHTML=`<div class="notice"><b>全天候双向盘数据未生成</b><br>
+      在 <code>binance-llm-bot/</code> 下运行 <code>python3 perp_sim.py --once</code> 或 <code>--loop</code>。<br>
+      <small>${esc(e.message)}</small></div>`;
+  }
+}
+load(); setInterval(load,60000);
+</script>
+</body>
+</html>

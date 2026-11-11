@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>美股模拟盘 · 每日复盘</title>
+<link rel="stylesheet" href="assets/css/common.css?v=4">
+<style>
+  .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-8px 0 18px;color:var(--text-2);font-size:12px}
+  .market-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:99px;font-weight:700;background:#f3f4f6}
+  .market-pill.open{background:#ecfdf5;color:#047857}.market-pill.closed{background:#fff7ed;color:#c2410c}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}.market-pill.open .dot{animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  .refresh-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px}
+  .refresh-btn:hover{background:var(--surface-2)}.refresh-btn:disabled{opacity:.55;cursor:wait}
+  .gain{color:#059669!important}.loss{color:#dc2626!important}.flat{color:var(--text-2)!important}
+  .mono{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .two-col{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);gap:20px}
+  #equity-chart{height:320px;width:100%}
+  .side-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .side-metric{background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .side-metric b{display:block;font-size:20px;margin-bottom:3px}.side-metric span{font-size:11px;color:var(--text-2)}
+  .regime{padding:12px 14px;border-radius:10px;background:var(--surface-2);font-size:13px;margin-top:14px;line-height:1.8}
+  .trend-yes{color:#059669;font-weight:700}.trend-no{color:#dc2626;font-weight:700}
+  .symbol{font-weight:800}.sub{font-size:11px;color:var(--text-2)}
+  .reason{max-width:300px;white-space:normal;line-height:1.5}.num{text-align:right;white-space:nowrap}
+  .empty-inline{padding:26px;text-align:center;color:var(--text-2);background:var(--surface-2);border-radius:10px}
+  .notice{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:12px}
+  .strategy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .strategy-item{padding:14px;background:var(--surface-2);border-radius:10px;font-size:12px;color:var(--text-2)}
+  .strategy-item b{display:block;color:var(--text);font-size:13px;margin-bottom:5px}
+  .auto-note{font-size:11px;color:var(--text-2)}
+  @media(max-width:800px){.container{padding:14px}.two-col{grid-template-columns:1fr}.strategy-grid{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-wrap:wrap}#equity-chart{height:250px}.section{padding:16px}.summary-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="app"></div>
+  <div class="toolbar">
+    <div id="market-status" class="market-pill"><span class="dot"></span>读取中</div>
+    <div><span id="updated">尚未更新</span> <span class="auto-note">· 页面每30秒刷新 / 后台每5分钟跑一轮</span></div>
+    <button id="refresh" class="refresh-btn" onclick="loadSnapshot(true)">↻ 刷新数据</button>
+  </div>
+  <div id="content"><div class="loading">美股账户与行情加载中…</div></div>
+  <footer>美股模拟盘 · 仅供策略研究，不连接券商、不使用真实资金、不构成投资建议</footer>
+</div>
+<script src="assets/js/common.js?v=3"></script>
+<script src="assets/js/echarts.min.js"></script>
+<script>
+document.getElementById('app').innerHTML = RV.ui.header('美股模拟盘', '100美元 · 碎股 · 趋势突破 · ATR风控', 'ussim');
+let chart = null;
+let loading = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v,d=2) => v == null || !Number.isFinite(Number(v)) ? '--' : Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const money = (v,sign=false) => v == null || !Number.isFinite(Number(v)) ? '--' : (sign && Number(v)>0?'+':'') + (Number(v)<0?'-$':'$') + num(Math.abs(Number(v)),2);
+const pct = (v,sign=true) => v == null || !Number.isFinite(Number(v)) ? '--' : (sign&&Number(v)>0?'+':'') + num(v,2) + '%';
+const cls = v => Number(v)>0?'gain':Number(v)<0?'loss':'flat';
+const qty = v => v == null?'--':Number(v).toLocaleString('en-US',{maximumFractionDigits:6});
+function summary(icon,value,label,klass=''){return `<div class="summary-card"><div class="icon">${RV.ui.icon(icon)}</div><div class="summary-text"><div class="val ${klass}">${value}</div><div class="label">${label}</div></div></div>`}
+function empty(text){return `<div class="empty-inline">${esc(text)}</div>`}
+
+function render(d){
+  const a=d.account,m=d.market,s=d.strategy;
+  $('market-status').className='market-pill '+(m.is_open?'open':'closed');
+  $('market-status').innerHTML=`<span class="dot"></span>${m.is_open?'美股交易中':'美股已休市'} · ${esc(m.et_time)}`;
+  $('updated').textContent='数据更新 '+d.meta.generated_at;
+  const positions=d.positions||[],trades=d.trades||[],pool=d.pool||[],candidates=d.candidates||[];
+  let html='';
+  if((d.errors||[]).length) html+=`<div class="notice">部分行情暂时不可用，页面已用缓存降级：${d.errors.map(esc).join('；')}</div>`;
+  html+=`<div class="summary-grid">
+    ${summary('dollar-sign',money(a.equity),'总权益')}
+    ${summary('chart-line',pct(a.ret_pct),'累计收益',cls(a.ret_pct))}
+    ${summary('wallet',money(a.cash),'可用现金')}
+    ${summary('briefcase',money(a.market_value),'持仓市值 · '+a.position_count+'/'+a.max_positions)}
+    ${summary('scale-balanced',money(a.unrealized,true),'浮动盈亏',cls(a.unrealized))}
+    ${summary('circle-check',money(a.realized,true),'已实现盈亏',cls(a.realized))}
+  </div>`;
+  html+=`<div class="two-col"><section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('chart-area')}</span><h2>权益曲线</h2></div><div id="equity-chart"></div></section>
+    <section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('gauge-high')}</span><h2>账户与风控</h2></div>
+    <div class="side-metrics">
+      <div class="side-metric"><b>${pct(a.exposure_pct,false)}</b><span>仓位</span></div>
+      <div class="side-metric"><b>${pct(a.max_dd)}</b><span>历史最大回撤</span></div>
+      <div class="side-metric"><b>${num(a.win_rate,1)}%</b><span>平仓胜率 · ${a.closed_count}笔</span></div>
+      <div class="side-metric"><b>${a.profit_factor==null?'--':num(a.profit_factor,2)}</b><span>盈亏比</span></div>
+    </div>
+    <div class="regime">大盘过滤：${m.regime_ok?'<span class="trend-yes">允许开仓</span>':'<span class="trend-no">暂停开仓</span>'}<br>
+      ${esc(m.benchmark)} 现价 <b>$${num(m.benchmark_price)}</b> · SMA50 <b>$${num(m.benchmark_sma50)}</b><br>
+      单笔风险 ${num(s.risk_pct,1)}% · 单票上限 ${num(s.max_weight_pct,0)}% · 模拟滑点 ${num(s.slippage_bps,0)}bp
+    </div></section></div>`;
+  html+=`<section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('briefcase')}</span><h2>当前持仓</h2><span class="sub">${positions.length}只</span></div>`;
+  if(!positions.length) html+=empty('当前空仓。策略只有在大盘过滤通过且个股触发突破时才开仓。');
+  else html+=`<div class="table-wrap"><table class="data-table"><thead><tr><th>代码</th><th class="num">股数</th><th class="num">成本</th><th class="num">现价</th><th class="num">市值/仓位</th><th class="num">浮动盈亏</th><th class="num">止损</th><th>建仓时间</th></tr></thead><tbody>${positions.map(p=>`<tr><td><span class="symbol">${esc(p.symbol)}</span><div class="sub">${esc(p.quote_name)}</div></td><td class="num mono">${qty(p.qty)}</td><td class="num">$${num(p.avg)}</td><td class="num">$${num(p.last)}</td><td class="num">$${num(p.mv)}<div class="sub">${pct(p.weight_pct,false)}</div></td><td class="num ${cls(p.upnl)}">${money(p.upnl,true)}<div class="sub">${pct(p.upnl_pct)}</div></td><td class="num">$${num(p.stop)}</td><td class="sub">${esc(p.opened||'--')}</td></tr>`).join('')}</tbody></table></div>`;
+  html+='</section>';
+  html+=`<section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('crosshairs')}</span><h2>股票池与突破信号</h2><span class="sub">${candidates.length}只触发</span></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>代码</th><th class="num">现价/涨跌</th><th class="num">SMA50</th><th class="num">RSI14</th><th class="num">45日高点</th><th class="num">距突破</th><th>状态</th></tr></thead><tbody>${pool.map(p=>`<tr><td><span class="symbol">${esc(p.symbol)}</span><div class="sub">${esc(p.name)}</div></td><td class="num">$${num(p.price)}<div class="sub ${cls(p.chg_pct)}">${pct(p.chg_pct)}</div></td><td class="num">$${num(p.sma50)}</td><td class="num">${num(p.rsi14,1)}</td><td class="num">$${num(p.breakout45)}</td><td class="num ${p.breakout_distance_pct>0?'gain':''}">${pct(p.breakout_distance_pct)}</td><td>${p.signal?'<span class="signal-badge s-buy">突破触发</span>':p.above_sma50?'<span class="signal-badge s-watch">趋势之上 · 等待</span>':'<span class="signal-badge s-wait">趋势未通过</span>'}</td></tr>`).join('')}</tbody></table></div></section>`;
+  html+=`<section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('clock-rotate-left')}</span><h2>交易记录</h2><span class="sub">最近${trades.length}笔</span></div>`;
+  if(!trades.length) html+=empty('还没有交易记录。');
+  else html+=`<div class="table-wrap"><table class="data-table"><thead><tr><th>时间</th><th>代码</th><th>方向</th><th class="num">股数</th><th class="num">成交价</th><th class="num">实现盈亏</th><th>原因</th></tr></thead><tbody>${trades.map(t=>`<tr><td class="sub">${esc(t.ts)}</td><td class="symbol">${esc(t.symbol)}</td><td>${t.side==='buy'?'<span class="gain">买入</span>':'<span class="loss">卖出</span>'}</td><td class="num mono">${qty(t.qty)}</td><td class="num">$${num(t.price)}</td><td class="num ${cls(t.pnl)}">${t.side==='sell'?money(t.pnl,true):'--'}</td><td class="reason">${esc(t.reason)}</td></tr>`).join('')}</tbody></table></div>`;
+  html+='</section>';
+  if(d.backtest){const b=d.backtest;html+=`<section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('flask')}</span><h2>历史回测参考</h2></div><div class="metric-grid">
+    ${RV.ui.metric(pct(b.ret_pct),'策略收益 · '+esc(b.start)+' 至 '+esc(b.end))}
+    ${RV.ui.metric(pct(b.spy_pct),'同期 SPY')}
+    ${RV.ui.metric(pct(b.max_dd),'最大回撤')}
+    ${RV.ui.metric((b.trades||[]).length+' 笔','样本内交易')}
+  </div><p class="sub" style="margin-top:12px">回测仅覆盖当前 ${pool.length} 只股票和有限历史区间，不代表未来收益；实时模拟也不包含真实市场全部成交摩擦。</p></section>`}
+  html+=`<section class="section"><div class="section-title"><span class="title-icon">${RV.ui.icon('book-open')}</span><h2>策略怎么运行</h2></div><div class="strategy-grid">
+    <div class="strategy-item"><b>① 入场</b>SPY在50日线上方；个股收盘突破前${s.breakout_days}日最高收盘、位于SMA${s.sma_days}上方且RSI低于${s.rsi_max}。</div>
+    <div class="strategy-item"><b>② 仓位</b>按账户权益的${s.risk_pct}%计算止损风险，支持碎股；单票不超过${s.max_weight_pct}%，最多${a.max_positions}只。</div>
+    <div class="strategy-item"><b>③ 离场</b>初始止损为入场价−${s.stop_atr}×ATR；浮盈达到${s.trail_r}R后，以峰值−${s.trail_atr}×ATR移动止损。</div>
+  </div></section>`;
+  $('content').innerHTML=html;
+  requestAnimationFrame(()=>drawChart(d.equity_curve||[]));
+}
+function drawChart(rows){
+  const el=$('equity-chart');if(!el||!window.echarts)return;
+  if(chart){chart.dispose();chart=null}chart=echarts.init(el);
+  chart.setOption({animation:false,grid:{left:58,right:18,top:24,bottom:42},tooltip:{trigger:'axis',valueFormatter:v=>'$'+num(v)},xAxis:{type:'category',data:rows.map(r=>r.ts),axisLabel:{hideOverlap:true}},yAxis:{type:'value',scale:true,axisLabel:{formatter:v=>'$'+num(v,0)},splitLine:{lineStyle:{color:'#eef0f3'}}},series:[{name:'权益',type:'line',showSymbol:false,data:rows.map(r=>r.equity),lineStyle:{width:2,color:'#2563eb'},itemStyle:{color:'#2563eb'},areaStyle:{color:'rgba(37,99,235,.08)'}}]});
+}
+async function loadSnapshot(manual=false){
+  if(loading)return;loading=true;const btn=$('refresh');btn.disabled=true;btn.textContent='更新中…';
+  try{const d=await RV.API.fetch('us-sim.json');render(d)}catch(e){if(manual)$('content').innerHTML=`<div class="notice">读取失败：${esc(e.message)}。请确认后台已运行 python3 scripts/us_sim.py。</div>`}
+  finally{loading=false;btn.disabled=false;btn.textContent='↻ 刷新数据'}
+}
+window.addEventListener('resize',()=>chart&&chart.resize());
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadSnapshot()});
+loadSnapshot();setInterval(()=>{if(!document.hidden)loadSnapshot()},30000);
+</script>
+</body>
+</html>

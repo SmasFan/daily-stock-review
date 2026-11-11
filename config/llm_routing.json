@@ -1,0 +1,69 @@
+{
+  "_note": "2026-11-08 本地 vs 云端 ds4.1 对比结论落地：交易类短 JSON 固定纯本地；宏观长上下文+联网简报走云端 ds4.1，本地仅降级初稿。改这里或设环境变量 DSR_MACRO_MODEL / DSR_DECISION_MODEL 即可切。DSR_LLM_LOCAL_ONLY=1 可强制全部纯本地。",
+  "_evidence": {
+    "date": "2026-11-08",
+    "tasks": 3,
+    "models": ["group/local-auto", "ollama/orcarouter/Qwen3.8-27B-Uncensored:iq3_m", "workbuddy/deepseek-v4.1-flash"],
+    "gate": "三方 7/7 allow 一致",
+    "bn_trade": "三方 hold / 0 仓位一致",
+    "macro": "本地 27B 中性55均衡(2板块, 日期误写成11/3)；ds4.1 防御42防守(5板块, 引用678涨4633跌/创业板-3.96%/PMI49.3)",
+    "latency": "ds4.1 2.6~5.2s；本地27B 33.6~63.6s",
+    "result_file": "/tmp/llm_compare_results.json"
+  },
+  "routes": {
+    "macro": {
+      "model": "workbuddy/deepseek-v4.1-flash",
+      "tier": "cloud",
+      "web": true,
+      "timeout": 60,
+      "max_tokens": 1400,
+      "fallback": "local-draft",
+      "label": "云端 ds4.1"
+    },
+    "gate": {
+      "model": "group/local-code",
+      "tier": "local",
+      "web": false,
+      "timeout": 45,
+      "max_tokens": 900,
+      "fallback": "ollama",
+      "label": "本地 qwen3-coder"
+    },
+    "bn_gate": {
+      "model": "group/local-code",
+      "tier": "local",
+      "web": false,
+      "timeout": 30,
+      "max_tokens": 900,
+      "fallback": "ollama",
+      "label": "本地 qwen3-coder"
+    },
+    "candidates": {
+      "model": "group/local-code",
+      "tier": "local",
+      "web": false,
+      "timeout": 90,
+      "max_tokens": 1400,
+      "fallback": "ollama",
+      "label": "本地 qwen3-coder"
+    },
+    "stock_news": {
+      "model": "group/local-code",
+      "tier": "local",
+      "web": false,
+      "timeout": 90,
+      "max_tokens": 1200,
+      "fallback": "ollama",
+      "label": "本地 qwen3-coder"
+    },
+    "bn_review": {
+      "model": "group/local-code",
+      "tier": "local",
+      "web": false,
+      "timeout": 120,
+      "max_tokens": 1800,
+      "fallback": "ollama",
+      "label": "本地 qwen3-coder"
+    }
+  }
+}
