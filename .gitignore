@@ -40,6 +40,9 @@ binance-llm-bot/*.out
 data/
 holdings.json
 strategy/report_data.json
+# 前端数据快照（由 scripts/update_*.py 生成，运行时自行产出）
+sector_valuation_data.js
+watchlist_data.js
 binance-llm-bot/reviews/
 binance-llm-bot/*.out
 
