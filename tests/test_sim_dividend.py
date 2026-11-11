@@ -201,3 +201,37 @@ class TestBacktest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestIntradaySession(unittest.TestCase):
+    """当日涨幅刷新 + 非交易时段不交易（2026-11-11）。"""
+    def test_weekday_boundaries(self):
+        from datetime import datetime
+        # 2026-11-11 是周三
+        for h, m, want in [(9, 14, False), (9, 15, True), (11, 35, True),
+                           (11, 36, False), (12, 54, False), (12, 55, True),
+                           (15, 5, True), (15, 6, False)]:
+            with self.subTest(hm="%02d:%02d" % (h, m)):
+                self.assertEqual(S.in_session(datetime(2026, 11, 11, h, m)), want)
+
+    def test_weekend_closed(self):
+        from datetime import datetime
+        self.assertFalse(S.in_session(datetime(2026, 11, 14, 10, 0)))  # 周六
+
+    def test_refresh_plan_updates_day_change(self):
+        st = S.new_state()
+        st["positions"] = [{
+            "code": "600177", "name": "雅戈尔", "shares": 800, "avg": 6.69,
+            "lots": 1, "last": 8.0, "last_chg": None,
+            "buy_date": "2024-07-23", "ts": "", "levels": {},
+        }]
+        orig = S.closed_closes
+        S.closed_closes = lambda code, use_cache=True: (None, [100.0] * 80)
+        try:
+            S.refresh_plan(st, {"600177": {"price": 8.47, "change": 0.12}}, use_cache=True)
+        finally:
+            S.closed_closes = orig
+        self.assertEqual(st["positions"][0]["last"], 8.47)
+        self.assertEqual(st["positions"][0]["last_chg"], 0.12)
+        row = next(r for r in st["plan"] if r["code"] == "600177")
+        self.assertEqual(row["chg"], 0.12)
