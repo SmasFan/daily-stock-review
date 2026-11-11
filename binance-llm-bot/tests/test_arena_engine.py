@@ -178,5 +178,34 @@ class TestArbitration(unittest.TestCase):
         self.assertEqual(ex.orders, [])
 
 
+class TestS2GuardAndCooldown(unittest.TestCase):
+    """S2 持仓时实时价跌破日线 SMA50 就离场 + 平仓后冷却（2026-11-12 SOXS 教训）。"""
+
+    def _ctx(self, price):
+        # 前 61 根 100、后 20 根 200：日线 20 根动量 +100%，SMA50≈140，日线收盘 200 在上方
+        d = [100.0] * 61 + [200.0] * 20
+        return {'d': d, 'price': price, 'ma20': None, 'ma50': None, 'ma200': None}
+
+    def test_s2_holds_above_sma50(self):
+        self.assertEqual(A.sig_daily_trend(self._ctx(201.0), 'long'), 'long')
+
+    def test_s2_exits_when_price_breaks_sma50(self):
+        self.assertIsNone(A.sig_daily_trend(self._ctx(139.0), 'long'))
+
+    def test_s2_open_signal_ignores_realtime_price(self):
+        # 空仓时只看日线收盘，不受盘中价影响
+        self.assertEqual(A.sig_daily_trend(self._ctx(100.0), None), 'long')
+
+    def test_cooldown_blocks_reentry(self):
+        now = 1_700_000_000.0
+        st = {'last_exit': {'SOXS/USDT:USDT': now}}
+        self.assertTrue(A.in_cooldown(st, 'SOXS/USDT:USDT', now=now + 60))
+        self.assertFalse(A.in_cooldown(st, 'SOXS/USDT:USDT',
+                                       now=now + A.COOLDOWN_MIN * 60 + 1))
+
+    def test_cooldown_without_record(self):
+        self.assertFalse(A.in_cooldown({}, 'SOXS/USDT:USDT'))
+
+
 if __name__ == '__main__':
     unittest.main()

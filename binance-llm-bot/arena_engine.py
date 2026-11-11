@@ -54,6 +54,8 @@ PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://1
 LOOP_MIN = float(os.environ.get('ARENA_LOOP_MIN', os.environ.get('LOOP_MIN', '15')))
 DRY = os.environ.get('ARENA_DRY', '0').lower() not in ('0', 'false', 'off', 'no')
 MIN_NOTIONAL = float(os.environ.get('MIN_NOTIONAL', '5'))
+# 同一标的平仓后的冷却时间（分钟）：防止「止损→立刻重开→再止损」的连环亏
+COOLDOWN_MIN = float(os.environ.get('ARENA_COOLDOWN_MIN', '20'))
 
 # 23 只（剔除了 1h 数据异常的 KORU 跳变 1840%、XYZ 跳变 153%）
 SYMBOLS = ['AMZN', 'COIN', 'CRCL', 'EWJ', 'GOOGL', 'HOOD', 'INTC', 'META', 'MSTR',
@@ -91,13 +93,21 @@ def sig_hybrid(ctx, holding):
 
 
 def sig_daily_trend(ctx, holding):
-    """S2 只做多：日线 20 根动量 > 2% 且收盘在日线 SMA50 上方。"""
+    """S2 只做多：日线 20 根动量 > 2% 且收盘在日线 SMA50 上方。
+
+    持仓时再用实时价防守一次：盘中跌破日线 SMA50 就先离场。
+    否则一根 -18% 的 K 线要等到第二天日线收盘才反应（2026-11-12 SOXS 实例）。
+    """
     d = ctx['d']
     if len(d) < 21:
         return None
     mom = d[-1] / d[-21] - 1
     ma50d = sma(d, 50)
     ok = mom > 0.02 and (ma50d is None or d[-1] > ma50d)
+    if ok and holding == 'long' and ma50d:
+        px = ctx.get('price')
+        if px and px < ma50d:
+            return None
     return 'long' if ok else None
 
 
@@ -271,6 +281,12 @@ def pos_count(st, sid):
     return sum(1 for p in st['real_pos'].values() if p.get('strategy') == sid)
 
 
+def in_cooldown(st, sym, now=None):
+    """刚平过仓的标的一段时间内不再开仓（避免止损后立刻重开、再止损）。"""
+    t = (st.get('last_exit') or {}).get(sym) or 0
+    return (now or time.time()) - float(t) < COOLDOWN_MIN * 60
+
+
 def stats_of(st):
     """按策略聚合：笔数 / 胜率 / 累计盈亏 / 平均盈亏。"""
     out = {}
@@ -379,6 +395,7 @@ def close_position(ex, st, name, why='信号离场', dry=None):
                          'pnl_pct': round(ret_pct, 2),
                          'ts_in': int(pos.get('ts') or 0), 'ts_out': int(time.time()),
                          'why': why})
+    st.setdefault('last_exit', {})[sym] = time.time()
     st['real_pos'].pop(sym, None)
     save_state(st)
     note(st, '平%s %s %s @%.2f 盈亏 %+.2fU (%+.2f%%) ｜%s'
@@ -404,6 +421,7 @@ def sync_from_real(ex, st):
     for sym in list(st['real_pos'].keys()):
         if sym not in alive:
             note(st, '交易所已无 %s 仓位，本地记录清理' % sym)
+            st.setdefault('last_exit', {})[sym] = time.time()
             st['real_pos'].pop(sym, None)
     for sym, real in alive.items():
         if sym not in st['real_pos']:
@@ -490,6 +508,8 @@ def decide(ex, st, dry=DRY, echo_progress=True):
         if sym_of(name) in st['real_pos']:
             continue
         ctx = ctxs[name]
+        if in_cooldown(st, sym_of(name)):
+            continue
         for strat in STRATS:
             if pos_count(st, strat['id']) >= strat['max_pos']:
                 continue
