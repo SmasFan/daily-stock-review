@@ -23,3 +23,18 @@
   状态页「策略竞技场」板块、日志 `arena.log`；`guard.py` 改读 state_arena 按每笔 sl_pct 兜底。
 - 回测与结论：`binance-llm-bot/backtest/arena.py`、`ARENA.md`、`arena_results.csv`。
 - 已知差异：第一版不接 profit_guard（无分批止盈/移动止盈）。
+
+## 前端适配层（2026-11-12，参照 smas·fx 手机状态台）
+- `assets/css/smasfx.css` 是**覆盖层**：在 `common.css` 之后引入，改 token/背景/卡片描边/顶栏，
+  手机（<720px）显示 `assets/js/smasfx-nav.js` 注入的底部 5 视图条 + 更多面板，桌面（≥720px）隐藏。
+  整文件删掉即可回退旧外观。断点：`@media (max-width:719px)` / `(min-width:720px)` / `(min-width:1100px)`。
+- `assets/js/smasfx-nav.js` **独立、不依赖 RV / common.js**：自带内联 SVG 图标（有 RV 时用 RV.ui.icon），
+  还在 head 加载的页面靠 DOMContentLoaded / setTimeout / load 三次兜底注入；`dsrbar_card.html`
+  （macOS 菜单栏 popover）明确排除，不要给它加导航。
+- 21 个根目录 HTML 全部接入：18 个共享层页面（common.css + common.js）与 3 个自包含页面
+  （`binance.html` / `perp.html` / `watchlist.html`，link/script 插在 `</head>` 前以覆盖其自带 style）。
+  自包含页由脚本加 `body.sfx-has-nav`，用于底部留白、长标题缩进与状态条换行。
+- `index.html` 首屏 4 格状态条读 `review.json` / `recommend.json` / `sim_live.json`（`pools.all.accounts`）/
+  `us-sim.json`，入口卡片手机 2 列、720px 3 列、1100px 4 列。
+- 验证脚本（临时）：`/tmp/dsr_shot.py`（CDP 真视口 390×844 与 1440×900，检查横向溢出、
+  tabbar 显隐、JS 错误），截图在 `/tmp/dsr-shots/`。改前端后建议跑一遍：18 页全绿。

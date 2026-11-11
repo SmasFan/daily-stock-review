@@ -5,38 +5,58 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>每日复盘工作台</title>
 <link rel="stylesheet" href="assets/css/common.css?v=4">
+<link rel="stylesheet" href="assets/css/smasfx.css?v=1">
 <style>
-.entry-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+.entry-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .entry-card {
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-  padding:28px 24px; text-decoration:none; color:var(--text); box-shadow:var(--shadow);
-  transition:transform .15s, box-shadow .15s; display:block;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:12px 12px 11px; text-decoration:none; color:var(--text); box-shadow:var(--shadow);
+  transition:transform .15s, box-shadow .15s; display:block; min-width:0; overflow:hidden;
 }
-.entry-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+.entry-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-hover); }
 .entry-card .e-icon {
-  font-size:22px; width:48px; height:48px; display:flex; align-items:center; justify-content:center;
-  background:var(--surface-2); border-radius:12px; color:var(--accent); margin-bottom:14px;
+  font-size:15px; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  background:var(--surface-2); border-radius:9px; color:var(--brand); margin-bottom:9px;
 }
-.entry-card h3 { font-size:19px; font-weight:700; margin-bottom:8px; }
-.entry-card p { font-size:13px; color:var(--text-2); }
-.entry-card .e-stat { margin-top:14px; font-size:13px; font-weight:700; color:var(--accent); }
-.hero { text-align:center; padding:44px 24px 28px; }
-.hero h1 { font-size:32px; font-weight:800; letter-spacing:-1px; }
-.hero p { color:var(--text-2); margin-top:10px; font-size:14px; }
+.entry-card h3 { font-size:14.5px; font-weight:650; margin-bottom:5px; }
+.entry-card p { font-size:11.5px; color:var(--muted); line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.entry-card .e-stat { margin-top:9px; font-size:11px; font-weight:600; color:var(--brand); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hero { padding:14px 2px 12px; }
+.hero h1 { font-size:20px; font-weight:650; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.hero p { color:var(--muted); margin-top:5px; font-size:12px; }
+.hero #gen { font-size:11px; color:var(--dim); }
+.sfx-strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.sfx-cell { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; box-shadow:var(--shadow); min-width:0; }
+.sfx-cell .k { font-size:10.5px; color:var(--dim); }
+.sfx-cell .v { font-size:18px; font-weight:650; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sfx-cell .s { font-size:10.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (min-width:720px){
+  .entry-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .sfx-strip { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .hero { padding:20px 2px 16px; }
+  .hero h1 { font-size:26px; }
+  .entry-card { padding:18px 16px; }
+  .entry-card .e-icon { width:40px; height:40px; font-size:18px; }
+  .entry-card h3 { font-size:17px; }
+  .entry-card p { font-size:12.5px; -webkit-line-clamp:3; }
+}
+@media (min-width:1100px){ .entry-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 </style>
 </head>
 <body>
 <div class="container">
   <div id="app"></div>
   <div class="hero">
-    <h1><i class="fa-solid fa-chart-line" style="color:var(--accent)"></i> 每日复盘工作台</h1>
+    <h1><i class="fa-solid fa-chart-line" style="color:var(--brand)"></i> 每日复盘工作台</h1>
     <p>技术分析 · 多因子选股 · 网格回测 —— 一站式复盘</p>
-    <p id="gen" style="font-size:12px"></p>
+    <p id="gen"></p>
   </div>
+  <div class="sfx-strip" id="sfx-status"></div>
   <div class="entry-grid" id="entries"><div class="loading">加载中…</div></div>
   <footer>数据由 <code>python run_review.py</code> 生成 · 仅供学习研究，不构成投资建议</footer>
 </div>
 <script src="assets/js/common.js?v=3"></script>
+<script src="assets/js/smasfx-nav.js?v=1"></script>
 <script src="assets/js/rvui.js?v=2"></script>
 <script src="assets/js/stockchart.js?v=3"></script>
 <script>
@@ -146,6 +166,28 @@
       <p>复盘技术分析 / 推荐多因子选股 / 网格回测，三套逻辑详解</p>
       <div class="e-stat">${RV.ui.icon('circle-question', 'fa-xs')} 看看每个指标怎么算</div>
     </a>`);
+  // 顶部状态条：首屏直接给四个关键读数（手机 2×2，桌面 1×4）
+  const temp = review && review.temperature ? `${review.temperature.score} · ${review.temperature.label}` : '--';
+  const tempSub = review && review.stats ? `涨 ${review.stats.up} / 跌 ${review.stats.down}` : '等待复盘数据';
+  const first = rec && rec.picks && rec.picks[0] ? rec.picks[0] : null;
+  const poolAll = liveSim && liveSim.pools && liveSim.pools.all ? liveSim.pools.all : null;
+  const accObj = (poolAll && poolAll.accounts) || (liveSim && liveSim.accounts) || {};
+  const acts = Object.keys(accObj);
+  const posN = acts.length
+    ? acts.map(k => ((accObj[k] || {}).positions || []).length).reduce((a, b) => a + b, 0)
+    : ((liveSim && liveSim.positions) || []).length;
+  const ver = liveSim && liveSim.meta
+    ? (liveSim.meta.strategy_version || (liveSim.meta.strategy || {}).version || '--') : '--';
+  const liveSub = `策略 ${ver}`;
+  const usAcc = usSim && usSim.account ? usSim.account : null;
+  const cells = [
+    ['大盘温度', temp, tempSub],
+    ['今日首推', first ? first.name : '--', first ? `${first.rating} · ${first.total_score}分` : '等待推荐数据'],
+    ['实时模拟', acts.length ? `${acts.length} 账户` : '--', acts.length ? `${posN} 仓 · ${liveSub}` : liveSub],
+    ['美股模拟', usAcc ? `$${RV.fmt.num(usAcc.equity, 2)}` : '--', usAcc ? `收益 ${RV.fmt.pct(usAcc.ret_pct)}` : '等待美股数据'],
+  ];
+  document.getElementById('sfx-status').innerHTML = cells.map(([k, v, s]) =>
+    `<div class="sfx-cell"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join('');
   box.innerHTML = cards.join('');
 })();
 </script>

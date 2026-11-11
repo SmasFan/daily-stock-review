@@ -407,9 +407,13 @@
     'border:1px solid var(--border,#e5e7eb);box-shadow:0 8px 24px rgba(0,0,0,0.12);' +
     'color:var(--text,#111827);font-size:12px;line-height:1.6;text-align:left;' +
     'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;';
-  document.body.appendChild(TIP);
+  const attachTip = () => {
+    if (!TIP.isConnected && document.body) document.body.appendChild(TIP);
+  };
+  if (document.body) attachTip(); else document.addEventListener('DOMContentLoaded', attachTip);
 
   function show(dot) {
+    attachTip();
     try {
       const d = JSON.parse(dot.getAttribute('data-info') || '{}');
       TIP.innerHTML = (d.label ? '<b>' + d.label + '</b>' : '') + (d.content || '');
