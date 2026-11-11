@@ -88,6 +88,7 @@
       <button class="tab on" data-tab="bn">币安</button>
       <button class="tab" data-tab="dv">红利</button>
       <button class="tab" data-tab="sl">全池</button>
+      <button class="tab" data-tab="mn">挖矿</button>
     </div>
   </div>
 
@@ -149,6 +150,29 @@
       <h4 id="sl-pos-title">当前持仓</h4>
       <div id="sl-pos"></div>
     </section>
+
+    <!-- 挖矿（WSL 8181 OneZeroDash → data/miner_live.json） -->
+    <section id="mn" class="hide">
+      <div class="hero">
+        <div class="eq" id="mn-eq">—</div>
+        <div class="r">
+          <b id="mn-usd">—</b>
+          <span id="mn-prl">24h 预估 —</span>
+        </div>
+      </div>
+      <div class="pools">
+        <div>算力 · 全网<b id="mn-hr">—</b><span id="mn-share">—</span></div>
+        <div>币价 · 24h<b id="mn-price">—</b><span id="mn-net">—</span></div>
+      </div>
+      <div class="pools" style="padding-top:0">
+        <div>24h 预估收益<b id="mn-est">—</b><span id="mn-est-d">—</span></div>
+        <div>GPU<b id="mn-gpu">—</b><span id="mn-gpu-d">—</span></div>
+      </div>
+      <h4>算力曲线 · 近 2 小时 <span style="font-weight:400;color:var(--fg3)" id="mn-spark-h"></span></h4>
+      <div id="mn-spark"></div>
+      <h4>矿机状态</h4>
+      <div id="mn-rows"></div>
+    </section>
   </div>
 
   <div class="acts">
@@ -170,10 +194,11 @@ const fmt = (n, d = 2) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleSt
 const pct = n => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%';
 const cls = n => n > 0 ? 'up' : (n < 0 ? 'down' : 'dim');
 
-let BANK = null, DIV = null, SIM = null, tab = 'bn', simKey = '', lastOk = 0;
+let BANK = null, DIV = null, SIM = null, MINER = null, tab = 'bn', simKey = '', lastOk = 0;
 const qs = new URLSearchParams(location.search);
 if (qs.get('tab') === 'dv') tab = 'dv';
 if (qs.get('tab') === 'sl') tab = 'sl';
+if (qs.get('tab') === 'mn') tab = 'mn';
 if (qs.get('acc')) simKey = qs.get('acc');
 
 // 卡片里的按钮走本机 8765 端口的小端点（dsrbar/main.go startCmdServer）。
@@ -190,15 +215,17 @@ if (qs.get('autotest') === '1') setTimeout(() => send('ping'), 1500);
 
 async function load() {
   const bust = '?t=' + Date.now();
-  const [a, b, c] = await Promise.all([
+  const [a, b, c, d] = await Promise.all([
     fetch('data/binance_arena.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch('data/sim_dividend.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch('data/sim_live.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('data/miner_live.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   if (a) BANK = a;
   if (b) DIV = b;
   if (c) SIM = c;
-  if (a || b || c) lastOk = Date.now();
+  if (d) MINER = d;
+  if (a || b || c || d) lastOk = Date.now();
   render();
 }
 
@@ -346,18 +373,69 @@ function renderSim() {
   $('#sl-plan-title').textContent += '（' + waits.length + '）';
 }
 
+function renderMiner() {
+  if (!MINER) { $('#mn-eq').textContent = '—'; $('#mn-rows').innerHTML = '<div class="empty">矿机数据桥未启动</div>'; return; }
+  const m = MINER, g = m.gpu || {}, s = m.shares || {}, cpu = m.cpu || {};
+  const money = n => '$' + fmt(n, 2);
+  const parts = (m.hashrateText || '—').split(' ');
+  const unit = parts[1] || 'H/s';
+  const scale = {'H/s':1, 'kH/s':1e3, 'MH/s':1e6, 'GH/s':1e9, 'TH/s':1e12, 'PH/s':1e15, 'EH/s':1e18}[unit] || 1;
+  const hs = v => fmt(v / scale, 1) + ' ' + unit;
+  $('#mn-eq').innerHTML = parts[0] + '<small>' + unit + '</small>';
+  $('#mn-usd').textContent = money(m.dailyUsd) + ' / 24h';
+  $('#mn-usd').className = m.ok ? 'r' : 'r down';
+  $('#mn-prl').textContent = fmt(m.dailyPrl) + ' PRL · 理论值';
+  $('#mn-hr').textContent = m.hashrateText || '—';
+  $('#mn-share').textContent = '全网 ' + (m.netHashrateText || '—') + ' · 占 ' + fmt(m.sharePct, 4) + '%';
+  $('#mn-price').textContent = money(m.price) + ' (' + pct(m.change24h) + ')';
+  $('#mn-price').className = cls(m.change24h);
+  $('#mn-net').textContent = '市值 $' + fmt((m.mcap || 0) / 1e6, 1) + 'M · 高度 ' + fmt(m.height, 0) + ' · ' + (m.source || '—');
+  $('#mn-est').textContent = money(m.dailyUsd);
+  $('#mn-est-d').textContent = fmt(m.dailyPrl) + ' PRL · 出块 ' + fmt(m.blockTime, 0) + 's · 奖励 ' + fmt(m.blockReward, 0) + ' · 池费 ' + fmt(m.poolFeePct, 1) + '%';
+  $('#mn-gpu').textContent = fmt(g.temp, 0) + '°C · ' + fmt(g.power, 0) + 'W';
+  $('#mn-gpu-d').textContent = '限 ' + fmt(g.limit, 0) + 'W · 利用率 ' + fmt(g.util, 0) + '% · 风扇 ' + fmt(g.fan, 0) + '%' + (g.eco ? ' · 节能' : '');
+
+  const vals = (m.spark || []).filter(v => v > 0);
+  if (vals.length >= 2) {
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+    const pts = vals.map((v, i) => (i / (vals.length - 1) * 300).toFixed(1) + ',' + (38 - (v - lo) / span * 32).toFixed(1)).join(' ');
+    $('#mn-spark').innerHTML = '<svg viewBox="0 0 300 42" preserveAspectRatio="none" style="width:100%;height:42px;display:block">'
+      + '<polyline points="' + pts + '" fill="none" stroke="#0e9f8a" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+    $('#mn-spark-h').textContent = '最低 ' + hs(lo) + ' · 最高 ' + hs(hi);
+  } else {
+    $('#mn-spark').innerHTML = '<div class="empty">暂无曲线</div>';
+    $('#mn-spark-h').textContent = '';
+  }
+
+  const ok = m.ok && m.running && m.poolStatus === 'Connected';
+  const rows = [
+    ['状态', (m.running ? '运行中' : '已停止') + ' · 矿池 ' + (m.poolStatus || '—'), ok ? 'down' : 'up'],
+    ['矿机', (m.worker || '—') + ' · v' + (m.version || '—') + ' · ' + (m.algo || '—'), ''],
+    ['运行', (m.uptime || '—') + ' · 数据延迟 ' + fmt(m.staleSeconds, 0) + 's', ''],
+    ['份额', '接受 ' + (s.accepted || 0) + ' · 拒绝 ' + (s.rejected || 0) + ' · 无效 ' + (s.invalid || 0) + ' · 有效率 ' + fmt(s.acceptRate, 1) + '%', ''],
+    ['显存 / 频率', fmt(g.memUsed, 0) + '/' + fmt(g.memTotal, 0) + ' MB · ' + fmt(g.smMhz, 0) + ' MHz', ''],
+    ['CPU', fmt(cpu.util, 0) + '% · ' + fmt(cpu.power, 0) + ' W', ''],
+  ];
+  $('#mn-rows').innerHTML = rows.map(r =>
+    '<div class="row"><span class="nm">' + r[0] + '</span>'
+    + '<span class="q' + (r[2] ? ' ' + r[2] : '') + '" style="white-space:normal;text-align:right;max-width:78%">' + r[1] + '</span></div>'
+  ).join('') + (m.ok ? '' : '<div class="empty up">数据桥异常：' + (m.bridgeError || '超时') + ' · 显示上次数据</div>');
+}
+
 function render() {
-  renderBank(); renderDiv(); renderSim();
+  renderBank(); renderDiv(); renderSim(); renderMiner();
   $('#bn').classList.toggle('hide', tab !== 'bn');
   $('#dv').classList.toggle('hide', tab !== 'dv');
   $('#sl').classList.toggle('hide', tab !== 'sl');
+  $('#mn').classList.toggle('hide', tab !== 'mn');
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
   // 主按钮随当前页签切到对应的完整看板
-  $('#go-main').dataset.go = {bn:'dashboard', dv:'dividend', sl:'sim'}[tab] || 'dashboard';
-  const t = BANK?.generatedAt || DIV?.meta?.updated || '';
+  $('#go-main').dataset.go = {bn:'dashboard', dv:'dividend', sl:'sim', mn:'dashboard'}[tab] || 'dashboard';
+  const t = tab === 'mn' ? (MINER?.generatedAt || '') : (BANK?.generatedAt || DIV?.meta?.updated || '');
   const ok = lastOk && (Date.now() - lastOk) < 90000;
   $('#dot').className = 'dot' + (ok ? '' : ' off');
   $('#foot-time').textContent = t ? '更新 ' + t : '未取到数据';
+  $('#foot-note').textContent = tab === 'mn' ? (MINER?.ok ? '矿机 · 每 20 秒' : '矿机数据过期') : '每 15 秒刷新';
 }
 
 cmdButtons();
