@@ -78,60 +78,34 @@
       '纳斯达克': 'microchip',
       '标普500': 'star',
     };
-    // 扁平配色：柔和红涨绿跌 + 强度分级（与推荐页一致）
-    const IDX_PALETTE = {
-      up: { bg: ['#fef2f2', '#fee2e2', '#fecaca'], tx: ['#dc2626', '#dc2626', '#b91c1c'] },
-      down: { bg: ['#f0fdf4', '#dcfce7', '#bbf7d0'], tx: ['#16a34a', '#16a34a', '#15803d'] },
-      neu: { bg: '#f4f5f7', tx: '#4b5563' },
-    };
-    function idxStyle(change) {
-      if (!change) return { bg: IDX_PALETTE.neu.bg, tx: IDX_PALETTE.neu.tx };
-      const mag = Math.min(Math.abs(change) / 3, 1);   // 3% 封顶
-      const lvl = mag < 0.4 ? 0 : (mag < 0.8 ? 1 : 2);
-      const p = change > 0 ? IDX_PALETTE.up : IDX_PALETTE.down;
-      return { bg: p.bg[lvl], tx: p.tx[lvl] };
-    }
+    // smas·fx 组件：白底细描边格子，涨跌只染数字（不再整卡红绿大色块）
     const idxCards = (d.indices || []).map((i, idx) => {
-      const s = idxStyle(i.change_pct);
       const short = IDX_SHORT[i.name] || i.name;
-      const ico = IDX_ICON[i.name] ? RV.ui.icon(IDX_ICON[i.name]) : '';
+      const ico = IDX_ICON[i.name] ? RV.ui.icon(IDX_ICON[i.name], 'fa-xs') : '';
       return `
-      <div class="idx-card" data-i="${idx}" style="background:${s.bg};border-top-color:${s.tx}" title="点击查看 ${i.name} 技术详情">
-        <span class="idx-short">${ico} ${short}</span>
-        <span class="idx-card-pct" style="color:${s.tx}">${RV.fmt.pct(i.change_pct)}</span>
-        <span class="idx-card-close">${RV.fmt.num(i.close)}</span>
+      <div class="idxcell" data-i="${idx}" title="点击查看 ${i.name} 技术详情">
+        <span>${ico} ${short} · ${i.name}</span>
+        <b class="num">${RV.fmt.num(i.close)}</b>
+        <small class="num ${RV.fmt.cls(i.change_pct)}">${RV.fmt.pct(i.change_pct)}</small>
       </div>`;
     }).join('');
 
-    // 大盘评估（市场热度）：涨跌家数 / 平均涨跌 / 买卖信号（与推荐页同口径）
-    function tempColor(score) {
-      if (score >= 70) return '#e74c3c';
-      if (score >= 55) return '#f39c12';
-      if (score >= 40) return '#3498db';
-      return '#27ae60';
-    }
+    // 大盘评估：smas·fx callout（左侧 brand 竖线 + 分数徽章 + 四格读数）
     function assessCard(tt) {
       if (!tt || tt.score == null) return '';
-      const c = tempColor(tt.score);
-      return `<div class="idx-assess" style="--ia-color:${c}">
-        <div class="ia-left">
-          <div>
-            <span class="ia-label">${RV.ui.icon('temperature-high', 'fa-xs')} 大盘评估</span>
-            <div class="ia-score-row">
-              <span class="ia-score" style="color:${c}">${tt.score}</span>
-              <span class="ia-tag">${tt.label}</span>
-            </div>
-          </div>
+      const tagCls = tt.score >= 60 ? 'up' : (tt.score < 40 ? 'down' : '');
+      return `<div class="callout">
+        <div class="ct">
+          <span>大盘评估 · ${tt.label}</span>
+          <span class="score">${tt.score}</span>
         </div>
-        <div class="ia-mid">
-          <div class="tempo-bar"><div class="tempo-fill" style="width:${tt.score}%;background:${c}"></div></div>
-          <div class="ia-metrics">
-            <span>${RV.ui.icon('arrow-trend-up', 'fa-xs')} 涨家占比 <b>${tt.breadth != null ? tt.breadth + '%' : '--'}</b></span>
-            <span>${RV.ui.icon('scale-balanced', 'fa-xs')} 平均涨跌 <b class="${RV.fmt.cls(tt.avg_change)}">${RV.fmt.pct(tt.avg_change)}</b></span>
-            <span>${RV.ui.icon('bullseye', 'fa-xs')} 买${tt.bull ?? '--'} / 卖${tt.bear ?? '--'}</span>
-          </div>
+        <div class="kpis" style="margin-top:9px">
+          <div class="kpi"><div class="k">涨家占比</div><div class="v">${tt.breadth != null ? tt.breadth + '%' : '--'}</div></div>
+          <div class="kpi"><div class="k">平均涨跌</div><div class="v ${RV.fmt.cls(tt.avg_change)}">${RV.fmt.pct(tt.avg_change)}</div></div>
+          <div class="kpi"><div class="k">买 / 卖</div><div class="v">${tt.bull ?? '--'} / ${tt.bear ?? '--'}</div></div>
+          <div class="kpi"><div class="k">温度分</div><div class="v ${tagCls}">${tt.score}</div></div>
         </div>
-        <span class="ia-hint">${RV.ui.icon('mouse-pointer', 'fa-xs')} 点击指数卡弹出详情</span>
+        <div class="tempo-bar"><div class="tempo-fill" style="width:${tt.score}%"></div></div>
       </div>`;
     }
 
@@ -177,7 +151,7 @@
             <span>全市场上涨占比 ${(d.market_regime.breadth_up_ratio * 100).toFixed(0)}%（≥${(d.market_regime.threshold * 100).toFixed(0)}%）</span>
             <span>仅保留跑赢沪深300(${RV.fmt.pct(d.market_regime.benchmark_change)})的买入信号，${d.market_regime.downgraded_count} 只降为观望</span>
           </div>` : ''}
-      <div class="idx-cards">${idxCards}</div>
+      <div class="idxgrid">${idxCards}</div>
       ${factorCards ? `<div class="idx-factor-grid">${factorCards}</div>` : ''}
     </div>`;
 
@@ -564,7 +538,7 @@
         const esc = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } };
         document.addEventListener('keydown', esc);
       }
-      app.querySelectorAll('.idx-card[data-i]').forEach(c => {
+      app.querySelectorAll('.idxcell[data-i]').forEach(c => {
         c.addEventListener('click', () => openIdxModal(c.getAttribute('data-i')));
       });
       app.querySelectorAll('.sector-group').forEach(g => {
