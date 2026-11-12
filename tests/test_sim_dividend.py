@@ -235,3 +235,66 @@ class TestIntradaySession(unittest.TestCase):
         self.assertEqual(st["positions"][0]["last_chg"], 0.12)
         row = next(r for r in st["plan"] if r["code"] == "600177")
         self.assertEqual(row["chg"], 0.12)
+
+
+class TestExpandWeights(unittest.TestCase):
+    """2026-11-12 扩池：核心 6 只全份、新增 4 只半份，且老账本自动迁移。"""
+
+    def test_pool_and_weight_sum(self):
+        self.assertEqual(len(S.POOL), 10)
+        self.assertEqual(len(S.CORE_CODES), 6)
+        self.assertEqual(len(S.WEIGHTS), 4)
+        self.assertAlmostEqual(S.WSUM, 8.0)
+
+    def test_unit_budget(self):
+        core = S.unit_budget("600900")
+        ext = S.unit_budget("601988")
+        self.assertAlmostEqual(core, S.RULE["start_cash"] / 6, places=2)
+        self.assertAlmostEqual(ext, S.RULE["start_cash"] * 0.5 / 8, places=2)
+        self.assertLess(ext, core / 2)
+
+    def test_buy_lot_ext_uses_half_budget(self):
+        a, b = S.new_state(), S.new_state()
+        S.buy_lot(a, "600900", 25.0, "2026-11-12", "10:00")
+        S.buy_lot(b, "601988", 7.0, "2026-11-12", "10:00")
+        pa = a["positions"][0]
+        pb = b["positions"][0]
+        ca, cb = pa["shares"] * 25.0, pb["shares"] * 7.0
+        # 整手取整后不超过每档预算，且最多差一手
+        self.assertLessEqual(ca, S.unit_budget("600900") / 3)
+        self.assertGreater(ca, S.unit_budget("600900") / 3 - 25.0 * 100)
+        self.assertLessEqual(cb, S.unit_budget("601988") / 3)
+        self.assertGreater(cb, S.unit_budget("601988") / 3 - 7.0 * 100)
+        self.assertEqual(pa["shares"] % 100, 0)
+        self.assertEqual(pb["shares"] % 100, 0)
+        self.assertLess(cb, ca)
+        self.assertEqual((pa["lots"], pb["lots"]), (1, 1))
+
+    def test_new_state_meta_carries_weights(self):
+        st = S.new_state()
+        pool = {p["code"]: p for p in st["meta"]["pool"]}
+        self.assertEqual(pool["600900"]["weight"], 1.0)
+        self.assertEqual(pool["601988"]["weight"], 0.5)
+        self.assertEqual(pool["601988"]["budget"], 6250)
+        self.assertIn("半份", st["meta"]["pool_rule"])
+
+    def test_refresh_plan_migrates_old_meta(self):
+        st = S.new_state()
+        st["meta"]["pool"] = [{"code": c, "name": n} for c, n in S.POOL]
+        st["meta"].pop("pool_rule", None)
+        orig = S.closed_closes
+        S.closed_closes = lambda code, use_cache=True: (None, [100.0] * 80)
+        try:
+            S.refresh_plan(st, use_cache=True)
+        finally:
+            S.closed_closes = orig
+        self.assertEqual(len(st["plan"]), 10)
+        self.assertEqual(st["meta"]["pool"][-1]["weight"], 0.5)
+        self.assertIn("半份", st["meta"]["pool_rule"])
+        self.assertIn("expand", st["meta"]["backtest"])
+
+    def test_expand_improves_risk_adjusted_return(self):
+        ex = S.BACKTEST["expand"]
+        self.assertGreater(ex["added4_half"]["sharpe"], ex["base6"]["sharpe"])
+        self.assertLess(ex["added4_half"]["mdd"], ex["base6"]["mdd"])
+        self.assertLess(ex["equal_weight_all25"]["sharpe"], ex["base6"]["sharpe"])

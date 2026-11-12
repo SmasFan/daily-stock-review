@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""红利低波池 · 独立实时模拟（仅 6 个标的，回踩建仓 + 长持退出）。
+"""红利低波池 · 独立实时模拟（10 个标的，权重配置，回踩建仓 + 长持退出）。
 
-标的（用户 2026-11-09 指定，仅买这些）：
+核心 6 只（用户 2026-11-09 指定，权重 1.0）：
   515080 中证红利ETF招商 / 600900 长江电力 / 159525 红利低波ETF富国
   512800 银行ETF华宝     / 600177 雅戈尔   / 000333 美的集团
+扩池 4 只（2026-11-12 加，权重 0.5，筛选+回测见 BACKTEST["expand"]）：
+  601988 中国银行 / 601000 唐山港 / 601398 工商银行 / 601225 陕西煤业
 
 买法（2026-11-09 用 641 根日K 2024-03-18~2026-11-09 回测选出，训练 70% / 样本外 30%）：
   · 每标独立预算 = 初始资金/6，分 3 档，每档预算 = 预算/3
@@ -47,9 +49,27 @@ POOL = [
     ("512800", "银行ETF华宝"),
     ("600177", "雅戈尔"),
     ("000333", "美的集团"),
+    # ---- 2026-11-12 扩池（各给半份预算）----
+    ("601988", "中国银行"),
+    ("601000", "唐山港"),
+    ("601398", "工商银行"),
+    ("601225", "陕西煤业"),
 ]
 CODES = [c for c, _ in POOL]
 NAMES = dict(POOL)
+
+# 扩池权重：核心 6 只 1.0，新增 4 只 0.5。
+# 回测（同一口径，2024-03-18~2026-11-09）：Sharpe 1.55→1.70、MDD 4.9%→4.2%、样本外 +13.1%→+13.2%
+WEIGHTS = {"601988": 0.5, "601000": 0.5, "601398": 0.5, "601225": 0.5}
+CORE_CODES = [c for c in CODES if c not in WEIGHTS]
+WSUM = len(CORE_CODES) + sum(WEIGHTS.values())  # = 8.0
+
+
+def unit_budget(code):
+    """单标的一份总预算：核心按 1/6 等分，扩池按 0.5/8 给半份。"""
+    if code in WEIGHTS:
+        return RULE["start_cash"] * WEIGHTS[code] / WSUM
+    return RULE["start_cash"] / len(CORE_CODES)
 
 RULE = {
     "label": "红利回踩·长持",
@@ -75,6 +95,14 @@ BACKTEST = {
     "early_tp": {"total": 0.164, "mdd": 0.017, "sharpe": 1.90,
                  "train": 0.115, "train_sh": 1.85, "oos": 0.044, "oos_sh": 2.07, "trades": 183},
     "note": "早止盈把慢牛红利卖飞；长持退出少赚 3.6 点但回撤腰斩、样本外 Sharpe 1.38→1.84",
+    # 2026-11-12 扩池：25 只候选按股息率/波动/分红连续性/与现池相关性筛选 → 同口径回测
+    "expand": {
+        "candidates": 25,
+        "base6": {"total": 0.392, "mdd": 0.049, "sharpe": 1.55, "oos": 0.131, "oos_sh": 1.94, "trades": 72},
+        "added4_half": {"total": 0.361, "mdd": 0.042, "sharpe": 1.70, "oos": 0.132, "oos_sh": 2.02, "trades": 132},
+        "equal_weight_all25": {"total": 0.181, "mdd": 0.064, "sharpe": 1.02},
+        "note": "25 只全等权加进来稀释到 +18%；只加 4 只、各半份 → 少赚 3.1 点换 Sharpe +0.15、回撤 -0.7 点",
+    },
 }
 
 
@@ -106,7 +134,9 @@ def new_state():
         "meta": {
             "created": now_ts(), "updated": now_ts(), "label": RULE["label"],
             "start_cash": RULE["start_cash"], "rule": RULE,
-            "pool": [{"code": c, "name": n} for c, n in POOL],
+            "pool": [{"code": c, "name": n, "weight": WEIGHTS.get(c, 1.0),
+                      "budget": round(unit_budget(c))} for c, n in POOL],
+            "pool_rule": "核心 6 只各 1 份，扩池 4 只各半份（权重分母 %.1f）" % WSUM,
             "backtest": BACKTEST, "asof": "", "plan_date": "",
             "note": "MA 用已收盘 K 线（排除当日未完成 K 线）；盘中仅用实时快照触发",
         },
@@ -193,7 +223,7 @@ def buy_lot(st, code, price, date, hms, why=""):
     lots = pos["lots"] if pos else 0
     if lots >= RULE["maxl"]:
         return 0
-    budget = RULE["start_cash"] / len(CODES) / RULE["maxl"]
+    budget = unit_budget(code) / RULE["maxl"]
     shares = lot_shares(price, min(budget, st["cash"]), cash=st["cash"])
     if shares <= 0:
         return 0
@@ -305,6 +335,11 @@ def refresh_plan(st, quotes=None, use_cache=True):
             row["dist_pct"] = None
         plan.append(row)
     st["plan"] = plan
+    # 账户结构迁移：老账本没有 weight/budget，每次重算时同步（幂等）
+    st["meta"]["pool"] = [{"code": c, "name": n, "weight": WEIGHTS.get(c, 1.0),
+                           "budget": round(unit_budget(c))} for c, n in POOL]
+    st["meta"]["pool_rule"] = "核心 6 只各 1 份，扩池 4 只各半份（权重分母 %.1f）" % WSUM
+    st["meta"]["backtest"] = BACKTEST
     st["meta"]["plan_date"] = today()
     st["meta"]["asof"] = now_ts()
     if quotes:

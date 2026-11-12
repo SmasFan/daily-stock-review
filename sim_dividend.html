@@ -139,7 +139,7 @@ function render(){
     <div class="kpi"><div class="k">最大回撤</div><div class="v">${nf(mdd(),2)}%</div></div>
     <div class="kpi"><div class="k">净值曲线点</div><div class="v">${curve().length}</div></div>
     <div class="kpi"><div class="k">起始日</div><div class="v" style="font-size:13px">${curve().length?curve()[0].date:'—'}</div></div>
-    <div class="kpi"><div class="k">每标预算</div><div class="v">${money(S.meta.start_cash/(S.meta.pool||[]).length)}</div></div>
+    <div class="kpi"><div class="k">每标预算</div><div class="v" style="font-size:13px">${(()=>{const ps=S.meta.pool||[];const c=ps.find(p=>(p.weight||1)>=1)||{budget:S.meta.start_cash/6};const e=ps.find(p=>(p.weight||1)<1);return money(c.budget)+(e?" / "+money(e.budget):"")})()}</div></div>
     <div class="kpi"><div class="k">分档 / 仓位</div><div class="v">${R.maxl} 档</div></div>
   </div>
 
@@ -148,12 +148,12 @@ function render(){
   <details class="fold" data-nav="买法依据"><summary>买法依据 · 回测对比（同口径：整手 / 费用 / 已收盘 MA）</summary><div class="fold-body">${backtestBlock()}</div></details>
   <details class="fold" data-nav="策略规则"><summary>策略规则 · 运行说明</summary><div class="fold-body">
     <div class="rule">
-      <div><b>买</b>现价 ≤ MA20×(1-${nf(R.dip*100,0)}%)，且 &gt; MA60×(1-${nf(R.floor*100,0)}%)，每标最多 ${R.maxl} 档、每档 ${money(S.meta.start_cash/(S.meta.pool||[]).length/R.maxl)} 预算（不足一手但现金够则买一手）</div>
+      <div><b>买</b>现价 ≤ MA20×(1-${nf(R.dip*100,0)}%)，且 &gt; MA60×(1-${nf(R.floor*100,0)}%)，核心 6 只每标 ${R.maxl} 档、每档 ${money(S.meta.start_cash/6/R.maxl)}，扩池 4 只各半份（每档 ${money(S.meta.start_cash*0.5/8/R.maxl)}）（不足一手但现金够则买一手）</div>
       <div><b>减档</b>浮盈 ≥ +${nf(R.tp*100,0)}% 且手上 &gt;1 档 → 卖 1 档，其余继续持有</div>
       <div><b>清仓</b>现价 &lt; MA60×(1-${nf(R.ex*100,0)}%) 或 浮亏 ≤ -${nf(R.sl*100,0)}% → 全清该标</div>
       <div><b>防未来函数</b>MA20/MA60 只用已收盘 K 线（盘中剔除当日未完成 K），实时价仅用于触发</div>
     </div>
-    <div class="note" style="margin-top:10px">${S.meta.note||''}<br>仅交易 6 个指定标的：${(S.meta.pool||[]).map(p=>p.code+' '+p.name).join(' / ')}。<br>
+    <div class="note" style="margin-top:10px">${S.meta.note||''}<br>核心 6 只（全份）+ 扩池 4 只（半份）：${(S.meta.pool||[]).map(p=>p.code+' '+p.name+(p.weight<1?'（半份）':'')).join(' / ')}。<br>
     数据文件 <b>data/sim_dividend.json</b>，由 <b>sim_dividend.py</b> 生成；盘中每 2 分钟随 <b>scripts/sim_intraday_scan.sh</b> 巡检，本页每 60 秒拉取，改动即时生效。</div>
   </div></details>
   <details class="fold" data-nav="成交流水"><summary>成交流水 · 最近 60 笔</summary><div class="fold-body">${tradeRows()}</div></details>
@@ -173,7 +173,7 @@ function drawChart(){
       lineStyle:{width:1.6,color:'#c62828'},areaStyle:{color:'rgba(198,40,40,.06)'}}]});
 }
 async function init(){
-  $('#app').innerHTML=RV.ui.header('红利低波池 · 实时模拟','仅 6 个红利/蓝筹标的 · 回踩建仓 + 长持退出','divsim','');
+  $('#app').innerHTML=RV.ui.header('红利低波池 · 实时模拟','核心 6 只 + 扩池 4 只（半份）· 回踩建仓 + 长持退出','divsim','');
   RV.ui.initSidebar?.();
   await load();
   setInterval(load,60000);
