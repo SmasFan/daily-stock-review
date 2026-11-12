@@ -162,11 +162,12 @@
   const fmt = (v, d) => v == null ? '--' : Number(v).toFixed(d == null ? 2 : d);
   const pcl = v => v > 0 ? 'up' : (v < 0 ? 'down' : 'neutral');
   let S = null;
-  const ORDER = ['aggressive', 'balanced', 'disciplined', 'mix'];
+  const ORDER = ['aggressive', 'balanced', 'disciplined', 'dividend', 'mix'];
   const META = {
     aggressive: { badge: '#dc2626', icon: 'fire', label: '激进' },
     balanced: { badge: '#d97706', icon: 'scale-balanced', label: '稳健' },
     disciplined: { badge: '#2563eb', icon: 'shield-halved', label: '严守纪律' },
+    dividend: { badge: '#0f766e', icon: 'coins', label: '红利' },
     mix: { badge: '#7c3aed', icon: 'layer-group', label: '合并·共识' },
   };
   // 只展示全池 + 冲刺盘；6 股精选池后台仍记账，页面不再提供入口
@@ -965,7 +966,7 @@
       animation: false,
       tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, formatter(p) {
         const i = p[0].dataIndex; const dt = (a.trades || []).filter(t => t.date === dates[i]);
-        let x = dates[i] + '<br>净值 ¥' + fmt(eq[i]) + '（' + RV.fmt.pct(ec[i].daily_return) + '）<br>持仓' + ec[i].pos_count + '只';
+        let x = dates[i] + '<br>净值 ¥' + fmt(eq[i]) + '（' + RV.fmt.pct(ec[i].daily_return) + '）<br>持仓' + (ec[i].pos_count ?? 0) + '只';
         if (dt.length) x += '<br><b>当日' + dt.length + '笔</b>' + dt.map(t => (t.action === 'buy' ? '🔺' : '🔻') + t.name + '@' + (t.time || '')).join('、');
         x += '<br><span style="color:var(--text-2)">点击看每笔</span>'; return x; } },
       grid: { left: 58, right: 20, top: 20, bottom: 24 },

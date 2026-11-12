@@ -265,7 +265,8 @@ function renderDiv() {
       + '<span class="v ' + (Number.isFinite(d) ? cls(d) : '') + '">' + (Number.isFinite(d) ? pct(d) : '—') + '</span></div>';
   }).join('') : '<div class="empty">尚未建仓</div>';
 
-  const plan = (DIV.plan || []).filter(p => p.status !== 'full').slice(0, 5);
+  const plan = (DIV.plan || []).filter(p => p.status !== 'full')
+    .sort((a, b) => (Number(a.dist_pct) || 0) - (Number(b.dist_pct) || 0)).slice(0, 10);
   $('#dv-plan').innerHTML = plan.length ? plan.map(p => {
     const d = Number(p.dist_pct) || 0;
     return '<div class="plan"><span class="nm">' + (p.name || p.code) + '</span>'
@@ -277,8 +278,8 @@ function renderSim() {
   if (!SIM) { $('#sl-eq').textContent = '—'; $('#sl-accts').innerHTML = '<div class="empty">模拟盘未启动</div>'; return; }
   // 只看全池（pools.all）；6 股精选池 (pools.six) 已于 2026-11-10 下线，后台不再记账
   const pool = SIM.pools?.all || {};
-  const keys = ['aggressive', 'balanced', 'disciplined'];
-  const LABEL = {aggressive:'激进', balanced:'稳健', disciplined:'严守纪律', mix:'合并·共识'};
+  const keys = ['aggressive', 'balanced', 'disciplined', 'dividend'];
+  const LABEL = {aggressive:'激进', balanced:'稳健', disciplined:'严守纪律', dividend:'红利', mix:'合并·共识'};
   const accts = keys.map(k => pool.accounts?.[k] ? {...pool.accounts[k], _k: k} : null).filter(Boolean);
   if (pool.mix) accts.push({...pool.mix, _k: 'mix'});
   const sel = simKey ? accts.find(a => a._k === simKey) : null;

@@ -107,6 +107,17 @@ ACCOUNTS = {
         "rules": ["只做 ≥76分 多头/强势多头", "+5%后保本（止损抬到成本）",
                   "+10% 止盈", "大盘非多头或广度弱不进"],
     },
+    # 2026-11-12：红利策略作为第 4 个策略账户进入全池（5 万口径，派生自 sim_dividend.py 账本）
+    "dividend": {
+        "label": "红利", "icon": "coins", "badge": "#0f766e", "kind": "dividend",
+        "budget_frac": 0.0, "max_pos": 10, "cash_reserve": 0.0,
+        "buy_bias": 0.04, "stop_ma": True, "tp_pct": 0.15,
+        "trail": None, "be_at": None, "min_score": 0,
+        "desc": "红利低波回踩长持：核心 6 只 + 扩池 4 只（半份），现价 ≤ MA20×0.96 且 > MA60×0.85 建一档，最多 3 档；+15% 减档，-10% 或破 MA60-12% 清仓。",
+        "rules": ["不追高：只在回踩 MA20 下方 4% 买", "不接飞刀：跌破 MA60-15% 不买",
+                  "金字塔 3 档，涨 15% 减 1 档", "破 MA60-12% 或亏 10% 清仓"],
+        "derived_from": "data/sim_dividend.json",
+    },
 }
 
 REAL_ACCOUNTS = ["aggressive", "balanced", "disciplined"]
@@ -184,6 +195,9 @@ def normalize_state(st):
                 acc[k] = new_account(k, ACCOUNTS[k])
             else:
                 acc[k] = normalize_account(k, acc[k])
+        dv = dividend_account()
+        if dv is not None:
+            acc[DIVIDEND_KEY] = dv
         mx = b.setdefault("mix", {})
         # 旧版 mix = 被动加权指数（只有 equity_curve/daily_log/regime/meta，无现金）
         # → 归档为 meta.index_archive，本账户改为真实 5 万共识账户（与三子账户平行独立）
@@ -278,6 +292,85 @@ def _is_etf(code):
 
 def equity_of(acct):
     return acct["cash"] + sum(p["shares"] * (p.get("last_close") or p["cost"]) for p in acct["positions"])
+
+
+# ---------------- 红利策略账户（2026-11-12：全池第 4 个策略，5 万本金口径） ----------------
+# 红利池的真实交易在 sim_dividend.py 里跑（10 万本金、10 只标的、MA20 回踩 + MA60 清仓）。
+# 全池页要与其他三个策略同台比较，因此按 5 万本金等比例派生一份只读账本：
+#   · 收益率与红利池完全一致（同一笔交易、同一时间点，只按 scale 缩放金额）
+#   · 该账户不进入 all_books() 循环，也不会被 sim_live 的下单逻辑写入
+DIVIDEND_KEY = "dividend"
+DIVIDEND_START = 50000.0
+DIVIDEND_FILE = os.path.join(DATA_DIR, "sim_dividend.json")
+EXTRA_DISPLAY = (DIVIDEND_KEY,)
+
+
+def dividend_account():
+    """把 data/sim_dividend.json 按 5 万本金缩放成 sim_live 账户结构；读不到返回 None。"""
+    if not os.path.exists(DIVIDEND_FILE):
+        return None
+    try:
+        with open(DIVIDEND_FILE, "r", encoding="utf-8") as f:
+            d = json.load(f)
+    except Exception:
+        return None
+    meta = d.get("meta") or {}
+    start = float(meta.get("start_cash") or 100000.0)
+    sc = DIVIDEND_START / start if start else 1.0
+
+    def _n(v, dflt=0.0):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return dflt
+
+    pos = []
+    for p in d.get("positions") or []:
+        last = _n(p.get("last"), _n(p.get("avg")))
+        pos.append({
+            "code": p.get("code"), "name": p.get("name"),
+            "shares": int(round(_n(p.get("shares")) * sc)),
+            "cost": round(_n(p.get("avg")), 4),
+            "last": last, "last_close": last,
+            "last_chg": p.get("last_chg"),
+            "lots": p.get("lots"),
+            "buy_date": p.get("open_date") or p.get("buy_date") or "",
+            "kind": "dividend", "strategy": "红利",
+        })
+    plan = []
+    for r in d.get("plan") or []:
+        plan.append({
+            "code": r.get("code"), "name": r.get("name"),
+            "status": r.get("status"), "signal": "红利回踩" if r.get("status") == "wait" else "已满档",
+            "close": r.get("last"), "buy_below": r.get("dip_price"),
+            "dist_pct": r.get("dist_pct"), "lots": r.get("lots"),
+            "stop_ma": r.get("exit_price"), "tp": None, "stop_atr": None,
+            "gate": "open", "kind": "dividend",
+        })
+    curve = []
+    for c in d.get("equity_curve") or []:
+        curve.append({"date": c.get("date"),
+                      "equity": round(_n(c.get("equity")) * sc, 2),
+                      "cash": round(_n(c.get("cash")) * sc, 2),
+                      "pos_count": c.get("pos_count")})
+    trades = []
+    for t in d.get("trades") or []:
+        row = dict(t)
+        for k in ("shares", "amount", "value"):
+            if row.get(k) is not None:
+                row[k] = round(_n(row.get(k)) * sc, 2)
+        row["kind"] = "dividend"
+        trades.append(row)
+    eq = _n(d.get("cash")) * sc + sum(p["shares"] * p["last"] for p in pos)
+    return {
+        "key": DIVIDEND_KEY, "label": ACCOUNTS["dividend"]["label"],
+        "start_cash": DIVIDEND_START, "cash": round(_n(d.get("cash")) * sc, 2),
+        "positions": pos, "plan": plan, "trades": trades, "equity_curve": curve,
+        "daily_log": d.get("daily_log") or [], "review_log": [], "miss_log": [], "llm_log": [],
+        "equity": round(eq, 2),
+        "meta": {"derived": True, "source": "data/sim_dividend.json", "scale": sc,
+                 "source_start": start, "note": "红利池账本按 5 万口径等比例派生，交易在 sim_dividend.py 执行"},
+    }
 
 
 # ---------------- LLM 个股评审（计划阶段，一次性批量） ----------------
