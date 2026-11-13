@@ -42,3 +42,9 @@
   `us-sim.json`，入口卡片手机 2 列、720px 3 列、1100px 4 列。
 - 验证脚本（临时）：`/tmp/dsr_shot.py`（CDP 真视口 390×844 与 1440×900，检查横向溢出、
   tabbar 显隐、JS 错误），截图在 `/tmp/dsr-shots/`。改前端后建议跑一遍：18 页全绿。
+
+## 模拟盘市场环境自适应（2026-11-14 v4.1）
+- `sim_live.py` 新增 `market_regime()`（上证/创业板 20 日动量 + 创业板 ATR20 + 涨占比 → bull/chop/overheat/bear/panic，连续 2 天确认）；`market_gate()` 里 **panic 直接 block、bear 至多半仓**（环境优先于单日 LLM/过热等软因素）。
+- 组合级风控 `account_regime()`：账户近 20 日回撤 ≥6% 降仓×0.6、≥12% 或连亏 5 笔暂停开仓；`vol_target_pos()` 按创业板 ATR 波动目标化仓位（ATR 4.41% → ×0.45）。回测结论（`scripts/backtest_sprint.py` 120 天）：大盘方向驱动反而跑输（-3.66% vs 稳健 +7.44%，chop 段削掉逆势选股 alpha），组合级 adaptive2 +2.36%/MDD 3.0% 更稳 → **只保留 panic/bear 极端保护 + 组合熔断 + 波动目标化**，不给三账户换参数集。
+- `save()` 给每账户写 `regime_info`（market/portfolio），`sim_live.html` 账户卡与 `dsrbar_card.html` 全池 tab 显示环境标签（如「高波动急跌·熔断」）。
+- 坑：`market_gate(review, sh=..., cyb=...)` 的 sh 参数是给 `market_regime` 的指标 dict（mom20/dev20/atr20），**不是** review 里的 factors（signal/score）；`mkt_bear` 必须读 `idx_sigs['sh000001'].factors`，两者混用会把 bear/panic 判定悄悄变 chop。

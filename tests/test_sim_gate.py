@@ -49,11 +49,11 @@ class FakeJson:
         return None
 
 
-def _gate(review, macro=None, inst=None):
+def _gate(review, macro=None, inst=None, sh=None, cyb=None):
     old = S.load_json
     S.load_json = FakeJson(macro, inst)
     try:
-        return S.market_gate(review, state=None, date="2026-09-18")
+        return S.market_gate(review, state=None, date="2026-09-18", sh=sh, cyb=cyb)
     finally:
         S.load_json = old
 
@@ -73,50 +73,73 @@ class TestGatePos(unittest.TestCase):
 class TestMarketGate(unittest.TestCase):
     def test_healthy_market_is_open(self):
         gate, why = _gate(_review(breadth=55), _llm("中性", 52),
-                          {"overview": {"main_net": 0}})
+                          {"overview": {"main_net": 0}},
+                          sh={"mom20": 1.0, "dev20": 0.3},
+                          cyb={"mom20": 1.0, "atr20": 2.0})
         self.assertEqual(gate, "open")
         self.assertEqual(S.gate_pos_of(gate), 1.0)
 
     def test_overheat_is_caution_not_block(self):
         """普涨过热（资金涌入）只降半仓，不再一单不开 —— 本次改造的核心。"""
         gate, why = _gate(_review(breadth=82.6), _llm("中性", 52),
-                          {"overview": {"main_net": 683e8}})
+                          {"overview": {"main_net": 683e8}},
+                          sh={"mom20": 1.0, "dev20": 0.3},
+                          cyb={"mom20": 1.0, "atr20": 2.0})
         self.assertEqual(gate, "caution")
         self.assertEqual(S.gate_pos_of(gate), 0.5)
         self.assertIn("普涨过热", why)
 
     def test_llm_defensive_is_caution(self):
         gate, why = _gate(_review(breadth=50), _llm("防御", 45),
-                          {"overview": {"main_net": 0}})
+                          {"overview": {"main_net": 0}},
+                          sh={"mom20": 1.0, "dev20": 0.3},
+                          cyb={"mom20": 1.0, "atr20": 2.0})
         self.assertEqual(gate, "caution")
         self.assertIn("LLM宏观防御", why)
 
     def test_stale_llm_defensive_ignored(self):
         """对称新鲜度：过期的「防御」与过期的「多头」一样不可信。"""
         gate, why = _gate(_review(breadth=55), _llm("防御", 45, age_h=90),
-                          {"overview": {"main_net": 0}})
+                          {"overview": {"main_net": 0}},
+                          sh={"mom20": 1.0, "dev20": 0.3},
+                          cyb={"mom20": 1.0, "atr20": 2.0})
         self.assertEqual(gate, "open")
         self.assertIn("过期", why)
 
     def test_attack_when_flow_and_breadth_healthy(self):
         gate, why = _gate(_review(breadth=60), _llm("中性", 52),
-                          {"overview": {"main_net": 150e8}})
+                          {"overview": {"main_net": 150e8}},
+                          sh={"mom20": 3.0, "dev20": 1.0},
+                          cyb={"mom20": 2.0, "atr20": 2.0})
         self.assertEqual(gate, "attack")
         self.assertEqual(S.gate_pos_of(gate), 1.0)
         self.assertIn("进攻档", why)
 
     def test_hard_flat_only_when_bear_and_collapse(self):
         gate, why = _gate(_review(breadth=12, sh_signal="卖出", sh_score=30),
-                          _llm("空头", 30), {"overview": {"main_net": -200e8}})
+                          _llm("空头", 30), {"overview": {"main_net": -200e8}},
+                          sh={"mom20": -3.0, "dev20": -1.0},
+                          cyb={"mom20": -5.0, "atr20": 2.0})
         self.assertEqual(gate, "block")
         self.assertEqual(S.gate_pos_of(gate), 0.0)
 
     def test_bear_without_collapse_is_caution(self):
         """上证转空但个股未崩 → 半仓，不再直接空仓。"""
         gate, why = _gate(_review(breadth=45, sh_signal="减仓", sh_score=40),
-                          _llm("中性", 52), {"overview": {"main_net": 0}})
+                          _llm("中性", 52), {"overview": {"main_net": 0}},
+                          sh={"mom20": -2.0, "dev20": -0.5},
+                          cyb={"mom20": -3.0, "atr20": 2.0})
         self.assertEqual(gate, "caution")
         self.assertNotEqual(S.gate_pos_of(gate), 0.0)
+
+    def test_market_panic_blocks(self):
+        """v4.1：创业板 ATR≥3.5% 且上证 20 日 ≤-2% → 直接 block。"""
+        gate, why = _gate(_review(breadth=50, sh_signal="卖出", sh_score=30),
+                          _llm("中性", 52), {"overview": {"main_net": 0}},
+                          sh={"mom20": -2.5, "dev20": -1.0},
+                          cyb={"mom20": -10.0, "atr20": 4.4})
+        self.assertEqual(gate, "block")
+        self.assertEqual(S.gate_pos_of(gate), 0.0)
 
 
 class TestBreakoutPlan(unittest.TestCase):

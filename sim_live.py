@@ -63,6 +63,41 @@ BREAKOUT_PREM = float(os.environ.get("SIM_BREAKOUT_PREM", "0.005"))         # �
 BREAKOUT_BAND = float(os.environ.get("SIM_BREAKOUT_BAND", "0.03"))          # open/attack：最多追到触发价 ×1.03
 BREAKOUT_BAND_CAUTION = float(os.environ.get("SIM_BREAKOUT_BAND_CAUTION", "0.015"))  # caution：×1.015
 BREAKOUT_MAX_CHG = float(os.environ.get("SIM_BREAKOUT_MAX_CHG", "0.08"))    # 相对昨收最大 +8%
+# ===== 市场环境自适应（v4.0，2026-11-14）=====
+# 背景：2026-10/11 创业板 20 日 -12.5%、60 日 -32.4%、上证跌破 MA20，
+#   但闸门只看「上证 signal/score + 广度」，score 61「观望」就只降半仓；
+#   三套策略的门槛(66/68/76)、回踩(0.5%/2%/3%)、止盈(20%/15%/10%) 完全没变，
+#   结果 9/4 起 激进 -6.9%、稳健 -12.3%（≈创业板同期跌幅）、严守纪律 -0.4%。
+# 做法：每天用「指数动量 + 波动 + 广度」判定环境，环境参数覆盖到
+#   仓位(pos)/门槛(score)/回踩(bias)/止盈(tp)/止损(sl)/是否允许开新仓(new)。
+REGIME_LABELS = {"bull": "趋势多头", "chop": "震荡结构", "bear": "趋势下跌",
+                 "panic": "高波动急跌", "overheat": "普涨过热"}
+REGIME_PARAMS = {
+    "bull":     {"pos": 1.00, "score": 0,  "bias": 0.000, "tp": 1.00, "sl": 1.00, "new": True},
+    "chop":     {"pos": 0.70, "score": 4,  "bias": 0.010, "tp": 0.70, "sl": 0.85, "new": True},
+    "overheat": {"pos": 0.50, "score": 6,  "bias": 0.005, "tp": 0.80, "sl": 0.90, "new": True},
+    "bear":     {"pos": 0.30, "score": 10, "bias": 0.015, "tp": 0.60, "sl": 0.70, "new": True},
+    "panic":    {"pos": 0.00, "score": 99, "bias": 0.020, "tp": 0.50, "sl": 0.60, "new": False},
+}
+REGIME_BULL_MOM = float(os.environ.get("SIM_REGIME_BULL_MOM", "2.0"))     # 上证 20 日 ≥ 此值
+REGIME_BULL_ATR = float(os.environ.get("SIM_REGIME_BULL_ATR", "3.0"))     # 创业板 ATR20% 上限
+REGIME_BEAR_MOM = float(os.environ.get("SIM_REGIME_BEAR_MOM", "-2.5"))
+REGIME_PANIC_ATR = float(os.environ.get("SIM_REGIME_PANIC_ATR", "3.5"))
+REGIME_PANIC_MOM = float(os.environ.get("SIM_REGIME_PANIC_MOM", "-2.0"))
+REGIME_CHOP_MOM = float(os.environ.get("SIM_REGIME_CHOP_MOM", "-6.0"))   # 创业板 20 日
+REGIME_CONFIRM = int(os.environ.get("SIM_REGIME_CONFIRM", "2"))          # 连续确认天数
+# 组合层面自适应（v4.1）：主开关 = 自己回撤 + 波动目标化；大盘 regime 只留极端保护。
+# 120 天回测（2026-07-17~11-13）结论：
+#   adaptive（大盘方向驱动）-3.66% —— 逆势选强势股被 chop 档 0.7 仓位 + 门槛+4 削掉 alpha；
+#   adaptive2（组合回撤 + 波动目标化）+2.36%/MDD 3.0% —— 熔断保留但只在自己亏损时触发。
+# 所以 sim_live 默认：大盘 regime 仅在 panic（ATR≥3.5 且上证20日≤-2%）时 block，
+#   bear 只降档到 caution；账户层用 account_regime()（回撤 6%/12% + 连亏5）+ 波动目标化。
+ACCT_DD_STOP = float(os.environ.get("SIM_ACCT_DD_STOP", "12.0"))     # 近 20 日回撤 ≥ 此值 → 暂停开仓
+ACCT_DD_HALF = float(os.environ.get("SIM_ACCT_DD_HALF", "6.0"))      # 回撤 ≥ 此值 → 仓位 ×0.6
+ACCT_LOSS_STREAK = int(os.environ.get("SIM_ACCT_LOSS_STREAK", "5"))   # 连亏笔数 → 暂停开仓
+VOL_TARGET = float(os.environ.get("SIM_VOL_TARGET", "2.0"))           # 波动目标：创业板 ATR20%
+VOL_POS_MIN = float(os.environ.get("SIM_VOL_POS_MIN", "0.4"))         # 波动目标仓位下限
+ACCT_REGIME_ON = os.environ.get("SIM_ACCT_REGIME", "1") != "0"        # 组合自适应总开关
 # 闸门错失成本监控（v3.12）：记录 block/caution 日的基准与广度，供「防守过度」复核
 MISSED_BENCH = "sh000300"
 # 外部市场因子（build_external.py 产出）：原油/黄金/白银/铜/美债收益率/美元/纳指/VIX/标普
@@ -179,7 +214,8 @@ def normalize_state(st):
     st.setdefault("meta", {})
     m = st["meta"]
     m.setdefault("created", now_ts())
-    m.setdefault("strategy_version", "v4.0")
+    if m.get("strategy_version", "v0") < "v4.1":
+        m["strategy_version"] = "v4.1"
     m.setdefault("accounts", list(REAL_ACCOUNTS))
     m["pools"] = list(POOLS)
     st.setdefault("version_history", [])
@@ -240,6 +276,22 @@ def normalize_account(key, a):
 
 
 def save(state):
+    # v4.1：保存前给每个真账户附加当前环境与组合状态（前端可读，不影响交易逻辑）
+    try:
+        rg = (state.get("meta") or {}).get("regime_now") or {}
+        for p in state.get("pools", {}).values():
+            for key, acct in (p.get("accounts") or {}).items():
+                if key not in REAL_ACCOUNTS:
+                    continue
+                ar = account_regime(acct)
+                ar["vol_pos"] = vol_target_pos((rg.get("inputs") or {}).get("atr20_cyb"))
+                acct["regime_info"] = {
+                    "market": {"regime": rg.get("regime"), "label": rg.get("label"),
+                               "params": rg.get("params"), "why": rg.get("why")},
+                    "portfolio": ar,
+                }
+    except Exception:
+        pass
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=1)
 
@@ -263,7 +315,7 @@ def pool_books():
 
 def new_state():
     return {
-        "meta": {"created": now_ts(), "strategy_version": "v4.0",
+        "meta": {"created": now_ts(), "strategy_version": "v4.1",
                  "accounts": list(REAL_ACCOUNTS), "pools": list(POOLS)},
         "pools": {p: pool_books() for p in POOLS},
         "version_history": [],
@@ -765,7 +817,162 @@ def breakout_band_of(gate):
     return BREAKOUT_BAND_CAUTION if gate == "caution" else BREAKOUT_BAND
 
 
-def market_gate(review, state=None, date=None):
+def index_metrics(code="sh000001", count=70):
+    """指数 20 日动量 / 距 MA20 / ATR20%（均百分比）。取不到返回 {}。"""
+    try:
+        from src import data_provider as dp
+        k = dp.fetch_daily_kline(code, count=count) or {}
+        c = k.get("closes") or []
+        h = k.get("highs") or []
+        l = k.get("lows") or []
+        if len(c) < 25 or len(h) < 25 or len(l) < 25:
+            return {}
+        ma20 = sum(c[-20:]) / 20.0
+        trs = []
+        for i in range(len(c) - 20, len(c)):
+            trs.append(max(h[i] - l[i], abs(h[i] - c[i - 1]), abs(l[i] - c[i - 1])))
+        atr = (sum(trs) / len(trs)) / c[-1] * 100.0 if c[-1] else 0.0
+        return {"price": c[-1],
+                "mom20": (c[-1] / c[-21] - 1.0) * 100.0,
+                "dev20": (c[-1] / ma20 - 1.0) * 100.0,
+                "atr20": atr}
+    except Exception as e:
+        print("  [regime] 指数 %s 取数失败: %s" % (code, e))
+        return {}
+
+
+def account_regime(acct):
+    """组合层面环境（v4.1）：看自己近 20 日回撤与连亏，不看大盘方向。
+
+    回测结论（2026-07-17~11-13）：
+      健康期（chop）稳健基准 +6.9%，组合自适应只 +3.5%（因为波动目标化降了仓）；
+      但在自身开始回撤时熔断及时，整体 MDD 3.0% 优于固定参数的 3.5%。
+    规则：回撤 ≥ ACCT_DD_HALF → 仓位 ×0.6 + 门槛 +4；
+         回撤 ≥ ACCT_DD_STOP 或 连亏 ≥ ACCT_LOSS_STREAK 笔 → 暂停开新仓。
+    """
+    curve = acct.get("equity_curve") or []
+    if len(curve) < 21:
+        return {"regime": "warmup", "pos": 1.0, "score": 0, "why": "样本不足"}
+    eq = [float(c.get("equity") or 0) for c in curve[-21:]]
+    peak = max(eq) or 0.0
+    dd = (peak - eq[-1]) / peak * 100.0 if peak else 0.0
+    trades = [t for t in (acct.get("trades") or []) if t.get("action") == "sell"]
+    streak = 0
+    for t in reversed(trades):
+        if (t.get("pnl") or 0) < 0:
+            streak += 1
+        else:
+            break
+    if dd >= ACCT_DD_STOP or streak >= ACCT_LOSS_STREAK:
+        return {"regime": "broken", "pos": 0.0, "score": 99,
+                "why": "近20日回撤%.1f%%/连亏%d笔→暂停开仓" % (dd, streak)}
+    if dd >= ACCT_DD_HALF:
+        return {"regime": "drawdown", "pos": 0.6, "score": 4,
+                "why": "近20日回撤%.1f%%→降仓" % dd}
+    return {"regime": "healthy", "pos": 1.0, "score": 0, "why": "组合健康"}
+
+
+def vol_target_pos(atr20):
+    """波动目标化仓位：ATR20% 高于目标就缩仓，低于目标不放大（最多 1.0）。"""
+    try:
+        a = float(atr20 or 0)
+    except Exception:
+        return 1.0
+    if a <= 0:
+        return 1.0
+    return max(VOL_POS_MIN, min(1.0, VOL_TARGET / a))
+
+
+def market_regime(review=None, state=None, date=None, sh=None, cyb=None):
+    """判定市场环境并给出参数覆盖（v4.0）。
+
+    输入：上证/创业板 20 日动量、距 MA20、创业板 ATR20%、涨占比
+    输出 regime ∈ {bull, chop, overheat, bear, panic} + params（覆盖到仓位/门槛/回踩/止盈/止损）
+    平滑：新环境需连续 REGIME_CONFIRM 天确认，避免单日抖动；未确认时沿用上一环境。
+    """
+    review = review or {}
+    sh = sh if sh is not None else index_metrics("sh000001")
+    cyb = cyb if cyb is not None else index_metrics("sz399006")
+    temp = review.get("temperature") or {}
+    breadth = temp.get("breadth")
+    if breadth is None and temp.get("market_total"):
+        breadth = (temp.get("market_up") or 0) * 100.0 / temp["market_total"]
+    breadth = float(breadth or 0)
+    mom20 = sh.get("mom20")
+    dev20 = sh.get("dev20")
+    cyb_mom = cyb.get("mom20")
+    atr = cyb.get("atr20")
+    why = []
+    if mom20 is None or dev20 is None:
+        regime = "chop"
+        why.append("指数数据缺失，按震荡处理")
+    elif atr is not None and atr >= REGIME_PANIC_ATR and mom20 <= REGIME_PANIC_MOM:
+        regime = "panic"
+        why.append("创业板 ATR20 %.2f%%≥%.1f%% 且上证20日 %+.1f%%≤%.1f%%" % (
+            atr, REGIME_PANIC_ATR, mom20, REGIME_PANIC_MOM))
+    elif mom20 <= REGIME_BEAR_MOM or (cyb_mom is not None and cyb_mom <= REGIME_CHOP_MOM and dev20 < -1.0):
+        regime = "bear"
+        why.append("上证20日 %+.1f%% / 创业板20日 %s / 距MA20 %+.1f%%" % (
+            mom20, ("%+.1f%%" % cyb_mom) if cyb_mom is not None else "?", dev20))
+    elif breadth >= OVERHEAT_BREADTH and mom20 >= 4.0:
+        regime = "overheat"
+        why.append("涨占比 %.0f%%≥%.0f%% 且上证20日 %+.1f%%（普涨过热）" % (
+            breadth, OVERHEAT_BREADTH, mom20))
+    elif mom20 >= REGIME_BULL_MOM and dev20 > 0.5 and (atr or 0) < REGIME_BULL_ATR:
+        regime = "bull"
+        why.append("上证20日 %+.1f%%≥%.1f%% 站上MA20 %+.1f%% 创业板ATR %.1f%%<%.1f%%" % (
+            mom20, REGIME_BULL_MOM, dev20, atr or 0, REGIME_BULL_ATR))
+    else:
+        regime = "chop"
+        why.append("无明确趋势：上证20日 %+.1f%% 距MA20 %+.1f%% 创业板ATR %.1f%%" % (
+            mom20, dev20, atr or 0))
+
+    meta = None
+    if state is not None:
+        meta = state.setdefault("meta", {})
+    prev = (meta or {}).get("regime_now") or {}
+    prev_rg = prev.get("regime")
+    days = int(prev.get("days") or 0)
+    pending = prev.get("pending") or {}
+    if not prev_rg:
+        final, days, pending = regime, 1, {}
+    elif prev_rg == regime:
+        final, days, pending = regime, days + 1, {}
+    else:
+        pd_ = (int(pending.get("days") or 0) + 1) if pending.get("regime") == regime else 1
+        if pd_ >= REGIME_CONFIRM:
+            final, days, pending = regime, pd_, {}
+        else:
+            final, days, pending = prev_rg, days, {"regime": regime, "days": pd_}
+    out = {"regime": final,
+           "label": REGIME_LABELS.get(final, final),
+           "params": dict(REGIME_PARAMS.get(final) or {}),
+           "raw": regime,
+           "why": why,
+           "inputs": {"mom20_sh": None if mom20 is None else round(mom20, 2),
+                      "mom20_cyb": None if cyb_mom is None else round(cyb_mom, 2),
+                      "dev20_sh": None if dev20 is None else round(dev20, 2),
+                      "atr20_cyb": None if atr is None else round(atr, 2),
+                      "breadth": round(breadth, 1),
+                      "price_sh": sh.get("price")},
+           "days": days, "pending": pending,
+           "date": date, "ts": now_ts()}
+    today = date or time.strftime("%Y-%m-%d")
+    if meta is not None:
+        out["since"] = prev.get("since") if (prev_rg == final) and prev.get("since") else today
+        meta["regime_now"] = out
+        hist = meta.setdefault("regime_history", [])
+        if not hist or hist[-1].get("regime") != final:
+            hist.append({"date": today, "regime": final, "label": out["label"],
+                         "why": "；".join(why), "inputs": out["inputs"], "ts": out["ts"]})
+            if len(hist) > 60:
+                del hist[:-60]
+    else:
+        out["since"] = today
+    return out
+
+
+def market_gate(review, state=None, date=None, sh=None, cyb=None):
     """大盘闸门。返回 (gate, 说明)，gate ∈ {attack, open, caution, reduce, block}。
 
     v3.12：由二元开关改为「仓位旋钮」，软因素只降档，硬崩盘才空仓。
@@ -783,8 +990,11 @@ def market_gate(review, state=None, date=None):
     caution/reduce 不锁定，随时可按最新市场恢复。
     """
     idx_sigs = {x.get("code"): x for x in review.get("indices", [])}
-    sh = (idx_sigs.get("sh000001") or {}).get("factors") or {}
-    mkt_bear = sh.get("signal") in ("卖出", "减仓") and (sh.get("score") or 0) < 45
+    sh_f = (idx_sigs.get("sh000001") or {}).get("factors") or {}
+    if sh is None:
+        sh = sh_f
+    # mkt_bear 用 review 里的 factors（signal/score 结构）；sh/cyb 参数是给 market_regime 的指标 dict
+    mkt_bear = sh_f.get("signal") in ("卖出", "减仓") and (sh_f.get("score") or 0) < 45
     breadth = (review.get("temperature") or {}).get("breadth") or 0
     overheat = breadth >= OVERHEAT_BREADTH
     llm_def, llm_bull, macro_age, llm_stale = False, False, None, False
@@ -828,6 +1038,16 @@ def market_gate(review, state=None, date=None):
     else:
         gate = "open"
     why = []
+    # ===== 环境自适应（v4.0）：环境优先于单日软因素 =====
+    #   panic（高波动急跌）直接空仓；bear（趋势下跌）最多半仓；其余按原 gate 分档。
+    rg = market_regime(review, state=state, date=date, sh=sh, cyb=cyb)
+    # v4.1：环境 regime 优先于单日软因素 —— panic 直接 block，bear 至多半仓
+    if rg["regime"] == "panic":
+        gate = "block"
+        why.append("高波动急跌(panic，环境优先)")
+    elif rg["regime"] == "bear" and gate in ("attack", "open"):
+        gate = "caution"
+        why.append("趋势下跌(bear，最多半仓)")
     if mkt_bear:
         why.append("上证空头")
     if hard_flat:
@@ -1053,6 +1273,31 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
     _score_bonus = (REDUCE_MIN_SCORE_BONUS if _reduce else
                     (CAUTION_SCORE_BONUS if gate == "caution" else 0.0))
     _budget_mul = gate_pos_of(gate) if gate != "open" else 1.0
+    # v4.0 环境参数覆盖：仓位/门槛/回踩/止盈/止损/是否允许开新仓
+    _rg = ((state.get("meta") or {}).get("regime_now") or {})
+    _rp = _rg.get("params") or {}
+    _bias_add = float(_rp.get("bias") or 0)
+    _tp_scale = float(_rp.get("tp") or 1.0)
+    _sl_scale = float(_rp.get("sl") or 1.0)
+    if _rp:
+        _budget_mul *= float(_rp.get("pos") or 0)
+        _score_bonus += float(_rp.get("score") or 0)
+        print("  [regime][%s] %s（仓位×%.2f 门槛+%.0f 回踩+%.1f%% 止盈×%.2f）：%s" % (
+            pool, _rg.get("label"), _rp.get("pos", 1), _rp.get("score", 0),
+            _bias_add * 100, _tp_scale, "；".join(_rg.get("why") or [])[:90]))
+    # 组合层面自适应（每账户）：回撤/连亏熔断 + 波动目标化（v4.1 主开关）
+    acct_reg = {}
+    for key in REAL_ACCOUNTS:
+        if not ACCT_REGIME_ON:
+            acct_reg[key] = {"regime": "off", "pos": 1.0, "score": 0,
+                             "vol_pos": 1.0, "why": "已关闭"}
+            continue
+        _ar = account_regime(acc_b[key])
+        _ar["vol_pos"] = vol_target_pos((_rg.get("inputs") or {}).get("atr20_cyb"))
+        acct_reg[key] = _ar
+        if _ar["regime"] != "healthy":
+            print("  [acct][%s] %s：%s（仓位×%.2f×波动%.2f）" % (
+                pool, ACCOUNTS[key]["label"], _ar["why"], _ar["pos"], _ar["vol_pos"]))
     if gate != "open":
         print("  [gate][%s] %s（仓位×%.2f）" % (pool, gate_why, _budget_mul))
     # 候选：池过滤
@@ -1063,6 +1308,13 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
         acct = acc_b[key]
         held = {p["code"] for p in acct["positions"]}
         cands = []
+        _ar = acct_reg[key]
+        if _ar["pos"] <= 0:
+            per_key[key] = cands
+            continue
+        if not _rp.get("new", True):   # panic：环境禁止开新仓
+            per_key[key] = cands
+            continue
         for it in items:
             if it.get("code") in held:
                 continue
@@ -1070,7 +1322,7 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 continue
             _eb = ext_bonus(it, ext)
             # 外部强烈利空（≤-4.5，如"纳指跌+收益率升+VIX涨"三杀 AI算力）→ 个股门槛额外 +4
-            if (it.get("score") or 0) < cfg["min_score"] + _score_bonus + (-4 if _eb <= -4.5 else 0):
+            if (it.get("score") or 0) < cfg["min_score"] + _score_bonus + _ar["score"] + (-4 if _eb <= -4.5 else 0):
                 continue
             if it.get("trend_status") not in ("强势多头", "多头排列"):
                 continue
@@ -1119,8 +1371,8 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
             ma10 = it.get("ma10") or close
             ideal = it.get("ideal_buy") or it.get("secondary_buy") or close
             # 回踩买点：现价下方 bias 处；且不低于 MA10/ideal 过远
-            floor = min(ideal, close * (1 - cfg["buy_bias"]))
-            buy_below = min(close * (1 - cfg["buy_bias"]), max(floor, close * 0.96))
+            floor = min(ideal, close * (1 - cfg["buy_bias"] - _bias_add))
+            buy_below = min(close * (1 - cfg["buy_bias"] - _bias_add), max(floor, close * 0.96))
             buy_below = round(buy_below, 3)
             # 突破买点（v3.12）：单边上涨时回踩单永远等不到，对「强势多头 + 站上 MA20」
             # 额外给一个现价上方的追入价，仅在 open/attack 档启用（弱市不追）。
@@ -1136,7 +1388,8 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 else:
                     buy_above = round(close * (1 + BREAKOUT_PREM), 3)
                 breakout_band = breakout_band_of(gate)
-            budget = round(CASH_START * cfg["budget_frac"] * _budget_mul, 2)
+            budget = round(CASH_START * cfg["budget_frac"] * _budget_mul
+                           * acct_reg[key]["pos"] * acct_reg[key]["vol_pos"], 2)
             plan.append({
                 "code": it["code"], "name": it.get("name"), "asof": asof,
                 "score": it.get("score"), "signal": it.get("signal"),
@@ -1145,7 +1398,7 @@ def make_plan(state, review, asof, pool, skip_llm=False, log=True):
                 "entry": "回踩+突破" if buy_above else "回踩",
                 "stop_atr": it.get("atr_stop"),
                 "stop_ma": it.get("stop_loss") if cfg["stop_ma"] else None,
-                "tp": round(close * (1 + cfg["tp_pct"]), 3) if cfg["tp_pct"] else None,
+                "tp": round(close * (1 + cfg["tp_pct"] * _tp_scale), 3) if cfg["tp_pct"] else None,
                 "trail": cfg.get("trail"), "be_at": cfg.get("be_at"),
                 "gate": gate, "budget": budget, "status": "wait",
                 # 外部因子结构化分（供统计：ext 分档 vs 实际收益）

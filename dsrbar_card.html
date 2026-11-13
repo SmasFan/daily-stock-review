@@ -319,8 +319,11 @@ function renderSim() {
     + '<span class="v ' + cls(today) + '">' + pct(today) + '</span></div>';
   $('#sl-accts').innerHTML = totalRow + accts.map(a => {
     const r = retOf(a);
+    const mkt = a.regime_info?.market || {};
+    const port = a.regime_info?.portfolio || {};
+    const env = mkt.label ? ' · ' + mkt.label + (port.regime === 'broken' ? '·熔断' : (port.regime === 'drawdown' ? '·降仓' : '')) : '';
     return '<div class="row' + (simKey === a._k ? ' on' : '') + '" data-acc="' + a._k + '">'
-      + '<span class="nm">' + (LABEL[a._k] || a.label || '—') + '</span>'
+      + '<span class="nm">' + (LABEL[a._k] || a.label || '—') + '<i>' + env + '</i></span>'
       + '<span class="q">' + fmt(eqOf(a), 0) + ' 元</span>'
       + '<span class="v ' + cls(r) + '">' + pct(r) + '</span></div>';
   }).join('');

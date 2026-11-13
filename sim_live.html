@@ -788,7 +788,10 @@
       const a = acct(key);
       ret = retOf(key); val = eqOf(key);
       const wait = a.plan.filter(p => p.status === 'wait').length;
-      sub = `持${a.positions.length} · 待触发${wait} · 已${a.trades.length}笔`;
+      const ri = a.regime_info || {};
+      const mkt = ri.market || {}; const port = ri.portfolio || {};
+      const env = mkt.label ? `${mkt.label}${port.regime === 'broken' ? '·熔断' : (port.regime === 'drawdown' ? '·降仓' : '')}` : '';
+      sub = `持${a.positions.length} · 待触发${wait} · 已${a.trades.length}笔` + (env ? ' · ' + env : '');
     }
     const cum = (val / 50000 - 1) * 100;
     const holds = (acct(key) && acct(key).positions) || [];

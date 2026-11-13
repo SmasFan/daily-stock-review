@@ -48,9 +48,85 @@ CFG = {
     "disciplined": {"max_pos": 4, "frac": 0.14, "buy_bias": 0.03, "min_score": 76,
                     "tp": 0.10, "stop": None, "trail_peak": None, "trail_drop": None,
                     "stop_mode": "atr", "be": 0.05},
+    # v4.0：环境自适应（基准=稳健参数，每日按 bull/chop/bear/panic 覆盖仓位/门槛/回踩/止盈）
+    "adaptive": {"max_pos": 5, "frac": 0.18, "buy_bias": 0.02, "min_score": 68,
+                 "tp": 0.15, "stop": None, "trail_peak": None, "trail_drop": None,
+                 "stop_mode": "atr", "be": None, "regime_aware": True},
+    # v4.1：组合层面自适应（不看大盘方向，看自己赚不赚钱 + 波动目标化）
+    "adaptive2": {"max_pos": 5, "frac": 0.18, "buy_bias": 0.02, "min_score": 68,
+                  "tp": 0.15, "stop": None, "trail_peak": None, "trail_drop": None,
+                  "stop_mode": "atr", "be": None, "portfolio_aware": True,
+                  "vol_target": 2.0},
 }
 STRAT_LABEL = {"sprint": "一周冲刺", "aggressive": "模拟·激进", "balanced": "模拟·稳健",
-               "disciplined": "模拟·纪律"}
+               "disciplined": "模拟·纪律", "adaptive": "模拟·自适应",
+               "adaptive2": "模拟·组合自适应"}
+
+# ---- 环境自适应（与 sim_live.market_regime 同口径）----
+RG_PARAMS = {
+    "bull":  {"pos": 1.00, "score": 0,  "bias": 0.000, "tp": 1.00, "new": True},
+    "chop":  {"pos": 0.70, "score": 4,  "bias": 0.010, "tp": 0.70, "new": True},
+    "bear":  {"pos": 0.30, "score": 10, "bias": 0.015, "tp": 0.60, "new": True},
+    "panic": {"pos": 0.00, "score": 99, "bias": 0.020, "tp": 0.50, "new": False},
+}
+
+
+def _idx_metrics_at(k, date):
+    from bisect import bisect_right
+    d = k.get("dates") or []
+    c = k.get("closes") or []
+    h = k.get("highs") or []
+    l = k.get("lows") or []
+    i = bisect_right(d, date) - 1
+    if i < 25 or i >= len(c) or i >= len(d):
+        return {}
+    ma20 = sum(c[i - 19:i + 1]) / 20.0
+    trs = [max(h[j] - l[j], abs(h[j] - c[j - 1]), abs(l[j] - c[j - 1]))
+           for j in range(i - 19, i + 1)]
+    return {"mom20": (c[i] / c[i - 20] - 1) * 100, "dev20": (c[i] / ma20 - 1) * 100,
+            "atr20": (sum(trs) / len(trs)) / c[i] * 100 if c[i] else 0.0}
+
+
+def portfolio_regime(curve, trades):
+    """组合层面环境：看自己近 20 日回撤与连续亏损，不看大盘方向。
+    理由：120 天回测显示「大盘弱→减仓」会削掉逆势选强势股的 alpha。
+    """
+    if len(curve) < 21:
+        return {"pos": 1.0, "score": 0, "new": True, "why": "样本不足"}
+    eq = [c["equity"] for c in curve[-21:]]
+    peak = max(eq)
+    dd = (peak - eq[-1]) / peak * 100 if peak else 0.0
+    sells = [t for t in trades if t.get("action") == "sell"]
+    streak = 0
+    for t in reversed(sells):
+        if (t.get("pnl") or 0) < 0:
+            streak += 1
+        else:
+            break
+    if dd >= 12 or streak >= 5:
+        return {"pos": 0.0, "score": 99, "new": False,
+                "why": "近20日回撤%.1f%%/连亏%d笔→暂停开仓" % (dd, streak)}
+    if dd >= 6:
+        return {"pos": 0.60, "score": 4, "new": True,
+                "why": "近20日回撤%.1f%%→降仓" % dd}
+    return {"pos": 1.0, "score": 0, "new": True, "why": "组合健康"}
+
+
+def regime_at(idx, date):
+    """用 date 及之前的指数 K 线判定环境（bull/chop/bear/panic）。"""
+    sh = _idx_metrics_at(idx.get("sh") or {}, date)
+    cyb = _idx_metrics_at(idx.get("cyb") or {}, date)
+    if not sh:
+        return "chop"
+    mom, dev = sh["mom20"], sh["dev20"]
+    atr = cyb.get("atr20")
+    if atr is not None and atr >= 3.5 and mom <= -2.0:
+        return "panic"
+    if mom <= -2.5 or (cyb.get("mom20") is not None and cyb["mom20"] <= -6.0 and dev < -1.0):
+        return "bear"
+    if mom >= 2.0 and dev > 0.5 and (atr or 0) < 3.0:
+        return "bull"
+    return "chop"
 
 
 def analyze_on(code, name, date):
@@ -74,6 +150,18 @@ def run_compare(start_date, end_date, pool):
         except Exception:
             pass
     print("可用 %d 只" % len(klines), flush=True)
+    # 指数（供环境自适应判定）
+    print("预载指数...", flush=True)
+    idx = {}
+    from src import data_provider as dp_i
+    for key, code in (("sh", "sh000001"), ("cyb", "sz399006")):
+        try:
+            kk = dp_i.fetch_daily_kline_long(code, count=400, min_days=150, use_cache=True)
+            if kk and len(kk.get("dates") or []) > 40:
+                idx[key] = kk
+        except Exception as e:
+            print("  指数 %s 失败: %s" % (code, e), flush=True)
+    print("指数 %d 条" % len(idx), flush=True)
     # 交易日历
     all_dates = set()
     for _, k in klines.values():
@@ -115,9 +203,34 @@ def run_compare(start_date, end_date, pool):
 
     for di, date in enumerate(days):
         prev = days[di - 1] if di > 0 else None
+        rg = regime_at(idx, prev or date) if idx else "chop"
+
+        def _dcfg(sk, acc=None):
+            base = CFG[sk]
+            cfg = dict(base)
+            if base.get("regime_aware"):
+                rp = RG_PARAMS.get(rg) or RG_PARAMS["chop"]
+                cfg["frac"] = base["frac"] * rp["pos"]
+                cfg["min_score"] = base["min_score"] + rp["score"]
+                cfg["buy_bias"] = base["buy_bias"] + rp["bias"]
+                cfg["tp"] = base["tp"] * rp["tp"]
+                cfg["_allow_new"] = rp["new"]
+            if base.get("portfolio_aware") and acc is not None:
+                pr = portfolio_regime(acc["curve"], acc["trades"])
+                atr = (_idx_metrics_at(idx.get("cyb") or {}, date) or {}).get("atr20") or 2.0
+                vt = base.get("vol_target") or 2.0
+                vol_pos = max(0.4, min(1.0, vt / atr)) if atr else 1.0
+                cfg["frac"] = base["frac"] * pr["pos"] * vol_pos
+                cfg["min_score"] = base["min_score"] + pr["score"]
+                cfg["_allow_new"] = pr["new"]
+                cfg["_why"] = "%s · ATR%.1f%%→仓×%.2f" % (pr["why"], atr, vol_pos)
+            return cfg
+
         # ---------- 盘前选股（前日信号，全池每日算一次共享） ----------
         for sk in CFG:
-            acc = accts[sk]; cfg = CFG[sk]
+            acc = accts[sk]; cfg = _dcfg(sk, acc)
+            if cfg.get("_allow_new") is False:
+                continue
             if len(acc["positions"]) >= cfg["max_pos"] or not prev:
                 continue
             held = {p["code"] for p in acc["positions"]}
@@ -127,6 +240,9 @@ def run_compare(start_date, end_date, pool):
             # 排序：score + 动量（sprint 更激进追强）
             cands.sort(key=lambda x: (x[0].get("score") or 0) +
                        min(x[0].get("change_60d") or 0, 30) / 8, reverse=True)
+            cands = [c for c in cands if (c[0].get("score") or 0) >= cfg["min_score"]]
+            if not cands:
+                continue
             it, code, name = cands[0]
             k = klines[code][1]
             if date not in k["dates"]:
@@ -173,7 +289,7 @@ def run_compare(start_date, end_date, pool):
 
         # ---------- 卖出判断 ----------
         for sk in CFG:
-            acc = accts[sk]; cfg = CFG[sk]
+            acc = accts[sk]; cfg = _dcfg(sk, acc)
             for pos in list(acc["positions"]):
                 code = pos["code"]
                 k = klines.get(code, (None, None))[1]
