@@ -46,7 +46,9 @@ def make_fex():
         'secret': os.environ.get('BN_SECRET', ''),
         'enableRateLimit': True,
         'proxies': {'http': PROXY, 'https': PROXY},
-        'options': {'defaultType': 'future', 'adjustForTimeDifference': True},
+        'options': {'defaultType': 'future', 'adjustForTimeDifference': True,
+                    # demo-api/demo-dapi 的 exchangeInfo 经常超时；只拉 demo-fapi 的线性合约
+                    'fetchMarkets': ['linear'], 'timeout': 60000},
     })
     # 禁 keep-alive: 低频轮询(30s-6h)下复用连接会被代理/服务器回收导致 RemoteDisconnected, 每次新建连接更稳
     ex.session.headers['Connection'] = 'close'
@@ -129,10 +131,26 @@ def check_once(ex):
 
 def main():
     ex = make_fex()
-    ex.load_markets()
+    # demo-fapi 的 exchangeInfo 偶发 SSLError/超时：重试 3 次，仍失败也不退出（
+    # guard 是止损守护，进程活着比启动即崩更重要，循环里会继续重试）
+    for i in range(3):
+        try:
+            ex.load_markets()
+            break
+        except Exception as e:
+            log.warning('load_markets 失败(%d/3): %s', i + 1, e)
+            time.sleep(3)
     log.info('止损守护启动: 每%ds检查, 日线 -%.1f%% / 短线 -%.1f%% / 空头 +%.1f%%',
              CHECK_SEC, SL_PCT * 100, SHORT_SL_PCT * 100, SHORT_STOP_PCT * 100)
     while True:
+        if not getattr(ex, 'markets', None):
+            try:
+                ex.load_markets()
+                log.info('市场字典已重新加载')
+            except Exception as e:
+                log.warning('市场字典加载失败，下轮再试: %s', e)
+                time.sleep(CHECK_SEC)
+                continue
         # WSL 时钟漂移（实测本机比币安快 ~2.4s）：ccxt 的 adjustForTimeDifference 只在
         # load_markets 时校准一次，之后漂移会让请求报 -1021（timeout/挂止损失败）。每轮重新校准。
         try:

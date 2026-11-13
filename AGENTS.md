@@ -26,6 +26,7 @@
   状态页「策略竞技场」板块、日志 `arena.log`；`guard.py` 改读 state_arena 按每笔 sl_pct 兜底。
 - 回测与结论：`binance-llm-bot/backtest/arena.py`、`ARENA.md`、`arena_results.csv`。
 - 已知差异：第一版不接 profit_guard（无分批止盈/移动止盈）。
+- **进程保活（2026-11-13）**：`~/Library/LaunchAgents/com.smas.binance-arena.plist` 跑 `watchdog.py`（RunAtLoad + KeepAlive），watchdog 再管 arena_engine / guard / status_page / `review.py auto` 四个子进程。**2026-11-13 11:50 系统重启导致币安栈全停 1 小时 10 分（此前无任何自启项，crontab 为空）**，加了这个 LaunchAgent 才不会再断。`guard.py` 的 `load_markets()` 会因 `demo-fapi.binance.com/fapi/v1/exchangeInfo` 偶发 SSLError 崩掉并被 watchdog 每分钟重启，已改为重试 3 次 + 失败不退出（循环里补加载），否则止损守护形同虚设。
 
 ## 前端适配层（2026-11-12，参照 smas·fx 手机状态台）
 - `assets/css/smasfx.css` 是**覆盖层**：在 `common.css` 之后引入，改 token/背景/卡片描边/顶栏，

@@ -402,6 +402,24 @@ window.addEventListener('focus', () => load());
 render();
 load();
 setInterval(load, 15000);
+
+// WKWebView 长时间保活偶发白屏（WebContent 被系统回收）：HTML/数据都正常，但视图不重绘。
+// 自愈：DOM 文本为空 或 连续 3 分钟没成功取到数据 → 带时间戳重载；90 秒内不重复。
+// 注意：若 WebContent 已整个挂掉，JS 定时器也会停，此时仍需重启 app（~/.local/bin/dsrbar-restart）。
+let lastHeal = 0;
+function heal() {
+  const now = Date.now();
+  const blank = (document.body.innerText || '').replace(/\s+/g, '').length < 20;
+  const stale = lastOk && (now - lastOk) > 180000;
+  if (!(blank || stale) || now - lastHeal < 90000) return;
+  lastHeal = now;
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('_heal', String(now));
+    location.replace(u.href);
+  } catch (e) { location.reload(); }
+}
+setInterval(heal, 30000);
 </script>
 </body>
 </html>
