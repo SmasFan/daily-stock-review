@@ -11,11 +11,12 @@
   * 每个策略独立记账（trades 里打 strategy 标签），胜率和收益互不污染。
 
 策略（全池 23 标回测，每策略独立 100U / 5x / 双边 0.04%）:
-  S1 日内双向  权重 60%  +19.2% 胜率 57.4% 样本外 +17.3%   ← 唯一三把尺子都赢
-  S5 区间突破  权重 20%  +1.5%  胜率 30.4% 样本外 +16.2%   ← 只最近两月好，小仓位试
-  S2 日线趋势  权重  8%  -2.6%  胜率 29.2% 样本外 +1.4%
-  S6 区间网格  权重  7%  -4.4%  胜率 38.5% 样本外 -2.4%
-  S4 超跌反弹  权重  5%  -7.4%  胜率 45.8% 样本外 -11.3%
+  S1 日内双向  权重 60%  +19.2% 胜率 57.4% 样本外 +17.3%   ← 唯一三把尺子都赢（保留）
+  S5 区间突破  权重 20%  +1.5%  胜率 30.4% 样本外 +16.2%   ← 保留
+  S2/S4/S6     权重 8/5/7%  2026-11-17 起换统一多因素打分器（direction_score.py），
+               都能自由判断多空、不再纯多死扛；三方案对比见 backtest/unified_compare.py：
+               方案B 组合 +13.2% / MDD 15.9% / 样本外 +15.6%（胜 S1/S5 不变），
+               三策略胜率 S2 35%→70% / S6 38%→66% / S4 46%→52%。
   S3 双均线    不上线（-25.3%，两次回测都翻负）
 
 口径差异（重要）: 第一版**不接 profit_guard 分批止盈/移动止盈**，只用固定止损 +
@@ -39,6 +40,7 @@ load_dotenv(os.path.join(BASE, '.env'))
 import algo_tools          # noqa: E402  显式 Algo 条件单 API (STOP)
 import pos_guard           # noqa: E402  方向/规模守卫
 import intraday_signal as isig  # noqa: E402  日线定方向 + 1h 择时
+import direction_score as dscore  # noqa: E402  统一多因素打分（S2/S4/S6 双向）
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 for _n in ('httpx', 'httpx2', 'httpcore', 'openai', 'urllib3'):
@@ -178,17 +180,23 @@ def sig_grid(ctx, holding):
 
 
 # 权重来自 23 标全池回测（60/20/8/7/5），S3 权重 0 = 不上线。
+# 2026-11-17 方案 B：S2/S4/S6 换成统一多因素打分器（都能自由多空，权重配比区分性格），
+# S1/S5 保留各自验证过的最强参数。回测（unified_compare.py）组合 +13.2% / OOS +15.6%，
+# 优于现状 +11.2% / +13.3%；详见 direction_score.py 与 backtest/unified_compare.py。
+_sig_s2, _sl_s2 = dscore.make_score_signal('S2')
+_sig_s6, _sl_s6 = dscore.make_score_signal('S6')
+_sig_s4, _sl_s4 = dscore.make_score_signal('S4')
 STRATS = [
     dict(id='S1', name='日内双向', weight=0.60, max_pos=6, sl=0.02, risk=1.0, fn=sig_hybrid,
          note='日线定方向 + 1h 择时，多空双向'),
     dict(id='S5', name='区间突破', weight=0.20, max_pos=2, sl=0.025, risk=0.5, fn=sig_breakout,
          note='破前 24 根高/低追单，半仓'),
-    dict(id='S2', name='日线趋势', weight=0.08, max_pos=2, sl=0.08, risk=1.0, fn=sig_daily_trend,
-         note='日线 20 根动量 >2% 且站上 SMA50，纯多'),
-    dict(id='S6', name='区间网格', weight=0.07, max_pos=2, sl=0.03, risk=1.0, fn=sig_grid,
-         note='SMA200 -5% 下沿买入，纯多'),
-    dict(id='S4', name='超跌反弹', weight=0.05, max_pos=1, sl=0.025, risk=0.5, fn=sig_rebound,
-         note='低于 SMA20 4% 且收阳反弹，半仓'),
+    dict(id='S2', name='趋势打分', weight=0.08, max_pos=2, sl=_sl_s2, risk=1.0, fn=_sig_s2,
+         note='统一打分·趋势权重(1,0,2,2,0)，双向'),
+    dict(id='S6', name='均衡打分', weight=0.07, max_pos=2, sl=_sl_s6, risk=1.0, fn=_sig_s6,
+         note='统一打分·均衡权重(1,1,1,1,1)，双向'),
+    dict(id='S4', name='反转打分', weight=0.05, max_pos=1, sl=_sl_s4, risk=0.5, fn=_sig_s4,
+         note='统一打分·反转权重(0,0,0,0,3)，半仓双向'),
 ]
 STRAT_BY_ID = {s['id']: s for s in STRATS}
 
@@ -367,7 +375,14 @@ def open_position(ex, st, name, side, strat, dry=None):
         note(st, '%s 名义 %.1fU 低于门槛 %.0fU，跳过' % (name, notional, MIN_NOTIONAL))
         return 0.0
     # 只在完全空仓时开：绝不与已有仓位反向叠加
-    for p in ex.fetch_positions([sym]):
+    # 2026-11-17：demo-fapi 偶发 SSL/NetworkError，开仓前查询失败不该拖垮整轮
+    # （旧版直接抛异常 → decide 中断 → write_status 不执行 → 状态滞后 40min）
+    try:
+        positions = ex.fetch_positions([sym])
+    except Exception as e:
+        log.warning('开仓前查仓位失败(%s)，跳过本次开仓', str(e)[:100])
+        return 0.0
+    for p in positions:
         if float(p.get('contracts') or 0):
             log.error('开仓前发现 %s 已有仓位(%s)，中止', name, pos_guard.side_of(p))
             return 0.0
@@ -419,7 +434,10 @@ def close_position(ex, st, name, why='信号离场', dry=None):
                 real_entry = float(p['entryPrice'])
                 real_side = pos_guard.side_of(p)
     except Exception as e:
-        log.warning('查持仓失败 %s: %s', name, str(e)[:100])
+        # 查不到真实仓位时绝不能当「空仓」假平仓（会 pop 本地登记但交易所仓位还在，
+        # 下轮 sync 又登记成 S1 adopted，白丢策略标签）。放弃本次平仓，下轮重试。
+        log.warning('查持仓失败 %s(%s)，放弃本次平仓', name, str(e)[:100])
+        return 0
     if real_side not in ('flat', side):
         log.error('%s 方向不符（登记 %s / 实际 %s），拒绝平仓，交方向守卫', name, side, real_side)
         return 0
@@ -570,7 +588,14 @@ def decide(ex, st, dry=DRY, echo_progress=True):
                 continue
             if not side:
                 continue
-            if open_position(ex, st, name, side, strat, dry=dry):
+            try:
+                placed = open_position(ex, st, name, side, strat, dry=dry)
+            except Exception as e:
+                # demo-fapi 偶发 SSL 断连：单票下单失败只跳过该票，
+                # 不中断整轮（否则后续持仓离场判断 + write_status 全丢）
+                log.warning('%s 开仓异常(%s)，跳过该票', name, str(e)[:100])
+                placed = 0.0
+            if placed:
                 opened += 1
             break
     save_state(st)

@@ -49,3 +49,11 @@
 - `save()` 给每账户写 `regime_info`（market/portfolio），`sim_live.html` 账户卡与 `dsrbar_card.html` 全池 tab 显示环境标签（如「高波动急跌·熔断」）。
 - 坑：`market_gate(review, sh=..., cyb=...)` 的 sh 参数是给 `market_regime` 的指标 dict（mom20/dev20/atr20），**不是** review 里的 factors（signal/score）；`mkt_bear` 必须读 `idx_sigs['sh000001'].factors`，两者混用会把 bear/panic 判定悄悄变 chop。
 - **同族对冲互斥（2026-11-16）**：SOXL（半导体3x正向）与 SOXS（半导体3x反向）经济方向可同向（多SOXS=空SOXL净值），同持=重复押注同一主题。`arena_engine.py` 加 `PAIR_FAMILY={'SOXL':'SOX','SOXS':'SOX'}` + `family_conflicts()`（开仓互斥）+ `converge_families()`（decide 开头收敛：族内>1笔只留策略优先级高者，同级留先开），实测全池曾出现「SOXL空50U(S1)+SOXS多25U(S5)」同持 → 半导体主题名义188U=权益155% 的过度集中。symbol 仲裁只防单票冲突，不防相关票同向叠加——回测每策略独立记账看不出，实盘共享账户会集中。
+
+## 币安竞技场统一多因素方向打分器（2026-11-17 方案B）
+- 用户 m03163「要统一多因素自由判断多空，而不是单纯按纯多或纯空」→ S2/S4/S6 从「纯多策略」改为**统一打分器不同权重配置，都能双向做多做空**；S1(sig_hybrid)/S5(sig_breakout) 保持不动（回测 C 全打分器 +9.5% 反而输 B，S1 本身已是多因素双向雏形）。
+- 模块 `binance-llm-bot/direction_score.py`：`direction_score(ctx,w,f5sign)` 5 因素各 −1/0/+1 加权归一（日线20根动量±2%、1h12根动量±1%、日线价vsSMA50、1h价vsSMA200、偏离SMA20超买超跌）。配置 `SCORE_CFG`：S2(1,0,2,2,0) sl3% 趋势型、S4(0,0,0,0,3) sl2.5% 反转型半仓、S6(1,1,1,1,1) sl2% 均衡型。`make_score_signal(sid)` 返回 (fn, sl)，fn(ctx,holding) 持仓时净分仍同向则持有、转弱则离场，空仓时超开仓阈值顺势开多/空。
+- 回测（`backtest/unified_compare.py`，23标全池5x，权重60/20/8/7/5）：A现状 +11.2%/Sh0.79；**B混合 +13.2%/Sh0.84/OOS+15.6%**，胜率 S2 35%→70%/S6 38%→66%；C全打分器 +9.5%（最差）。教训：v1 无利润保护(PG)的全打分器换手暴增全亏，加 PG（trailing+分批止盈+保本）后才站住。
+- 网络健壮性（同日修）：demo-fapi 偶发 SSL 断连曾导致整轮 decide 崩溃→write_status 不执行→状态滞后 40min。修：open_position 查仓位失败跳过该票、close_position 查持仓失败放弃本次平仓（绝不假平仓 pop 本地）、decide 逐票开仓包 try/except 单票失败不拖垮整轮。
+- 实测生效（00:48）：打分器平掉 HOOD/NVDA/PAYP 存量多单，开空 CRCL/GOOGL/PLTR/XPT，持仓从 6空+5多 → 9空+3多，权益 122U(+22%)。
+- 坑：代理节点「🇯🇵日本专线6-0.1倍率」偶发整体不可达（所有节点 demo-fapi HTTP 000），curl 轮换探测后切回该节点恢复；不要误判为代码问题。
