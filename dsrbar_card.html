@@ -68,6 +68,13 @@
   .plan .d{font-variant-numeric:tabular-nums; flex:none; color:var(--fg3)}
   .plan .d.near{color:var(--up); font-weight:600}
 
+  /* 买点/卖点小字：每行持仓/买点下方挂一行，红=卖(止盈/止损价) 绿=买(回踩/成本价) */
+  .lv{font-size:9.5px; color:var(--fg3); padding:0 0 3px 2px; font-variant-numeric:tabular-nums;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35}
+  .lv b{font-weight:600; color:var(--fg2)}
+  .lv .b{color:var(--down)} .lv .s{color:var(--up)}
+  .lv em{font-style:normal; color:var(--fg3); margin:0 5px 0 0}
+
   .acts{flex:none; display:flex; align-items:center; gap:5px; margin-top:8px; padding-top:8px; border-top:1px solid var(--line)}
   .btn{
     font-family:inherit; font-size:11px; line-height:1.2; padding:4px 8px; border:1px solid var(--line); border-radius:4px;
@@ -173,7 +180,7 @@ const fmt = (n, d = 2) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleSt
 const pct = n => (n == null || isNaN(n)) ? '—' : (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%';
 const cls = n => n > 0 ? 'up' : (n < 0 ? 'down' : 'dim');
 
-let BANK = null, DIV = null, SIM = null, tab = 'bn', simKey = '', lastOk = 0;
+let BANK = null, DIV = null, SIM = null, DIVLV = {}, tab = 'bn', simKey = '', lastOk = 0;
 const qs = new URLSearchParams(location.search);
 if (qs.get('tab') === 'dv') tab = 'dv';
 if (qs.get('tab') === 'sl') tab = 'sl';
@@ -199,7 +206,10 @@ async function load() {
     fetch('data/sim_live.json' + bust, {cache: 'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   if (a) BANK = a;
-  if (b) DIV = b;
+  if (b) { DIV = b; DIVLV = {}; [...(b.positions || []), ...(b.plan || [])].forEach(p => {
+    if (p.code && p.levels?.exit_price) DIVLV[p.code] = p.levels.exit_price;
+    else if (p.code && p.exit_price) DIVLV[p.code] = p.exit_price;
+  }); }
   if (c) SIM = c;
   if (a || b || c) lastOk = Date.now();
   render();
@@ -225,10 +235,14 @@ function renderBank() {
   $('#bn-pos').innerHTML = ps.length ? ps.map(p => {
     const isShort = p.side === 'short';
     const lev = (Number(p.notional) && Number(p.margin)) ? (Number(p.notional) / Number(p.margin)).toFixed(0) + 'x' : '—';
+    // 开仓价=买点，止损价=卖点（多：买开卖平；空：卖开买平，价格方向不影响标注）
+    const lv = '<div class="lv"><em>开</em><b class="b">' + fmt(p.entry) + '</b>'
+      + '<em style="margin-left:7px">止损</em><b class="s">' + fmt(p.sl) + '</b>'
+      + (p.side ? '<em style="margin-left:7px">' + (isShort ? '卖开·买平' : '买开·卖平') + '</em>' : '') + '</div>';
     return '<div class="row"><span class="sd ' + (isShort ? 's' : 'l') + '">' + (isShort ? '空' : '多') + '</span>'
       + '<span class="nm">' + (p.name || p.symbol) + (p.cn ? '<i>' + p.cn + '</i>' : '') + '</span>'
       + '<span class="q">' + (p.holdText || '—') + ' · ' + lev + '</span>'
-      + '<span class="v ' + cls(p.dayChange) + '">' + pct(p.dayChange) + '</span></div>';
+      + '<span class="v ' + cls(p.dayChange) + '">' + pct(p.dayChange) + '</span></div>' + lv;
   }).join('') : '<div class="empty">空仓，等信号</div>';
 }
 
@@ -259,10 +273,15 @@ function renderDiv() {
     const shares = Number(p.shares) || 0, avg = Number(p.avg) || 0, last = Number(p.last) || 0;
     const g = avg ? (last / avg - 1) * 100 : 0;
     const d = Number(p.last_chg);
+    const lv = p.levels || {};
+    const tp = avg ? avg * 1.15 : null;  // 红利策略止盈 = 成本×1.15（与看板一致）
+    const lvLine = '<div class="lv"><em>回踩买</em><b class="b">' + fmt(lv.dip_price, 3) + '</b>'
+      + '<em style="margin-left:7px">止盈</em><b class="s">' + (tp ? fmt(tp, 3) : '—') + '</b>'
+      + '<em style="margin-left:7px">清仓</em><b class="s">' + fmt(lv.exit_price, 3) + '</b></div>';
     return '<div class="row"><span class="nm">' + (p.name || p.code) + '</span>'
       + '<span class="q">' + shares + '股</span>'
       + '<span class="q ' + cls(g) + '">' + pct(g) + '</span>'
-      + '<span class="v ' + (Number.isFinite(d) ? cls(d) : '') + '">' + (Number.isFinite(d) ? pct(d) : '—') + '</span></div>';
+      + '<span class="v ' + (Number.isFinite(d) ? cls(d) : '') + '">' + (Number.isFinite(d) ? pct(d) : '—') + '</span></div>' + lvLine;
   }).join('') : '<div class="empty">尚未建仓</div>';
 
   const plan = (DIV.plan || []).filter(p => p.status !== 'full')
@@ -270,7 +289,10 @@ function renderDiv() {
   $('#dv-plan').innerHTML = plan.length ? plan.map(p => {
     const d = Number(p.dist_pct) || 0;
     return '<div class="plan"><span class="nm">' + (p.name || p.code) + '</span>'
-      + '<span class="d ' + (d < 1 ? 'near' : '') + '">距买点 ' + (d > 0 ? '+' : '') + d.toFixed(2) + '%</span></div>';
+      + '<span class="d ' + (d < 1 ? 'near' : '') + '">距买点 ' + (d > 0 ? '+' : '') + d.toFixed(2) + '%</span></div>'
+      + '<div class="lv"><em>回踩买</em><b class="b">' + fmt(p.dip_price, 3) + '</b>'
+      + '<em style="margin-left:7px">不接飞刀</em><b>' + fmt(p.floor_price, 3) + '</b>'
+      + '<em style="margin-left:7px">清仓</em><b class="s">' + fmt(p.exit_price, 3) + '</b></div>';
   }).join('') : '<div class="empty">全部满档，等止盈</div>';
 }
 
@@ -336,14 +358,22 @@ function renderSim() {
   const pos = Object.values(byCode).map(g => {
     const p = g[0], sh = g.reduce((s, x) => s + (Number(x.shares) || 0), 0);
     const avg = Number(p.cost) || 0, last = Number(p.last ?? p.last_close ?? p.cost) || 0;
-    return {name: p.name || p.code, sh, g: avg ? (last / avg - 1) * 100 : 0, n: g.length};
+    const isDiv = p.kind === 'dividend' || p.strategy === 'dividend';
+    // 红利账户是派生账本，没有 stop_atr/tp：止盈按红利策略 cost×1.15，清仓价从完整红利账本取
+    const stop = isDiv ? (DIVLV[p.code] || null) : (p.stop_atr || p.stop_ma);
+    const tp = isDiv ? (avg ? avg * 1.15 : null) : p.tp;
+    return {name: p.name || p.code, sh, g: avg ? (last / avg - 1) * 100 : 0, n: g.length,
+            cost: p.cost, stop, tp, isDiv};
   });
   // 全池持仓/买点比 6 股池多得多，列表限长，保证首屏能同时看到持仓和买点
   const shownPos = pos.slice(0, 3);
   $('#sl-pos').innerHTML = pos.length ? shownPos.map(p =>
     '<div class="row"><span class="nm">' + p.name + (p.n > 1 ? ' ×' + p.n : '') + '</span>'
     + '<span class="q">' + p.sh + '股</span>'
-    + '<span class="v ' + cls(p.g) + '">' + pct(p.g) + '</span></div>').join('')
+    + '<span class="v ' + cls(p.g) + '">' + pct(p.g) + '</span></div>'
+    + '<div class="lv"><em>成本</em><b class="b">' + fmt(p.cost) + '</b>'
+    + '<em style="margin-left:7px">' + (p.isDiv ? '清仓' : '止损') + '</em><b class="s">' + fmt(p.stop) + '</b>'
+    + '<em style="margin-left:7px">止盈</em><b class="s">' + fmt(p.tp) + '</b></div>').join('')
     + (pos.length > shownPos.length ? '<div class="empty">另有 ' + (pos.length - shownPos.length) + ' 只 · 完整看板查看</div>' : '')
     : '<div class="empty">' + (sel ? LABEL[simKey] + ' 当前空仓' : '全池均空仓') + ' · 等回踩触发</div>';
 
@@ -352,7 +382,11 @@ function renderSim() {
   const waits = waitRaw.filter(p => { const k = p.code || p.name; if (waitSeen[k]) return false; waitSeen[k] = 1; return true; });
   $('#sl-plan').innerHTML = waits.length ? waits.slice(0, 2).map(p =>
     '<div class="plan"><span class="nm">' + (p.name || p.code) + '</span>'
-    + '<span class="d">回踩 ≤ ' + fmt(p.buy_below, 2) + '</span></div>').join('')
+    + '<span class="d">回踩 ≤ ' + fmt(p.buy_below, 2) + '</span></div>'
+    + '<div class="lv">'
+    + (p.buy_above ? '<em>突破买</em><b class="b">' + fmt(p.buy_above) + '</b>' : '<em>回踩买</em><b class="b">' + fmt(p.buy_below) + '</b>')
+    + '<em style="margin-left:7px">止损</em><b class="s">' + fmt(p.stop_atr || p.stop_ma) + '</b>'
+    + '<em style="margin-left:7px">止盈</em><b class="s">' + fmt(p.tp) + '</b></div>').join('')
     : '<div class="empty">暂无待触发买点</div>';
   $('#sl-pos-title').textContent += '（' + pos.length + '）';
   $('#sl-plan-title').textContent += '（' + waits.length + '）';
