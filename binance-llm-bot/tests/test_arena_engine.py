@@ -207,5 +207,61 @@ class TestS2GuardAndCooldown(unittest.TestCase):
         self.assertFalse(A.in_cooldown({}, 'SOXS/USDT:USDT'))
 
 
+class TestFamilyExclusivity(unittest.TestCase):
+    """SOXL（半导体3x正向）与 SOXS（半导体3x反向）同族二选一（2026-11-16）。
+    两者经济方向可同向（多SOXS=空SOXL净值），同持=重复押注半导体主题。"""
+
+    def _st(self):
+        return {'real_pos': {
+            'SOXL/USDT:USDT': {'strategy': 'S1', 'side': 'short', 'amt': 1.0,
+                               'entry': 50.0, 'ts': 1000},
+            'SOXS/USDT:USDT': {'strategy': 'S5', 'side': 'long', 'amt': 1.0,
+                               'entry': 56.0, 'ts': 2000},
+        }, 'trades': [], 'log': [], 'last_exit': {}}
+
+    def _ex(self):
+        return FakeEx(positions=[
+            {'symbol': 'SOXL/USDT:USDT', 'contracts': 1.0, 'entryPrice': 50.0,
+             'side': 'short', 'info': {'positionAmt': '-1.0'}},
+            {'symbol': 'SOXS/USDT:USDT', 'contracts': 1.0, 'entryPrice': 56.0,
+             'side': 'long', 'info': {'positionAmt': '1.0'}},
+        ])
+
+    def test_family_of(self):
+        self.assertEqual(A.family_of('SOXL'), 'SOX')
+        self.assertEqual(A.family_of('SOXS'), 'SOX')
+        self.assertIsNone(A.family_of('NVDA'))
+
+    def test_family_conflicts_detects_pair(self):
+        st = self._st()
+        self.assertEqual([n for n, _ in A.family_conflicts(st, 'SOXL')], ['SOXS'])
+        self.assertEqual([n for n, _ in A.family_conflicts(st, 'SOXS')], ['SOXL'])
+        self.assertEqual(A.family_conflicts(st, 'NVDA'), [])
+
+    def test_converge_keeps_higher_priority(self):
+        st = self._st()
+        ex = self._ex()
+        with mock.patch.object(A, 'cancel_sl', lambda *a: None), \
+             mock.patch.object(A, 'save_state', lambda st: None):
+            closed = A.converge_families(ex, st, dry=False)
+        # S1(序0) 优先于 S5(序1) → 平 SOXS 留 SOXL
+        self.assertEqual(closed, ['SOXS'])
+        self.assertIn('SOXL/USDT:USDT', st['real_pos'])
+        self.assertNotIn('SOXS/USDT:USDT', st['real_pos'])
+
+    def test_converge_noop_single_member(self):
+        st = {'real_pos': {'SOXL/USDT:USDT': {'strategy': 'S1', 'side': 'short',
+                                             'amt': 1.0, 'entry': 50.0, 'ts': 1000}},
+              'trades': [], 'log': [], 'last_exit': {}}
+        self.assertEqual(A.converge_families(self._ex(), st, dry=False), [])
+        self.assertIn('SOXL/USDT:USDT', st['real_pos'])
+
+    def test_open_blocked_by_family_member(self):
+        st = self._st()
+        self.assertTrue(A.family_conflicts(st, 'SOXS'))   # SOXL 在手 → SOXS 不再开
+        self.assertFalse(A.family_conflicts(self._st() | {'real_pos': {}}, 'SOXS')
+                         if False else A.family_conflicts({'real_pos': {}}, 'SOXS'))
+
+
 if __name__ == '__main__':
     unittest.main()

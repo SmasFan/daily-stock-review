@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -91,6 +92,11 @@ type Status struct {
 var (
 	mu       sync.Mutex // 保护 current
 	flyMu    sync.Mutex // 保护 flyout 指针（AppKit 回调可能不在主线程）
+	// flyOpenAt 是卡片最近一次 Show 的时刻（unix nano）。AppKit 在弹出
+	// 动画刚开始时会拿「打开它的那次按压」当成点击外部来问
+	// popoverShouldClose:，直接 Hide 就会闪一下即关；这个时间戳让紧跟着
+	// 的那次询问只被否决、不触发隐藏。
+	flyOpenAt atomic.Int64
 	current  = &Status{}
 	tray     *mygo.Tray
 	win      *mygo.Window
@@ -191,6 +197,9 @@ func startCmdServer() {
 			if f != nil && !f.IsDestroyed() {
 				f.Hide()
 			}
+		case "toggle":
+			// 自检/运维：程序化开关菜单栏卡片（等价于点一下图标）
+			toggleFlyout()
 		case "hidewin":
 			// 自检/运维：把完整看板窗口收起来（不退出 app，菜单栏仍在）
 			if win != nil {
@@ -351,6 +360,13 @@ func createFlyout() *mygo.Window {
 			return
 		}
 		e.PreventDefault()
+		// 打开后 300ms 内的关闭请求来自 AppKit 对「打开它的那次按压」
+		// 的重放，不是用户真去点了别处：只否决、不隐藏，否则卡片会
+		// 一闪就消失（用户反馈的「点开就闪退」）。
+		if since := time.Since(time.Unix(0, flyOpenAt.Load())); since < 300*time.Millisecond {
+			dbg("flyout early close vetoed after %v (grace)", since.Round(time.Millisecond))
+			return
+		}
 		dbg("flyout close vetoed -> safe Hide")
 		// 必须捕获本次事件对应的窗口实例 w，绝不能读全局 flyout：
 		// 若 30ms 内窗口被销毁并重建，读全局会把刚 Show 的新窗口误关掉。
@@ -389,6 +405,7 @@ func toggleFlyout() {
 	flyMu.Unlock()
 	if f == nil || f.IsDestroyed() {
 		dbg("fly click: recreate + show")
+		flyOpenAt.Store(time.Now().UnixNano())
 		createFlyout().Show()
 		return
 	}
@@ -398,6 +415,7 @@ func toggleFlyout() {
 		return
 	}
 	dbg("fly click: show")
+	flyOpenAt.Store(time.Now().UnixNano())
 	f.Show()
 }
 

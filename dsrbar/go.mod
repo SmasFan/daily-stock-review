@@ -11,3 +11,6 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 )
+
+// 本地补丁：popover 打开后 hold（applicationDefined）+ 外部点击 hide 而非销毁
+replace github.com/egoist/mygo => /Users/smas/code/dsrbar-mygo

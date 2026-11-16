@@ -287,6 +287,53 @@ def in_cooldown(st, sym, now=None):
     return (now or time.time()) - float(t) < COOLDOWN_MIN * 60
 
 
+# ------------------------------------------------ 同族对冲互斥（2026-11-16）
+# SOXL（半导体3x正向）与 SOXS（半导体3x反向）是同一底层主题的镜像工具：
+# 经济方向可同向（做多SOXS=做空SOXL净值），同持=重复押注同一主题，白白放大暴露。
+# 规则：同族同时最多一笔（二选一，留策略优先级高者，同级留先开的）。
+PAIR_FAMILY = {'SOXL': 'SOX', 'SOXS': 'SOX'}
+STRAT_RANK = {s['id']: i for i, s in enumerate(STRATS)}   # S1=0 最高
+
+
+def family_of(name):
+    return PAIR_FAMILY.get(name)
+
+
+def family_conflicts(st, name):
+    """族内已有持仓的 [(name, pos)]（不含自己）。"""
+    fam = family_of(name)
+    if not fam:
+        return []
+    out = []
+    for s, p in (st.get('real_pos') or {}).items():
+        n = s.split('/')[0]
+        if n != name and PAIR_FAMILY.get(n) == fam:
+            out.append((n, p or {}))
+    return out
+
+
+def converge_families(ex, st, dry=None):
+    """同族收敛：族内 >1 笔时只留策略优先级高者（同级留先开），其余平掉。返回平掉的名字列表。"""
+    by_fam = {}
+    for s, p in (st.get('real_pos') or {}).items():
+        fam = PAIR_FAMILY.get(s.split('/')[0])
+        if fam:
+            by_fam.setdefault(fam, []).append((s.split('/')[0], p or {}))
+    closed = []
+    for fam, group in by_fam.items():
+        if len(group) < 2:
+            continue
+        group.sort(key=lambda x: (STRAT_RANK.get(x[1].get('strategy') or 'S1', 0),
+                                  float(x[1].get('ts') or 0)))
+        keep = group[0][0]
+        for n, p in group[1:]:
+            log.info('同族对冲二选一：%s 族只留 %s（%s），平 %s（%s）',
+                     fam, keep, group[0][1].get('strategy'), n, p.get('strategy'))
+            close_position(ex, st, n, why='同族对冲二选一（%s只留%s）' % (fam, keep), dry=dry)
+            closed.append(n)
+    return closed
+
+
 def stats_of(st):
     """按策略聚合：笔数 / 胜率 / 累计盈亏 / 平均盈亏。"""
     out = {}
@@ -459,6 +506,7 @@ def sync_from_real(ex, st):
 # ------------------------------------------------------------------ 决策
 def decide(ex, st, dry=DRY, echo_progress=True):
     sync_from_real(ex, st)
+    converge_families(ex, st, dry=dry)   # 同族对冲收敛：SOX 族内只留优先级高者
     ctxs = {}
     for i, name in enumerate(SYMBOLS, 1):
         # 23 标 × 2 个 K 线请求连发会撞 demo 限流（实测 CRCL 偶发 -1122/超时），
@@ -507,6 +555,8 @@ def decide(ex, st, dry=DRY, echo_progress=True):
     for name in ctxs:
         if sym_of(name) in st['real_pos']:
             continue
+        if family_conflicts(st, name):
+            continue   # 同族互斥：族内已有持仓不再开镜像标的
         ctx = ctxs[name]
         if in_cooldown(st, sym_of(name)):
             continue

@@ -48,3 +48,4 @@
 - 组合级风控 `account_regime()`：账户近 20 日回撤 ≥6% 降仓×0.6、≥12% 或连亏 5 笔暂停开仓；`vol_target_pos()` 按创业板 ATR 波动目标化仓位（ATR 4.41% → ×0.45）。回测结论（`scripts/backtest_sprint.py` 120 天）：大盘方向驱动反而跑输（-3.66% vs 稳健 +7.44%，chop 段削掉逆势选股 alpha），组合级 adaptive2 +2.36%/MDD 3.0% 更稳 → **只保留 panic/bear 极端保护 + 组合熔断 + 波动目标化**，不给三账户换参数集。
 - `save()` 给每账户写 `regime_info`（market/portfolio），`sim_live.html` 账户卡与 `dsrbar_card.html` 全池 tab 显示环境标签（如「高波动急跌·熔断」）。
 - 坑：`market_gate(review, sh=..., cyb=...)` 的 sh 参数是给 `market_regime` 的指标 dict（mom20/dev20/atr20），**不是** review 里的 factors（signal/score）；`mkt_bear` 必须读 `idx_sigs['sh000001'].factors`，两者混用会把 bear/panic 判定悄悄变 chop。
+- **同族对冲互斥（2026-11-16）**：SOXL（半导体3x正向）与 SOXS（半导体3x反向）经济方向可同向（多SOXS=空SOXL净值），同持=重复押注同一主题。`arena_engine.py` 加 `PAIR_FAMILY={'SOXL':'SOX','SOXS':'SOX'}` + `family_conflicts()`（开仓互斥）+ `converge_families()`（decide 开头收敛：族内>1笔只留策略优先级高者，同级留先开），实测全池曾出现「SOXL空50U(S1)+SOXS多25U(S5)」同持 → 半导体主题名义188U=权益155% 的过度集中。symbol 仲裁只防单票冲突，不防相关票同向叠加——回测每策略独立记账看不出，实盘共享账户会集中。
