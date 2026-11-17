@@ -268,9 +268,9 @@ def task_ussim():
 
 
 def task_usclose():
-    """美股收盘后刷新道指/纳指/标普，patch 进推荐/宽基 JSON（市场页股票指数不再停在白天）。"""
-    log("=== 美股收盘刷新 ===")
-    run("美股指数", ["refresh_us_index.py"], 300)
+    """刷新道指/纳指/标普：盘中每 15min 拉实时价，脚本内判美股时段（非时段静默跳过）。"""
+    log("=== 美股指数刷新 ===")
+    run("美股指数", ["refresh_us_index.py", "--session-only"], 300)
 
 
 def task_monitor(mode="daily"):

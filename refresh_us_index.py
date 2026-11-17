@@ -26,6 +26,9 @@ from src import wide_index as wi            # noqa: E402
 
 US_CODES = ["usDJI", "usIXIC", "usINX"]
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+# 独立的实时快照：A 股 recommend/review 任务会整份重写 recommend_data.json /
+# wide_index_data.json 并抹掉 usAt 与美股实时价，smasfx 优先读这个文件。
+LIVE_PATH = os.path.join(DATA_DIR, "us_index_live.json")
 
 
 def _factors(code, name):
@@ -130,9 +133,42 @@ def patch_wide(rows, us_at):
     return changed > 0
 
 
+def write_live(rows, us_at):
+    """把三大指数实时快照写到独立文件，供 smasfx 优先读取（不被 A 股任务覆盖）。"""
+    d = {
+        "usAt": us_at,
+        "codes": {
+            code: {
+                "close": r.get("close"),
+                "change_pct": r.get("change_pct"),
+                "prev_close": r.get("prev_close"),
+                "factors": r.get("factors"),
+            }
+            for code, r in rows.items()
+        },
+    }
+    with open(LIVE_PATH, "w", encoding="utf-8") as f:
+        json.dump(d, f, ensure_ascii=False)
+    print(f"  us_index_live.json: 写入 {len(rows)} 个指数快照, usAt={us_at}")
+    return True
+
+
+def in_us_session():
+    """美股活跃窗口（北京时间）：夏令 21:30–04:00、冬令 22:30–05:00。
+    取并集 21:00–06:00，覆盖盘前盘后，白天休眠跳过。周末也跳过（美股不开盘）。"""
+    now = datetime.now()
+    if now.weekday() == 5 or (now.weekday() == 6 and now.hour < 6):
+        return False  # 周六全天、周日凌晨跳过
+    h = now.hour + now.minute / 60.0
+    return h >= 21.0 or h < 6.0
+
+
 def main():
     dry = "--dry" in sys.argv
     us_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 盘中模式在拉数据前先判时段，非活跃窗口完全不请求
+    if "--session-only" in sys.argv and not in_us_session():
+        return 0
     print(f"=== 刷新美股三大指数 @ {us_at} ===")
     rows = fetch_us_rows()
     if not rows:
@@ -146,7 +182,8 @@ def main():
         return 0
     ok1 = patch_recommend(rows, us_at)
     ok2 = patch_wide(rows, us_at)
-    return 0 if (ok1 or ok2) else 1
+    ok3 = write_live(rows, us_at)
+    return 0 if (ok1 or ok2 or ok3) else 1
 
 
 if __name__ == "__main__":

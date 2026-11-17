@@ -83,7 +83,7 @@ plist_interval() {  # $1=name  $2=seconds
 EOF
 }
 
-plist_usclose() {  # 美股收盘后刷新：美东 16:00 = 北京次日 05:00(冬)/04:00(夏)，故周二~周六 05:30
+plist_usclose() {  # 美股指数刷新：每 15min 跑一次，脚本内判美股时段（北京 21:00–06:00）才真正拉数据
   local name=usclose
   cat > "$AGENT/$PREFIX.$name.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -101,15 +101,9 @@ plist_usclose() {  # 美股收盘后刷新：美东 16:00 = 北京次日 05:00(�
     <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>PYTHONUNBUFFERED</key><string>1</string>
   </dict>
-  <key>StartCalendarInterval</key>
-  <array>
-    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
-    <dict><key>Weekday</key><integer>6</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>30</integer></dict>
-  </array>
-  <key>RunAtLoad</key><false/>
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOGDIR/$name.log</string>
   <key>StandardErrorPath</key><string>$LOGDIR/$name.log</string>
   <key>ProcessType</key><string>Background</string>

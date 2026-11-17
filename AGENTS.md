@@ -21,6 +21,7 @@
 - **做法**：新增 `refresh_us_index.py`（拉三大美股指数行情+日K因子，原地 patch 两份 JSON 的美股项，写 `usAt`）；`scripts/mac/dsr.py task_usclose()`；LaunchAgent `com.smas.dsr.usclose.plist`（`install_launchd.sh` 的 `plist_usclose`）**周二~周六 05:30 北京**（美东 16:00 收盘 = 北京次日 05:00 冬令/04:00 夏令）。
 - smasfx `market_data()` 增加 `usDate`（取美股因子日K最新日期，`2026-11-16`→`11-16` 显示）+ `usAt`；前端 `?view=market` 指数区标题改「A股 `<recAt>` · 美股 `<usDate>` 收盘」，不再用单一 recAt。
 - **坑**：smasfx 无 git 仓库（`git status` 报 128），改动只落本地，重启用 `launchctl kickstart -k gui/$(id -u)/com.smas.smasfx`；数据源层验证用 headless Chrome CDP（`/Users/smas/code/smasfx/tools/mobile_shot.py` 的 `WS/Chrome/PORT`，自建 9224 端口 `--headless=new --remote-allow-origins=*`）。实测 usDJI 51,608(-1.41%) / usIXIC 24,509(-2.49%) / usINX 7,416(-1.92%) 均已刷新。
+- **盘中实时刷新（2026-11-18）**：仅收盘后 05:30 一次不够（plist 若当晚才 load 会错过；A 股 recommend 09:05/review 15:40 整份重写 JSON 会抹掉 usAt 与美股实时价）→ 改 `com.smas.dsr.usclose.plist` 为 **StartInterval 900（每 15min）+ RunAtLoad true**；`refresh_us_index.py` 加 `--session-only`（`in_us_session()` 判北京 21:00–06:00、周末跳过，白天静默不请求）并写独立快照 `data/us_index_live.json`（usAt + codes.{close,change_pct,prev_close,factors}）；smasfx `market_data()` **优先读 us_index_live.json** 覆盖美股三项的 close/chg 与 usDate/usAt，A 股任务抹不掉。dsr.py `task_usclose()` 传 `--session-only`。实测 usAt 02:40:11、三大指数实时价正确、与 A 股 recAt 分开显示。
 
 ## 币安竞技场（2026-11-10 起，替代日线池/短线池两套 bot）
 - 引擎：`binance-llm-bot/arena_engine.py`（`watchdog.py` 守护，替换 trader100/trader_short）。
