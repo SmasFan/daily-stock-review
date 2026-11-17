@@ -225,7 +225,7 @@ function renderBank() {
   $('#bn-today').textContent = '今日 ' + u(a.dayPnl) + ' (' + pct(a.dayPnlPct) + ')';
   $('#bn-lev').textContent = (Number(a.lev) || 5) + 'x';
   $('#bn-hold').textContent = '最长 ' + (a.holdMax || '—') + ' · 均 ' + (a.holdAvg || '—')
-    + ' · 名义 ' + fmt(a.grossNotional, 0) + 'U';
+    + ' · 占用 ' + fmt(a.marginUsed, 0) + 'U · 名义 ' + fmt(a.grossNotional, 0) + 'U(' + (Number(a.lev) || 5) + 'x)';
   $('#bn-chg').textContent = pct(a.dayChangeAvg);
   $('#bn-chg').className = cls(a.dayChangeAvg);
   $('#bn-pnl2').innerHTML = '<span class="' + cls(a.dayPnl) + '">当日 ' + u(a.dayPnl) + '</span> / <span class="' + cls(a.cumPnl) + '">累计 ' + u(a.cumPnl) + '</span>';

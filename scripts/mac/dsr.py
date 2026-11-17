@@ -267,6 +267,12 @@ def task_ussim():
     run("美股模拟盘", ["scripts/us_sim.py"], 180)
 
 
+def task_usclose():
+    """美股收盘后刷新道指/纳指/标普，patch 进推荐/宽基 JSON（市场页股票指数不再停在白天）。"""
+    log("=== 美股收盘刷新 ===")
+    run("美股指数", ["refresh_us_index.py"], 300)
+
+
 def task_serve():
     os.execv(PY, [PY, os.path.join(ROOT, "scripts", "serve.py"), "8000"])
 
@@ -320,6 +326,8 @@ def main():
             return
         elif action == "ussim":
             task_ussim()
+        elif action == "usclose":
+            task_usclose()
         else:
             log("未知任务: %s" % action)
             return

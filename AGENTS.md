@@ -16,6 +16,12 @@
 - **顶栏卡片联动（用户 2026-11-12 明确规则）**：凡是改动涉及红利池 / 模拟盘 / 币安账户的数据口径，都必须同步检查并改 `dsrbar_card.html`（红利 tab / 全池 tab / 币安 tab），改完重启 `/Applications/DSR Bar.app`（只重启、不重编译，避免 TCC 失效）。例：红利池换标的要确认红利 tab 的待触发买点能看到新标的、全池 tab 的账户列表要含新策略。
 - **全池红利账户**：`sim_live.py` 的 `dividend_account()` 从 `data/sim_dividend.json` 按 `50000/start_cash` 等比例派生 `pools.all.accounts.dividend`（5 万本金口径、只读、不进 `all_books()` 下单循环，收益率与红利池一致）；`sim_live.html` 的 `ORDER`/`META` 与 `dsrbar_card.html` 的 `keys`/`LABEL` 都必须含 `dividend`，否则前端不显示。
 
+## 美股收盘后刷新指数（2026-11-17）
+- **问题**：`recommend_data.json` / `wide_index_data.json` 的 `indices[]`/`items[]` 只在 A 股时段（recommend 09:05、review 15:40）生成，美股指数（usDJI/usIXIC/usINX）一直停在白天快照或上一交易日；市场页（smasfx `?view=market`）把「更新」统一显示成 `recAt`，看着像「全是 15 点更新」。
+- **做法**：新增 `refresh_us_index.py`（拉三大美股指数行情+日K因子，原地 patch 两份 JSON 的美股项，写 `usAt`）；`scripts/mac/dsr.py task_usclose()`；LaunchAgent `com.smas.dsr.usclose.plist`（`install_launchd.sh` 的 `plist_usclose`）**周二~周六 05:30 北京**（美东 16:00 收盘 = 北京次日 05:00 冬令/04:00 夏令）。
+- smasfx `market_data()` 增加 `usDate`（取美股因子日K最新日期，`2026-11-16`→`11-16` 显示）+ `usAt`；前端 `?view=market` 指数区标题改「A股 `<recAt>` · 美股 `<usDate>` 收盘」，不再用单一 recAt。
+- **坑**：smasfx 无 git 仓库（`git status` 报 128），改动只落本地，重启用 `launchctl kickstart -k gui/$(id -u)/com.smas.smasfx`；数据源层验证用 headless Chrome CDP（`/Users/smas/code/smasfx/tools/mobile_shot.py` 的 `WS/Chrome/PORT`，自建 9224 端口 `--headless=new --remote-allow-origins=*`）。实测 usDJI 51,608(-1.41%) / usIXIC 24,509(-2.49%) / usINX 7,416(-1.92%) 均已刷新。
+
 ## 币安竞技场（2026-11-10 起，替代日线池/短线池两套 bot）
 - 引擎：`binance-llm-bot/arena_engine.py`（`watchdog.py` 守护，替换 trader100/trader_short）。
 - 6 个策略共用 **同一 100U**、**同一批 23 只 TradFi 永续**，symbol 级仲裁
