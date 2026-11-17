@@ -75,6 +75,13 @@ def main():
     with open(LOCK, 'w') as f:
         f.write(str(os.getpid()))
 
+    # 崩溃循环退避：记录每个子进程上次拉起时间，退出太快则指数退避重启，
+    # 防止网络/代理持续故障时 watchdog 每分钟重启形成风暴（2026-11-16 实测 826 次/天）。
+    last_start = {}   # name -> 上次拉起 time
+    backoff = {}      # name -> 当前退避秒数
+    FAST_EXIT = 90    # 拉起后 90s 内又死 -> 视为崩溃循环
+    MAX_BACKOFF = 900
+
     while True:
         for name, cmd, outfile in PROCS:
             # 精确匹配脚本路径, 避免 pgrep 误匹配自己
@@ -87,6 +94,17 @@ def main():
                     alive = True
                     break
             if not alive:
+                now = time.time()
+                ls = last_start.get(name, 0)
+                if ls and now - ls < FAST_EXIT:
+                    # 上次拉起很快又挂了：指数退避，不足 5min 就继续等
+                    b = backoff.get(name, 60)
+                    if now - ls < b:
+                        continue   # 还在退避窗口内，下轮再看
+                    backoff[name] = min(b * 2, MAX_BACKOFF)
+                    log(f'[{name}] 崩溃循环退避 {backoff[name]}s（上次拉起 {int(now-ls)}s 前又死）')
+                else:
+                    backoff[name] = 60
                 log(f'[{name}] 未运行, 重启...')
                 # 杀残留同类进程 (防重复)
                 for pid in pids:
@@ -101,8 +119,12 @@ def main():
                 with open(outfile, 'a') as out:
                     subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT,
                                      cwd=BASE, start_new_session=True)
+                last_start[name] = time.time()
                 log(f'[{name}] 已拉起')
             # else: log debug 太吵, 跳过
+            # 存活时间超过 FAST_EXIT 则清除退避（已稳定运行）
+            if alive and name in backoff and time.time() - last_start.get(name, 0) > FAST_EXIT:
+                backoff.pop(name, None)
         time.sleep(60)
 
 

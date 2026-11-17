@@ -386,10 +386,15 @@ def open_position(ex, st, name, side, strat, dry=None):
         if float(p.get('contracts') or 0):
             log.error('开仓前发现 %s 已有仓位(%s)，中止', name, pos_guard.side_of(p))
             return 0.0
-    ex.set_leverage(int(LEV), sym)
-    cancel_sl(ex, sym)
-    px = float(ex.fetch_ticker(sym)['last'])
-    qty = float(ex.amount_to_precision(sym, notional / px))
+    try:
+        ex.set_leverage(int(LEV), sym)
+        cancel_sl(ex, sym)
+        px = float(ex.fetch_ticker(sym)['last'])
+        qty = float(ex.amount_to_precision(sym, notional / px))
+    except Exception as e:
+        # demo-fapi 偶发 SSL/超时：单票准备阶段失败只跳过该票，不中断整轮
+        log.warning('%s 开仓准备失败(%s)，跳过该票', name, str(e)[:100])
+        return 0.0
     if qty * px < MIN_NOTIONAL:
         note(st, '%s 精度后名义 %.1fU 低于门槛，跳过' % (name, qty * px))
         return 0.0
@@ -526,9 +531,11 @@ def decide(ex, st, dry=DRY, echo_progress=True):
     sync_from_real(ex, st)
     converge_families(ex, st, dry=dry)   # 同族对冲收敛：SOX 族内只留优先级高者
     ctxs = {}
+    fails = 0                            # 连续取行情失败计数（熔断用）
     for i, name in enumerate(SYMBOLS, 1):
         # 23 标 × 2 个 K 线请求连发会撞 demo 限流（实测 CRCL 偶发 -1122/超时），
         # 每标之间留间隔，失败再重试一次。
+        ok = False
         for attempt in (1, 2):
             try:
                 _ctx = fetch_ctx(ex, name)
@@ -539,12 +546,19 @@ def decide(ex, st, dry=DRY, echo_progress=True):
                         (_ctx['price'] / float(_ctx['d'][-1]) - 1) * 100, 2)
                 except Exception:
                     pass
+                ok = True
                 break
             except Exception as e:
                 if attempt == 2:
                     log.warning('取 %s 行情失败(已重试): %s', name, str(e)[:120])
                 else:
                     time.sleep(1.2)
+        fails = 0 if ok else fails + 1
+        if fails >= 5:
+            # 代理/接口整体挂了时，逐个 60s 超时会把一轮拖到几十分钟（心跳中断）。
+            # 连续 5 个标的失败即熔断本轮：保留已有仓位判断，不再硬等剩余标的。
+            log.warning('行情接口连续失败 %d 个标的，熔断本轮（避免逐个超时拖垮心跳）', fails)
+            break
         time.sleep(0.25)
         if echo_progress and (i % 5 == 0 or i == len(SYMBOLS)):
             print('[progress] %d/%d' % (i, len(SYMBOLS)), flush=True)
@@ -687,16 +701,23 @@ def write_status(ex, st):
 
 def main():
     ex = make_fex()
-    for _i in range(3):
+    # load_markets 退避重试：代理短时抽风不应立刻退出，否则 watchdog 每分钟拉起 → 重启风暴
+    # （2026-11-16 实测一天 826 次重启，行情失败退出 824 次）。总重试 ~8min。
+    delay = 5
+    for _i in range(8):
         try:
             ex.load_markets()
             break
         except Exception as _e:
-            log.warning('load_markets 失败(重试 %d/3): %s', _i + 1, str(_e)[:120])
-            time.sleep(5)
+            log.warning('load_markets 失败(第 %d 次): %s', _i + 1, str(_e)[:120])
+            time.sleep(delay)
+            delay = min(delay * 2, 120)
     if not getattr(ex, 'markets', None):
-        log.error('load_markets 三次均失败，干净退出等 watchdog 下一分钟拉起')
+        log.error('load_markets 多次失败，退出等 watchdog 拉起（已退避约 8min，避免重启风暴）')
         return
+    # 行情已加载：交易循环里单请求超时降到 20s（exchangeInfo 才需要 60s）。
+    # 配合 decide 的熔断，一轮最坏 ≈ 5 标 × 2 次 × 20s ≈ 3min，不会再拖到几十分钟。
+    ex.timeout = int(os.environ.get('BN_LOOP_TIMEOUT_MS', '20000'))
     algo_tools.set_symbol_map(ex.markets)
     st = load_state()
     mode = sys.argv[1] if len(sys.argv) > 1 else 'loop'

@@ -263,5 +263,43 @@ class TestFamilyExclusivity(unittest.TestCase):
                          if False else A.family_conflicts({'real_pos': {}}, 'SOXS'))
 
 
+class TestCircuitBreaker(unittest.TestCase):
+    """行情接口整体挂掉时熔断本轮，避免 23 标逐个 60s 超时把心跳拖到几十分钟
+    （2026-11-16 实测 826 次重启 / 心跳间隔 34min）。"""
+
+    def test_decide_breaks_after_consecutive_fetch_failures(self):
+        calls = {'n': 0}
+
+        def boom(ex, name):
+            calls['n'] += 1
+            raise RuntimeError('network down')
+
+        ex = FakeEx()
+        st = {'real_pos': {}, 'trades': [], 'log': [], 'last_exit': {}}
+        with mock.patch.object(A, 'fetch_ctx', boom), \
+             mock.patch.object(A, 'save_state', lambda st: None), \
+             mock.patch.object(A.time, 'sleep', lambda *a, **k: None):
+            A.decide(ex, st, dry=True, echo_progress=False)
+        # 5 个连续失败即熔断；每个标的重试 2 次 → 调用 10 次，远小于 23 标 × 2
+        self.assertEqual(calls['n'], 10)
+
+    def test_decide_processes_all_when_fetches_ok(self):
+        calls = {'n': 0}
+
+        def ok(ex, name):
+            calls['n'] += 1
+            return ctx([100] * 60)
+
+        ex = FakeEx()
+        st = {'real_pos': {}, 'trades': [], 'log': [], 'last_exit': {}}
+        with mock.patch.object(A, 'fetch_ctx', ok), \
+             mock.patch.object(A, 'cancel_sl', lambda *a: None), \
+             mock.patch.object(A, 'set_sl', lambda *a, **k: (None, 0)), \
+             mock.patch.object(A, 'save_state', lambda st: None), \
+             mock.patch.object(A.time, 'sleep', lambda *a, **k: None):
+            A.decide(ex, st, dry=True, echo_progress=False)
+        self.assertEqual(calls['n'], len(A.SYMBOLS))
+
+
 if __name__ == '__main__':
     unittest.main()

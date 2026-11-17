@@ -69,3 +69,10 @@
 - 检测：币安心跳中断（LOOP_MIN=15，>30min warn >45min bad）、watchdog 重启风暴（>10 warn >50 bad）、行情失败退出、决策轮异常、开仓跳过、A股巡检缺口（扣午休 11:35–12:55）、复盘缺失、LLM 路由失败率；无任何日志的日子判 NODATA 不误报。
 - launchd：`com.smas.dsr.monitor` 每天 20:30 日报、`com.smas.dsr.monweekly` 周日 20:35 周报（`install_launchd.sh` 的 `plist_monitor`，dsr.py action=`monitor`/`monweekly`）。
 - 坑：dsr.py `run()` 的 step 名不能含 `%` 格式符（`"健康%d"` 会把 mode 当数字）。
+
+## 稳定性修复：重启风暴 / 心跳中断（2026-11-17）
+- **症状**：11-15/16 两天 watchdog 重启 209/826 次、行情失败退出 206/824 次；心跳最大间隔 34min（正常 15min）。11-13/11-16 的 86/91min 大缺口是**笔记本午休睡眠**（4 个进程同时死、watchdog 13:01 一起拉起），非代码问题。
+- **根因**：①`arena_engine.main()` load_markets 只重试 3 次（~15s）就退出 → watchdog 每 60s 拉起 → 代理短时抽风即形成重启风暴；②代理整体挂掉时 `decide()` 仍逐个标的重试 2 次 × 60s 超时 × 23 标 ≈ 46min/轮，心跳被拖断；③`open_position` 里 `set_leverage`/`fetch_ticker`/`amount_to_precision` 未包 try，一次 `POST leverage` 抖动就中断整轮。
+- **修法**：①load_markets 改**退避重试 8 次**（5/10/20/40/80/120/120/120s，共 ~8min）才退出，退出日志明确「已退避约 8min，避免重启风暴」，重启频率从 1 次/分钟降到 1 次/8min；②加载后 `ex.timeout = BN_LOOP_TIMEOUT_MS`（默认 20000ms，exchangeInfo 才需 60s），decide 加**熔断**：连续 5 个标的取行情失败即 `break` 本轮（最坏 5×2×20s≈3min，不再 46min）；③open_position 准备阶段（set_leverage/cancel_sl/fetch_ticker/precision）包 try，失败只跳过该票不中断整轮；④`watchdog.py` 加**崩溃循环指数退避**（拉起后 90s(FastExit) 内又死 → backoff 60→120→…→900s 封顶，稳定运行 >90s 清零），任何子进程都不可能每分钟重启。
+- **测试**：`tests/test_arena_engine.py` 新增 `TestCircuitBreaker`（连续失败 5 个即熔断：fetch_ctx 只被调用 10 次而非 46；全成功则 23 标全处理）。币安 127 OK、根 174 OK。
+- 坑：单测里 mock `A.time` 会把 `time.time()` 也变成 MagicMock 导致 `< float` 报错，要 `mock.patch.object(A.time, 'sleep', ...)` 只 patch sleep。
