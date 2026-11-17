@@ -505,6 +505,12 @@ def arena_panels():
         cn = p.get('cn') or ''
         return (code + ' <span class="dim">' + cn + '</span>') if cn else code
     pos = a.get('positions') or []
+    def _day_pnl(p):
+        """方向感知的当日盈亏：空单把标的涨跌取反（标的跌=空单赚），红=赚绿=亏。"""
+        if p.get('dayChange') is None:
+            return None, 'dim'
+        v = float(p['dayChange']) * (-1 if p.get('side') == 'short' else 1)
+        return v, ('up' if v > 0 else ('down' if v < 0 else 'dim'))
     prow = ''.join(
         '<tr><td>%s</td><td>%s</td><td class="%s">%s</td><td>%.6g</td><td>%.2f</td>'
         '<td>%.0fU</td><td>%.1fU</td><td>%.1fx</td><td>%s</td><td>%s</td><td class="%s">%s</td></tr>'
@@ -516,9 +522,8 @@ def arena_panels():
            (float(p.get('notional') or 0) / float(p['margin'])) if p.get('margin') else 0.0,
            p.get('holdText') or '—',
            ('%.2f' % p['sl']) if p.get('sl') else '—',
-           ('up' if p['dayChange'] > 0 else ('down' if p['dayChange'] < 0 else 'dim'))
-           if p.get('dayChange') is not None else 'dim',
-           ('%+.2f%%' % p['dayChange']) if p.get('dayChange') is not None else '—')
+           _day_pnl(p)[1],
+           ('%+.2f%%' % _day_pnl(p)[0]) if _day_pnl(p)[0] is not None else '—')
         for p in pos) or '<tr><td colspan="11" class="dim">当前空仓</td></tr>'
     return (
         '<div class="panel" id="positions">'
@@ -535,7 +540,7 @@ def arena_panels():
         '<span class="hint">共 %d 笔 · 已实现 %+.2f U · 浮动 %+.2f U</span></div>'
         '<div class="tblwrap"><table><tr><th>标的</th><th>策略</th><th>方向</th><th>张数</th>'
         '<th>入场</th><th>名义</th><th>保证金</th><th>杠杆</th><th>持仓时间</th><th>止损</th>'
-        '<th>当日涨幅</th></tr>%s</table></div>'
+        '<th>当日盈亏</th></tr>%s</table></div>'
         '</div>' % (eq, cls, ret, float(a.get('lev') or 5), int(a.get('trades') or 0),
                     float(a.get('loopMin') or 15),
                     int(a.get('symbols') or 0), ''.join(rows), len(pos),
