@@ -71,7 +71,8 @@
 - 坑：dsr.py `run()` 的 step 名不能含 `%` 格式符（`"健康%d"` 会把 mode 当数字）。
 
 ## 稳定性修复：重启风暴 / 心跳中断（2026-11-17）
-- **症状**：11-15/16 两天 watchdog 重启 209/826 次、行情失败退出 206/824 次；心跳最大间隔 34min（正常 15min）。11-13/11-16 的 86/91min 大缺口是**笔记本午休睡眠**（4 个进程同时死、watchdog 13:01 一起拉起），非代码问题。
+- **症状**：11-15/16 两天 watchdog 重启 209/826 次、行情失败退出 206/824 次；心跳最大间隔 34min（正常 15min）。
+- **11-13 86min 缺口与 11-15 20:00 缺口是系统重启**（`last reboot`：11-13 11:50、11-15 20:00 shutdown→20:21 reboot，用户是 Mac mini M6 台式机，不是笔记本睡眠）。11-13 11:36→13:01：11:50 重启、launchd 13:01 才拉起 watchdog（LaunchAgent RunAtLoad 但当时无 KeepAlive 早退）。**11-16 那个 92min 心跳缺口不是重启**：实际是 11-15 19:48 心跳后 451 风暴一直持续到 11-16 14:20（本机一直活着，ussim/simscan 正常），14:20 用户切代理节点后 14:23 恢复心跳——是代理被币安 451 拒了 ~18.5 小时。
 - **根因**：①`arena_engine.main()` load_markets 只重试 3 次（~15s）就退出 → watchdog 每 60s 拉起 → 代理短时抽风即形成重启风暴；②代理整体挂掉时 `decide()` 仍逐个标的重试 2 次 × 60s 超时 × 23 标 ≈ 46min/轮，心跳被拖断；③`open_position` 里 `set_leverage`/`fetch_ticker`/`amount_to_precision` 未包 try，一次 `POST leverage` 抖动就中断整轮。
 - **修法**：①load_markets 改**退避重试 8 次**（5/10/20/40/80/120/120/120s，共 ~8min）才退出，退出日志明确「已退避约 8min，避免重启风暴」，重启频率从 1 次/分钟降到 1 次/8min；②加载后 `ex.timeout = BN_LOOP_TIMEOUT_MS`（默认 20000ms，exchangeInfo 才需 60s），decide 加**熔断**：连续 5 个标的取行情失败即 `break` 本轮（最坏 5×2×20s≈3min，不再 46min）；③open_position 准备阶段（set_leverage/cancel_sl/fetch_ticker/precision）包 try，失败只跳过该票不中断整轮；④`watchdog.py` 加**崩溃循环指数退避**（拉起后 90s(FastExit) 内又死 → backoff 60→120→…→900s 封顶，稳定运行 >90s 清零），任何子进程都不可能每分钟重启。
 - **测试**：`tests/test_arena_engine.py` 新增 `TestCircuitBreaker`（连续失败 5 个即熔断：fetch_ctx 只被调用 10 次而非 46；全成功则 23 标全处理）。币安 127 OK、根 174 OK。
