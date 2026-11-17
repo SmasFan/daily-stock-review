@@ -273,6 +273,12 @@ def task_usclose():
     run("美股指数", ["refresh_us_index.py"], 300)
 
 
+def task_monitor(mode="daily"):
+    """量化健康监控：daily 出当日报告，weekly 出最近 7 天汇总（纯本地，秒级）。"""
+    log("=== 量化健康监控 %s ===" % mode)
+    run("健康-%s" % mode, ["scripts/quant_monitor.py", mode, "--push"], 120)
+
+
 def task_serve():
     os.execv(PY, [PY, os.path.join(ROOT, "scripts", "serve.py"), "8000"])
 
@@ -328,6 +334,10 @@ def main():
             task_ussim()
         elif action == "usclose":
             task_usclose()
+        elif action == "monitor":
+            task_monitor("daily")
+        elif action == "monweekly":
+            task_monitor("weekly")
         else:
             log("未知任务: %s" % action)
             return

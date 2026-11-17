@@ -118,6 +118,35 @@ plist_usclose() {  # 美股收盘后刷新：美东 16:00 = 北京次日 05:00(�
 EOF
 }
 
+plist_monitor() {  # 量化健康日报：周一~周五 20:30；周报：周日 20:35
+  local name=$1 action=$2 hour=$3 minute=$4 weekdays=$5
+  cat > "$AGENT/$PREFIX.$name.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$PREFIX.$name</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PY</string><string>$ENTRY</string><string>$action</string>
+  </array>
+  <key>WorkingDirectory</key><string>$ROOT</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>PYTHONUNBUFFERED</key><string>1</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <array>$weekdays</array>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>$LOGDIR/$name.log</string>
+  <key>StandardErrorPath</key><string>$LOGDIR/$name.log</string>
+  <key>ProcessType</key><string>Background</string>
+</dict>
+</plist>
+EOF
+}
+
 plist_awake() {
   cat > "$AGENT/$PREFIX.awake.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -189,17 +218,27 @@ case "${1:-install}" in
     plist_interval ussim 300
     plist_interval external 10800
     plist_usclose
+    plist_monitor monitor daily 20 "30" "
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>6</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Weekday</key><integer>7</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>30</integer></dict>"
+    plist_monitor monweekly monweekly 20 "35" "
+    <dict><key>Weekday</key><integer>7</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>35</integer></dict>"
     plist_awake
     plist_serve
     # 原来的裸 http.server 交给 launchd 托管
     pkill -f "http.server 8000" 2>/dev/null
-    for n in awake recommend review intraday simscan ussim external usclose serve; do load_one "$n"; done
+    for n in awake recommend review intraday simscan ussim external usclose monitor monweekly serve; do load_one "$n"; done
     echo
     echo "完成。日志: $LOGDIR/   统一任务日志: $ROOT/data/auto_run.log"
     echo "页面: http://127.0.0.1:8000/"
     ;;
   uninstall)
-    for n in awake recommend review intraday simscan ussim external usclose serve; do
+    for n in awake recommend review intraday simscan ussim external usclose monitor monweekly serve; do
       launchctl bootout "gui/$UID/$PREFIX.$n" 2>/dev/null || launchctl unload -w "$AGENT/$PREFIX.$n.plist" 2>/dev/null
       rm -f "$AGENT/$PREFIX.$n.plist"
       echo "  ✓ 已卸载 $PREFIX.$n"

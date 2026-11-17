@@ -63,3 +63,9 @@
 - 网络健壮性（同日修）：demo-fapi 偶发 SSL 断连曾导致整轮 decide 崩溃→write_status 不执行→状态滞后 40min。修：open_position 查仓位失败跳过该票、close_position 查持仓失败放弃本次平仓（绝不假平仓 pop 本地）、decide 逐票开仓包 try/except 单票失败不拖垮整轮。
 - 实测生效（00:48）：打分器平掉 HOOD/NVDA/PAYP 存量多单，开空 CRCL/GOOGL/PLTR/XPT，持仓从 6空+5多 → 9空+3多，权益 122U(+22%)。
 - 坑：代理节点「🇯🇵日本专线6-0.1倍率」偶发整体不可达（所有节点 demo-fapi HTTP 000），curl 轮换探测后切回该节点恢复；不要误判为代码问题。
+
+## 量化健康监控（2026-11-17）
+- `scripts/quant_monitor.py`：daily/weekly/report 三模式，纯标准库，扫 `binance-llm-bot/{arena,watchdog,guard}.log` + `state_arena.json` + `data/logs/{simscan,intraday,review,recommend,external,ussim}.log` + `data/llm_route_log.jsonl`，输出 `data/monitor/daily_*.txt|json` 与 `weekly_*.txt|json`，`--push` 走 Server酱（key 未配则跳过）。
+- 检测：币安心跳中断（LOOP_MIN=15，>30min warn >45min bad）、watchdog 重启风暴（>10 warn >50 bad）、行情失败退出、决策轮异常、开仓跳过、A股巡检缺口（扣午休 11:35–12:55）、复盘缺失、LLM 路由失败率；无任何日志的日子判 NODATA 不误报。
+- launchd：`com.smas.dsr.monitor` 每天 20:30 日报、`com.smas.dsr.monweekly` 周日 20:35 周报（`install_launchd.sh` 的 `plist_monitor`，dsr.py action=`monitor`/`monweekly`）。
+- 坑：dsr.py `run()` 的 step 名不能含 `%` 格式符（`"健康%d"` 会把 mode 当数字）。
