@@ -54,6 +54,9 @@ LEV = float(os.environ.get('LEV', '5'))
 FEE = 0.0004
 PROXY = os.environ.get('PROXY', '' if sys.platform == 'darwin' else 'socks5h://172.25.16.1:10808')
 LOOP_MIN = float(os.environ.get('ARENA_LOOP_MIN', os.environ.get('LOOP_MIN', '15')))
+# 状态刷新频率（秒）：只重写 data/binance_arena.json（权益/浮动/持仓快照），
+# 不做交易决策。让顶栏/状态页的权益更实时，而交易决策仍按 LOOP_MIN 走。
+STATUS_SEC = float(os.environ.get('ARENA_STATUS_SEC', '60'))
 DRY = os.environ.get('ARENA_DRY', '0').lower() not in ('0', 'false', 'off', 'no')
 MIN_NOTIONAL = float(os.environ.get('MIN_NOTIONAL', '5'))
 # 同一标的平仓后的冷却时间（分钟）：防止「止损→立刻重开→再止损」的连环亏
@@ -730,17 +733,25 @@ def main():
     log.info('竞技场启动: %.0fU / %d 标 / %gx / 每 %.0fmin；策略 %s',
              START_EQUITY, len(SYMBOLS), LEV, LOOP_MIN,
              ' / '.join('%s(%d%%)' % (s['id'], s['weight'] * 100) for s in STRATS))
+    log.info('状态刷新每 %.0fs，交易决策每 %.0fmin', STATUS_SEC, LOOP_MIN)
+    last_decide = 0.0
     while True:
         try:
             ex.options['adjustForTimeDifference'] = True
-            decide(ex, st)
-            p = write_status(ex, st)
-            log.info('权益 %.2fU (%+.2f%%) 持仓 %d 笔 成交 %d 笔',
-                     p['equity'], p['returnPct'], len(p['positions']), p['trades'])
+            now = time.time()
+            do_decide = (now - last_decide) >= LOOP_MIN * 60
+            if do_decide:
+                decide(ex, st)
+                last_decide = now
+            p = write_status(ex, st)   # 每 STATUS_SEC 重写快照（含实时浮动盈亏）
+            if do_decide:
+                log.info('权益 %.2fU (%+.2f%%) 持仓 %d 笔 成交 %d 笔',
+                         p['equity'], p['returnPct'], len(p['positions']), p['trades'])
         except Exception as e:
             log.exception('本轮异常: %s', str(e)[:200])
-            time.sleep(60)
-        time.sleep(LOOP_MIN * 60)
+            time.sleep(min(STATUS_SEC, 60))
+            continue
+        time.sleep(STATUS_SEC)
 
 
 if __name__ == '__main__':

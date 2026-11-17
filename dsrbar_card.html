@@ -440,7 +440,7 @@ window.addEventListener('focus', () => load());
 
 render();
 load();
-setInterval(load, 15000);
+setInterval(load, 10000);
 
 // WKWebView 长时间保活偶发白屏（WebContent 被系统回收）：HTML/数据都正常，但视图不重绘。
 // 自愈：DOM 文本为空 或 连续 3 分钟没成功取到数据 → 带时间戳重载；90 秒内不重复。
