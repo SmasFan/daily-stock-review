@@ -54,15 +54,19 @@ POOL = [
     ("601985", "中国核电"),
     ("601398", "工商银行"),
     ("601225", "陕西煤业"),
+    # ---- 2026-11-17 扩池（半份预算）----
+    ("515450", "红利低波50ETF南方"),
 ]
 CODES = [c for c, _ in POOL]
 NAMES = dict(POOL)
 
-# 扩池权重：核心 6 只 1.0，新增 4 只 0.5。
-# 回测（同一口径，2024-03-18~2026-11-09）：Sharpe 1.55→1.67、MDD 4.9%→4.2%、样本外 +13.1%→+12.6%
+# 扩池权重：核心 6 只 1.0，2026-11-12 新增 4 只 + 2026-11-17 新增 515450 均 0.5。
+# 11-12 扩池回测（同一口径，2024-03-18~2026-11-09）：Sharpe 1.55→1.67、MDD 4.9%→4.2%、样本外 +13.1%→+12.6
 # 2026-11-12 用户复核后把唐山港（601000）换成中国核电（601985）：分红零增长、估值同业最贵、
 # 位置距 3 年高点仅 1.8%；核电相关性 0.07、近1年回撤 -8.1%，代价是股息率 2.09% 偏低、Sharpe -0.03。
-WEIGHTS = {"601988": 0.5, "601985": 0.5, "601398": 0.5, "601225": 0.5}
+# 2026-11-17 加 515450 红利低波50ETF南方（0.5）：回测 +35.9%→+36.7%、Sharpe 1.50→1.53、MDD 4.1%→4.2%；
+# 与 159525 相关性 0.92（同为红利低波指数）但分散后仍小幅增益；单标的策略 +41.5%/13笔。
+WEIGHTS = {"601988": 0.5, "601985": 0.5, "601398": 0.5, "601225": 0.5, "515450": 0.5}
 CORE_CODES = [c for c in CODES if c not in WEIGHTS]
 WSUM = len(CORE_CODES) + sum(WEIGHTS.values())  # = 8.0
 
@@ -106,6 +110,14 @@ BACKTEST = {
         "equal_weight_all25": {"total": 0.181, "mdd": 0.064, "sharpe": 1.02},
         "note": "25 只全等权加进来稀释到 +18%；只加 4 只、各半份 → 少赚 4.1 点换 Sharpe +0.12、回撤 -0.7 点；唐山港换核电只少 1.0 点",
     },
+    # 2026-11-17 加 515450 红利低波50ETF南方（半份）：同口径回测（2024-03-13~2026-11-17）
+    "add_515450": {
+        "base10": {"total": 0.359, "mdd": 0.041, "sharpe": 1.50, "oos": 0.153, "oos_sh": 2.30, "trades": 157},
+        "add_half": {"total": 0.367, "mdd": 0.042, "sharpe": 1.53, "oos": 0.151, "oos_sh": 2.26, "trades": 172},
+        "solo": {"total": 0.415, "mdd": 0.051, "sharpe": 1.48, "trades": 13},
+        "corr_159525": 0.92,
+        "note": "与 159525 同为红利低波指数、相关性 0.92，但半份加入后 +35.9%→+36.7%、Sharpe 1.50→1.53、回撤持平",
+    },
 }
 
 
@@ -139,7 +151,7 @@ def new_state():
             "start_cash": RULE["start_cash"], "rule": RULE,
             "pool": [{"code": c, "name": n, "weight": WEIGHTS.get(c, 1.0),
                       "budget": round(unit_budget(c))} for c, n in POOL],
-            "pool_rule": "核心 6 只各 1 份，扩池 4 只各半份（权重分母 %.1f）" % WSUM,
+            "pool_rule": "核心 6 只各 1 份，扩池各半份（权重分母 %.1f）" % WSUM,
             "backtest": BACKTEST, "asof": "", "plan_date": "",
             "note": "MA 用已收盘 K 线（排除当日未完成 K 线）；盘中仅用实时快照触发",
         },
@@ -341,7 +353,7 @@ def refresh_plan(st, quotes=None, use_cache=True):
     # 账户结构迁移：老账本没有 weight/budget，每次重算时同步（幂等）
     st["meta"]["pool"] = [{"code": c, "name": n, "weight": WEIGHTS.get(c, 1.0),
                            "budget": round(unit_budget(c))} for c, n in POOL]
-    st["meta"]["pool_rule"] = "核心 6 只各 1 份，扩池 4 只各半份（权重分母 %.1f）" % WSUM
+    st["meta"]["pool_rule"] = "核心 6 只各 1 份，扩池各半份（权重分母 %.1f）" % WSUM
     st["meta"]["backtest"] = BACKTEST
     st["meta"]["plan_date"] = today()
     st["meta"]["asof"] = now_ts()

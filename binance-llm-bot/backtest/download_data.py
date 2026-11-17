@@ -73,7 +73,7 @@ def fetch_all(ex, sym, tf, bars):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--tf', default='1d', choices=['1d', '1h', '4h'])
+    ap.add_argument('--tf', default='1d', choices=['1d', '1h', '4h', '15m', '5m', '1m'])
     ap.add_argument('--bars', type=int, default=600)
     ap.add_argument('--symbols', default='')
     a = ap.parse_args()

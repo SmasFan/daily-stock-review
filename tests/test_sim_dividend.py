@@ -238,20 +238,21 @@ class TestIntradaySession(unittest.TestCase):
 
 
 class TestExpandWeights(unittest.TestCase):
-    """2026-11-12 扩池：核心 6 只全份、新增 4 只半份，且老账本自动迁移。"""
+    """2026-11-12 扩池 4 只 + 2026-11-17 加 515450：核心 6 只全份、扩池 5 只半份，且老账本自动迁移。"""
 
     def test_pool_and_weight_sum(self):
-        self.assertEqual(len(S.POOL), 10)
+        self.assertEqual(len(S.POOL), 11)
         self.assertEqual(len(S.CORE_CODES), 6)
-        self.assertEqual(len(S.WEIGHTS), 4)
-        self.assertAlmostEqual(S.WSUM, 8.0)
+        self.assertEqual(len(S.WEIGHTS), 5)
+        self.assertAlmostEqual(S.WSUM, 8.5)
 
     def test_unit_budget(self):
         core = S.unit_budget("600900")
         ext = S.unit_budget("601988")
         self.assertAlmostEqual(core, S.RULE["start_cash"] / 6, places=2)
-        self.assertAlmostEqual(ext, S.RULE["start_cash"] * 0.5 / 8, places=2)
+        self.assertAlmostEqual(ext, S.RULE["start_cash"] * 0.5 / S.WSUM, places=2)
         self.assertLess(ext, core / 2)
+        self.assertIn("515450", S.WEIGHTS)
 
     def test_buy_lot_ext_uses_half_budget(self):
         a, b = S.new_state(), S.new_state()
@@ -275,7 +276,8 @@ class TestExpandWeights(unittest.TestCase):
         pool = {p["code"]: p for p in st["meta"]["pool"]}
         self.assertEqual(pool["600900"]["weight"], 1.0)
         self.assertEqual(pool["601988"]["weight"], 0.5)
-        self.assertEqual(pool["601988"]["budget"], 6250)
+        self.assertEqual(pool["601988"]["budget"], round(S.RULE["start_cash"] * 0.5 / S.WSUM))
+        self.assertEqual(pool["515450"]["weight"], 0.5)
         self.assertIn("半份", st["meta"]["pool_rule"])
 
     def test_refresh_plan_migrates_old_meta(self):
@@ -288,7 +290,7 @@ class TestExpandWeights(unittest.TestCase):
             S.refresh_plan(st, use_cache=True)
         finally:
             S.closed_closes = orig
-        self.assertEqual(len(st["plan"]), 10)
+        self.assertEqual(len(st["plan"]), 11)
         self.assertEqual(st["meta"]["pool"][-1]["weight"], 0.5)
         self.assertIn("半份", st["meta"]["pool_rule"])
         self.assertIn("expand", st["meta"]["backtest"])
