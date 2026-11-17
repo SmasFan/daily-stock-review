@@ -358,11 +358,12 @@ function renderSim() {
   const pos = Object.values(byCode).map(g => {
     const p = g[0], sh = g.reduce((s, x) => s + (Number(x.shares) || 0), 0);
     const avg = Number(p.cost) || 0, last = Number(p.last ?? p.last_close ?? p.cost) || 0;
+    const dayChg = Number(p.last_chg);
     const isDiv = p.kind === 'dividend' || p.strategy === 'dividend';
     // 红利账户是派生账本，没有 stop_atr/tp：止盈按红利策略 cost×1.15，清仓价从完整红利账本取
     const stop = isDiv ? (DIVLV[p.code] || null) : (p.stop_atr || p.stop_ma);
     const tp = isDiv ? (avg ? avg * 1.15 : null) : p.tp;
-    return {name: p.name || p.code, sh, g: avg ? (last / avg - 1) * 100 : 0, n: g.length,
+    return {name: p.name || p.code, sh, g: avg ? (last / avg - 1) * 100 : 0, d: Number.isFinite(dayChg) ? dayChg : null, n: g.length,
             cost: p.cost, stop, tp, isDiv};
   });
   // 全池持仓/买点比 6 股池多得多，列表限长，保证首屏能同时看到持仓和买点
@@ -370,6 +371,7 @@ function renderSim() {
   $('#sl-pos').innerHTML = pos.length ? shownPos.map(p =>
     '<div class="row"><span class="nm">' + p.name + (p.n > 1 ? ' ×' + p.n : '') + '</span>'
     + '<span class="q">' + p.sh + '股</span>'
+    + '<span class="q ' + (p.d == null ? '' : cls(p.d)) + '">当日 ' + (p.d == null ? '—' : pct(p.d)) + '</span>'
     + '<span class="v ' + cls(p.g) + '">' + pct(p.g) + '</span></div>'
     + '<div class="lv"><em>成本</em><b class="b">' + fmt(p.cost) + '</b>'
     + '<em style="margin-left:7px">' + (p.isDiv ? '清仓' : '止损') + '</em><b class="s">' + fmt(p.stop) + '</b>'
