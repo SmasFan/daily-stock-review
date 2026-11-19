@@ -11,7 +11,7 @@
 - 页面数据由 Python 生成 JSON 到 `data/`，前端页面读 JSON 渲染（禁止缓存，改动即时生效）
 - 数据源：腾讯行情（K线/快照）、东方财富（资金流/龙虎榜/股东，push2delay 域名防 WAF 限流）、新浪（备用）
 - 红利池当日涨幅：`data/sim_dividend.json` 的 `positions[].last_chg` / `plan[].chg` 是涨跌幅 %，来自 `src/data_provider.fetch_quotes()['change']`；`sim_dividend.py --plan` / `--review` 必须传实时 quotes，否则恒为旧值 / `None`。
-- 红利池扩池（2026-11-12）：`sim_dividend.py` 的 `POOL` 共 10 只，核心 6 只权重 1.0、扩池 4 只（601988 中国银行 / 601985 中国核电 / 601398 工商银行 / 601225 陕西煤业）权重 0.5；`unit_budget(code)` 决定每标总预算（核心 16,667 / 扩池 6,250），`refresh_plan()` 幂等迁移老账本 `meta.pool`。**不要改成等权扩池**（25 只全等权回测只剩 +10.6%，基准 6 只 +39.2%）；筛选与回测见 `backtest/DIVIDEND_EXPAND.md`。
+- 红利池扩池（2026-11-12，11-17 加 515450）：`sim_dividend.py` 的 `POOL` 共 11 只，核心 6 只权重 1.0、扩池 5 只（601988 中国银行 / 601985 中国核电 / 601398 工商银行 / 601225 陕西煤业 / **515450 红利低波50ETF南方**）权重 0.5；`unit_budget(code)=start_cash*weight/WSUM`（WSUM=8.5，核心 16,667 / 扩池 5,882），`refresh_plan()` 幂等迁移老账本 `meta.pool`。**不要改成等权扩池**（25 只全等权回测只剩 +10.6%，基准 6 只 +39.2%）；筛选见 `backtest/DIVIDEND_EXPAND.md`，515450 回测（+36.7%/Sh1.53 vs 现池 +35.9%/Sh1.50）在 `sim_dividend.py` 的 BACKTEST.add_515450。
 - `sim_dividend.py --intraday` 在非交易时段（`in_session()` 09:15–11:35 / 12:55–15:05）只刷行情不交易；`scripts/mac/dsr.py task_intraday()` 已挂「红利池巡检」，交易时段每 5 分钟自动更新。
 - **顶栏卡片联动（用户 2026-11-12 明确规则）**：凡是改动涉及红利池 / 模拟盘 / 币安账户的数据口径，都必须同步检查并改 `dsrbar_card.html`（红利 tab / 全池 tab / 币安 tab），改完重启 `/Applications/DSR Bar.app`（只重启、不重编译，避免 TCC 失效）。例：红利池换标的要确认红利 tab 的待触发买点能看到新标的、全池 tab 的账户列表要含新策略。
 - **全池红利账户**：`sim_live.py` 的 `dividend_account()` 从 `data/sim_dividend.json` 按 `50000/start_cash` 等比例派生 `pools.all.accounts.dividend`（5 万本金口径、只读、不进 `all_books()` 下单循环，收益率与红利池一致）；`sim_live.html` 的 `ORDER`/`META` 与 `dsrbar_card.html` 的 `keys`/`LABEL` 都必须含 `dividend`，否则前端不显示。
@@ -70,6 +70,12 @@
 - 检测：币安心跳中断（LOOP_MIN=15，>30min warn >45min bad）、watchdog 重启风暴（>10 warn >50 bad）、行情失败退出、决策轮异常、开仓跳过、A股巡检缺口（扣午休 11:35–12:55）、复盘缺失、LLM 路由失败率；无任何日志的日子判 NODATA 不误报。
 - launchd：`com.smas.dsr.monitor` 每天 20:30 日报、`com.smas.dsr.monweekly` 周日 20:35 周报（`install_launchd.sh` 的 `plist_monitor`，dsr.py action=`monitor`/`monweekly`）。
 - 坑：dsr.py `run()` 的 step 名不能含 `%` 格式符（`"健康%d"` 会把 mode 当数字）。
+
+## 币安假死自愈（2026-11-19）
+- 症状：进程活着、watchdog 不重启，但 `arena.log` 全是 demo-fapi 的 502/503/451，`[progress]` 停滞、决策失效、状态页不更新。
+- **根因=ccxt 长连接缓存了中途切换失效的 Clash 节点**：curl 单次测节点是通的、新 session 连测 positionRisk(5/5)+exchangeInfo(3/3) 全 OK，只有引擎持有的旧 session 坏。**重启引擎即恢复**（kill arena_engine → watchdog 1min 拉起 → 立即 [progress] 5/23…23/23）。
+- **正式站也不能直连**：fapi.binance.com / api.binance.com 直连全 000 超时，demo/正式都必须走代理 7897，不能靠切正式域名绕过（浏览器看着像直连实走 Clash 规则）。
+- 自愈脚本 `binance-llm-bot/proxy_watch.py`（LaunchAgent `com.smas.bn-proxy-watch` 每 3min + RunAtLoad）：判定=**决策进展停滞**（最近 15min 无 `[progress]`/权益/开平仓 且状态文件 mtime>20min），不用失败 WARNING 条数（引擎有重试会自愈，偶发 502/503 正常）。恢复=先 kill arena_engine 重建 session（主因，节点不动），`restart_streak` 连续≥2 次无效才轮换 Clash 节点（unix socket `/var/run/clash-verge-service/users/501/verge-mihomo.sock`，selector「一分机场」），恢复后清零；10min 冷却防风暴；动作写 `binance-llm-bot/proxy_watch.log`。`install_launchd.sh` 的 `plist_bnproxywatch()` 可复现。
 
 ## 稳定性修复：重启风暴 / 心跳中断（2026-11-17）
 - **症状**：11-15/16 两天 watchdog 重启 209/826 次、行情失败退出 206/824 次；心跳最大间隔 34min（正常 15min）。

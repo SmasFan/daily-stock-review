@@ -163,6 +163,29 @@ plist_awake() {
 EOF
 }
 
+plist_bnproxywatch() {  # 币安假死自愈：每 3min 检测决策停滞→重启引擎重建 ccxt session，连失败才切节点
+  local name=bn-proxy-watch
+  cat > "$HOME/Library/LaunchAgents/com.smas.$name.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.smas.$name</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$PY</string><string>$ROOT/binance-llm-bot/proxy_watch.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>$ROOT/binance-llm-bot</string>
+  <key>StartInterval</key><integer>180</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>$ROOT/binance-llm-bot/proxy_watch.log</string>
+  <key>StandardErrorPath</key><string>$ROOT/binance-llm-bot/proxy_watch.log</string>
+  <key>ProcessType</key><string>Background</string>
+</dict>
+</plist>
+EOF
+}
+
 plist_serve() {
   cat > "$AGENT/$PREFIX.serve.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -224,14 +247,18 @@ case "${1:-install}" in
     <dict><key>Weekday</key><integer>7</integer><key>Hour</key><integer>20</integer><key>Minute</key><integer>35</integer></dict>"
     plist_awake
     plist_serve
+    plist_bnproxywatch
     # 原来的裸 http.server 交给 launchd 托管
     pkill -f "http.server 8000" 2>/dev/null
     for n in awake recommend review intraday simscan ussim external usclose monitor monweekly serve; do load_one "$n"; done
+    launchctl bootout "gui/$UID/com.smas.bn-proxy-watch" 2>/dev/null
+    launchctl bootstrap "gui/$UID" "$HOME/Library/LaunchAgents/com.smas.bn-proxy-watch.plist" 2>/dev/null && echo "  ✓ 已加载 bn-proxy-watch"
     echo
     echo "完成。日志: $LOGDIR/   统一任务日志: $ROOT/data/auto_run.log"
     echo "页面: http://127.0.0.1:8000/"
     ;;
   uninstall)
+    launchctl bootout "gui/$UID/com.smas.bn-proxy-watch" 2>/dev/null; rm -f "$HOME/Library/LaunchAgents/com.smas.bn-proxy-watch.plist"
     for n in awake recommend review intraday simscan ussim external usclose monitor monweekly serve; do
       launchctl bootout "gui/$UID/$PREFIX.$n" 2>/dev/null || launchctl unload -w "$AGENT/$PREFIX.$n.plist" 2>/dev/null
       rm -f "$AGENT/$PREFIX.$n.plist"
